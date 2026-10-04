@@ -1,0 +1,75 @@
+minimum_pre_commit_version: "4.0.0"
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+default_stages: [pre-commit]
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-json
+      - id: check-yaml
+      - id: check-toml
+      - id: check-symlinks
+      - id: destroyed-symlinks
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: ["--markdown-linebreak-ext=md"]
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+  - repo: local
+    hooks:
+      - id: markdownlint-fix
+        name: Markdown lint (auto-fix)
+        entry: npm exec -- markdownlint --fix
+        language: system
+        types: [markdown]
+      - id: eslint
+        name: ESLint (auto-fix and check)
+        entry: npm exec -- eslint --fix
+        language: system
+        files: '\.mjs$'
+      - id: markdownlint-check
+        name: Markdown lint (check)
+        entry: npm exec -- markdownlint
+        language: system
+        types: [markdown]
+      - id: typecheck
+        name: TypeScript typecheck
+        entry: npm run typecheck
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: unit-tests
+        name: Unit tests
+        entry: npm test
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: dependency-audit
+        name: Dependency security audit
+        entry: npm run audit
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: check-push
+        name: Tests and browser build
+        entry: npm run check:push
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
