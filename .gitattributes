@@ -1,14 +1,30 @@
 * text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.avif binary
 *.png binary
 *.jpg binary
 *.jpeg binary
 *.gif binary
 *.webp binary
 *.ico binary
+*.eot binary
+*.otf binary
+*.ttf binary
 *.woff binary
 *.woff2 binary
+*.aac binary
+*.flac binary
+*.m4a binary
 *.mp3 binary
 *.ogg binary
 *.wav binary
+*.m4v binary
+*.mov binary
 *.mp4 binary
 *.webm binary
+*.7z binary
+*.gz binary
+*.pdf binary
+*.tar binary
+*.zip binary
