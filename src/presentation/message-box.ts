@@ -50,10 +50,6 @@ export class MessageBox {
     return this.state && !this.state.closing ? this.state.text : null;
   }
 
-  get shownAt(): number | null {
-    return this.state && !this.state.closing ? this.state.since : null;
-  }
-
   show(text: string, frame: number): void {
     if (this.text !== text) this.state = { text, since: frame, closing: false };
   }

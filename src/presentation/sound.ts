@@ -28,17 +28,19 @@ export class Sound {
   constructor(root: Window) {
     this.root = root;
     this.enabled = remembered(root);
-    // Browsers keep audio silent until the player interacts with the page, so the first touch or key press unlocks it.
+    // Browsers keep audio silent until the player interacts with the page. Mobile browsers ignore the press of a touch and only allow audio on its release, so the context is resumed on every interaction until one is accepted.
+    const unlockEvents = ['pointerdown', 'pointerup', 'keydown'] as const;
     const unlock = (): void => {
-      if (this.context) return;
-      this.context = new AudioContext();
-      // The music keeps its schedule while muted, so turning sound back on resumes the tune in time instead of restarting it.
-      this.output = new GainNode(this.context, { gain: this.enabled ? 1 : 0 });
-      this.output.connect(this.context.destination);
-      this.music(this.context.currentTime);
+      if (!this.context) {
+        this.context = new AudioContext();
+        // The music keeps its schedule while muted, so turning sound back on resumes the tune in time instead of restarting it.
+        this.output = new GainNode(this.context, { gain: this.enabled ? 1 : 0 });
+        this.output.connect(this.context.destination);
+        this.music(this.context.currentTime);
+      }
+      void this.context.resume().then(() => unlockEvents.forEach((type) => root.removeEventListener(type, unlock)));
     };
-    root.addEventListener('pointerdown', unlock, { once: true });
-    root.addEventListener('keydown', unlock, { once: true });
+    unlockEvents.forEach((type) => root.addEventListener(type, unlock));
   }
 
   get on(): boolean {

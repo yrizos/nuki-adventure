@@ -14,7 +14,6 @@ import { closingLength, tileSize, WorldPainter } from './world-painter';
 
 const frameLength = 1000 / 60;
 const holdFrames = 30;
-const messageFrames = 180;
 const smallestViewTiles = 7;
 
 export const messages = {
@@ -24,7 +23,7 @@ export const messages = {
 } as const;
 
 type Phase =
-  | { readonly name: 'playing'; readonly restored: boolean; readonly since: number }
+  | { readonly name: 'playing'; readonly restored: boolean }
   | { readonly name: 'holding'; readonly until: number; readonly origin: TilePosition; readonly color: OrbColor }
   | { readonly name: 'restoring'; readonly since: number; readonly origin: TilePosition }
   | { readonly name: 'closing'; readonly since: number };
@@ -149,7 +148,7 @@ export function startGame(root: Document): void {
     (root.fullscreenElement ? root.exitFullscreen() : root.documentElement.requestFullscreen()).catch(() => {});
   });
   let run = begin();
-  let phase: Phase = { name: 'playing', restored: false, since: 0 };
+  let phase: Phase = { name: 'playing', restored: false };
   let frame = 0;
 
   const tick = (): void => {
@@ -175,18 +174,17 @@ export function startGame(root: Document): void {
       }
       if (run.play.view(firstLevelId).hero.step?.framesTaken === 0) sound.footstep();
       if (phase.name === 'playing' && phase.restored && messageBox.text === messages.colorsBack &&
-        (frame - phase.since >= messageFrames || run.play.view(firstLevelId).hero.step)) {
+        run.play.view(firstLevelId).hero.step) {
         messageBox.hide(frame);
       }
-      if (messageBox.text === signpostText && frame - messageBox.shownAt! >= messageFrames) messageBox.hide(frame);
     } else if (phase.name === 'holding' && frame >= phase.until) {
       sound.restoring();
       phase = { name: 'restoring', since: frame, origin: phase.origin };
     } else if (phase.name === 'restoring' && frame - phase.since >= run.painter.restorationLength(phase.origin)) {
-      phase = { name: 'playing', restored: true, since: frame };
+      phase = { name: 'playing', restored: true };
     } else if (phase.name === 'closing' && frame - phase.since >= closingLength) {
       run = begin();
-      phase = { name: 'playing', restored: false, since: frame };
+      phase = { name: 'playing', restored: false };
     }
     run.animator.advance(run.play.view(firstLevelId).hero);
     const spoken = run.messageBox.text ?? '';
