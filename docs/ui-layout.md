@@ -42,6 +42,23 @@ Landscape orientation is not supported.
 - The box appears and disappears through the ordered 4 × 4 dither, one threshold per game frame, so it never uses transparency
 - A hidden live region repeats the shown text for screen readers
 
+### Sound Switch
+
+- A sound switch sits in the top right corner of the game view, 8 panel pixels from the top and right edges, below the top safe-area inset
+- It is 19 × 19 panel pixels and uses the message box frame: a one pixel Ink outline with clipped corners, a one pixel V1 inner edge and a V0 fill
+- A Paper speaker sits at its center, with two sound waves while sound is on and a cross in place of the waves while sound is off
+- Its touch area never shrinks below the Material minimum touch target, even when the drawn switch is smaller
+- It turns the music and every sound effect on or off together
+- The game remembers the choice for the next visit
+
+### Full Screen Switch
+
+- A full screen switch sits just left of the sound switch, with the same size and frame
+- The gap between the two switches is 4 panel pixels, widened where needed so their touch areas meet without overlapping
+- A Paper symbol of four corners sits at its center, pointing outward while the page is not full screen and inward while it is
+- It shows the whole page full screen or returns it to normal
+- It appears only in browsers that can show a page full screen, so it is hidden on iPhone
+
 ## Control Panel
 
 - Bottom of the screen

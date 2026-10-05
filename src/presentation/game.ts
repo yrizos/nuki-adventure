@@ -133,6 +133,21 @@ export function startGame(root: Document): void {
     return { play, painter: new WorldPainter(play.view(firstLevelId)), animator: new HeroAnimator(), messageBox: new MessageBox() };
   };
   const sound = new Sound(window);
+  const soundSwitch = element<HTMLButtonElement>(root, '.sound-switch');
+  const showSound = (): void => soundSwitch.setAttribute('aria-pressed', String(sound.on));
+  showSound();
+  soundSwitch.addEventListener('click', () => {
+    sound.toggle();
+    showSound();
+  });
+  const fullScreenSwitch = element<HTMLButtonElement>(root, '.full-screen-switch');
+  // iPhone Safari cannot show a page full screen, so the switch only appears where it works.
+  fullScreenSwitch.hidden = !root.fullscreenEnabled;
+  root.addEventListener('fullscreenchange', () => fullScreenSwitch.setAttribute('aria-pressed', String(root.fullscreenElement !== null)));
+  // A refused request leaves the page as it was, and the switch already shows that state.
+  fullScreenSwitch.addEventListener('click', () => {
+    (root.fullscreenElement ? root.exitFullscreen() : root.documentElement.requestFullscreen()).catch(() => {});
+  });
   let run = begin();
   let phase: Phase = { name: 'playing', restored: false, since: 0 };
   let frame = 0;

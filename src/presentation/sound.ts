@@ -2,19 +2,53 @@ type Wave = 'square' | 'triangle';
 
 const melody = [523, 659, 784, 659, 587, 698, 880, 698, 523, 659, 784, 1047, 988, 784, 659, 587];
 const melodyNoteLength = 0.25;
+const storageKey = 'sound';
+
+// Storage can be unavailable, such as in some private browsing modes, and the switch must still work for the current visit.
+function remembered(root: Window): boolean {
+  try {
+    return root.localStorage.getItem(storageKey) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
+function remember(root: Window, on: boolean): void {
+  try {
+    root.localStorage.setItem(storageKey, on ? 'on' : 'off');
+  } catch {}
+}
 
 export class Sound {
   private context: AudioContext | null = null;
+  private output: GainNode | null = null;
+  private enabled: boolean;
+  private readonly root: Window;
 
   constructor(root: Window) {
+    this.root = root;
+    this.enabled = remembered(root);
     // Browsers keep audio silent until the player interacts with the page, so the first touch or key press unlocks it.
     const unlock = (): void => {
       if (this.context) return;
       this.context = new AudioContext();
+      // The music keeps its schedule while muted, so turning sound back on resumes the tune in time instead of restarting it.
+      this.output = new GainNode(this.context, { gain: this.enabled ? 1 : 0 });
+      this.output.connect(this.context.destination);
       this.music(this.context.currentTime);
     };
     root.addEventListener('pointerdown', unlock, { once: true });
     root.addEventListener('keydown', unlock, { once: true });
+  }
+
+  get on(): boolean {
+    return this.enabled;
+  }
+
+  toggle(): void {
+    this.enabled = !this.enabled;
+    remember(this.root, this.enabled);
+    this.output?.gain.setValueAtTime(this.enabled ? 1 : 0, this.output.context.currentTime);
   }
 
   footstep(): void {
@@ -52,13 +86,14 @@ export class Sound {
 
   private note(frequency: number, delay: number, length: number, wave: Wave, volume: number): void {
     const context = this.context;
-    if (!context) return;
+    const output = this.output;
+    if (!context || !output) return;
     const start = context.currentTime + delay;
     const oscillator = new OscillatorNode(context, { type: wave, frequency });
     const gain = new GainNode(context, { gain: volume });
     gain.gain.setValueAtTime(volume, start);
     gain.gain.exponentialRampToValueAtTime(0.001, start + length);
-    oscillator.connect(gain).connect(context.destination);
+    oscillator.connect(gain).connect(output);
     oscillator.start(start);
     oscillator.stop(start + length);
   }

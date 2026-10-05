@@ -14,6 +14,14 @@ The fixed-size area at the bottom of the screen that holds the joystick and the 
 
 The area at the top of the screen that shows the game world. It spans the full screen width on phones and the full column width on desktop, and takes all space above the control panel.
 
+### Sound Switch
+
+The button in the top right corner of the game view that turns the music and sound effects on or off.
+
+### Full Screen Switch
+
+The button beside the sound switch that shows the page full screen or returns it to normal. It appears only where the browser supports full screen.
+
 ## Joystick
 
 The virtual joystick on the left side of the control panel that the player uses for movement. It consists of a ring and a knob.

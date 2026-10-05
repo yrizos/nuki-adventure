@@ -162,6 +162,9 @@ UI colors map onto Material 3 color roles.
 | Surface container | Message box fill | V0 |
 | Outline | Message box edge | Ink outline, then a V1 inner edge |
 | On surface | Message box text | Paper |
+| Surface container | Sound and full screen switch fill | V0 |
+| Outline | Sound and full screen switch edge | Ink outline, then a V1 inner edge |
+| On surface | Sound switch speaker and full screen switch corners | Paper |
 
 ### Pressed State
 
@@ -189,6 +192,7 @@ Text targets the Web Content Accessibility Guidelines (WCAG) minimum of 4.5:1, a
 | V2 on Ink, joystick arrows | 5.8:1 |
 | P3 on Ink, lit joystick arrows | 11.3:1 |
 | Paper on V0, message text | 11.3:1 |
+| Paper on V0, sound and full screen switch symbols | 11.3:1 |
 
 ### Collectibles
 

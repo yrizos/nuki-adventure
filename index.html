@@ -7,7 +7,11 @@
   </head>
   <body>
     <main class="screen">
-      <div class="game-view"><canvas></canvas></div>
+      <div class="game-view">
+        <canvas></canvas>
+        <button class="full-screen-switch" type="button" aria-label="Full screen" aria-pressed="false"></button>
+        <button class="sound-switch" type="button" aria-label="Sound" aria-pressed="true"></button>
+      </div>
       <p class="announcement" aria-live="polite"></p>
       <div class="control-panel">
         <div class="joystick" aria-hidden="true">

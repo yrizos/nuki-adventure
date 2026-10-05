@@ -11,6 +11,11 @@ const glyphs = {
 };
 const dimple = ['.xx.', 'xxxx', 'xxxx', '.xx.'];
 const arrowUp = ['...xx...', '..xxxx..', '.xxxxxx.', 'xxxxxxxx'];
+const switchSize = 19;
+const speakerOn = ['...x.....x.', '..xx..x...x', 'xxxx...x..x', 'xxxx...x..x', 'xxxx...x..x', 'xxxx...x..x', 'xxxx...x..x', '..xx..x...x', '...x.....x.'];
+const speakerOff = ['...x.......', '..xx.......', 'xxxx..x...x', 'xxxx...x.x.', 'xxxx....x..', 'xxxx...x.x.', 'xxxx..x...x', '..xx.......', '...x.......'];
+const enterFullScreen = ['xxx...xxx', 'x.......x', 'x.......x', '.........', '.........', '.........', 'x.......x', 'x.......x', 'xxx...xxx'];
+const leaveFullScreen = ['..x...x..', '..x...x..', 'xxx...xxx', '.........', '.........', '.........', 'xxx...xxx', '..x...x..', '..x...x..'];
 
 function inDisc(size: number, column: number, row: number): boolean {
   const radius = size / 2;
@@ -76,6 +81,22 @@ function grip(): Art {
   return grid.build({ p: 'V0', d: 'V0a' });
 }
 
+// The switches wear the message box frame, so every piece of interface drawn over the game world looks like one set.
+function switchArt(symbol: readonly string[]): Art {
+  const size = switchSize;
+  const grid = new PixelGrid(size, size, 'k');
+  grid.rectangle(1, 1, size - 2, size - 2, 'e');
+  grid.rectangle(2, 2, size - 4, size - 4, 'f');
+  for (const [column, row] of [[0, 0], [size - 1, 0], [0, size - 1], [size - 1, size - 1]] as const) grid.put(column, row, '.');
+  for (const [column, row] of [[1, 1], [size - 2, 1], [1, size - 2], [size - 2, size - 2]] as const) grid.put(column, row, 'k');
+  const left = (size - symbol[0]!.length) / 2;
+  const top = (size - symbol.length) / 2;
+  symbol.forEach((line, row) => [...line].forEach((symbol, column) => {
+    if (symbol === 'x') grid.put(left + column, top + row, 't');
+  }));
+  return grid.build({ k: 'Ink', e: 'V1', f: 'V0', t: 'Paper' });
+}
+
 function arrow(rows: readonly string[], lit: boolean): Art {
   return { legend: { x: lit ? 'P3' : 'V2' }, rows };
 }
@@ -108,4 +129,8 @@ export const panelArt: Readonly<Record<string, Art>> = {
   'arrow-left-lit': arrow(arrowLeft, true),
   'arrow-right': arrow(arrowRight, false),
   'arrow-right-lit': arrow(arrowRight, true),
+  'sound-on': switchArt(speakerOn),
+  'sound-off': switchArt(speakerOff),
+  'full-screen-enter': switchArt(enterFullScreen),
+  'full-screen-leave': switchArt(leaveFullScreen),
 };

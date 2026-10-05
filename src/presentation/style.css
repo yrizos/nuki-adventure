@@ -75,10 +75,58 @@ body {
   image-rendering: pixelated;
 }
 
+/* The switches are placed in panel pixels from the column edge, so their art lands on whole device pixels like the panel's. */
+.sound-switch,
+.full-screen-switch {
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 8 * var(--pixel));
+  width: calc(19 * var(--pixel));
+  height: calc(19 * var(--pixel));
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+.sound-switch {
+  --art: var(--art-sound-on);
+
+  right: calc(8 * var(--pixel));
+}
+
+.sound-switch[aria-pressed='false'] {
+  --art: var(--art-sound-off);
+}
+
+/* The gap matches the touch margins of both switches, so their touch areas meet without overlapping. */
+.full-screen-switch {
+  --art: var(--art-full-screen-enter);
+
+  right: calc(27 * var(--pixel) + max(4 * var(--pixel), 48px - 19 * var(--pixel)));
+}
+
+.full-screen-switch[aria-pressed='true'] {
+  --art: var(--art-full-screen-leave);
+}
+
+/* A drawn switch is smaller than a finger at narrow widths, so an invisible margin keeps the touch area at the Material minimum. */
+.sound-switch::before,
+.full-screen-switch::before {
+  content: '';
+  position: absolute;
+  inset: min(0px, (100% - 48px) / 2);
+}
+
 /* Panel pixels are whole device pixels, so the panel art stays as crisp as the game view at every width. */
+.game-view,
 .control-panel {
   --pixel: max(var(--device-pixel), round(down, 100cqi / 180, var(--device-pixel)));
+}
 
+.control-panel {
   display: flex;
   flex: none;
   align-items: center;
@@ -95,6 +143,8 @@ body {
   -webkit-touch-callout: none;
 }
 
+.sound-switch,
+.full-screen-switch,
 .joystick,
 .knob,
 .arrow,
