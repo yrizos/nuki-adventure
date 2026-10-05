@@ -51,6 +51,8 @@ body {
   position: relative;
   flex: 1;
   min-height: var(--minimum-game-view);
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top);
   overflow: hidden;
   background: var(--ink);
 }
