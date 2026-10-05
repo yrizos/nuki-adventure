@@ -18,6 +18,10 @@ Use the [Makefile](Makefile) targets for project commands instead of invoking th
 - `make check` runs the combined checks without building.
 - `make check-push` runs tests and the browser build.
 
+## User Interface
+
+Read [docs/ui-layout.md](docs/ui-layout.md), which defines layout, sizing, orientation, styling, and controls, before implementing, reviewing, or testing those behaviors.
+
 ## Git
 
 ### Before Changing Files
