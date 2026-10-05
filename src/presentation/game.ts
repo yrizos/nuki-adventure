@@ -157,8 +157,11 @@ export function startGame(root: Document): void {
     const pressedB = controls.takePress('b');
     const { messageBox } = run;
     if (phase.name === 'playing') {
-      const events = [...(pressedA || pressedB ? run.play.read(firstLevelId) : []), ...run.play.advance(firstLevelId, controls.direction())];
       const signpostText = phase.restored ? messages.doorOpen : messages.hint;
+      const dismissing = (pressedA || pressedB) && messageBox.text === signpostText;
+      if (dismissing) messageBox.hide(frame);
+      const reading = (pressedA || pressedB) && !dismissing;
+      const events = [...(reading ? run.play.read(firstLevelId) : []), ...run.play.advance(firstLevelId, controls.direction())];
       for (const event of events) {
         if (event instanceof SignpostRead) messageBox.show(signpostText, frame);
         else if (event instanceof SignpostLeft && messageBox.text === signpostText) messageBox.hide(frame);
