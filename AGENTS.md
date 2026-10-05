@@ -18,6 +18,10 @@ Use the [Makefile](Makefile) targets for project commands instead of invoking th
 - `make check` runs the combined checks without building.
 - `make check-push` runs tests and the browser build.
 
+## Markdown
+
+Follow the rules configured in [.markdownlint.json](.markdownlint.json) when editing Markdown and run `make markdown` afterward. The pre-commit hook rejects commits with Markdown lint violations.
+
 ## User Interface
 
 Read [docs/ui-layout.md](docs/ui-layout.md), which defines layout, sizing, orientation, styling, and controls, before implementing, reviewing, or testing those behaviors.
