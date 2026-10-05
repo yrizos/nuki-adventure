@@ -1,6 +1,26 @@
 .DEFAULT_GOAL := check
 
-.PHONY: tools dependencies install dev build test test-watch typecheck lint lint-fix markdown markdown-fix audit check check-push hooks
+.PHONY: help tools dependencies install dev build test test-watch typecheck lint lint-fix markdown markdown-fix audit check check-push hooks
+
+help:
+	@printf '%-20s %s\n' \
+		'make help' 'List available targets' \
+		'make tools' 'Check Node.js and npm versions' \
+		'make dependencies' 'Check and install dependencies' \
+		'make install' 'Check dependencies and install Git hooks' \
+		'make dev' 'Start the development server' \
+		'make build' 'Typecheck and build the browser application' \
+		'make test' 'Run unit tests' \
+		'make test-watch' 'Run unit tests in watch mode' \
+		'make typecheck' 'Check TypeScript types' \
+		'make lint' 'Check code lint rules' \
+		'make lint-fix' 'Apply code lint fixes' \
+		'make markdown' 'Check Markdown lint rules' \
+		'make markdown-fix' 'Apply Markdown lint fixes' \
+		'make audit' 'Check dependencies for security vulnerabilities' \
+		'make check' 'Run combined checks without building (default)' \
+		'make check-push' 'Run unit tests and the browser build' \
+		'make hooks' 'Install Git hooks'
 
 tools:
 	@command -v node >/dev/null || { printf 'Node.js is required.\n'; exit 1; }
