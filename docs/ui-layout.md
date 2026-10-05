@@ -35,30 +35,54 @@ Landscape orientation is not supported.
 ## Control Panel
 
 - Bottom of the screen
-- Fixed size, set by the action button cross plus the standard margins
 - Holds the movement and action controls
 
 ```text
 ┌────────────────────────┐
-│                 (A)    │
+│                   (A)  │
 │   ( ◉ )      (B)       │
-│                        │
 └────────────────────────┘
 ```
 
 - Left side: a virtual joystick for movement
-- Right side: an A button and a B button for actions, placed on a cross with A at the top position and B at the left position
-- The right and bottom positions of the cross stay empty
+- Right side: an A button and a B button for actions, placed on a diagonal with A at the top right and B at the bottom left
+- The joystick ring fills the height inside the padding
+
+### Scaling
+
+- The control panel is designed for a 360 pixel column and scales as a whole with the column width
+- Every size, gap and distance in the panel scales by the same factor, so the controls keep their shapes, spacing and proportions at every width
+- The column never narrows below 320 pixels to fit the window height, and the page scrolls instead, so the action buttons stay above the Material minimum touch target
+
+### Measurements
+
+All values apply at the 360 pixel design width.
+
+| Element | Size |
+| --- | --- |
+| Padding on all four sides | 32 pixels |
+| Panel height | 184 pixels |
+| Joystick ring | 120 pixels across, with a 2 pixel border |
+| Joystick knob | 56 pixels across |
+| Direction arrows | 12 × 8 pixels, 8 pixels inside the ring |
+| A and B buttons | 56 pixels across |
+| Gap between the A and B positions | 8 pixels |
+| Button and knob lip | 4 pixels |
+| Button letters | 22 pixels, bold |
 
 ### Joystick
 
 - The ring is large enough for a thumb to land on reliably
 - The knob matches the size of the action buttons
 - The knob never travels beyond the ring
+- Four arrows inside the ring point up, right, down and left
+- The knob sits on a lip below it, which disappears while the joystick is held
+- A dead zone of 30 percent of the knob's travel keeps a resting thumb from moving the hero
 
 ### Action Buttons
 
-- A and B use the standard Material action button size
+- A and B are circles that sit on a lip below them
+- A pressed button sinks into its lip, so the lip disappears
 
 ## Keyboard
 

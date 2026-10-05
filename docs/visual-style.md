@@ -6,20 +6,22 @@ This document builds on the color palette and the UI layout documents. Color cod
 
 ### Native Resolution
 
-- The game view renders at 144 × 144 pixels, which is 9 × 9 tiles
-- The hero occupies the center tile whenever the camera is not clamped at a map edge
-- All art is drawn and reviewed at this resolution
+- The canvas covers the whole game view and never leaves empty space around it
+- Every game view shows at least 7 × 7 tiles, and taller game views show more rows of the map
+- Maps and puzzles rely only on what fits inside the minimum 7 × 7 tile area
+- The camera centers the hero in pixels whenever it is not clamped at a map edge
+- All art is drawn and reviewed at one device pixel per game pixel
 
 ### Scaling
 
-- The game view keeps the full width set by the UI layout, and the canvas inside it scales by a whole number of device pixels
-- The factor is the largest whole number that fits the available width in device pixels
-- The canvas is centered in the game view, and leftover space around it is filled with Ink
+- The factor is the largest whole number that still shows at least 7 tiles, which is 224 game pixels, across both the width and the height of the game view
+- The canvas size in game pixels is the game view size in device pixels divided by the factor, rounded up
+- The partial game pixel left at the right and bottom edges is cropped
 - A game pixel that differs in size from another by even one device pixel is a defect
 
 ### Rendering
 
-- The canvas backing store is 144 × 144, displayed at 144 × factor device pixels
+- The canvas backing store matches the canvas size in game pixels and is displayed at that size times the factor in device pixels
 - Image smoothing is disabled and the canvas uses pixelated image rendering
 - Sprites and the camera are drawn at whole pixel positions only
 - Sprites are never scaled, rotated, skewed or filtered at draw time
@@ -30,7 +32,7 @@ This document builds on the color palette and the UI layout documents. Color cod
 
 ### Grid
 
-- Tiles are 16 × 16 pixels
+- Tiles are 32 × 32 pixels
 - Map positions, collisions and interactions use the tile grid
 - Sprites can extend above their tile, with their base on the tile they occupy
 
@@ -53,7 +55,7 @@ This document builds on the color palette and the UI layout documents. Color cod
 
 - Light comes from the top left for every asset
 - Highlights sit on top and left edges, shading on bottom and right edges
-- Ground shadows sit directly below an object, two pixels tall, two pixels narrower than its base
+- Ground shadows sit directly below an object, four pixels tall, four pixels narrower than its base
 
 ### Shading
 
@@ -64,7 +66,7 @@ This document builds on the color palette and the UI layout documents. Color cod
 
 ### Dithering
 
-- Dithering is used only on surfaces larger than 32 × 32 pixels
+- Dithering is used only on surfaces larger than 64 × 64 pixels
 - The only pattern is a 50 percent checkerboard between two adjacent steps of one ramp
 - Dithered pixels never animate
 
@@ -87,42 +89,42 @@ This document builds on the color palette and the UI layout documents. Color cod
 
 ### Grass
 
-- Tufts are clusters of 2 to 4 pixels in G3, pointing up, with a G1 pixel at the base
+- Tufts are clusters of 4 to 8 pixels in G3, pointing up, with a G1 pixel at the base
 - Tufts cover 10 to 20 percent of a grass tile and never form rows or a regular grid
 
 ### Foliage
 
-- Canopies are built from rounded leaf clusters of 4 to 8 pixels, never from a single smooth circle
+- Canopies are built from rounded leaf clusters of 8 to 16 pixels, never from a single smooth circle
 - Each cluster has a G3 highlight on its top left and G0 on its bottom right
 - The canopy edge is broken by leaf clusters, with at least three notches along the visible outline
 
 ### Wood
 
-- Grain runs along the length of the board in E0 lines of 3 or more pixels
+- Grain runs along the length of the board in E0 lines of 6 or more pixels
 - Board ends show a single E0 pixel row, and planks are separated by one E0 pixel
 
 ### Stone
 
-- Stone surfaces have at most two cracks per tile, each 3 to 6 pixels long, in N2
-- Edges are chipped with one or two missing corner pixels
+- Stone surfaces have at most two cracks per tile, each 6 to 12 pixels long, in N2
+- Edges are chipped with two to four missing corner pixels
 - Highlights are N4 clusters on the top left facets only
 
 ### Water
 
-- Ripples are horizontal lines 2 to 5 pixels long in W2, never vertical
-- Foam along shores is W4, broken into segments with gaps of 1 to 3 pixels
+- Ripples are horizontal lines 4 to 10 pixels long in W2, never vertical
+- Foam along shores is W4, broken into segments with gaps of 2 to 6 pixels
 - Objects in water show a W0 band along the waterline
 
 ### Flowers
 
-- Petals are 1 or 2 pixels each around a Y3 center
+- Petals are 2 to 4 pixels each around a Y3 center
 - Clusters mix at most two petal colors per tile
 
 ## Contact and Depth
 
 - Every object meeting the ground has a contact row: one pixel of the surface's shading step directly beneath its base
-- Ground shadows have flattened ends, one pixel shorter on each side of the bottom row
-- Tall objects darken the ground tile behind their overlap by one step along a 2 pixel band
+- Ground shadows have flattened ends, two pixels shorter on each side of the bottom row
+- Tall objects darken the ground tile behind their overlap by one step along a 4 pixel band
 - Doorways and openings use the darkest step of their ramp, never Ink
 
 ## Outlines
@@ -149,7 +151,7 @@ This document builds on the color palette and the UI layout documents. Color cod
 ### Clusters
 
 - Every color area is at least two connected pixels
-- Single pixels appear only as eyes, catchlights, sparkles, petals and flower centers
+- Single pixels appear only as eyes, catchlights, sparkles and flower centers
 - Two steps never run alongside each other in parallel stripes
 
 ### Anti-Aliasing
@@ -163,12 +165,12 @@ This document builds on the color palette and the UI layout documents. Color cod
 
 | Element | Sprite size | Footprint |
 | --- | --- | --- |
-| Hero | 16 × 16 | 1 tile |
-| Stars and orbs | 12 × 12 | 1 tile |
-| Signposts | 16 × 16 | 1 tile |
-| Stones and small props | 16 × 16 | 1 tile |
-| Trees | 32 × 32 | 2 × 1 tiles at the base |
-| Small buildings | 48 × 48 | 3 × 2 tiles at the base |
+| Hero | 32 × 32 | 1 tile |
+| Stars and orbs | 24 × 24 | 1 tile |
+| Signposts | 32 × 32 | 1 tile |
+| Stones and small props | 32 × 32 | 1 tile |
+| Trees | 64 × 64 | 2 × 1 tiles at the base |
+| Small buildings | 96 × 96 | 3 × 2 tiles at the base |
 
 A new element uses the smallest size in this table that fits its shape.
 
@@ -183,12 +185,12 @@ A new element uses the smallest size in this table that fits its shape.
 - Each eye is an E1 pupil, and the facing down frame adds a single Paper catchlight on the top left of each eye
 - Her hair has at least three steps, E2, E3 and E4, with E4 as a highlight band across the top left of the head
 - Her t-shirt shows one fold line in P1 on each side, and a W0 row separates the t-shirt from the jeans at the waist
-- Hands are 2 × 2 pixel S2 clusters with an S1 bottom row
-- Shoes are 2 pixels tall in E1
+- Hands are 4 × 4 pixel S2 clusters with an S1 bottom row
+- Shoes are 4 pixels tall in E1
 
 ### Stars and Orbs
 
-- Stars and orbs sit centered in their tile with a two pixel empty margin
+- Stars and orbs sit centered in their tile with a four pixel empty margin
 - Each orb has its own symbol or shape
 - Only stars and orbs use the brightest, most saturated steps
 
@@ -244,7 +246,8 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 
 ### Movement
 
-- The hero moves one pixel per frame at 60 frames per second, 16 frames per tile
+- The hero moves two pixels per frame at 60 frames per second, 16 frames per cardinal tile
+- Diagonal movement takes 23 frames per tile to preserve the same travel speed, with each axis rounded to whole pixels
 - The camera follows the hero in whole pixels and stops at map edges
 - Pushed objects move at the hero's speed and stay in contact with her
 
@@ -252,7 +255,7 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 
 | Animation | Frames | Timing |
 | --- | --- | --- |
-| Hero walk | 4 per direction | 4 game frames each, one cycle per tile |
+| Hero walk | 4 per direction | 4 game frames each, one cycle per cardinal tile; the cycle continues through diagonal steps |
 | Hero idle | 2 | Blink of 6 frames every 3 seconds |
 | Hero push | 2 per direction | 8 game frames each |
 | Star and orb bob | 4 | 1 pixel up and down, 10 game frames each |

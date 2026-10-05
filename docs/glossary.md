@@ -4,7 +4,7 @@
 
 ### Canvas
 
-The 144 × 144 pixel drawing surface inside the game view. It scales by a whole number of device pixels and sits centered in the game view.
+The drawing surface that fills the game view. Its pixel dimensions adapt to the available space, and each game pixel scales to a whole number of device pixels.
 
 ### Control Panel
 
@@ -40,7 +40,7 @@ The cross layout on the right side of the control panel that holds the action bu
 
 ### Tile
 
-One 16 × 16 pixel square of the grid that map positions, collisions and interactions use.
+One 32 × 32 pixel square of the grid that map positions, collisions and interactions use.
 
 ### Hero
 

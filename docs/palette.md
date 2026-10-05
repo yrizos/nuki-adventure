@@ -145,17 +145,21 @@ UI colors map onto Material 3 color roles.
 
 | Material role | Element | Color |
 | --- | --- | --- |
-| Surface | Game view space around the canvas | Ink |
 | Surface container | Control panel background | N1 |
 | Outline | Joystick ring | N3 |
+| Outline | Joystick direction arrows | N3 |
 | On surface variant | Joystick knob | N4 |
+| Outline | Joystick knob lip | N3 |
 | Primary | A button | R2 with an Ink letter |
+| Primary | A button lip | R1 |
 | Secondary | B button | W2 with an Ink letter |
+| Secondary | B button lip | W1 |
 
 ### Pressed State
 
 - A pressed button drops one step, so A becomes R1 and B becomes W1
 - The letter on a pressed button switches to Paper
+- A pressed button sinks into its lip, so the lip is no longer visible
 - Touch and keyboard presses use the same pressed state
 
 ## Accessibility
