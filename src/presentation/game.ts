@@ -1,5 +1,5 @@
 import { PlayLevel } from '../application/play-level';
-import { LevelCompleted, OrbCollected, type OrbColor, SignpostLeft, SignpostRead } from '../domain/level/level';
+import { LevelCompleted, OrbCollected, type OrbColor, SignpostLeft, SignpostRead, StarCollected } from '../domain/level/level';
 import type { TilePosition } from '../domain/level/position';
 import { firstLevel, firstLevelId } from '../infrastructure/first-level';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
@@ -9,6 +9,7 @@ import { Controls } from './controls';
 import { HeroAnimator } from './hero-animator';
 import { MessageBox } from './message-box';
 import { Picture, sprite } from './picture';
+import { Sound } from './sound';
 import { closingLength, tileSize, WorldPainter } from './world-painter';
 
 const frameLength = 1000 / 60;
@@ -131,6 +132,7 @@ export function startGame(root: Document): void {
     const play = new PlayLevel(new InMemoryLevelRepository([firstLevel()]));
     return { play, painter: new WorldPainter(play.view(firstLevelId)), animator: new HeroAnimator(), messageBox: new MessageBox() };
   };
+  const sound = new Sound(window);
   let run = begin();
   let phase: Phase = { name: 'playing', restored: false, since: 0 };
   let frame = 0;
@@ -145,17 +147,24 @@ export function startGame(root: Document): void {
       for (const event of events) {
         if (event instanceof SignpostRead) messageBox.show(signpostText, frame);
         else if (event instanceof SignpostLeft && messageBox.text === signpostText) messageBox.hide(frame);
+        else if (event instanceof StarCollected) sound.star();
         else if (event instanceof OrbCollected) {
+          sound.orb();
           messageBox.show(messages.colorsBack, frame);
           phase = { name: 'holding', until: frame + holdFrames, origin: event.position, color: event.color };
-        } else if (event instanceof LevelCompleted) phase = { name: 'closing', since: frame };
+        } else if (event instanceof LevelCompleted) {
+          sound.door();
+          phase = { name: 'closing', since: frame };
+        }
       }
+      if (run.play.view(firstLevelId).hero.step?.framesTaken === 0) sound.footstep();
       if (phase.name === 'playing' && phase.restored && messageBox.text === messages.colorsBack &&
         (frame - phase.since >= messageFrames || run.play.view(firstLevelId).hero.step)) {
         messageBox.hide(frame);
       }
       if (messageBox.text === signpostText && frame - messageBox.shownAt! >= messageFrames) messageBox.hide(frame);
     } else if (phase.name === 'holding' && frame >= phase.until) {
+      sound.restoring();
       phase = { name: 'restoring', since: frame, origin: phase.origin };
     } else if (phase.name === 'restoring' && frame - phase.since >= run.painter.restorationLength(phase.origin)) {
       phase = { name: 'playing', restored: true, since: frame };
