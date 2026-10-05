@@ -2,13 +2,15 @@ import type { Level, OrbColor } from '../domain/level/level';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Ground, type Scenery } from '../domain/level/scenery';
 import type { Art } from './art/art';
-import { flowerArt, grassArt, pathArt, terrainArt, treeArt, waterArt } from './art/scenery';
-import { groundShadow, orbArt, stoneVariants } from './art/sprites';
+import { doorArt, fenceArt, flowerArt, grassArt, pathArt, terrainArt, treeArt, waterArt } from './art/scenery';
+import { groundShadow, lightMote, orbArt, stoneVariants } from './art/sprites';
 import { Picture, type Version } from './picture';
 
 export const tileSize = 32;
 
 const orbBob = [0, -1, 0, 1];
+const motes = [[22, 0], [34, 37], [47, 14], [58, 51], [71, 26]] as const;
+const framesPerMoteRise = 4;
 const bayer = [
   [0, 8, 2, 10],
   [12, 4, 14, 6],
@@ -16,6 +18,8 @@ const bayer = [
   [15, 7, 13, 5],
 ];
 const framesPerRing = 4;
+const framesPerDarkening = 3;
+export const closingLength = bayer.length * bayer.length * framesPerDarkening;
 
 interface GroundTile {
   readonly x: number;
@@ -89,12 +93,17 @@ export class WorldPainter {
   private faded = new Picture(0, 0);
   private readonly treeChoices: readonly number[];
   private readonly stoneChoices: readonly number[];
+  private readonly fencePieces: readonly number[];
   private readonly shadows = new Map<string, Art>();
 
   constructor(private readonly level: Level) {
     this.ground = groundTiles(level.scenery);
     this.treeChoices = propVariants(level.scenery.trees.map((tree) => tree.footprint), treeArt.length);
     this.stoneChoices = propVariants(level.stones.map((stone) => [stone.position]), stoneVariants.length);
+    const joins = (position: TilePosition): boolean =>
+      level.door.covers(position) || level.scenery.fences.some((fence) => fence.position.equals(position));
+    this.fencePieces = level.scenery.fences.map(({ position }) => [Direction.Up, Direction.Down, Direction.Left, Direction.Right]
+      .reduce((piece, direction) => (piece << 1) | (joins(position.neighbor(direction)) ? 1 : 0), 0));
   }
 
   restorationLength(origin: TilePosition): number {
@@ -127,6 +136,17 @@ export class WorldPainter {
         const offset = (y * target.width + x) * 4;
         const source = framesSinceStart >= threshold ? this.colored : this.faded;
         target.pixels.set(source.pixels.subarray(offset, offset + 4), offset);
+      }
+    }
+  }
+
+  paintClosing(target: Picture, scene: Scene, framesSinceStart: number): void {
+    this.paintVersion(target, scene, 'colored');
+    const ink = new Picture(1, 1);
+    ink.fill('Ink');
+    for (let y = 0; y < target.height; y++) {
+      for (let x = 0; x < target.width; x++) {
+        if (framesSinceStart >= (bayer[y & 3]![x & 3]! + 1) * framesPerDarkening) target.pixels.set(ink.pixels, (y * target.width + x) * 4);
       }
     }
   }
@@ -169,6 +189,10 @@ export class WorldPainter {
       draw(flowerArt[(column * 7 + row * 3) % flowerArt.length]![sway]!, column * tileSize, row * tileSize);
     }
 
+    const { door } = level;
+    const doorBase = (door.left.row + 1) * tileSize;
+    const doorLit = door.isOpen && version === 'colored';
+
     const objects: { base: number; paint: () => void; shadow: () => void }[] = [];
     const shadow = (width: number, position: TilePosition, x: number, y: number): (() => void) => () => {
       const code = level.scenery.groundAt(position).equals(Ground.Path) ? 'E2' : 'G1';
@@ -189,6 +213,25 @@ export class WorldPainter {
       objects.push({ base: (row + 1) * tileSize, shadow: shadow(14, stone.position, column * tileSize + 9, row * tileSize + 27),
         paint: () => draw(stoneVariants[this.stoneChoices[index]!]!, column * tileSize, row * tileSize) });
     });
+    level.scenery.fences.forEach((fence, index) => {
+      const { column, row } = fence.position;
+      objects.push({ base: (row + 1) * tileSize, shadow: shadow(8, fence.position, column * tileSize + 12, row * tileSize + 27),
+        paint: () => draw(fenceArt[this.fencePieces[index]!]!, column * tileSize, row * tileSize) });
+    });
+    // The faded world keeps the door closed, so during restoration it opens exactly where color reaches it.
+    const doorFrame = doorLit ? doorArt.open : doorArt.closed;
+    const doorTop = doorBase - doorFrame.rows.length;
+    const doorLeft = door.left.column * tileSize;
+    objects.push({ base: doorBase, shadow: shadow(92, door.footprint[1]!, doorLeft + 2, doorBase - 5),
+      paint: () => {
+        draw(doorFrame, doorLeft, doorTop);
+        if (!doorLit) return;
+        for (const [column, offset] of motes) {
+          const risen = (Math.floor(frame / framesPerMoteRise) + offset) % 64;
+          const sway = Math.floor((frame + offset * 9) / 40) % 2;
+          draw(lightMote, doorLeft + column + sway, doorTop + 88 - risen);
+        }
+      } });
     const orb = level.orb;
     if (orb) {
       const { column, row } = orb.position;

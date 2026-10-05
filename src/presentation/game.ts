@@ -1,5 +1,5 @@
 import { PlayLevel } from '../application/play-level';
-import type { OrbColor } from '../domain/level/level';
+import { OrbCollected, type OrbColor } from '../domain/level/level';
 import type { TilePosition } from '../domain/level/position';
 import { firstLevel, firstLevelId } from '../infrastructure/first-level';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
@@ -8,17 +8,17 @@ import { panelArt } from './art/panel';
 import { Controls } from './controls';
 import { HeroAnimator } from './hero-animator';
 import { Picture, sprite } from './picture';
-import { tileSize, WorldPainter } from './world-painter';
+import { closingLength, tileSize, WorldPainter } from './world-painter';
 
 const frameLength = 1000 / 60;
 const holdFrames = 30;
 const smallestViewTiles = 7;
 
 type Phase =
-  | { readonly name: 'playing' }
+  | { readonly name: 'playing'; readonly restored: boolean }
   | { readonly name: 'holding'; readonly until: number; readonly origin: TilePosition; readonly color: OrbColor }
   | { readonly name: 'restoring'; readonly since: number; readonly origin: TilePosition }
-  | { readonly name: 'restored' };
+  | { readonly name: 'closing'; readonly since: number };
 
 function element<T extends HTMLElement>(root: Document, selector: string): T {
   const found = root.querySelector<T>(selector);
@@ -117,36 +117,45 @@ export function startGame(root: Document): void {
   watchPixelRatio();
   resizeFromLayout();
 
-  const play = new PlayLevel(new InMemoryLevelRepository([firstLevel()]));
-  const level = play.view(firstLevelId);
-  const painter = new WorldPainter(level);
-  const animator = new HeroAnimator();
-  let phase: Phase = { name: 'playing' };
+  // Until a second level exists, passing through the door starts the first level again from its faded state.
+  const begin = (): { play: PlayLevel; painter: WorldPainter; animator: HeroAnimator } => {
+    const play = new PlayLevel(new InMemoryLevelRepository([firstLevel()]));
+    return { play, painter: new WorldPainter(play.view(firstLevelId)), animator: new HeroAnimator() };
+  };
+  let run = begin();
+  let phase: Phase = { name: 'playing', restored: false };
   let frame = 0;
 
   const tick = (): void => {
     if (phase.name === 'playing') {
-      const [completed] = play.advance(firstLevelId, controls.direction());
-      if (completed) phase = { name: 'holding', until: frame + holdFrames, origin: completed.restorationOrigin, color: completed.collectedOrbColor };
+      for (const event of run.play.advance(firstLevelId, controls.direction())) {
+        phase = event instanceof OrbCollected
+          ? { name: 'holding', until: frame + holdFrames, origin: event.position, color: event.color }
+          : { name: 'closing', since: frame };
+      }
     } else if (phase.name === 'holding' && frame >= phase.until) {
       phase = { name: 'restoring', since: frame, origin: phase.origin };
-    } else if (phase.name === 'restoring' && frame - phase.since >= painter.restorationLength(phase.origin)) {
-      phase = { name: 'restored' };
+    } else if (phase.name === 'restoring' && frame - phase.since >= run.painter.restorationLength(phase.origin)) {
+      phase = { name: 'playing', restored: true };
+    } else if (phase.name === 'closing' && frame - phase.since >= closingLength) {
+      run = begin();
+      phase = { name: 'playing', restored: false };
     }
-    animator.advance(level.hero);
-    controls.advance();
+    run.animator.advance(run.play.view(firstLevelId).hero);
     frame++;
   };
 
   const render = (): void => {
+    const level = run.play.view(firstLevelId);
     const scene = {
-      level: play.view(firstLevelId),
+      level,
       frame,
-      hero: animator.pose(level.hero, frame, phase.name === 'holding'),
+      hero: run.animator.pose(level.hero, frame, phase.name === 'holding'),
       heldOrb: phase.name === 'holding' ? phase.color : null,
     };
-    if (phase.name === 'restoring') painter.paintRestoring(picture, scene, phase.origin, frame - phase.since);
-    else painter.paint(picture, scene, phase.name === 'restored' ? 'colored' : 'faded');
+    if (phase.name === 'restoring') run.painter.paintRestoring(picture, scene, phase.origin, frame - phase.since);
+    else if (phase.name === 'closing') run.painter.paintClosing(picture, scene, frame - phase.since);
+    else run.painter.paint(picture, scene, phase.name === 'playing' && phase.restored ? 'colored' : 'faded');
     image.data.set(picture.pixels);
     context.putImageData(image, 0, 0);
   };

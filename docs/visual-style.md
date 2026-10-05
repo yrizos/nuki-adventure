@@ -109,6 +109,12 @@ This document builds on the color palette and the UI layout documents. Color cod
 - Edges are chipped with two to four missing corner pixels
 - Highlights are N4 clusters on the top left facets only
 
+### Fences
+
+- A fence is a row of E1 posts joined by two rails, each rail an E2, E1 and E0 band three pixels tall
+- Each fence piece joins the fences and door beside it above, below, left and right, so runs and corners meet without seams
+- Fence pieces have a ground shadow 8 pixels wide below the post
+
 ### Water
 
 - Ripples are horizontal lines 4 to 10 pixels long in W2, never vertical
@@ -171,6 +177,8 @@ This document builds on the color palette and the UI layout documents. Color cod
 | Stones and small props | 32 × 32 | 1 tile |
 | Trees | 64 × 64 | 2 × 1 tiles at the base |
 | Small buildings | 96 × 96 | 3 × 2 tiles at the base |
+| Fences | 32 × 32 | 1 tile |
+| Doors | 96 × 96 | 3 × 1 tiles at the base |
 
 A new element uses the smallest size in this table that fits its shape.
 
@@ -198,6 +206,14 @@ A new element uses the smallest size in this table that fits its shape.
 
 - Every prop has a ground shadow
 - Repeated props have at least two variants, and identical variants never touch
+
+### Door
+
+- The door stands in a fence, framed by an E1 wooden lintel and two E1 posts with E2 highlights on their top and left edges, E0 shading on their right and bottom edges, and E0 grain
+- The closed door is made of vertical E2 planks separated by E0 lines, with two rails across each leaf and two E0 handles at the center
+- The open door shows an E0 doorway, with the leaves swung inward visible only as their E2 and E1 edges
+- Paper light motes rise through the open doorway
+- The door has one ground shadow across its width
 
 ## Terrain
 
@@ -241,6 +257,13 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 - Color returns through an ordered 4 × 4 dither dissolve, each pixel switching from faded to full color at its threshold
 - The dissolve spreads outward from the point of restoration, one tile ring per step
 - Every frame of the dissolve contains palette colors only
+- The door stays closed in the faded world, so during restoration it opens where color reaches it
+
+### Leaving a Level
+
+- Stepping into the open doorway completes the level
+- The colored world then darkens to Ink through the same ordered 4 × 4 dither, each pixel switching at its threshold
+- Until a second level exists, the first level starts again from its faded state once the screen is fully Ink
 
 ## Motion and Animation
 
@@ -262,6 +285,8 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 | Star sparkle | 4 | 6 game frames each, every 2 seconds |
 | Water | 4 | 15 game frames each, all water tiles in sync |
 | Flowers sway | 2 | 30 game frames each, offset per tile |
+| Light motes | 1 | Rise 1 pixel every 4 game frames over 64 pixels and sway 1 pixel every 40 game frames, offset per mote |
+| Leaving a level | 16 dither thresholds | 3 game frames each, 48 in total |
 
 ### Animation Rules
 

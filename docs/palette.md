@@ -124,6 +124,9 @@ Steps run from darkest to lightest.
 | Stars | Y2 body, Y1 shading, Y3 sparkle |
 | Stones | N3 base, N2 shading, N4 highlight |
 | Floor triggers | N2 plate, N1 inset, Y3 inset when activated |
+| Fences | E1 wood, E2 highlight, E0 shading |
+| Door | E1 frame, E2 frame highlights, E0 frame shading and grain, E2 planks, E0 plank lines and handles, E0 doorway when open |
+| Light motes | Paper |
 
 ### Orbs
 
@@ -137,7 +140,7 @@ Steps run from darkest to lightest.
 ## Future Elements
 
 - Stone walls and paved floors use N2 to N4
-- Wooden buildings and fences use E0 to E2
+- Wooden buildings use E0 to E2
 - Roofs use R0 to R1, V0 to V1 or W0 to W1
 
 ## UI

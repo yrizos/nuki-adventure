@@ -55,22 +55,59 @@ export class Stone {
   }
 }
 
-export class LevelCompleted {
+export class Door {
+  private constructor(
+    readonly left: TilePosition,
+    readonly isOpen: boolean,
+  ) {}
+
+  static closedAt(left: TilePosition): Door {
+    return new Door(left, false);
+  }
+
+  get footprint(): readonly TilePosition[] {
+    const middle = this.left.neighbor(Direction.Right);
+    return [this.left, middle, middle.neighbor(Direction.Right)];
+  }
+
+  covers(position: TilePosition): boolean {
+    return this.footprint.some((tile) => tile.equals(position));
+  }
+
+  opened(): Door {
+    return new Door(this.left, true);
+  }
+
+  equals(other: Door): boolean {
+    return this.left.equals(other.left) && this.isOpen === other.isOpen;
+  }
+}
+
+export class OrbCollected {
   constructor(
     readonly levelId: LevelId,
-    readonly restorationOrigin: TilePosition,
-    readonly collectedOrbColor: OrbColor,
+    readonly position: TilePosition,
+    readonly color: OrbColor,
   ) {}
 }
 
+export class LevelCompleted {
+  constructor(readonly levelId: LevelId) {}
+}
+
+export type LevelEvent = OrbCollected | LevelCompleted;
+
 export class Level {
   private remainingOrb: Orb | null;
+  private currentDoor: Door;
+  private completed = false;
 
   constructor(
     readonly id: LevelId,
     readonly scenery: Scenery,
     readonly stones: readonly Stone[],
     orb: Orb,
+    door: Door,
     readonly hero: Hero,
   ) {
     for (const stone of stones) {
@@ -78,6 +115,10 @@ export class Level {
         throw new RangeError(`A stone needs open ground, at ${stone.position.column}, ${stone.position.row}`);
       }
     }
+    if (door.footprint.some((tile) => !scenery.isWalkable(tile) || stones.some((stone) => stone.position.equals(tile)))) {
+      throw new RangeError('The door needs open ground across its whole width');
+    }
+    this.currentDoor = door;
     if (!this.canEnter(orb.position)) throw new RangeError('The orb must lie where the hero can reach it');
     if (!this.canEnter(hero.position)) throw new RangeError('The hero must start on open ground');
     this.remainingOrb = orb;
@@ -87,23 +128,36 @@ export class Level {
     return this.remainingOrb;
   }
 
-  get isComplete(): boolean {
-    return this.remainingOrb === null;
+  get door(): Door {
+    return this.currentDoor;
   }
 
-  tick(direction: Direction | null): readonly LevelCompleted[] {
-    if (!this.remainingOrb) return [];
+  get isComplete(): boolean {
+    return this.completed;
+  }
+
+  tick(direction: Direction | null): readonly LevelEvent[] {
+    if (this.completed) return [];
     const arrival = this.hero.advance();
-    if (arrival && arrival.equals(this.remainingOrb.position)) {
+    if (arrival && this.remainingOrb && arrival.equals(this.remainingOrb.position)) {
       const color = this.remainingOrb.color;
       this.remainingOrb = null;
-      return [new LevelCompleted(this.id, arrival, color)];
+      this.currentDoor = this.currentDoor.opened();
+      return [new OrbCollected(this.id, arrival, color)];
+    }
+    if (arrival && this.currentDoor.covers(arrival)) {
+      this.completed = true;
+      return [new LevelCompleted(this.id)];
     }
     this.hero.steer(direction, (position) => this.canEnter(position));
     return [];
   }
 
   private canEnter(position: TilePosition): boolean {
-    return this.scenery.isWalkable(position) && !this.stones.some((stone) => stone.position.equals(position));
+    return (
+      this.scenery.isWalkable(position) &&
+      !this.stones.some((stone) => stone.position.equals(position)) &&
+      (this.currentDoor.isOpen || !this.currentDoor.covers(position))
+    );
   }
 }

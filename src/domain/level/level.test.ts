@@ -1,21 +1,24 @@
 import { describe, expect, test } from 'vitest';
 import { Hero, Step } from './hero';
-import { Level, LevelId, Orb, OrbColor, Stone } from './level';
+import { Door, Level, LevelCompleted, LevelId, Orb, OrbCollected, OrbColor, Stone } from './level';
 import { Direction, TilePosition } from './position';
-import { Flower, Ground, LevelSize, Scenery, Tree } from './scenery';
+import { Fence, Flower, Ground, LevelSize, Scenery, Tree } from './scenery';
 
 const at = TilePosition.at;
 
-function level(layout: readonly string[], start: TilePosition, orb: TilePosition): Level {
+// Layouts without a door get a closed one on an extra row below, out of the way of the hero.
+function level(given: readonly string[], start: TilePosition, orb: TilePosition): Level {
+  const layout = given.some((line) => line.includes('D')) ? given : [...given, 'DDD'.padEnd(given[0]!.length, '.')];
   const size = LevelSize.of(layout[0]!.length, layout.length);
   const ground = layout.map((line) => [...line].map((symbol) => (symbol === '~' ? Ground.Water : Ground.Grass)));
   const cells = layout.flatMap((line, row) => [...line].map((symbol, column) => ({ symbol, position: at(column, row) })));
   const where = (symbol: string): TilePosition[] => cells.filter((cell) => cell.symbol === symbol).map((cell) => cell.position);
   return new Level(
     LevelId.of('test'),
-    Scenery.of(size, ground, where('T').map(Tree.at), where('*').map(Flower.at)),
+    Scenery.of(size, ground, where('T').map(Tree.at), where('*').map(Flower.at), where('F').map(Fence.at)),
     where('o').map(Stone.at),
     Orb.at(orb, OrbColor.Violet),
+    Door.closedAt(where('D')[0]!),
     new Hero(start, Direction.Right),
   );
 }
@@ -72,6 +75,7 @@ describe('the hero in a level', () => {
   test.each([
     ['a stone', '.o..'],
     ['a tree', '.Tt.'],
+    ['a fence', '.F..'],
     ['water', '.~..'],
     ['the level edge', '....'],
   ])('is stopped by %s', (_, line) => {
@@ -87,26 +91,43 @@ describe('the hero in a level', () => {
     expect(subject.hero.position).toEqual(at(1, 0));
   });
 
-  test('completes the level by picking up the orb, which stops her there', () => {
+  test('picks up the orb, which opens the door and stops her there', () => {
     const subject = level(['....'], at(0, 0), at(2, 0));
-    const events = Array.from({ length: 80 }, () => subject.tick(Direction.Right)).flat();
-    expect(events).toHaveLength(1);
-    expect(events[0]?.restorationOrigin).toEqual(at(2, 0));
-    expect(events[0]?.collectedOrbColor).toBe(OrbColor.Violet);
-    expect(subject.isComplete).toBe(true);
+    let events = subject.tick(Direction.Right);
+    for (let frame = 0; frame < 80 && events.length === 0; frame++) events = subject.tick(Direction.Right);
+    expect(events).toEqual([new OrbCollected(LevelId.of('test'), at(2, 0), OrbColor.Violet)]);
     expect(subject.orb).toBeNull();
+    expect(subject.door.isOpen).toBe(true);
+    expect(subject.isComplete).toBe(false);
     expect(subject.hero.position).toEqual(at(2, 0));
+    expect(subject.hero.step).toBeNull();
+  });
+
+  test('is stopped by a closed door', () => {
+    const subject = level(['...', 'DDD'], at(1, 0), at(2, 0));
+    hold(subject, Direction.Down, 40);
+    expect(subject.hero.position).toEqual(at(1, 0));
+  });
+
+  test('completes the level by stepping into the open doorway, after which nothing moves', () => {
+    const subject = level(['...', 'DDD'], at(0, 0), at(1, 0));
+    hold(subject, Direction.Right, 1 + Step.framesPerTile);
+    expect(subject.door.isOpen).toBe(true);
+    const events = Array.from({ length: 80 }, () => subject.tick(Direction.Down)).flat();
+    expect(events).toEqual([new LevelCompleted(LevelId.of('test'))]);
+    expect(subject.isComplete).toBe(true);
+    expect(subject.hero.position).toEqual(at(1, 1));
     expect(subject.hero.step).toBeNull();
   });
 });
 
 describe('a level', () => {
-  test.each([OrbColor.Red, OrbColor.Blue, OrbColor.Violet, OrbColor.Teal])('preserves collected %s orb color in its completion event', (color) => {
-    const ground = [[Ground.Grass, Ground.Grass, Ground.Grass]];
-    const subject = new Level(LevelId.of('color'), Scenery.of(LevelSize.of(3, 1), ground, [], []), [],
-      Orb.at(at(1, 0), color), new Hero(at(0, 0), Direction.Right));
+  test.each([OrbColor.Red, OrbColor.Blue, OrbColor.Violet, OrbColor.Teal])('preserves collected %s orb color in its collection event', (color) => {
+    const ground = [[Ground.Grass, Ground.Grass, Ground.Grass], [Ground.Grass, Ground.Grass, Ground.Grass]];
+    const subject = new Level(LevelId.of('color'), Scenery.of(LevelSize.of(3, 2), ground, [], []), [],
+      Orb.at(at(1, 0), color), Door.closedAt(at(0, 1)), new Hero(at(0, 0), Direction.Right));
     const events = Array.from({ length: 17 }, () => subject.tick(Direction.Right)).flat();
-    expect(events[0]?.collectedOrbColor).toBe(color);
+    expect(events).toEqual([new OrbCollected(LevelId.of('color'), at(1, 0), color)]);
     expect(subject.orb).toBeNull();
   });
 
@@ -116,6 +137,14 @@ describe('a level', () => {
 
   test('rejects an orb that cannot be reached', () => {
     expect(() => level(['..~'], at(0, 0), at(2, 0))).toThrow(RangeError);
+  });
+
+  test('rejects an orb behind the closed door', () => {
+    expect(() => level(['...', 'DDD'], at(0, 0), at(1, 1))).toThrow(RangeError);
+  });
+
+  test('rejects a door that does not stand on open ground', () => {
+    expect(() => level(['...', 'DD~'], at(0, 0), at(2, 0))).toThrow(RangeError);
   });
 
   test('rejects trees standing in water', () => {

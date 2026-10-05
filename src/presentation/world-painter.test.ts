@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
 import { Hero, Step } from '../domain/level/hero';
-import { Level, LevelId, Orb, OrbColor, Stone } from '../domain/level/level';
+import { Door, Level, LevelId, Orb, OrbColor, Stone } from '../domain/level/level';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
 import { firstLevel } from '../infrastructure/first-level';
@@ -9,7 +9,7 @@ import * as scenery from './art/scenery';
 import * as sprites from './art/sprites';
 import { Picture, sprite } from './picture';
 import { faded, palette, type PaletteCode } from './palette';
-import { heroPixels, propVariants, tileSize, WorldPainter } from './world-painter';
+import { closingLength, heroPixels, propVariants, tileSize, WorldPainter } from './world-painter';
 
 function allArt(value: unknown): Art[] {
   if (value && typeof value === 'object' && 'rows' in value && 'legend' in value) return [value as Art];
@@ -20,7 +20,7 @@ function allArt(value: unknown): Art[] {
 function renderingLevel(ground = Ground.Grass, color = OrbColor.Violet, hero = TilePosition.at(2, 2), stones: readonly Stone[] = [], trees: readonly Tree[] = []): Level {
   return new Level(LevelId.of('render'), Scenery.of(LevelSize.of(12, 12),
     Array.from({ length: 12 }, () => Array.from({ length: 12 }, () => ground)), trees, []), stones,
-    Orb.at(TilePosition.at(0, 0), color), new Hero(hero, Direction.Down));
+    Orb.at(TilePosition.at(0, 0), color), Door.closedAt(TilePosition.at(0, 11)), new Hero(hero, Direction.Down));
 }
 
 function colorAt(picture: Picture, column: number, row: number): string {
@@ -41,7 +41,7 @@ test('the first level has ground art for every place where terrains meet', () =>
 test('native terrain grids cover all 81 three-terrain corner combinations', () => {
   expect(Object.keys(scenery.terrainArt)).toHaveLength(81);
   for (const art of allArt(scenery)) {
-    const size = art.legend.t === 'E1' ? 64 : 32;
+    const size = art.legend.t === 'E1' ? 64 : Object.values(scenery.doorArt).includes(art) ? 96 : 32;
     expect(sprite(art).width).toBe(size);
     expect(sprite(art).height).toBe(size);
     expect(Object.values(art.legend)).not.toContain('Ink');
@@ -56,7 +56,7 @@ test('native terrain grids cover all 81 three-terrain corner combinations', () =
           ground[2]![1] = bottomLeft;
           ground[2]![2] = bottomRight;
           const level = new Level(LevelId.of('terrain'), Scenery.of(LevelSize.of(4, 4), ground, [], []), [],
-            Orb.at(TilePosition.at(3, 3), OrbColor.Violet), new Hero(TilePosition.at(0, 0), Direction.Down));
+            Orb.at(TilePosition.at(3, 3), OrbColor.Violet), Door.closedAt(TilePosition.at(0, 3)), new Hero(TilePosition.at(0, 0), Direction.Down));
           expect(() => new WorldPainter(level)).not.toThrow();
         }
       }
@@ -201,6 +201,39 @@ test('restoration advances outward with palette-only pixels and matches both end
   expect(colorAt(dissolve, 32, 32)).toBe(colorAt(neutral, 32, 32));
 });
 
+test('the door opens only in the colored world once the orb is collected', () => {
+  const level = renderingLevel(Ground.Grass, OrbColor.Violet, TilePosition.at(1, 0));
+  const painter = new WorldPainter(level);
+  const drawn = (version: 'colored' | 'faded'): Art[] => {
+    const picture = new Picture(384, 384);
+    const draw = vi.spyOn(picture, 'draw');
+    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, version);
+    return draw.mock.calls.map(([art]) => art);
+  };
+  expect(drawn('colored')).toContain(scenery.doorArt.closed);
+  expect(drawn('faded')).toContain(scenery.doorArt.closed);
+  for (let frame = 0; frame < 30; frame++) level.tick(Direction.Left);
+  expect(level.door.isOpen).toBe(true);
+  expect(drawn('colored')).toContain(scenery.doorArt.open);
+  expect(drawn('colored')).not.toContain(scenery.doorArt.closed);
+  expect(drawn('faded')).toContain(scenery.doorArt.closed);
+});
+
+test('closing darkens the colored world to Ink through the ordered dither', () => {
+  const level = renderingLevel();
+  const painter = new WorldPainter(level);
+  const scene = { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null };
+  const colored = new Picture(224, 224);
+  const closing = new Picture(224, 224);
+  painter.paint(colored, scene, 'colored');
+  painter.paintClosing(closing, scene, 0);
+  expect(closing.pixels).toEqual(colored.pixels);
+  painter.paintClosing(closing, scene, closingLength);
+  for (let row = 0; row < closing.height; row++) {
+    for (let column = 0; column < closing.width; column++) expect(colorAt(closing, column, row)).toBe(palette.Ink);
+  }
+});
+
 test('every palette step fades to a neutral while neutrals preserve their values', () => {
   const neutrals = ['Ink', 'N1', 'N2', 'N3', 'N4', 'Paper'];
   for (const code of Object.keys(palette) as (keyof typeof palette)[]) {
@@ -234,6 +267,7 @@ test.each([
     Scenery.of(LevelSize.of(12, 12), ground, [], []),
     [],
     Orb.at(TilePosition.at(0, 0), OrbColor.Violet),
+    Door.closedAt(TilePosition.at(0, 11)),
     hero,
   );
   const duration = Step.begin(direction).duration;

@@ -69,12 +69,25 @@ export class Flower {
   }
 }
 
+export class Fence {
+  private constructor(readonly position: TilePosition) {}
+
+  static at(position: TilePosition): Fence {
+    return new Fence(position);
+  }
+
+  equals(other: Fence): boolean {
+    return this.position.equals(other.position);
+  }
+}
+
 export class Scenery {
   private constructor(
     readonly size: LevelSize,
     private readonly ground: readonly (readonly Ground[])[],
     readonly trees: readonly Tree[],
     readonly flowers: readonly Flower[],
+    readonly fences: readonly Fence[],
   ) {}
 
   static of(
@@ -82,6 +95,7 @@ export class Scenery {
     ground: readonly (readonly Ground[])[],
     trees: readonly Tree[],
     flowers: readonly Flower[],
+    fences: readonly Fence[] = [],
   ): Scenery {
     if (ground.length !== size.rows || ground.some((row) => row.length !== size.columns)) {
       throw new RangeError('Every tile of the level needs ground');
@@ -101,7 +115,16 @@ export class Scenery {
         throw new RangeError(`Flowers must grow on grass inside the level, at ${flower.position.column}, ${flower.position.row}`);
       }
     }
-    return new Scenery(size, ground.map((row) => [...row]), [...trees], [...flowers]);
+    fences.forEach((fence, index) => {
+      const { position } = fence;
+      if (!size.contains(position) || !groundAt(position).equals(Ground.Grass) || footprints.some((tile) => tile.equals(position))) {
+        throw new RangeError(`A fence must stand on open grass inside the level, at ${position.column}, ${position.row}`);
+      }
+      if (fences.findIndex((other) => other.equals(fence)) !== index) {
+        throw new RangeError(`Fences overlap at ${position.column}, ${position.row}`);
+      }
+    });
+    return new Scenery(size, ground.map((row) => [...row]), [...trees], [...flowers], [...fences]);
   }
 
   groundAt(position: TilePosition): Ground {
@@ -113,7 +136,8 @@ export class Scenery {
     return (
       this.size.contains(position) &&
       this.groundAt(position).isWalkable &&
-      !this.trees.some((tree) => tree.covers(position))
+      !this.trees.some((tree) => tree.covers(position)) &&
+      !this.fences.some((fence) => fence.position.equals(position))
     );
   }
 }
