@@ -74,15 +74,23 @@ All values apply at the 360 pixel design width.
 
 - The ring is large enough for a thumb to land on reliably
 - The knob matches the size of the action buttons
-- The knob never travels beyond the ring
+- The knob never travels beyond the inner edge of the ring, so it never covers the ring border
 - Four arrows inside the ring point up, right, down and left
 - The knob sits on a lip below it, which disappears while the joystick is held
 - A dead zone of 30 percent of the knob's travel keeps a resting thumb from moving the hero
+- Up, right, down and left each cover 60 degrees around their arrow, and each diagonal covers the 30 degrees between them, so a thumb aimed slightly off a straight line still moves the hero straight
 
 ### Action Buttons
 
 - A and B are circles that sit on a lip below them
 - A pressed button sinks into its lip, so the lip disappears
+- The right half of the control panel is the touch area for the action buttons, and a touch anywhere in it presses the button whose center is nearest
+
+## Browser Behavior
+
+- Holding a finger on the control panel never opens a context menu or a callout
+- Touches on the control panel never zoom the page
+- Dragging down never reloads the page
 
 ## Keyboard
 

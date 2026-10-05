@@ -13,11 +13,15 @@ export class Controls {
   private joystickDirection: Direction | null = null;
   private joystickPointer: number | null = null;
 
-  constructor(joystick: HTMLElement, knob: HTMLElement, buttons: Readonly<Record<'a' | 'b', HTMLElement>>) {
+  constructor(panel: HTMLElement, joystick: HTMLElement, knob: HTMLElement, buttons: Readonly<Record<'a' | 'b', HTMLElement>>) {
     const heldKeys = { a: new Set<string>(), b: new Set<string>() };
     const heldPointers = { a: new Set<number>(), b: new Set<number>() };
+    const pointerButtons = new Map<number, 'a' | 'b'>();
     let pointerPosition: { clientX: number; clientY: number } | null = null;
-    const reach = (): number => Math.max(0, (joystick.getBoundingClientRect().width - knob.getBoundingClientRect().width) / 2);
+    const reach = (): number => {
+      const border = Number.parseFloat(getComputedStyle(joystick).borderLeftWidth) || 0;
+      return Math.max(0, (joystick.getBoundingClientRect().width - 2 * border - knob.getBoundingClientRect().width) / 2);
+    };
     const updateButton = (button: 'a' | 'b'): void => {
       buttons[button].classList.toggle('pressed', heldKeys[button].size + heldPointers[button].size > 0);
     };
@@ -72,22 +76,36 @@ export class Controls {
         heldPointers[button].clear();
         updateButton(button);
       }
+      pointerButtons.clear();
     });
 
-    for (const name of ['a', 'b'] as const) {
-      const button = buttons[name];
-      button.addEventListener('pointerdown', (event) => {
-        button.setPointerCapture(event.pointerId);
-        heldPointers[name].add(event.pointerId);
+    const nearestButton = (event: { clientX: number; clientY: number }): 'a' | 'b' => {
+      const distance = (name: 'a' | 'b'): number => {
+        const bounds = buttons[name].getBoundingClientRect();
+        return Math.hypot(event.clientX - (bounds.left + bounds.width / 2), event.clientY - (bounds.top + bounds.height / 2));
+      };
+      return distance('a') <= distance('b') ? 'a' : 'b';
+    };
+    // Children often miss small targets, so the whole right half of the panel presses the nearest button.
+    panel.addEventListener('pointerdown', (event) => {
+      const bounds = panel.getBoundingClientRect();
+      if (event.clientX < bounds.left + bounds.width / 2) return;
+      const name = nearestButton(event);
+      panel.setPointerCapture(event.pointerId);
+      pointerButtons.set(event.pointerId, name);
+      heldPointers[name].add(event.pointerId);
+      updateButton(name);
+    });
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) {
+      panel.addEventListener(type, (event) => {
+        const name = pointerButtons.get(event.pointerId);
+        if (!name) return;
+        pointerButtons.delete(event.pointerId);
+        heldPointers[name].delete(event.pointerId);
         updateButton(name);
       });
-      for (const type of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) {
-        button.addEventListener(type, (event) => {
-          heldPointers[name].delete(event.pointerId);
-          updateButton(name);
-        });
-      }
     }
+    panel.addEventListener('contextmenu', (event) => event.preventDefault());
 
     const move = (event: { clientX: number; clientY: number }): void => {
       const ring = joystick.getBoundingClientRect();
@@ -103,7 +121,8 @@ export class Controls {
       // A dead zone keeps a resting thumb from walking the hero by accident.
       if (travel === 0 || distance < travel * 0.3) this.joystickDirection = null;
       else {
-        const threshold = Math.tan(Math.PI / 8);
+        // Wider straight sectors suit grid movement, since a thumb aimed straight often drifts a little off the line.
+        const threshold = Math.tan(Math.PI / 6);
         const horizontal = Math.abs(x) > Math.abs(y) * threshold ? (x > 0 ? Direction.Right : Direction.Left) : null;
         const vertical = Math.abs(y) > Math.abs(x) * threshold ? (y > 0 ? Direction.Down : Direction.Up) : null;
         this.joystickDirection = Direction.combine(horizontal, vertical);

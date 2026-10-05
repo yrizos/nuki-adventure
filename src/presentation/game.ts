@@ -44,7 +44,7 @@ export function startGame(root: Document): void {
   const screen = element<HTMLElement>(root, '.screen');
   const view = element<HTMLElement>(root, '.game-view');
   const canvas = element<HTMLCanvasElement>(root, '.game-view canvas');
-  const controls = new Controls(element(root, '.joystick'), element(root, '.knob'), {
+  const controls = new Controls(element(root, '.control-panel'), element(root, '.joystick'), element(root, '.knob'), {
     a: element(root, '.button-a'),
     b: element(root, '.button-b'),
   });
