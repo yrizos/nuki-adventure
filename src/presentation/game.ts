@@ -1,5 +1,5 @@
 import { PlayLevel } from '../application/play-level';
-import { OrbCollected, type OrbColor } from '../domain/level/level';
+import { LevelCompleted, OrbCollected, type OrbColor } from '../domain/level/level';
 import type { TilePosition } from '../domain/level/position';
 import { firstLevel, firstLevelId } from '../infrastructure/first-level';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
@@ -129,9 +129,8 @@ export function startGame(root: Document): void {
   const tick = (): void => {
     if (phase.name === 'playing') {
       for (const event of run.play.advance(firstLevelId, controls.direction())) {
-        phase = event instanceof OrbCollected
-          ? { name: 'holding', until: frame + holdFrames, origin: event.position, color: event.color }
-          : { name: 'closing', since: frame };
+        if (event instanceof OrbCollected) phase = { name: 'holding', until: frame + holdFrames, origin: event.position, color: event.color };
+        else if (event instanceof LevelCompleted) phase = { name: 'closing', since: frame };
       }
     } else if (phase.name === 'holding' && frame >= phase.until) {
       phase = { name: 'restoring', since: frame, origin: phase.origin };

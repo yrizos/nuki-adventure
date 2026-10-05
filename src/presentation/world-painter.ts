@@ -3,7 +3,7 @@ import { Direction, TilePosition } from '../domain/level/position';
 import { Ground, type Scenery } from '../domain/level/scenery';
 import type { Art } from './art/art';
 import { doorArt, fenceArt, flowerArt, grassArt, pathArt, terrainArt, treeArt, waterArt } from './art/scenery';
-import { groundShadow, lightMote, orbArt, stoneVariants } from './art/sprites';
+import { groundShadow, lightMote, orbArt, starArt, stoneVariants } from './art/sprites';
 import { Picture, type Version } from './picture';
 
 export const tileSize = 32;
@@ -240,6 +240,15 @@ export class WorldPainter {
         base: (row + 1) * tileSize,
         shadow: shadow(12, orb.position, column * tileSize + 10, row * tileSize + 27),
         paint: () => draw(orbArt[orb.color.name], column * tileSize + 4, row * tileSize + 4 + bob, 'colored'),
+      });
+    }
+    for (const star of level.stars) {
+      const { column, row } = star.position;
+      const bob = orbBob[Math.floor(frame / 10) % orbBob.length]!;
+      objects.push({
+        base: (row + 1) * tileSize,
+        shadow: shadow(12, star.position, column * tileSize + 10, row * tileSize + 27),
+        paint: () => draw(starArt, column * tileSize + 4, row * tileSize + 4 + bob),
       });
     }
     const hero = heroPixels(level);

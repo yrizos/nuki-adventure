@@ -1,5 +1,5 @@
 import { Hero } from '../domain/level/hero';
-import { Door, Level, LevelId, Orb, OrbColor, Stone } from '../domain/level/level';
+import { Door, Level, LevelId, Orb, OrbColor, Star, Stone } from '../domain/level/level';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
 
@@ -11,21 +11,21 @@ const layout = [
   'Tt..........*...Tt',
   'FFFFFFFDDDFFFFFFFF',
   'F......###....Tt.F',
-  'F.Tt....#.....*..F',
+  'F.Tt....#.....*S.F',
   'F.......#..o.....F',
   'F..*....##.......F',
-  'F.....o..#...~~..F',
+  'F...S.o..#...~~..F',
   'F.Tt.....#..~~~~.F',
   'F........#...~~O.F',
   'F...*...##....*..F',
-  'F.......#..Tt....F',
+  'F...S...#..Tt....F',
   'F..o....#.....o..F',
   'F.Tt...##........F',
-  'F......#...*.Tt..F',
+  'F......#...*.Tt.SF',
   'F....###.........F',
   'F..*.#.....o..*..F',
   'F....H.....Tt....F',
-  'F.Tt.......*.....F',
+  'F.Tt....S..*.....F',
   'FFFFFFFFFFFFFFFFFF',
 ];
 
@@ -42,5 +42,5 @@ export function firstLevel(): Level {
   const [start] = where('H');
   if (!orb || !door || !start) throw new Error('The first level layout needs an orb, a door and a hero start');
   return new Level(firstLevelId, scenery, where('o').map(Stone.at), Orb.at(orb, OrbColor.Violet), Door.closedAt(door),
-    new Hero(start, Direction.Up));
+    new Hero(start, Direction.Up), where('S').map(Star.at));
 }

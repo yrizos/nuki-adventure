@@ -1286,3 +1286,35 @@ export function groundShadow(width: number, code: 'G1' | 'E2' | 'N2'): Art {
 }
 
 export const heroShadowArt = { grass: groundShadow(14, 'G1'), path: groundShadow(14, 'E2') };
+
+// A computed star turns spiky and uneven at this size, so its outline is drawn by hand.
+const starShape = [
+  '.......kk.......',
+  '......kaak......',
+  '......kaak......',
+  '.....kaaaak.....',
+  '.....kaaaak.....',
+  'kkkkkaaaaaakkkkk',
+  'kaaaaaaaaaaaaaak',
+  '.kaaaaaaaaaaaak.',
+  '..kaaaaaaaaaak..',
+  '...kaaaaaaaak...',
+  '...kaaaaaaaak...',
+  '..kaaaaaaaaaak..',
+  '..kaaaakkaaaak..',
+  '.kaaakk..kkaaak.',
+  '.kaak......kaak.',
+  '.kkk........kkk.',
+];
+
+function star(): Art {
+  const grid = new PixelGrid(24, 24);
+  starShape.forEach((line, row) => [...line].forEach((pixel, column) => {
+    // Shading the half below the diagonal through the center keeps the dark side on the bottom right, away from the light.
+    if (pixel !== '.') grid.put(column + 4, row + 4, pixel === 'k' ? 'k' : column + row >= 18 ? 'b' : 'a');
+  }));
+  for (const [column, row] of [[7, 2], [7, 3], [2, 6], [3, 6]] as const) grid.put(column + 4, row + 4, 'c');
+  return grid.build({ k: 'Ink', a: 'Y2', b: 'Y1', c: 'Y3' });
+}
+
+export const starArt = star();

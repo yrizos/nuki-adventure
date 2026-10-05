@@ -52,6 +52,11 @@ export class Tree {
     return this.footprint.some((tile) => tile.equals(position));
   }
 
+  // The canopy rises one tile above the footprint, so whatever lies on that tile is drawn behind it.
+  hides(position: TilePosition): boolean {
+    return this.covers(position.neighbor(Direction.Down));
+  }
+
   equals(other: Tree): boolean {
     return this.base.equals(other.base);
   }

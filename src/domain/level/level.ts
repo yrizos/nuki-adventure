@@ -55,6 +55,18 @@ export class Stone {
   }
 }
 
+export class Star {
+  private constructor(readonly position: TilePosition) {}
+
+  static at(position: TilePosition): Star {
+    return new Star(position);
+  }
+
+  equals(other: Star): boolean {
+    return this.position.equals(other.position);
+  }
+}
+
 export class Door {
   private constructor(
     readonly left: TilePosition,
@@ -91,16 +103,25 @@ export class OrbCollected {
   ) {}
 }
 
+export class StarCollected {
+  constructor(
+    readonly levelId: LevelId,
+    readonly position: TilePosition,
+  ) {}
+}
+
 export class LevelCompleted {
   constructor(readonly levelId: LevelId) {}
 }
 
-export type LevelEvent = OrbCollected | LevelCompleted;
+export type LevelEvent = OrbCollected | StarCollected | LevelCompleted;
 
 export class Level {
   private remainingOrb: Orb | null;
   private currentDoor: Door;
   private completed = false;
+  private remainingStars: readonly Star[];
+  private collectedStars: readonly Star[] = [];
 
   constructor(
     readonly id: LevelId,
@@ -109,6 +130,7 @@ export class Level {
     orb: Orb,
     door: Door,
     readonly hero: Hero,
+    stars: readonly Star[] = [],
   ) {
     for (const stone of stones) {
       if (!scenery.isWalkable(stone.position)) {
@@ -121,7 +143,25 @@ export class Level {
     this.currentDoor = door;
     if (!this.canEnter(orb.position)) throw new RangeError('The orb must lie where the hero can reach it');
     if (!this.canEnter(hero.position)) throw new RangeError('The hero must start on open ground');
+    stars.forEach((star, index) => {
+      if (!this.canEnter(star.position)) throw new RangeError('Every star must lie where the hero can reach it');
+      if (scenery.trees.some((tree) => tree.hides(star.position))) {
+        throw new RangeError(`A star must stay visible, not behind a tree, at ${star.position.column}, ${star.position.row}`);
+      }
+      if (star.position.equals(orb.position) || stars.findIndex((other) => other.equals(star)) !== index) {
+        throw new RangeError(`A star needs a tile of its own, at ${star.position.column}, ${star.position.row}`);
+      }
+    });
     this.remainingOrb = orb;
+    this.remainingStars = [...stars];
+  }
+
+  get stars(): readonly Star[] {
+    return this.remainingStars;
+  }
+
+  get collected(): readonly Star[] {
+    return this.collectedStars;
   }
 
   get orb(): Orb | null {
@@ -139,18 +179,25 @@ export class Level {
   tick(direction: Direction | null): readonly LevelEvent[] {
     if (this.completed) return [];
     const arrival = this.hero.advance();
+    const events: LevelEvent[] = [];
+    const star = arrival && this.remainingStars.find((candidate) => candidate.position.equals(arrival));
+    if (star) {
+      this.remainingStars = this.remainingStars.filter((candidate) => candidate !== star);
+      this.collectedStars = [...this.collectedStars, star];
+      events.push(new StarCollected(this.id, star.position));
+    }
     if (arrival && this.remainingOrb && arrival.equals(this.remainingOrb.position)) {
       const color = this.remainingOrb.color;
       this.remainingOrb = null;
       this.currentDoor = this.currentDoor.opened();
-      return [new OrbCollected(this.id, arrival, color)];
+      return [...events, new OrbCollected(this.id, arrival, color)];
     }
     if (arrival && this.currentDoor.covers(arrival)) {
       this.completed = true;
-      return [new LevelCompleted(this.id)];
+      return [...events, new LevelCompleted(this.id)];
     }
     this.hero.steer(direction, (position) => this.canEnter(position));
-    return [];
+    return events;
   }
 
   private canEnter(position: TilePosition): boolean {

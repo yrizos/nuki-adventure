@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { Hero, Step } from './hero';
-import { Door, Level, LevelCompleted, LevelId, Orb, OrbCollected, OrbColor, Stone } from './level';
+import { Door, Level, LevelCompleted, LevelId, Orb, OrbCollected, OrbColor, Star, StarCollected, Stone } from './level';
 import { Direction, TilePosition } from './position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree } from './scenery';
 
@@ -20,6 +20,7 @@ function level(given: readonly string[], start: TilePosition, orb: TilePosition)
     Orb.at(orb, OrbColor.Violet),
     Door.closedAt(where('D')[0]!),
     new Hero(start, Direction.Right),
+    where('S').map(Star.at),
   );
 }
 
@@ -103,6 +104,23 @@ describe('the hero in a level', () => {
     expect(subject.hero.step).toBeNull();
   });
 
+  test('picks up a star by walking onto it and keeps walking', () => {
+    const subject = level(['.S..'], at(0, 0), at(3, 0));
+    const events = Array.from({ length: 1 + Step.framesPerTile }, () => subject.tick(Direction.Right)).flat();
+    expect(events).toEqual([new StarCollected(LevelId.of('test'), at(1, 0))]);
+    expect(subject.stars).toEqual([]);
+    expect(subject.collected).toEqual([Star.at(at(1, 0))]);
+    expect(subject.hero.step?.direction).toBe(Direction.Right);
+  });
+
+  test('completes the level without picking up the stars', () => {
+    const subject = level(['S..', 'DDD'], at(1, 0), at(2, 0));
+    hold(subject, Direction.Right, 1 + Step.framesPerTile);
+    const events = Array.from({ length: 80 }, () => subject.tick(Direction.Down)).flat();
+    expect(events).toEqual([new LevelCompleted(LevelId.of('test'))]);
+    expect(subject.stars).toEqual([Star.at(at(0, 0))]);
+  });
+
   test('is stopped by a closed door', () => {
     const subject = level(['...', 'DDD'], at(1, 0), at(2, 0));
     hold(subject, Direction.Down, 40);
@@ -137,6 +155,20 @@ describe('a level', () => {
 
   test('rejects an orb that cannot be reached', () => {
     expect(() => level(['..~'], at(0, 0), at(2, 0))).toThrow(RangeError);
+  });
+
+  test('rejects a star that cannot be reached', () => {
+    expect(() => new Level(LevelId.of('test'), Scenery.of(LevelSize.of(3, 2), [[Ground.Grass, Ground.Grass, Ground.Water],
+      [Ground.Grass, Ground.Grass, Ground.Grass]], [], []), [], Orb.at(at(1, 0), OrbColor.Violet), Door.closedAt(at(0, 1)),
+    new Hero(at(0, 0), Direction.Right), [Star.at(at(2, 0))])).toThrow(RangeError);
+  });
+
+  test('rejects a star behind a tree', () => {
+    expect(() => level(['.S..', '.Tt.'], at(0, 0), at(3, 0))).toThrow(RangeError);
+  });
+
+  test('rejects a star on the orb', () => {
+    expect(() => level(['S..'], at(1, 0), at(0, 0))).toThrow(RangeError);
   });
 
   test('rejects an orb behind the closed door', () => {
