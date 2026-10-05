@@ -1318,3 +1318,24 @@ function star(): Art {
 }
 
 export const starArt = star();
+
+function signpost(): Art {
+  const grid = new PixelGrid(32, 32);
+  grid.rectangle(13, 18, 6, 9, 'k');
+  grid.rectangle(14, 18, 4, 8, 'a');
+  grid.rectangle(14, 18, 1, 8, 'h');
+  grid.rectangle(17, 18, 1, 8, 's');
+  grid.rectangle(5, 6, 22, 13, 'k');
+  for (const [column, row] of [[5, 6], [26, 6], [5, 18], [26, 18]] as const) grid.put(column, row, '.');
+  grid.rectangle(6, 7, 20, 11, 'a');
+  grid.rectangle(6, 7, 20, 1, 'h');
+  grid.rectangle(6, 7, 1, 11, 'h');
+  grid.rectangle(6, 17, 20, 1, 's');
+  grid.rectangle(25, 7, 1, 11, 's');
+  // Two short strokes suggest writing without letters, which the board is too small to hold legibly.
+  grid.rectangle(9, 10, 14, 2, 's');
+  grid.rectangle(9, 13, 9, 2, 's');
+  return grid.build({ k: 'Ink', a: 'E1', h: 'E2', s: 'E0' });
+}
+
+export const signpostArt = signpost();

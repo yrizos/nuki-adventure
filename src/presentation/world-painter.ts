@@ -3,7 +3,7 @@ import { Direction, TilePosition } from '../domain/level/position';
 import { Ground, type Scenery } from '../domain/level/scenery';
 import type { Art } from './art/art';
 import { doorArt, fenceArt, flowerArt, grassArt, pathArt, terrainArt, treeArt, waterArt } from './art/scenery';
-import { groundShadow, lightMote, orbArt, starArt, stoneVariants } from './art/sprites';
+import { groundShadow, lightMote, orbArt, signpostArt, starArt, stoneVariants } from './art/sprites';
 import { Picture, type Version } from './picture';
 
 export const tileSize = 32;
@@ -11,7 +11,7 @@ export const tileSize = 32;
 const orbBob = [0, -1, 0, 1];
 const motes = [[22, 0], [34, 37], [47, 14], [58, 51], [71, 26]] as const;
 const framesPerMoteRise = 4;
-const bayer = [
+export const bayer = [
   [0, 8, 2, 10],
   [12, 4, 14, 6],
   [3, 11, 1, 9],
@@ -213,6 +213,11 @@ export class WorldPainter {
       objects.push({ base: (row + 1) * tileSize, shadow: shadow(14, stone.position, column * tileSize + 9, row * tileSize + 27),
         paint: () => draw(stoneVariants[this.stoneChoices[index]!]!, column * tileSize, row * tileSize) });
     });
+    if (level.signpost) {
+      const { column, row } = level.signpost.position;
+      objects.push({ base: (row + 1) * tileSize, shadow: shadow(10, level.signpost.position, column * tileSize + 11, row * tileSize + 27),
+        paint: () => draw(signpostArt, column * tileSize, row * tileSize) });
+    }
     level.scenery.fences.forEach((fence, index) => {
       const { column, row } = fence.position;
       objects.push({ base: (row + 1) * tileSize, shadow: shadow(8, fence.position, column * tileSize + 12, row * tileSize + 27),

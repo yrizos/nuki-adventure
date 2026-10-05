@@ -15,6 +15,7 @@ export class Controls {
   private readonly heldArrows: Direction[] = [];
   private joystickDirection: Direction | null = null;
   private joystickPointer: number | null = null;
+  private readonly freshPresses = new Set<'a' | 'b'>();
   readonly advance: () => void;
 
   constructor(panel: HTMLElement, joystick: HTMLElement, knob: HTMLElement, buttons: Readonly<Record<'a' | 'b', HTMLElement>>) {
@@ -82,6 +83,7 @@ export class Controls {
         if (!this.heldArrows.includes(arrow)) this.heldArrows.push(arrow);
         updateKeyboardJoystick();
       } else if (button) {
+        if (!event.repeat) this.freshPresses.add(button);
         heldKeys[button].add(event.key.toLowerCase());
         updateButton(button);
       } else {
@@ -130,6 +132,7 @@ export class Controls {
       const name = nearestButton(event);
       panel.setPointerCapture(event.pointerId);
       pointerButtons.set(event.pointerId, name);
+      this.freshPresses.add(name);
       heldPointers[name].add(event.pointerId);
       updateButton(name);
     });
@@ -193,6 +196,11 @@ export class Controls {
       if (pointerPosition) move(pointerPosition);
       else updateKeyboardJoystick();
     }).observe(joystick);
+  }
+
+  // A held button acts once, so reading a press clears it until the button goes down again.
+  takePress(button: 'a' | 'b'): boolean {
+    return this.freshPresses.delete(button);
   }
 
   direction(): Direction | null {

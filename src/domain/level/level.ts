@@ -67,6 +67,23 @@ export class Star {
   }
 }
 
+export class Signpost {
+  private constructor(readonly position: TilePosition) {}
+
+  static at(position: TilePosition): Signpost {
+    return new Signpost(position);
+  }
+
+  // The board is read from the side or from in front, so standing on any of the four touching tiles is enough.
+  isBeside(position: TilePosition): boolean {
+    return [Direction.Up, Direction.Down, Direction.Left, Direction.Right].some((direction) => this.position.neighbor(direction).equals(position));
+  }
+
+  equals(other: Signpost): boolean {
+    return this.position.equals(other.position);
+  }
+}
+
 export class Door {
   private constructor(
     readonly left: TilePosition,
@@ -110,11 +127,22 @@ export class StarCollected {
   ) {}
 }
 
+export class SignpostRead {
+  constructor(
+    readonly levelId: LevelId,
+    readonly position: TilePosition,
+  ) {}
+}
+
+export class SignpostLeft {
+  constructor(readonly levelId: LevelId) {}
+}
+
 export class LevelCompleted {
   constructor(readonly levelId: LevelId) {}
 }
 
-export type LevelEvent = OrbCollected | StarCollected | LevelCompleted;
+export type LevelEvent = OrbCollected | StarCollected | SignpostRead | SignpostLeft | LevelCompleted;
 
 export class Level {
   private remainingOrb: Orb | null;
@@ -122,6 +150,7 @@ export class Level {
   private completed = false;
   private remainingStars: readonly Star[];
   private collectedStars: readonly Star[] = [];
+  private reading = false;
 
   constructor(
     readonly id: LevelId,
@@ -131,6 +160,7 @@ export class Level {
     door: Door,
     readonly hero: Hero,
     stars: readonly Star[] = [],
+    readonly signpost: Signpost | null = null,
   ) {
     for (const stone of stones) {
       if (!scenery.isWalkable(stone.position)) {
@@ -141,6 +171,10 @@ export class Level {
       throw new RangeError('The door needs open ground across its whole width');
     }
     this.currentDoor = door;
+    if (signpost && (!scenery.isWalkable(signpost.position) || door.covers(signpost.position) ||
+      stones.some((stone) => stone.position.equals(signpost.position)))) {
+      throw new RangeError(`A signpost needs open ground of its own, at ${signpost.position.column}, ${signpost.position.row}`);
+    }
     if (!this.canEnter(orb.position)) throw new RangeError('The orb must lie where the hero can reach it');
     if (!this.canEnter(hero.position)) throw new RangeError('The hero must start on open ground');
     stars.forEach((star, index) => {
@@ -176,6 +210,12 @@ export class Level {
     return this.completed;
   }
 
+  read(): readonly LevelEvent[] {
+    if (this.completed || !this.signpost || this.hero.step || !this.signpost.isBeside(this.hero.position)) return [];
+    this.reading = true;
+    return [new SignpostRead(this.id, this.signpost.position)];
+  }
+
   tick(direction: Direction | null): readonly LevelEvent[] {
     if (this.completed) return [];
     const arrival = this.hero.advance();
@@ -197,6 +237,11 @@ export class Level {
       return [...events, new LevelCompleted(this.id)];
     }
     this.hero.steer(direction, (position) => this.canEnter(position));
+    const leaving = this.hero.step && !this.signpost?.isBeside(this.hero.position.neighbor(this.hero.step.direction));
+    if (this.reading && leaving) {
+      this.reading = false;
+      events.push(new SignpostLeft(this.id));
+    }
     return events;
   }
 
@@ -204,6 +249,7 @@ export class Level {
     return (
       this.scenery.isWalkable(position) &&
       !this.stones.some((stone) => stone.position.equals(position)) &&
+      !this.signpost?.position.equals(position) &&
       (this.currentDoor.isOpen || !this.currentDoor.covers(position))
     );
   }

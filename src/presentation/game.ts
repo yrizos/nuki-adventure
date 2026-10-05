@@ -1,5 +1,5 @@
 import { PlayLevel } from '../application/play-level';
-import { LevelCompleted, OrbCollected, type OrbColor } from '../domain/level/level';
+import { LevelCompleted, OrbCollected, type OrbColor, SignpostLeft, SignpostRead } from '../domain/level/level';
 import type { TilePosition } from '../domain/level/position';
 import { firstLevel, firstLevelId } from '../infrastructure/first-level';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
@@ -7,15 +7,23 @@ import type { Art } from './art/art';
 import { panelArt } from './art/panel';
 import { Controls } from './controls';
 import { HeroAnimator } from './hero-animator';
+import { MessageBox } from './message-box';
 import { Picture, sprite } from './picture';
 import { closingLength, tileSize, WorldPainter } from './world-painter';
 
 const frameLength = 1000 / 60;
 const holdFrames = 30;
+const messageFrames = 180;
 const smallestViewTiles = 7;
 
+export const messages = {
+  hint: 'ΒΡΕΣ ΤΗ ΜΩΒ ΣΦΑΙΡΑ! ΘΑ ΦΕΡΕΙ ΠΙΣΩ ΤΑ ΧΡΩΜΑΤΑ ΚΑΙ ΘΑ ΑΝΟΙΞΕΙ ΤΗΝ ΠΥΛΗ.',
+  colorsBack: 'ΤΑ ΧΡΩΜΑΤΑ ΕΠΕΣΤΡΕΨΑΝ!',
+  doorOpen: 'ΜΠΡΑΒΟ! Η ΠΟΡΤΑ ΓΙΑ ΤΟ ΕΠΟΜΕΝΟ ΕΠΙΠΕΔΟ ΕΙΝΑΙ ΑΝΟΙΧΤΗ!',
+} as const;
+
 type Phase =
-  | { readonly name: 'playing'; readonly restored: boolean }
+  | { readonly name: 'playing'; readonly restored: boolean; readonly since: number }
   | { readonly name: 'holding'; readonly until: number; readonly origin: TilePosition; readonly color: OrbColor }
   | { readonly name: 'restoring'; readonly since: number; readonly origin: TilePosition }
   | { readonly name: 'closing'; readonly since: number };
@@ -62,6 +70,7 @@ export function startGame(root: Document): void {
     a: element(root, '.button-a'),
     b: element(root, '.button-b'),
   });
+  const announcement = element<HTMLElement>(root, '.announcement');
 
   const context = canvas.getContext('2d');
   if (!context) throw new Error('The canvas cannot draw in 2D');
@@ -118,29 +127,45 @@ export function startGame(root: Document): void {
   resizeFromLayout();
 
   // Until a second level exists, passing through the door starts the first level again from its faded state.
-  const begin = (): { play: PlayLevel; painter: WorldPainter; animator: HeroAnimator } => {
+  const begin = (): { play: PlayLevel; painter: WorldPainter; animator: HeroAnimator; messageBox: MessageBox } => {
     const play = new PlayLevel(new InMemoryLevelRepository([firstLevel()]));
-    return { play, painter: new WorldPainter(play.view(firstLevelId)), animator: new HeroAnimator() };
+    return { play, painter: new WorldPainter(play.view(firstLevelId)), animator: new HeroAnimator(), messageBox: new MessageBox() };
   };
   let run = begin();
-  let phase: Phase = { name: 'playing', restored: false };
+  let phase: Phase = { name: 'playing', restored: false, since: 0 };
   let frame = 0;
 
   const tick = (): void => {
+    // A press is taken every frame, so one made during a cutscene is not read later by surprise.
+    const pressedA = controls.takePress('a');
+    const { messageBox } = run;
     if (phase.name === 'playing') {
-      for (const event of run.play.advance(firstLevelId, controls.direction())) {
-        if (event instanceof OrbCollected) phase = { name: 'holding', until: frame + holdFrames, origin: event.position, color: event.color };
-        else if (event instanceof LevelCompleted) phase = { name: 'closing', since: frame };
+      const events = [...(pressedA ? run.play.read(firstLevelId) : []), ...run.play.advance(firstLevelId, controls.direction())];
+      const signpostText = phase.restored ? messages.doorOpen : messages.hint;
+      for (const event of events) {
+        if (event instanceof SignpostRead) messageBox.show(signpostText, frame);
+        else if (event instanceof SignpostLeft && messageBox.text === signpostText) messageBox.hide(frame);
+        else if (event instanceof OrbCollected) {
+          messageBox.show(messages.colorsBack, frame);
+          phase = { name: 'holding', until: frame + holdFrames, origin: event.position, color: event.color };
+        } else if (event instanceof LevelCompleted) phase = { name: 'closing', since: frame };
       }
+      if (phase.name === 'playing' && phase.restored && messageBox.text === messages.colorsBack &&
+        (frame - phase.since >= messageFrames || run.play.view(firstLevelId).hero.step)) {
+        messageBox.hide(frame);
+      }
+      if (messageBox.text === signpostText && frame - messageBox.shownAt! >= messageFrames) messageBox.hide(frame);
     } else if (phase.name === 'holding' && frame >= phase.until) {
       phase = { name: 'restoring', since: frame, origin: phase.origin };
     } else if (phase.name === 'restoring' && frame - phase.since >= run.painter.restorationLength(phase.origin)) {
-      phase = { name: 'playing', restored: true };
+      phase = { name: 'playing', restored: true, since: frame };
     } else if (phase.name === 'closing' && frame - phase.since >= closingLength) {
       run = begin();
-      phase = { name: 'playing', restored: false };
+      phase = { name: 'playing', restored: false, since: frame };
     }
     run.animator.advance(run.play.view(firstLevelId).hero);
+    const spoken = run.messageBox.text ?? '';
+    if (announcement.textContent !== spoken) announcement.textContent = spoken;
     frame++;
   };
 
@@ -155,6 +180,7 @@ export function startGame(root: Document): void {
     if (phase.name === 'restoring') run.painter.paintRestoring(picture, scene, phase.origin, frame - phase.since);
     else if (phase.name === 'closing') run.painter.paintClosing(picture, scene, frame - phase.since);
     else run.painter.paint(picture, scene, phase.name === 'playing' && phase.restored ? 'colored' : 'faded');
+    if (phase.name !== 'closing') run.messageBox.paint(picture, frame);
     image.data.set(picture.pixels);
     context.putImageData(image, 0, 0);
   };

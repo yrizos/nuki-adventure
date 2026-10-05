@@ -15,4 +15,11 @@ export class PlayLevel {
     this.levels.save(level);
     return events;
   }
+
+  read(id: LevelId): readonly LevelEvent[] {
+    const level = this.levels.load(id);
+    const events = level.read();
+    this.levels.save(level);
+    return events;
+  }
 }

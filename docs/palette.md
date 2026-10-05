@@ -159,6 +159,9 @@ UI colors map onto Material 3 color roles.
 | Primary | A button | R2, with an R3 highlight, R1 shading, an R0 lip and an Ink letter |
 | Secondary | B button | W2, with a W3 highlight, W1 shading, a W0 lip and an Ink letter |
 | Outline | Knob and button outlines | Ink |
+| Surface container | Message box fill | V0 |
+| Outline | Message box edge | Ink outline, then a V1 inner edge |
+| On surface | Message box text | Paper |
 
 ### Pressed State
 
@@ -185,6 +188,7 @@ Text targets the Web Content Accessibility Guidelines (WCAG) minimum of 4.5:1, a
 | P2 on V0, joystick knob | 4.9:1 |
 | V2 on Ink, joystick arrows | 5.8:1 |
 | P3 on Ink, lit joystick arrows | 11.3:1 |
+| Paper on V0, message text | 11.3:1 |
 
 ### Collectibles
 

@@ -32,6 +32,16 @@ Landscape orientation is not supported.
 - Takes all space above the control panel
 - Shows the game world
 
+### Message Box
+
+- Messages appear in a box inside the game view, aligned to its bottom edge
+- The box spans the game view with an 8 pixel margin on the left, right and bottom, measured in game pixels
+- The box has a one pixel Ink outline with clipped corners, a one pixel V1 inner edge and a V0 fill, matching the control panel's top edge
+- Text is Paper, set in a 5 × 9 pixel font with one pixel strokes and 2 pixels between letters, with 10 pixels of padding and 16 pixel lines, and wraps between words
+- Messages are written in Greek capitals without accent marks
+- The box appears and disappears through the ordered 4 × 4 dither, one threshold per game frame, so it never uses transparency
+- A hidden live region repeats the shown text for screen readers
+
 ## Control Panel
 
 - Bottom of the screen

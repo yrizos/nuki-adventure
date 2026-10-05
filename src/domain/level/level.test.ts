@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { Hero, Step } from './hero';
-import { Door, Level, LevelCompleted, LevelId, Orb, OrbCollected, OrbColor, Star, StarCollected, Stone } from './level';
+import { Door, Level, LevelCompleted, LevelId, Orb, OrbCollected, OrbColor, Signpost, SignpostLeft, SignpostRead, Star, StarCollected, Stone } from './level';
 import { Direction, TilePosition } from './position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree } from './scenery';
 
@@ -21,6 +21,7 @@ function level(given: readonly string[], start: TilePosition, orb: TilePosition)
     Door.closedAt(where('D')[0]!),
     new Hero(start, Direction.Right),
     where('S').map(Star.at),
+    where('P').map(Signpost.at)[0] ?? null,
   );
 }
 
@@ -139,7 +140,40 @@ describe('the hero in a level', () => {
   });
 });
 
+describe('the hero beside a signpost', () => {
+  test.each([at(1, 0), at(0, 1), at(2, 1), at(1, 2)])('reads it from %j', (start) => {
+    const subject = level(['...', '.P.', '...'], start, at(0, 0).equals(start) ? at(2, 2) : at(0, 0));
+    expect(subject.read()).toEqual([new SignpostRead(LevelId.of('test'), at(1, 1))]);
+  });
+
+  test('reads nothing from a diagonal tile', () => {
+    const subject = level(['...', '.P.', '...'], at(0, 0), at(2, 2));
+    expect(subject.read()).toEqual([]);
+  });
+
+  test('keeps reading while she turns in place and stops once she steps away', () => {
+    const subject = level(['...', '.P.', '...'], at(1, 0), at(2, 2));
+    subject.read();
+    expect(Array.from({ length: 2 }, () => subject.tick(Direction.Left)).flat()).toEqual([]);
+    expect(subject.hero.step).toBeNull();
+    expect(subject.tick(Direction.Left)).toEqual([new SignpostLeft(LevelId.of('test'))]);
+    expect(Array.from({ length: 40 }, () => subject.tick(Direction.Left)).flat()).toEqual([]);
+  });
+
+  test('is stopped by it', () => {
+    const subject = level(['.P..'], at(0, 0), at(3, 0));
+    hold(subject, Direction.Right, 40);
+    expect(subject.hero.position).toEqual(at(0, 0));
+  });
+});
+
 describe('a level', () => {
+  test('rejects a signpost in water', () => {
+    expect(() => new Level(LevelId.of('test'), Scenery.of(LevelSize.of(3, 2), [[Ground.Grass, Ground.Grass, Ground.Water],
+      [Ground.Grass, Ground.Grass, Ground.Grass]], [], []), [], Orb.at(at(1, 0), OrbColor.Violet), Door.closedAt(at(0, 1)),
+    new Hero(at(0, 0), Direction.Right), [], Signpost.at(at(2, 0)))).toThrow(RangeError);
+  });
+
   test.each([OrbColor.Red, OrbColor.Blue, OrbColor.Violet, OrbColor.Teal])('preserves collected %s orb color in its collection event', (color) => {
     const ground = [[Ground.Grass, Ground.Grass, Ground.Grass], [Ground.Grass, Ground.Grass, Ground.Grass]];
     const subject = new Level(LevelId.of('color'), Scenery.of(LevelSize.of(3, 2), ground, [], []), [],

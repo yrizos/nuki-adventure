@@ -81,7 +81,7 @@ export class Picture {
     }
   }
 
-  draw(art: Art, x: number, y: number, version: Version): void {
+  draw(art: Art, x: number, y: number, version: Version, visible: (x: number, y: number) => boolean = () => true): void {
     if (!Number.isInteger(x) || !Number.isInteger(y)) throw new RangeError('Sprites must be drawn at whole pixel positions');
     const { width, height, [version]: source } = sprite(art);
     for (let row = 0; row < height; row++) {
@@ -90,7 +90,7 @@ export class Picture {
       for (let column = 0; column < width; column++) {
         const targetX = x + column;
         const from = (row * width + column) * 4;
-        if (targetX < 0 || targetX >= this.width || source[from + 3] === 0) continue;
+        if (targetX < 0 || targetX >= this.width || source[from + 3] === 0 || !visible(targetX, targetY)) continue;
         this.pixels.set(source.subarray(from, from + 4), (targetY * this.width + targetX) * 4);
       }
     }
