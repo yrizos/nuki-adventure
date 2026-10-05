@@ -113,7 +113,7 @@ Steps run from darkest to lightest.
 
 | Element | Colors |
 | --- | --- |
-| Hero | E3 hair, E2 hair shading, E4 hair highlights, E1 eyes, S2 skin, S1 skin shading, S3 skin highlights, P2 t-shirt, P1 t-shirt shading, P3 t-shirt highlights, W1 jeans, W0 jeans shading |
+| Hero | E3 hair, E2 hair shading, E4 hair highlights, E1 eyes, Paper eye catchlights, S2 skin, S1 skin shading, S3 skin highlights, P2 t-shirt, P1 t-shirt shading, P3 t-shirt highlights, W1 jeans, W0 jeans shading, E1 shoes |
 | Grass | G2 base, G3 tufts, G1 shading |
 | Trees | G1 canopy, G0 shadow, G3 leaf highlights, E1 trunk, E0 trunk shadow |
 | Water | W1 body, W0 deep edges, W2 ripples, W4 foam |
@@ -146,6 +146,7 @@ UI colors map onto Material 3 color roles.
 | Material role | Element | Color |
 | --- | --- | --- |
 | Surface | Message panel background | Ink |
+| Surface | Game view space around the canvas | Ink |
 | On surface | Message text | Paper |
 | Surface container | Control panel background | N1 |
 | Outline | Joystick ring | N3 |

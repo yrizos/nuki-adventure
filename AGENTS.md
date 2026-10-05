@@ -32,6 +32,8 @@ Read [docs/ui-layout.md](docs/ui-layout.md), which defines layout, sizing, orien
 
 Use [docs/palette.md](docs/palette.md) as the color source of truth when implementing, reviewing, or testing game art, interface colors, or contrast.
 
+Read [docs/visual-style.md](docs/visual-style.md) before implementing, reviewing, or testing game art, rendering, or animation.
+
 ## Git
 
 ### Before Changing Files
@@ -169,7 +171,7 @@ Organize `src` by DDD layer, not by feature.
 
 ### Naming and Ubiquitous Language
 
-- Use [the glossary](docs/glossary.md) for names and meanings in code and documentation. Add new concepts to the glossary before using them.
+- Use [the glossary](docs/glossary.md) for domain names and meanings in code and documentation. Update it before introducing or changing domain terminology only, not technical or implementation terminology.
 - Name code after the language of the domain, not after technical concepts.
 - Names must describe the concept in a completely unambiguous way.
 - Do not use jargon in names.
