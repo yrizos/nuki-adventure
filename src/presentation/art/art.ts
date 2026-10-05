@@ -13,8 +13,8 @@ export interface HeroDirectionArt {
   readonly settle: Art;
   readonly breathe: Art;
   readonly blink: Art | null;
+  readonly inhaleBlink: Art | null;
   readonly walk: readonly Art[];
-  readonly hair?: readonly Art[];
   readonly holding?: Art;
 }
 

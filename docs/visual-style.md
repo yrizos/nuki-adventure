@@ -278,8 +278,8 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 
 | Animation | Frames | Timing |
 | --- | --- | --- |
-| Hero walk | 4 per direction | 4 game frames each, one cycle per cardinal tile; the cycle continues through diagonal steps |
-| Hero idle | 2 | Blink of 6 frames every 3 seconds |
+| Hero walk | 4 per direction | 8 game frames each, one cycle per two cardinal tiles, continuing across tiles and diagonal steps |
+| Hero idle | 2 | Blink of 6 frames every 3 seconds, except facing up |
 | Hero push | 2 per direction | 8 game frames each |
 | Star and orb bob | 4 | 1 pixel up and down, 10 game frames each |
 | Star sparkle | 4 | 6 game frames each, every 2 seconds |
@@ -290,13 +290,13 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 
 ### Animation Rules
 
-- Frames of one animation keep the same silhouette area
-- The hero's feet stay on the ground line, and her head moves at most one pixel
+- Frames of one animation keep the same silhouette area, except the hero, whose hand-drawn frames shift her feet and pigtails
+- The hero's head moves at most one pixel
 - Looping tiles line up across tile edges in every frame
 
 ### Secondary Motion
 
-- Hair follows the body one frame late in the walk cycle and settles one frame after she stops
+- Stopping on a passing frame of the walk shows a settle frame for 8 game frames while her pigtails catch up
 - Her arms swing opposite to her legs, one pixel forward and back
 - Her shoulders dip one pixel on the passing frames of the walk
 - Turning to a new direction shows the new facing for 2 game frames before she moves

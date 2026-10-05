@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import type { Art } from './art/art';
 import { Hero } from '../domain/level/hero';
 import { Direction, TilePosition } from '../domain/level/position';
 import { heroArt } from './art/sprites';
@@ -21,22 +22,30 @@ test('animation history is identical with and without intervening renders', () =
   }
 });
 
-test('hair follows a new walk pose one simulation tick late and settles in one tick', () => {
+test('walk frames last eight ticks across tiles, and stopping on a passing frame settles for eight ticks', () => {
   const hero = new Hero(TilePosition.at(2, 2), Direction.Down);
   const animator = new HeroAnimator();
-  hero.steer(Direction.Down, () => true);
+  const shown: Art[] = [];
+  for (let frame = 0; frame < 24; frame++) {
+    hero.steer(Direction.Down, () => true);
+    animator.advance(hero);
+    shown.push(animator.pose(hero, frame, false));
+    hero.advance();
+  }
+  const walk = heroArt.down.walk;
+  expect(shown).toEqual([...Array(8).fill(walk[0]), ...Array(8).fill(walk[1]), ...Array(8).fill(walk[2])]);
+  for (let frame = 24; frame < 32; frame++) {
+    hero.steer(Direction.Down, () => true);
+    animator.advance(hero);
+    hero.advance();
+  }
+  for (let frame = 32; frame < 40; frame++) {
+    hero.steer(null, () => true);
+    animator.advance(hero);
+    expect(animator.pose(hero, frame, false)).toBe(heroArt.down.settle);
+  }
   animator.advance(hero);
-  for (let frame = 1; frame <= 4; frame++) { hero.advance(); animator.advance(hero); }
-  const delayed = animator.pose(hero, 4, false);
-  hero.advance();
-  animator.advance(hero);
-  const caughtUp = animator.pose(hero, 5, false);
-  expect(delayed.rows).not.toEqual(caughtUp.rows);
-  expect(delayed.rows.slice(14)).toEqual(caughtUp.rows.slice(14));
-  for (let frame = 6; frame <= 16; frame++) { hero.advance(); animator.advance(hero); }
-  expect(animator.pose(hero, 16, false).rows).not.toEqual(heroArt.down.stand.rows);
-  animator.advance(hero);
-  expect(animator.pose(hero, 17, false)).toBe(heroArt.down.stand);
+  expect(animator.pose(hero, 40, false)).toBe(heroArt.down.stand);
 });
 
 test('idle blinks for six ticks every three seconds and breathes every ninety ticks', () => {
@@ -49,14 +58,8 @@ test('idle blinks for six ticks every three seconds and breathes every ninety ti
 });
 
 test.each([['down', Direction.Down], ['up', Direction.Up], ['left', Direction.Left], ['right', Direction.Right]] as const)(
-  '%s keeps a constant silhouette throughout idle and walking, and has its own holding pose', (name, direction) => {
-    const art = heroArt[name];
-    const area = (rows: readonly string[]): number => rows.join('').replaceAll('.', '').length;
-    for (const pose of [art.stand, art.breathe, ...art.walk, ...(art.blink ? [art.blink] : [])]) {
-      expect(area(pose.rows)).toBe(area(art.stand.rows));
-      expect(pose.rows[31]).toBe(art.stand.rows[31]);
-    }
+  '%s has its own holding pose', (name, direction) => {
     const hero = new Hero(TilePosition.at(0, 0), direction);
-    expect(new HeroAnimator().pose(hero, 0, true)).toBe(art.holding);
+    expect(new HeroAnimator().pose(hero, 0, true)).toBe(heroArt[name].holding);
   },
 );
