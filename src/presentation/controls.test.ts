@@ -58,6 +58,7 @@ test.each([
   expect(joystick.classList.contains('active')).toBe(true);
   key('keyup', arrow);
   expect(controls.direction()).toBeNull();
+  for (let frame = 0; frame < 4; frame++) controls.advance();
   expect(knob.style.transform).toBe('');
   expect(joystick.classList.contains('active')).toBe(false);
 });
@@ -109,6 +110,7 @@ test('losing focus clears movement and recenters the joystick', () => {
   pointer('pointerdown', 92, 60);
   keyboard.dispatchEvent(new Event('blur'));
   expect(controls.direction()).toBeNull();
+  for (let frame = 0; frame < 4; frame++) controls.advance();
   expect(knob.style.transform).toBe('');
   expect(joystick.classList.contains('active')).toBe(false);
 });
@@ -247,4 +249,37 @@ test('touch steering marks the joystick direction and clears it on release', () 
   expect(joystick.dataset.direction).toBe('up');
   pointer('pointerup');
   expect(joystick.dataset.direction).toBe('');
+});
+
+test('a released knob glides home over four frames and overshoots by one panel pixel', () => {
+  const { knob, controls, key } = setup();
+  key('keydown', 'ArrowUp');
+  key('keyup', 'ArrowUp');
+  expect(knob.style.transform).toBe('translate(0px, -26px)');
+  const frames = Array.from({ length: 5 }, () => {
+    controls.advance();
+    return knob.style.transform;
+  });
+  expect(frames).toEqual(['translate(0px, -12px)', 'translate(0px, -2px)', 'translate(0px, 2px)', '', '']);
+});
+
+test('pressing again during the return takes the knob straight to the new direction', () => {
+  const { knob, controls, key } = setup();
+  key('keydown', 'ArrowUp');
+  key('keyup', 'ArrowUp');
+  controls.advance();
+  key('keydown', 'ArrowRight');
+  expect(knob.style.transform).toBe('translate(26px, 0px)');
+  controls.advance();
+  expect(knob.style.transform).toBe('translate(26px, 0px)');
+});
+
+test('a released touch glides the knob home as well', () => {
+  const { knob, controls, pointer } = setup();
+  pointer('pointerdown', 100, 60);
+  pointer('pointerup');
+  controls.advance();
+  expect(knob.style.transform).toBe('translate(12px, 0px)');
+  for (let frame = 0; frame < 3; frame++) controls.advance();
+  expect(knob.style.transform).toBe('');
 });

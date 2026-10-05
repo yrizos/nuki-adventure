@@ -135,6 +135,7 @@ export function startGame(root: Document): void {
       phase = { name: 'restored' };
     }
     animator.advance(level.hero);
+    controls.advance();
     frame++;
   };
 

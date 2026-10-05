@@ -8,11 +8,14 @@ const arrowKeys: Readonly<Record<string, Direction>> = {
   ArrowRight: Direction.Right,
 };
 const buttonKeys: Readonly<Record<string, 'a' | 'b'>> = { z: 'a', ' ': 'a', x: 'b', Enter: 'b' };
+// The knob glides home and overshoots by one panel pixel, so a child sees that letting go is what stopped the hero.
+const returnFractions = [0.5, 0.15] as const;
 
 export class Controls {
   private readonly heldArrows: Direction[] = [];
   private joystickDirection: Direction | null = null;
   private joystickPointer: number | null = null;
+  readonly advance: () => void;
 
   constructor(panel: HTMLElement, joystick: HTMLElement, knob: HTMLElement, buttons: Readonly<Record<'a' | 'b', HTMLElement>>) {
     const heldKeys = { a: new Set<string>(), b: new Set<string>() };
@@ -23,11 +26,36 @@ export class Controls {
       const rim = Number.parseFloat(getComputedStyle(joystick).paddingLeft) || 0;
       return Math.max(0, (joystick.getBoundingClientRect().width - 2 * rim - knob.getBoundingClientRect().width) / 2);
     };
+    let offset = { x: 0, y: 0 };
+    let returning: { readonly x: number; readonly y: number; frame: number } | null = null;
+    const pixelSize = (): number => knob.getBoundingClientRect().width / controlSize;
     // Snapping toward the center keeps the knob on whole panel pixels without pushing it past its reach.
-    const place = (x: number, y: number): void => {
-      const pixel = knob.getBoundingClientRect().width / controlSize;
+    const show = (x: number, y: number): void => {
+      const pixel = pixelSize();
       const snap = (value: number): number => (pixel > 0 ? Math.trunc(value / pixel) * pixel : 0);
       knob.style.transform = `translate(${snap(x)}px, ${snap(y)}px)`;
+    };
+    const place = (x: number, y: number): void => {
+      returning = null;
+      offset = { x, y };
+      show(x, y);
+    };
+    const recenter = (): void => {
+      if (offset.x !== 0 || offset.y !== 0) returning = { ...offset, frame: 0 };
+      offset = { x: 0, y: 0 };
+    };
+    this.advance = (): void => {
+      if (!returning) return;
+      const { x, y, frame } = returning;
+      const fraction = returnFractions[frame];
+      if (fraction !== undefined) show(x * fraction, y * fraction);
+      else if (frame === returnFractions.length) show(-Math.sign(x) * pixelSize(), -Math.sign(y) * pixelSize());
+      else {
+        knob.style.transform = '';
+        returning = null;
+        return;
+      }
+      returning.frame++;
     };
     const showDirection = (): void => {
       joystick.dataset.direction = this.direction()?.name ?? '';
@@ -41,7 +69,7 @@ export class Controls {
       joystick.classList.toggle('active', direction !== null);
       showDirection();
       if (!direction) {
-        knob.style.transform = '';
+        recenter();
         return;
       }
       const travel = reach() / (direction.isDiagonal ? Math.SQRT2 : 1);
