@@ -94,14 +94,13 @@ export function startGame(root: Document): void {
     const bounds = view.getBoundingClientRect();
     resize(Math.ceil(bounds.width * ratio), Math.ceil(bounds.height * ratio));
   };
-  new ResizeObserver(([entry]) => {
+  // Device emulation can report devicePixelContentBoxSize in CSS pixels, so the canvas is sized from layout and the device pixel ratio instead.
+  new ResizeObserver(() => {
     const ratio = window.devicePixelRatio || 1;
     const left = screen.getBoundingClientRect().left - alignment;
     alignment = Math.round(left * ratio) / ratio - left;
     screen.style.setProperty('--pixel-alignment', `${alignment}px`);
-    const exact = entry?.devicePixelContentBoxSize?.[0];
-    if (exact) resize(exact.inlineSize, exact.blockSize);
-    else resizeFromLayout();
+    resizeFromLayout();
   }).observe(view);
   // A media query only reports leaving one pixel ratio, so a fresh query is needed after every zoom or display change.
   const watchPixelRatio = (): void => {

@@ -69,6 +69,13 @@ function ring(): Art {
   return grid.build({ o: 'V2', b: 'V1', w: 'Ink' });
 }
 
+// Offset rows of small dark dots read as the molded grip of a toy controller without competing with the controls.
+function grip(): Art {
+  const grid = new PixelGrid(8, 16, 'p');
+  for (const [column, row] of [[3, 3], [4, 3], [3, 4], [4, 4], [7, 11], [0, 11], [7, 12], [0, 12]] as const) grid.put(column, row, 'd');
+  return grid.build({ p: 'V0', d: 'V0a' });
+}
+
 function arrow(rows: readonly string[], lit: boolean): Art {
   return { legend: { x: lit ? 'P3' : 'V2' }, rows };
 }
@@ -85,6 +92,7 @@ const buttonB = { face: 'W2', highlight: 'W3', shading: 'W1', lip: 'W0', mark: '
 const buttonBPressed = { face: 'W1', highlight: 'W2', shading: 'W0', lip: 'W0', mark: 'Paper' } as const;
 
 export const panelArt: Readonly<Record<string, Art>> = {
+  'panel-grip': grip(),
   ring: ring(),
   knob: control(knob, false, dimple),
   'knob-held': control(knob, true, dimple),

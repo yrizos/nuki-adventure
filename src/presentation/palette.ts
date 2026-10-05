@@ -29,6 +29,7 @@ export const palette = {
   R2: '#F0604F',
   R3: '#FFB3A3',
   V0: '#3F2466',
+  V0a: '#482A74',
   V1: '#7A45BF',
   V2: '#B47EF0',
   V3: '#E8C9FF',
@@ -49,7 +50,7 @@ export const palette = {
 export type PaletteCode = keyof typeof palette;
 
 const fadedSteps: Readonly<Record<'N1' | 'N2' | 'N3' | 'N4' | 'Paper', readonly PaletteCode[]>> = {
-  N1: ['G0', 'E0', 'W0', 'R0', 'V0', 'T0', 'P0'],
+  N1: ['G0', 'E0', 'W0', 'R0', 'V0', 'V0a', 'T0', 'P0'],
   N2: ['G1', 'E1', 'W1', 'Y0', 'R1', 'V1', 'P1', 'S0'],
   N3: ['G2', 'E2', 'W2', 'Y1', 'R2', 'V2', 'T1', 'P2', 'S1'],
   N4: ['G3', 'E3', 'W3', 'Y2', 'R3', 'V3', 'T2', 'P3', 'S2'],

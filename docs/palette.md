@@ -78,6 +78,7 @@ Steps run from darkest to lightest.
 | Code | Hex |
 | --- | --- |
 | V0 | `#3F2466` |
+| V0a | `#482A74` |
 | V1 | `#7A45BF` |
 | V2 | `#B47EF0` |
 | V3 | `#E8C9FF` |
@@ -146,6 +147,7 @@ UI colors map onto Material 3 color roles.
 | Material role | Element | Color |
 | --- | --- | --- |
 | Surface container | Control panel background | V0 |
+| Surface container | Control panel grip dots | V0a |
 | Outline | Control panel top edge | Ink row, then a V1 row |
 | Outline | Joystick ring edge | V2 |
 | Surface container lowest | Joystick well | Ink, with a V1 bottom right wall |

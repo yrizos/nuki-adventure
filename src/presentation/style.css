@@ -73,7 +73,8 @@ body {
   box-sizing: border-box;
   height: calc(92 * var(--pixel));
   padding: calc(16 * var(--pixel));
-  background: var(--v0);
+  background: var(--v0) var(--art-panel-grip) 0 0 / calc(8 * var(--pixel)) calc(16 * var(--pixel)) repeat;
+  image-rendering: pixelated;
   box-shadow:
     inset 0 var(--pixel) 0 var(--ink),
     inset 0 calc(2 * var(--pixel)) 0 var(--v1);
