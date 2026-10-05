@@ -140,9 +140,10 @@ export function startGame(root: Document): void {
   const tick = (): void => {
     // A press is taken every frame, so one made during a cutscene is not read later by surprise.
     const pressedA = controls.takePress('a');
+    const pressedB = controls.takePress('b');
     const { messageBox } = run;
     if (phase.name === 'playing') {
-      const events = [...(pressedA ? run.play.read(firstLevelId) : []), ...run.play.advance(firstLevelId, controls.direction())];
+      const events = [...(pressedA || pressedB ? run.play.read(firstLevelId) : []), ...run.play.advance(firstLevelId, controls.direction())];
       const signpostText = phase.restored ? messages.doorOpen : messages.hint;
       for (const event of events) {
         if (event instanceof SignpostRead) messageBox.show(signpostText, frame);

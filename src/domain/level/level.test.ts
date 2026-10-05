@@ -1,21 +1,26 @@
 import { describe, expect, test } from 'vitest';
 import { Hero, Step } from './hero';
-import { Door, Level, LevelCompleted, LevelId, Orb, OrbCollected, OrbColor, Signpost, SignpostLeft, SignpostRead, Star, StarCollected, Stone } from './level';
+import { Door, Level, LevelCompleted, LevelId, Orb, OrbCollected, OrbColor, Signpost, SignpostLeft, SignpostRead, Star, StarCollected, StarCount, Stone } from './level';
 import { Direction, TilePosition } from './position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree } from './scenery';
 
 const at = TilePosition.at;
 
 // Layouts without a door get a closed one on an extra row below, out of the way of the hero.
-function level(given: readonly string[], start: TilePosition, orb: TilePosition): Level {
+function parse(given: readonly string[]): { scenery: Scenery; where: (symbol: string) => TilePosition[] } {
   const layout = given.some((line) => line.includes('D')) ? given : [...given, 'DDD'.padEnd(given[0]!.length, '.')];
   const size = LevelSize.of(layout[0]!.length, layout.length);
   const ground = layout.map((line) => [...line].map((symbol) => (symbol === '~' ? Ground.Water : Ground.Grass)));
   const cells = layout.flatMap((line, row) => [...line].map((symbol, column) => ({ symbol, position: at(column, row) })));
   const where = (symbol: string): TilePosition[] => cells.filter((cell) => cell.symbol === symbol).map((cell) => cell.position);
+  return { scenery: Scenery.of(size, ground, where('T').map(Tree.at), where('*').map(Flower.at), where('F').map(Fence.at)), where };
+}
+
+function level(given: readonly string[], start: TilePosition, orb: TilePosition): Level {
+  const { scenery, where } = parse(given);
   return new Level(
     LevelId.of('test'),
-    Scenery.of(size, ground, where('T').map(Tree.at), where('*').map(Flower.at), where('F').map(Fence.at)),
+    scenery,
     where('o').map(Stone.at),
     Orb.at(orb, OrbColor.Violet),
     Door.closedAt(where('D')[0]!),
@@ -23,6 +28,13 @@ function level(given: readonly string[], start: TilePosition, orb: TilePosition)
     where('S').map(Star.at),
     where('P').map(Signpost.at)[0] ?? null,
   );
+}
+
+function scattered(given: readonly string[], start: TilePosition, orb: TilePosition, count: number,
+  shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[]): Level {
+  const { scenery, where } = parse(given);
+  return Level.withScatteredStars(LevelId.of('test'), scenery, where('o').map(Stone.at), Orb.at(orb, OrbColor.Violet),
+    Door.closedAt(where('D')[0]!), new Hero(start, Direction.Right), StarCount.of(count), where('P').map(Signpost.at)[0] ?? null, shuffle);
 }
 
 function hold(subject: Level, direction: Direction | null, frames: number): void {
@@ -106,7 +118,7 @@ describe('the hero in a level', () => {
   });
 
   test('picks up a star by walking onto it and keeps walking', () => {
-    const subject = level(['.S..'], at(0, 0), at(3, 0));
+    const subject = level(['.S..', '....', '....'], at(0, 0), at(3, 0));
     const events = Array.from({ length: 1 + Step.framesPerTile }, () => subject.tick(Direction.Right)).flat();
     expect(events).toEqual([new StarCollected(LevelId.of('test'), at(1, 0))]);
     expect(subject.stars).toEqual([]);
@@ -115,7 +127,7 @@ describe('the hero in a level', () => {
   });
 
   test('completes the level without picking up the stars', () => {
-    const subject = level(['S..', 'DDD'], at(1, 0), at(2, 0));
+    const subject = level(['S..', '...', '...', 'DDD'], at(1, 0), at(2, 0));
     hold(subject, Direction.Right, 1 + Step.framesPerTile);
     const events = Array.from({ length: 80 }, () => subject.tick(Direction.Down)).flat();
     expect(events).toEqual([new LevelCompleted(LevelId.of('test'))]);
@@ -197,6 +209,14 @@ describe('a level', () => {
     new Hero(at(0, 0), Direction.Right), [Star.at(at(2, 0))])).toThrow(RangeError);
   });
 
+  test('rejects a star on open ground that fences cut off from the hero', () => {
+    expect(() => level(['..F.S', '..F..'], at(0, 0), at(1, 0))).toThrow(RangeError);
+  });
+
+  test('rejects a star behind the door', () => {
+    expect(() => level(['.S.', '...', 'DDD'], at(0, 1), at(2, 1))).toThrow(RangeError);
+  });
+
   test('rejects a star behind a tree', () => {
     expect(() => level(['.S..', '.Tt.'], at(0, 0), at(3, 0))).toThrow(RangeError);
   });
@@ -215,5 +235,32 @@ describe('a level', () => {
 
   test('rejects trees standing in water', () => {
     expect(() => level(['.T~'], at(0, 0), at(0, 0))).toThrow(RangeError);
+  });
+});
+
+describe('stars scattered across a level', () => {
+  // Trees hide the two tiles above them, the door hides the two rows above it, and fences close off the bottom right corner.
+  const layout = ['.....', '.Tt..', '....F', '...F.'];
+  const spots = [at(3, 0), at(0, 1), at(3, 1), at(4, 1), at(3, 2)];
+  const shuffles: [string, (positions: readonly TilePosition[]) => readonly TilePosition[]][] = [
+    ['in order', (positions) => positions],
+    ['reversed', (positions) => [...positions].reverse()],
+    ['rotated', (positions) => [...positions.slice(2), ...positions.slice(0, 2)]],
+  ];
+
+  test.each(shuffles)('fill every visible, reachable tile when %s', (_, shuffle) => {
+    const subject = scattered(layout, at(0, 0), at(4, 0), spots.length, shuffle);
+    expect(subject.stars.map((star) => star.position)).toEqual(expect.arrayContaining(spots));
+    expect(subject.stars).toHaveLength(spots.length);
+  });
+
+  test.each(shuffles)('number exactly as many as the level asks for when %s', (_, shuffle) => {
+    const subject = scattered(layout, at(0, 0), at(4, 0), 3, shuffle);
+    expect(subject.stars).toHaveLength(3);
+    expect(spots).toEqual(expect.arrayContaining(subject.stars.map((star) => star.position)));
+  });
+
+  test('need enough visible, reachable tiles', () => {
+    expect(() => scattered(layout, at(0, 0), at(4, 0), spots.length + 1, (positions) => positions)).toThrow(RangeError);
   });
 });

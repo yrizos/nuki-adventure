@@ -67,6 +67,19 @@ export class Star {
   }
 }
 
+export class StarCount {
+  private constructor(readonly value: number) {}
+
+  static of(value: number): StarCount {
+    if (!Number.isInteger(value) || value < 0) throw new RangeError(`A star count needs a whole number of zero or more, got ${value}`);
+    return new StarCount(value);
+  }
+
+  equals(other: StarCount): boolean {
+    return this.value === other.value;
+  }
+}
+
 export class Signpost {
   private constructor(readonly position: TilePosition) {}
 
@@ -101,6 +114,12 @@ export class Door {
 
   covers(position: TilePosition): boolean {
     return this.footprint.some((tile) => tile.equals(position));
+  }
+
+  // The door stands three tiles tall, so whatever lies on the two tiles above its footprint is drawn behind it.
+  hides(position: TilePosition): boolean {
+    const below = position.neighbor(Direction.Down);
+    return this.covers(below) || this.covers(below.neighbor(Direction.Down));
   }
 
   opened(): Door {
@@ -177,10 +196,11 @@ export class Level {
     }
     if (!this.canEnter(orb.position)) throw new RangeError('The orb must lie where the hero can reach it');
     if (!this.canEnter(hero.position)) throw new RangeError('The hero must start on open ground');
+    const reachable = this.reachableTiles();
     stars.forEach((star, index) => {
-      if (!this.canEnter(star.position)) throw new RangeError('Every star must lie where the hero can reach it');
-      if (scenery.trees.some((tree) => tree.hides(star.position))) {
-        throw new RangeError(`A star must stay visible, not behind a tree, at ${star.position.column}, ${star.position.row}`);
+      if (!reachable.some((tile) => tile.equals(star.position))) throw new RangeError('Every star must lie where the hero can reach it');
+      if (this.hides(star.position)) {
+        throw new RangeError(`A star must stay visible, not behind a tree or the door, at ${star.position.column}, ${star.position.row}`);
       }
       if (star.position.equals(orb.position) || stars.findIndex((other) => other.equals(star)) !== index) {
         throw new RangeError(`A star needs a tile of its own, at ${star.position.column}, ${star.position.row}`);
@@ -188,6 +208,25 @@ export class Level {
     });
     this.remainingOrb = orb;
     this.remainingStars = [...stars];
+  }
+
+  static withScatteredStars(
+    id: LevelId,
+    scenery: Scenery,
+    stones: readonly Stone[],
+    orb: Orb,
+    door: Door,
+    hero: Hero,
+    starCount: StarCount,
+    signpost: Signpost | null,
+    shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[],
+  ): Level {
+    const empty = new Level(id, scenery, stones, orb, door, hero, [], signpost);
+    const spots = empty.reachableTiles().filter((tile) => !empty.hides(tile) && !tile.equals(orb.position) && !tile.equals(hero.position));
+    if (spots.length < starCount.value) {
+      throw new RangeError(`The level has room for ${spots.length} visible, reachable stars, not ${starCount.value}`);
+    }
+    return new Level(id, scenery, stones, orb, door, hero, shuffle(spots).slice(0, starCount.value).map(Star.at), signpost);
   }
 
   get stars(): readonly Star[] {
@@ -243,6 +282,23 @@ export class Level {
       events.push(new SignpostLeft(this.id));
     }
     return events;
+  }
+
+  // Diagonal steps need both straight neighbors open, so straight steps alone reach every tile the hero can.
+  // The door counts as closed because stepping onto it ends the level.
+  private reachableTiles(): readonly TilePosition[] {
+    const reached = [this.hero.position];
+    for (let index = 0; index < reached.length; index++) {
+      for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
+        const next = reached[index]!.neighbor(direction);
+        if (this.canEnter(next) && !this.currentDoor.covers(next) && !reached.some((tile) => tile.equals(next))) reached.push(next);
+      }
+    }
+    return reached;
+  }
+
+  private hides(position: TilePosition): boolean {
+    return this.scenery.trees.some((tree) => tree.hides(position)) || this.currentDoor.hides(position);
   }
 
   private canEnter(position: TilePosition): boolean {

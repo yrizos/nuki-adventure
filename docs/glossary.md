@@ -50,9 +50,29 @@ The girl of about seven whom the player moves through the game world.
 
 A star or an orb that the hero picks up.
 
+### Level
+
+One enclosed part of the game world that the hero plays through, from her start tile to the door.
+
+### Door
+
+The exit of a level. It opens once the hero picks up the orb, and stepping into it completes the level.
+
+### Reachable
+
+Describes a tile the hero can walk to from her start tile without stepping into the door.
+
+### Hidden
+
+Describes a tile that a tree canopy or the door is drawn over.
+
 ### Star
 
 A gold collectible.
+
+### Star Count
+
+The number of stars a level holds. Each time the level starts, its stars go to random tiles that are reachable and not hidden.
 
 ### Orb
 

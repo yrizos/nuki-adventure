@@ -1,5 +1,5 @@
 import { Hero } from '../domain/level/hero';
-import { Door, Level, LevelId, Orb, OrbColor, Signpost, Star, Stone } from '../domain/level/level';
+import { Door, Level, LevelId, Orb, OrbColor, Signpost, StarCount, Stone } from '../domain/level/level';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
 
@@ -11,23 +11,32 @@ const layout = [
   'Tt..........*...Tt',
   'FFFFFFFDDDFFFFFFFF',
   'F.....P###....Tt.F',
-  'F.Tt....#.....*S.F',
+  'F.Tt....#.....*..F',
   'F.......#..o.....F',
   'F..*....##.......F',
-  'F...S.o..#...~~..F',
+  'F.....o..#...~~..F',
   'F.Tt.....#..~~~~.F',
   'F........#...~~O.F',
   'F...*...##....*..F',
-  'F...S...#..Tt....F',
+  'F.......#..Tt....F',
   'F..o....#.....o..F',
   'F.Tt...##........F',
-  'F......#...*.Tt.SF',
+  'F......#...*.Tt..F',
   'F....###.........F',
   'F..*.#.....o..*..F',
   'F....H.....Tt....F',
-  'F.Tt....S..*.....F',
+  'F.Tt.......*.....F',
   'FFFFFFFFFFFFFFFFFF',
 ];
+
+function shuffled(positions: readonly TilePosition[]): TilePosition[] {
+  const result = [...positions];
+  for (let index = result.length - 1; index > 0; index--) {
+    const other = Math.floor(Math.random() * (index + 1));
+    [result[index], result[other]] = [result[other]!, result[index]!];
+  }
+  return result;
+}
 
 export function firstLevel(): Level {
   const size = LevelSize.of(layout[0]!.length, layout.length);
@@ -42,6 +51,6 @@ export function firstLevel(): Level {
   const [start] = where('H');
   const [signpost] = where('P');
   if (!orb || !door || !start || !signpost) throw new Error('The first level layout needs an orb, a door, a hero start and a signpost');
-  return new Level(firstLevelId, scenery, where('o').map(Stone.at), Orb.at(orb, OrbColor.Violet), Door.closedAt(door),
-    new Hero(start, Direction.Up), where('S').map(Star.at), Signpost.at(signpost));
+  return Level.withScatteredStars(firstLevelId, scenery, where('o').map(Stone.at), Orb.at(orb, OrbColor.Violet), Door.closedAt(door),
+    new Hero(start, Direction.Up), StarCount.of(5), Signpost.at(signpost), shuffled);
 }
