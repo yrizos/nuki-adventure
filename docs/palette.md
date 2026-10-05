@@ -145,15 +145,12 @@ UI colors map onto Material 3 color roles.
 
 | Material role | Element | Color |
 | --- | --- | --- |
-| Surface | Message panel background | Ink |
 | Surface | Game view space around the canvas | Ink |
-| On surface | Message text | Paper |
 | Surface container | Control panel background | N1 |
 | Outline | Joystick ring | N3 |
 | On surface variant | Joystick knob | N4 |
 | Primary | A button | R2 with an Ink letter |
 | Secondary | B button | W2 with an Ink letter |
-| Tertiary | Highlighted words in messages | Y2 |
 
 ### Pressed State
 
@@ -169,8 +166,6 @@ Text targets the Web Content Accessibility Guidelines (WCAG) minimum of 4.5:1, a
 
 | Pair | Ratio |
 | --- | --- |
-| Paper on Ink, message text | 15.2:1 |
-| Y2 on Ink, highlighted words | 11.1:1 |
 | Ink on R2, A letter | 5.2:1 |
 | Ink on W2, B letter | 6.0:1 |
 | Paper on R1, pressed A letter | 5.0:1 |

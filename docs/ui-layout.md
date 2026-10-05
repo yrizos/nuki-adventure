@@ -1,6 +1,6 @@
 # UI Layout
 
-The screen is divided vertically into three areas.
+The screen is divided vertically into two areas.
 
 Landscape orientation is not supported.
 
@@ -9,8 +9,6 @@ Landscape orientation is not supported.
 │                        │
 │       GAME VIEW        │
 │                        │
-├────────────────────────┤
-│     MESSAGE PANEL      │
 ├────────────────────────┤
 │     CONTROL PANEL      │
 └────────────────────────┘
@@ -26,23 +24,13 @@ Landscape orientation is not supported.
 
 - The layout is a centered column instead of spanning the full window width
 - The background outside the column is pitch black
-- The column narrows until all three areas fit within the window height
-- The message panel still keeps room for a few lines of text
 
 ## Game View
 
 - Top of the screen
-- Square, full screen width on phones and full column width on desktop
-- Fixed size
+- Full screen width on phones and full column width on desktop
+- Takes all space above the control panel
 - Shows the game world
-
-## Message Panel
-
-- Between the game view and the control panel
-- Takes all remaining space
-- Shows text during play
-- Uses the Material body text style
-- Keeps room for a few lines of text on small phones
 
 ## Control Panel
 

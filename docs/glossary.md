@@ -12,11 +12,7 @@ The fixed-size area at the bottom of the screen that holds the joystick and the 
 
 ### Game View
 
-The square area at the top of the screen that shows the game world. It spans the full screen width on phones and the full column width on desktop, and has a fixed size.
-
-### Message Panel
-
-The area between the game view and the control panel that shows text during play. It takes all remaining space.
+The area at the top of the screen that shows the game world. It spans the full screen width on phones and the full column width on desktop, and takes all space above the control panel.
 
 ## Joystick
 
