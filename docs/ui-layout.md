@@ -47,36 +47,47 @@ Landscape orientation is not supported.
 - Left side: a virtual joystick for movement
 - Right side: an A button and a B button for actions, placed on a diagonal with A at the top right and B at the bottom left
 - The joystick ring fills the height inside the padding
+- Each control is centered with its lip, so a face and its lip sit centered together
+
+### Pixel Art
+
+- The control panel is pixel art drawn from palette codes, like the game world, so the two areas read as one game
+- The panel is measured in panel pixels, and each panel pixel is a whole number of device pixels, so the art stays crisp at every width
+- A panel pixel is the largest whole number of device pixels that fits 180 panel pixels across the column, and never less than one device pixel
+- Every control has a one pixel Ink outline and takes its light from the top left
+- The panel is deep violet in V0, which sits between the red A and the blue B, with an Ink row and then a V1 row along its top edge where it meets the game view
+- The space between the joystick and the action buttons absorbs any width left after rounding
 
 ### Scaling
 
-- The control panel is designed for a 360 pixel column and scales as a whole with the column width
-- Every size, gap and distance in the panel scales by the same factor, so the controls keep their shapes, spacing and proportions at every width
-- The column never narrows below 320 pixels to fit the window height, and the page scrolls instead, so the action buttons stay above the Material minimum touch target
+- The column never narrows below 320 pixels to fit the window height, and the page scrolls instead
+- The action button touch area covers half the panel, so it stays above the Material minimum touch target at every width
 
 ### Measurements
 
-All values apply at the 360 pixel design width.
+All values are in panel pixels.
 
 | Element | Size |
 | --- | --- |
-| Padding on all four sides | 32 pixels |
-| Panel height | 184 pixels |
-| Joystick ring | 120 pixels across, with a 2 pixel border |
-| Joystick knob | 56 pixels across |
-| Direction arrows | 12 × 8 pixels, 8 pixels inside the ring |
-| A and B buttons | 56 pixels across |
-| Gap between the A and B positions | 8 pixels |
-| Button and knob lip | 4 pixels |
-| Button letters | 22 pixels, bold |
+| Padding on all four sides | 16 |
+| Panel height | 92 |
+| Joystick ring | 60 across, with a 3 pixel rim |
+| Joystick knob | 28 across |
+| Direction arrows | 8 × 4, 3 pixels inside the rim |
+| A and B buttons | 28 across |
+| Gap between the A and B positions | 4 |
+| Button and knob lip | 2 |
+| Button letters | 8 × 9, with 2 pixel strokes |
 
 ### Joystick
 
 - The ring is large enough for a thumb to land on reliably
 - The knob matches the size of the action buttons
-- The knob never travels beyond the inner edge of the ring, so it never covers the ring border
-- Four arrows inside the ring point up, right, down and left
-- The knob sits on a lip below it, which disappears while the joystick is held
+- The knob never travels beyond the inner edge of the rim, so it never covers the rim
+- The knob moves in whole panel pixels
+- Four arrows inside the ring point up, right, down and left, and the arrows for the held direction light up
+- The knob sits on a lip below it, and while the joystick is held the knob sinks into its lip, so the lip disappears
+- The knob has a thumb dimple at its center
 - A dead zone of 30 percent of the knob's travel keeps a resting thumb from moving the hero
 - Up, right, down and left each cover 60 degrees around their arrow, and each diagonal covers the 30 degrees between them, so a thumb aimed slightly off a straight line still moves the hero straight
 

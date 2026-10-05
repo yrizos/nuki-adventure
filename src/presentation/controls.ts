@@ -1,4 +1,5 @@
 import { Direction } from '../domain/level/position';
+import { controlSize } from './art/panel';
 
 const arrowKeys: Readonly<Record<string, Direction>> = {
   ArrowUp: Direction.Up,
@@ -19,8 +20,17 @@ export class Controls {
     const pointerButtons = new Map<number, 'a' | 'b'>();
     let pointerPosition: { clientX: number; clientY: number } | null = null;
     const reach = (): number => {
-      const border = Number.parseFloat(getComputedStyle(joystick).borderLeftWidth) || 0;
-      return Math.max(0, (joystick.getBoundingClientRect().width - 2 * border - knob.getBoundingClientRect().width) / 2);
+      const rim = Number.parseFloat(getComputedStyle(joystick).paddingLeft) || 0;
+      return Math.max(0, (joystick.getBoundingClientRect().width - 2 * rim - knob.getBoundingClientRect().width) / 2);
+    };
+    // Snapping toward the center keeps the knob on whole panel pixels without pushing it past its reach.
+    const place = (x: number, y: number): void => {
+      const pixel = knob.getBoundingClientRect().width / controlSize;
+      const snap = (value: number): number => (pixel > 0 ? Math.trunc(value / pixel) * pixel : 0);
+      knob.style.transform = `translate(${snap(x)}px, ${snap(y)}px)`;
+    };
+    const showDirection = (): void => {
+      joystick.dataset.direction = this.direction()?.name ?? '';
     };
     const updateButton = (button: 'a' | 'b'): void => {
       buttons[button].classList.toggle('pressed', heldKeys[button].size + heldPointers[button].size > 0);
@@ -29,14 +39,13 @@ export class Controls {
       if (this.joystickPointer !== null) return;
       const direction = this.keyboardDirection();
       joystick.classList.toggle('active', direction !== null);
+      showDirection();
       if (!direction) {
         knob.style.transform = '';
         return;
       }
       const travel = reach() / (direction.isDiagonal ? Math.SQRT2 : 1);
-      const horizontal = direction.columnStep * travel;
-      const vertical = direction.rowStep * travel;
-      knob.style.transform = `translate(${horizontal}px, ${vertical}px)`;
+      place(direction.columnStep * travel, direction.rowStep * travel);
     };
     window.addEventListener('keydown', (event) => {
       const arrow = arrowKeys[event.key];
@@ -117,7 +126,7 @@ export class Controls {
         x = (x / distance) * travel;
         y = (y / distance) * travel;
       }
-      knob.style.transform = `translate(${x}px, ${y}px)`;
+      place(x, y);
       // A dead zone keeps a resting thumb from walking the hero by accident.
       if (travel === 0 || distance < travel * 0.3) this.joystickDirection = null;
       else {
@@ -127,6 +136,7 @@ export class Controls {
         const vertical = Math.abs(y) > Math.abs(x) * threshold ? (y > 0 ? Direction.Down : Direction.Up) : null;
         this.joystickDirection = Direction.combine(horizontal, vertical);
       }
+      showDirection();
     };
     const release = (event: PointerEvent): void => {
       if (event.pointerId !== this.joystickPointer) return;

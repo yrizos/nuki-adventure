@@ -3,9 +3,11 @@ import type { OrbColor } from '../domain/level/level';
 import type { TilePosition } from '../domain/level/position';
 import { firstLevel, firstLevelId } from '../infrastructure/first-level';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
+import type { Art } from './art/art';
+import { panelArt } from './art/panel';
 import { Controls } from './controls';
 import { HeroAnimator } from './hero-animator';
-import { Picture } from './picture';
+import { Picture, sprite } from './picture';
 import { tileSize, WorldPainter } from './world-painter';
 
 const frameLength = 1000 / 60;
@@ -40,8 +42,20 @@ export function fitCanvas(deviceWidth: number, deviceHeight: number): CanvasFit 
   return { width: Math.ceil(deviceWidth / scale), height: Math.ceil(deviceHeight / scale), scale };
 }
 
+function artUrl(root: Document, art: Art): string {
+  const { width, height, colored } = sprite(art);
+  const canvas = root.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const image = new ImageData(width, height);
+  image.data.set(colored);
+  canvas.getContext('2d')?.putImageData(image, 0, 0);
+  return canvas.toDataURL();
+}
+
 export function startGame(root: Document): void {
   const screen = element<HTMLElement>(root, '.screen');
+  for (const [name, art] of Object.entries(panelArt)) screen.style.setProperty(`--art-${name}`, `url(${artUrl(root, art)})`);
   const view = element<HTMLElement>(root, '.game-view');
   const canvas = element<HTMLCanvasElement>(root, '.game-view canvas');
   const controls = new Controls(element(root, '.control-panel'), element(root, '.joystick'), element(root, '.knob'), {

@@ -145,19 +145,19 @@ UI colors map onto Material 3 color roles.
 
 | Material role | Element | Color |
 | --- | --- | --- |
-| Surface container | Control panel background | N1 |
-| Outline | Joystick ring | N3 |
-| Outline | Joystick direction arrows | N3 |
-| On surface variant | Joystick knob | N4 |
-| Outline | Joystick knob lip | N3 |
-| Primary | A button | R2 with an Ink letter |
-| Primary | A button lip | R1 |
-| Secondary | B button | W2 with an Ink letter |
-| Secondary | B button lip | W1 |
+| Surface container | Control panel background | V0 |
+| Outline | Control panel top edge | Ink row, then a V1 row |
+| Outline | Joystick ring edge | V2 |
+| Surface container lowest | Joystick well | Ink, with a V1 bottom right wall |
+| Outline | Joystick direction arrows | V2, P3 while held |
+| On surface variant | Joystick knob | P2, with a P3 highlight, P1 shading, a P1 thumb dimple and a P0 lip, matching the hero's t-shirt |
+| Primary | A button | R2, with an R3 highlight, R1 shading, an R0 lip and an Ink letter |
+| Secondary | B button | W2, with a W3 highlight, W1 shading, a W0 lip and an Ink letter |
+| Outline | Knob and button outlines | Ink |
 
 ### Pressed State
 
-- A pressed button drops one step, so A becomes R1 and B becomes W1
+- A pressed button drops one step on its face, highlight and shading, so A becomes R1 and B becomes W1
 - The letter on a pressed button switches to Paper
 - A pressed button sinks into its lip, so the lip is no longer visible
 - Touch and keyboard presses use the same pressed state
@@ -174,10 +174,12 @@ Text targets the Web Content Accessibility Guidelines (WCAG) minimum of 4.5:1, a
 | Ink on W2, B letter | 6.0:1 |
 | Paper on R1, pressed A letter | 5.0:1 |
 | Paper on W1, pressed B letter | 5.0:1 |
-| R2 on N1, A button | 3.7:1 |
-| W2 on N1, B button | 4.3:1 |
-| N3 on N1, joystick ring | 3.6:1 |
-| N4 on N1, joystick knob | 7.1:1 |
+| R2 on V0, A button | 3.9:1 |
+| W2 on V0, B button | 4.5:1 |
+| V2 on V0, joystick ring | 4.3:1 |
+| P2 on V0, joystick knob | 4.9:1 |
+| V2 on Ink, joystick arrows | 5.8:1 |
+| P3 on Ink, lit joystick arrows | 11.3:1 |
 
 ### Collectibles
 

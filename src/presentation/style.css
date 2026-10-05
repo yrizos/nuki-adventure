@@ -1,14 +1,8 @@
 :root {
   --ink: #1c1a2e;
-  --n1: #34344f;
-  --n3: #8a8ca6;
-  --n4: #c4c6d6;
-  --paper: #f5f2e9;
-  --r1: #c2303e;
-  --r2: #f0604f;
-  --w1: #2f67b8;
-  --w2: #4fa0e3;
-  /* The control panel is drawn for a 360 pixel column and scaled as a whole, so its controls keep their shapes and spacing at every width. */
+  --v0: #3f2466;
+  --v1: #7a45bf;
+  /* The control panel is laid out for a 360 pixel column, which keeps the desktop column wide enough for the panel and a square game view. */
   --design-width: 360;
   --control-panel-height: 184;
   --narrowest-column: 320px;
@@ -68,126 +62,155 @@ body {
   image-rendering: pixelated;
 }
 
+/* Panel pixels are whole device pixels, so the panel art stays as crisp as the game view at every width. */
 .control-panel {
-  --unit: calc(100cqi / var(--design-width));
-  --button: calc(56 * var(--unit));
-  --gap: calc(8 * var(--unit));
-  --lip: calc(4 * var(--unit));
+  --pixel: max(var(--device-pixel), round(down, 100cqi / 180, var(--device-pixel)));
 
   display: flex;
   flex: none;
   align-items: center;
   justify-content: space-between;
   box-sizing: border-box;
-  height: calc(var(--control-panel-height) * var(--unit));
-  padding: calc(32 * var(--unit));
-  background: var(--n1);
+  height: calc(92 * var(--pixel));
+  padding: calc(16 * var(--pixel));
+  background: var(--v0);
+  box-shadow:
+    inset 0 var(--pixel) 0 var(--ink),
+    inset 0 calc(2 * var(--pixel)) 0 var(--v1);
   touch-action: none;
   -webkit-touch-callout: none;
 }
 
+.joystick,
+.knob,
+.arrow,
+.action-cross button {
+  background: var(--art) 0 0 / 100% 100% no-repeat;
+  image-rendering: pixelated;
+}
+
 .joystick {
+  --art: var(--art-ring);
+
   position: relative;
   display: flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: calc(120 * var(--unit));
-  height: calc(120 * var(--unit));
+  width: calc(60 * var(--pixel));
+  height: calc(60 * var(--pixel));
   box-sizing: border-box;
-  border: calc(2 * var(--unit)) solid var(--n3);
-  border-radius: 50%;
-  background: var(--n1);
+  padding: calc(3 * var(--pixel));
   touch-action: none;
 }
 
 .arrow {
   position: absolute;
-  width: calc(12 * var(--unit));
-  height: calc(8 * var(--unit));
-  background: var(--n3);
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  width: calc(8 * var(--pixel));
+  height: calc(4 * var(--pixel));
 }
 
 .arrow-up {
-  top: calc(8 * var(--unit));
-  left: calc(50% - 6 * var(--unit));
+  --art: var(--art-arrow-up);
+
+  top: calc(6 * var(--pixel));
+  left: calc(26 * var(--pixel));
 }
 
 .arrow-down {
-  bottom: calc(8 * var(--unit));
-  left: calc(50% - 6 * var(--unit));
-  rotate: 180deg;
+  --art: var(--art-arrow-down);
+
+  bottom: calc(6 * var(--pixel));
+  left: calc(26 * var(--pixel));
+}
+
+.arrow-left,
+.arrow-right {
+  width: calc(4 * var(--pixel));
+  height: calc(8 * var(--pixel));
+  top: calc(26 * var(--pixel));
 }
 
 .arrow-left {
-  top: calc(50% - 4 * var(--unit));
-  left: calc(6 * var(--unit));
-  rotate: -90deg;
+  --art: var(--art-arrow-left);
+
+  left: calc(6 * var(--pixel));
 }
 
 .arrow-right {
-  top: calc(50% - 4 * var(--unit));
-  right: calc(6 * var(--unit));
-  rotate: 90deg;
+  --art: var(--art-arrow-right);
+
+  right: calc(6 * var(--pixel));
+}
+
+.joystick[data-direction*='up'] .arrow-up {
+  --art: var(--art-arrow-up-lit);
+}
+
+.joystick[data-direction*='down'] .arrow-down {
+  --art: var(--art-arrow-down-lit);
+}
+
+.joystick[data-direction*='left'] .arrow-left {
+  --art: var(--art-arrow-left-lit);
+}
+
+.joystick[data-direction*='right'] .arrow-right {
+  --art: var(--art-arrow-right-lit);
 }
 
 .knob {
-  width: var(--button);
-  height: var(--button);
-  border-radius: 50%;
-  background: var(--n4);
-  box-shadow: 0 var(--lip) 0 var(--n3);
+  --art: var(--art-knob);
+
+  flex: none;
+  width: calc(28 * var(--pixel));
+  height: calc(30 * var(--pixel));
   pointer-events: none;
 }
 
 .joystick.active .knob {
-  box-shadow: none;
+  --art: var(--art-knob-held);
 }
 
+/* The cross is lifted by half a lip, so each face and its lip sit centered together. */
 .action-cross {
   display: grid;
   flex: none;
-  grid-template-columns: repeat(2, var(--button));
-  grid-template-rows: repeat(2, var(--button));
-  gap: var(--gap);
+  grid-template-columns: repeat(2, calc(28 * var(--pixel)));
+  grid-template-rows: repeat(2, calc(28 * var(--pixel)));
+  gap: calc(4 * var(--pixel));
+  translate: 0 calc(-1 * var(--pixel));
 }
 
 .action-cross button {
-  width: var(--button);
-  height: var(--button);
+  width: calc(28 * var(--pixel));
+  height: calc(30 * var(--pixel));
   padding: 0;
   border: none;
-  border-radius: 50%;
-  color: var(--ink);
-  font: 700 calc(22 * var(--unit)) / 1 Roboto, system-ui, sans-serif;
+  background-color: transparent;
+  color: transparent;
+  font-size: 0;
   cursor: pointer;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
 }
 
-.action-cross button.pressed {
-  box-shadow: none;
-  color: var(--paper);
-  translate: 0 var(--lip);
-}
-
 .button-a {
+  --art: var(--art-button-a);
+
   grid-area: 1 / 2;
-  background: var(--r2);
-  box-shadow: 0 var(--lip) 0 var(--r1);
 }
 
 .button-b {
+  --art: var(--art-button-b);
+
   grid-area: 2 / 1;
-  background: var(--w2);
-  box-shadow: 0 var(--lip) 0 var(--w1);
 }
 
 .button-a.pressed {
-  background: var(--r1);
+  --art: var(--art-button-a-pressed);
 }
 
 .button-b.pressed {
-  background: var(--w1);
+  --art: var(--art-button-b-pressed);
 }
