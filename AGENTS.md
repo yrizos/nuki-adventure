@@ -43,7 +43,7 @@ Follow these steps in order for every commit.
 
 1. Run `git diff --cached` and verify that every staged change belongs to the intended commit.
 2. Run `pre-commit run --all-files` before invoking `git commit`. Never use `git commit` as the first run of the pre-commit checks.
-3. If a hook modifies files, inspect the changes, stage only the intended paths, and rerun `pre-commit run --all-files` until it passes.
+3. Inspect automatic hook changes and fix any reported issues that can be resolved within the intended change. Preserve unrelated work, stage only the intended paths, and rerun `pre-commit run --all-files` until all hooks pass. If a failure cannot be resolved within scope, stop and report it instead of committing or bypassing the hook.
 4. Create the commit with a cryptographic signature. Never create an unsigned commit. If signing fails, stop and report the error.
 5. Verify that the commit was created and is cryptographically signed.
 
