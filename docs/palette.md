@@ -7,7 +7,7 @@
 - In the game world, Y1 and Y2 are reserved for stars
 - Flowers use soft light steps, never the saturated steps reserved for orbs
 - Ink is the single outline color for everything the player interacts with: the hero, stars, orbs, signposts, stones and floor triggers
-- Pure black and pure white are not used
+- Pure black is used only for the desktop background outside the game column; pure white is not used
 - A new hue is added as a full ramp of four steps, never as a single color
 
 ## Ramps

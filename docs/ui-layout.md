@@ -25,6 +25,7 @@ Landscape orientation is not supported.
 ## Desktop
 
 - The layout is a centered column instead of spanning the full window width
+- The background outside the column is pitch black
 - The column narrows until all three areas fit within the window height
 - The message panel still keeps room for a few lines of text
 
