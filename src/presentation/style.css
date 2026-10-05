@@ -48,7 +48,8 @@ body {
 }
 
 /* Messages are drawn on the canvas, so screen readers get the same words from this hidden text. */
-.announcement {
+.announcement,
+.level-end-summary {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -73,6 +74,51 @@ body {
   top: 0;
   left: 0;
   image-rendering: pixelated;
+}
+
+/* The window starts below the switches, so they stay in reach while it is open. */
+.level-end {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: calc(env(safe-area-inset-top) + 35 * var(--pixel)) 0 calc(8 * var(--pixel));
+}
+
+.level-end[hidden] {
+  display: none;
+}
+
+.level-end-card {
+  position: relative;
+  flex: none;
+  width: calc(var(--card-width) * var(--pixel));
+  height: calc(var(--card-height) * var(--pixel));
+}
+
+.continue-button {
+  --art: var(--art-continue);
+
+  position: absolute;
+  top: calc(var(--button-top) * var(--pixel));
+  left: calc(var(--button-left) * var(--pixel));
+  width: calc(var(--button-width) * var(--pixel));
+  height: calc(var(--button-height) * var(--pixel));
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  color: transparent;
+  font-size: 0;
+  cursor: pointer;
+  outline: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.continue-button:active {
+  --art: var(--art-continue-pressed);
 }
 
 /* The switches are placed in panel pixels from the column edge, so their art lands on whole device pixels like the panel's. */
@@ -114,7 +160,8 @@ body {
 
 /* A drawn switch is smaller than a finger at narrow widths, so an invisible margin keeps the touch area at the Material minimum. */
 .sound-switch::before,
-.full-screen-switch::before {
+.full-screen-switch::before,
+.continue-button::before {
   content: '';
   position: absolute;
   inset: min(0px, (100% - 48px) / 2);
@@ -145,6 +192,8 @@ body {
 
 .sound-switch,
 .full-screen-switch,
+.level-end-card,
+.continue-button,
 .joystick,
 .knob,
 .arrow,

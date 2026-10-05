@@ -165,6 +165,13 @@ UI colors map onto Material 3 color roles.
 | Surface container | Sound and full screen switch fill | V0 |
 | Outline | Sound and full screen switch edge | Ink outline, then a V1 inner edge |
 | On surface | Sound switch speaker and full screen switch corners | Paper |
+| Surface container | Level end window fill | V0 |
+| Outline | Level end window edge | Ink outline, then a V1 inner edge |
+| On surface | Level end window title | Y2, with Y3 sparkles |
+| On surface | Level end window numbers | Paper |
+| On surface | Level end window clock | Paper face, N4 shading, Ink outline, marks and hands |
+| On surface | Level end window star | Matches the star in the game world |
+| Primary | ΣΥΝΕΧΕΙΑ button | Matches the A button, including its pressed state |
 
 ### Pressed State
 
@@ -193,6 +200,8 @@ Text targets the Web Content Accessibility Guidelines (WCAG) minimum of 4.5:1, a
 | P3 on Ink, lit joystick arrows | 11.3:1 |
 | Paper on V0, message text | 11.3:1 |
 | Paper on V0, sound and full screen switch symbols | 11.3:1 |
+| Paper on V0, level end window numbers | 11.3:1 |
+| Y2 on V0, level end window title | 8.3:1 |
 
 ### Collectibles
 

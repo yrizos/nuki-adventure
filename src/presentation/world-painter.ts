@@ -253,7 +253,7 @@ export class WorldPainter {
       objects.push({
         base: (row + 1) * tileSize,
         shadow: shadow(12, star.position, column * tileSize + 10, row * tileSize + 27),
-        paint: () => draw(starArt, column * tileSize + 4, row * tileSize + 4 + bob),
+        paint: () => draw(starArt, column * tileSize + 4, row * tileSize + 4 + bob, 'colored'),
       });
     }
     const hero = heroPixels(level);

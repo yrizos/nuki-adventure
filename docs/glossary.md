@@ -22,6 +22,10 @@ The button in the top right corner of the game view that turns the music and sou
 
 The button beside the sound switch that shows the page full screen or returns it to normal. It appears only where the browser supports full screen.
 
+### Level End Window
+
+The window that opens after the hero completes a level. It shows the time the level took and the stars collected out of all stars, and its ΣΥΝΕΧΕΙΑ button starts the next level.
+
 ## Joystick
 
 The virtual joystick on the left side of the control panel that the player uses for movement. It consists of a ring and a knob.

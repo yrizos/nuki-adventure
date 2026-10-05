@@ -1,13 +1,12 @@
 import type { Art } from './art/art';
 import { PixelGrid } from './art/art';
-import { glyphHeight, glyphs, glyphWidth } from './art/font';
+import { glyphHeight, glyphWidth, letterGap, writeText } from './art/font';
 import type { Picture } from './picture';
 import { bayer } from './world-painter';
 
 const margin = 8;
 const edge = 2;
 const padding = 10;
-const letterGap = 2;
 const advance = glyphWidth + letterGap;
 const lineHeight = glyphHeight + 7;
 const dissolveLength = bayer.length * bayer.length;
@@ -32,13 +31,7 @@ function boxArt(text: string, width: number): Art {
   // Clipping the corners rounds the box the way the panel's buttons are rounded, instead of a plain modern rectangle.
   for (const [column, row] of [[0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1]] as const) grid.put(column, row, '.');
   for (const [column, row] of [[1, 1], [width - 2, 1], [1, height - 2], [width - 2, height - 2]] as const) grid.put(column, row, 'k');
-  lines.forEach((line, row) => [...line].forEach((character, column) => {
-    const glyph = glyphs[character];
-    if (!glyph) throw new RangeError(`The font has no "${character}"`);
-    glyph.forEach((pixels, y) => [...pixels].forEach((pixel, x) => {
-      if (pixel === '#') grid.put(edge + padding + column * advance + x, edge + padding + row * lineHeight + y, 't');
-    }));
-  }));
+  lines.forEach((line, row) => writeText(grid, line, edge + padding, edge + padding + row * lineHeight, 't'));
   return grid.build({ k: 'Ink', e: 'V1', f: 'V0', t: 'Paper' });
 }
 

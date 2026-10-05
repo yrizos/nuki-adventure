@@ -1,4 +1,5 @@
 import { PixelGrid, type Art, type Legend } from './art';
+import { glyphHeight, textWidth, writeText } from './font';
 import type { PaletteCode } from '../palette';
 
 export const controlSize = 28;
@@ -12,6 +13,11 @@ const glyphs = {
 const dimple = ['.xx.', 'xxxx', 'xxxx', '.xx.'];
 const arrowUp = ['...xx...', '..xxxx..', '.xxxxxx.', 'xxxxxxxx'];
 const switchSize = 19;
+const continueText = 'ΣΥΝΕΧΕΙΑ';
+const continuePadding = 12;
+const continueFaceHeight = 23;
+export const continueWidth = textWidth(continueText) + 2 * continuePadding;
+export const continueHeight = continueFaceHeight + lipHeight;
 const speakerOn = ['...x.....x.', '..xx..x...x', 'xxxx...x..x', 'xxxx...x..x', 'xxxx...x..x', 'xxxx...x..x', 'xxxx...x..x', '..xx..x...x', '...x.....x.'];
 const speakerOff = ['...x.......', '..xx.......', 'xxxx..x...x', 'xxxx...x.x.', 'xxxx....x..', 'xxxx...x.x.', 'xxxx..x...x', '..xx.......', '...x.......'];
 const enterFullScreen = ['xxx...xxx', 'x.......x', 'x.......x', '.........', '.........', '.........', 'x.......x', 'x.......x', 'xxx...xxx'];
@@ -30,15 +36,22 @@ interface ControlColors {
   readonly mark: PaletteCode;
 }
 
-function control(colors: ControlColors, pressed: boolean, mark: readonly string[]): Art {
-  const grid = new PixelGrid(controlSize, controlSize + lipHeight);
+function inRoundedRectangle(width: number, height: number, radius: number, column: number, row: number): boolean {
+  if (column < 0 || row < 0 || column >= width || row >= height) return false;
+  const across = Math.min(column + 0.5, width - column - 0.5);
+  const down = Math.min(row + 0.5, height - row - 0.5);
+  return across >= radius || down >= radius || (radius - across) ** 2 + (radius - down) ** 2 <= radius * radius;
+}
+
+function pressable(width: number, height: number, inside: (column: number, row: number) => boolean, pressed: boolean): PixelGrid {
+  const grid = new PixelGrid(width, height + lipHeight);
   // A pressed control sinks by its lip height, so touch and keyboard presses read as the same physical push.
   const top = pressed ? lipHeight : 0;
-  const face = (column: number, row: number): boolean => inDisc(controlSize, column, row - top);
-  const lip = (column: number, row: number): boolean => !pressed && !face(column, row) && inDisc(controlSize, column, row - lipHeight);
+  const face = (column: number, row: number): boolean => inside(column, row - top);
+  const lip = (column: number, row: number): boolean => !pressed && !face(column, row) && inside(column, row - lipHeight);
   const solid = (column: number, row: number): boolean => face(column, row) || lip(column, row);
-  for (let row = 0; row < controlSize + lipHeight; row++) {
-    for (let column = 0; column < controlSize; column++) {
+  for (let row = 0; row < height + lipHeight; row++) {
+    for (let column = 0; column < width; column++) {
       if (!solid(column, row)) continue;
       const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([across, down]) => !solid(column + across!, row + down!));
       if (edge) grid.put(column, row, 'k');
@@ -48,14 +61,31 @@ function control(colors: ControlColors, pressed: boolean, mark: readonly string[
       else grid.put(column, row, 'f');
     }
   }
+  return grid;
+}
+
+function controlLegend(colors: ControlColors): Legend {
+  return { k: 'Ink', f: colors.face, h: colors.highlight, s: colors.shading, l: colors.lip, m: colors.mark };
+}
+
+function control(colors: ControlColors, pressed: boolean, mark: readonly string[]): Art {
+  const grid = pressable(controlSize, controlSize, (column, row) => inDisc(controlSize, column, row), pressed);
+  const top = pressed ? lipHeight : 0;
   const width = mark[0]!.length;
   const left = (controlSize - width) / 2;
   const markTop = top + Math.floor((controlSize - mark.length) / 2);
   mark.forEach((line, row) => [...line].forEach((symbol, column) => {
     if (symbol === 'x') grid.put(left + column, markTop + row, 'm');
   }));
-  const legend: Legend = { k: 'Ink', f: colors.face, h: colors.highlight, s: colors.shading, l: colors.lip, m: colors.mark };
-  return grid.build(legend);
+  return grid.build(controlLegend(colors));
+}
+
+function continueButton(colors: ControlColors, pressed: boolean): Art {
+  const inside = (column: number, row: number): boolean => inRoundedRectangle(continueWidth, continueFaceHeight, 6, column, row);
+  const grid = pressable(continueWidth, continueFaceHeight, inside, pressed);
+  const top = (pressed ? lipHeight : 0) + Math.floor((continueFaceHeight - glyphHeight) / 2);
+  writeText(grid, continueText, continuePadding, top, 'm');
+  return grid.build(controlLegend(colors));
 }
 
 function ring(): Art {
@@ -133,4 +163,7 @@ export const panelArt: Readonly<Record<string, Art>> = {
   'sound-off': switchArt(speakerOff),
   'full-screen-enter': switchArt(enterFullScreen),
   'full-screen-leave': switchArt(leaveFullScreen),
+  // ΣΥΝΕΧΕΙΑ wears the A button colors, so the way forward looks like the button that already means yes.
+  continue: continueButton(buttonA, false),
+  'continue-pressed': continueButton(buttonAPressed, true),
 };

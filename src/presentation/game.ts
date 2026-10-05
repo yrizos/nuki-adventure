@@ -4,9 +4,10 @@ import type { TilePosition } from '../domain/level/position';
 import { firstLevel, firstLevelId } from '../infrastructure/first-level';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
 import type { Art } from './art/art';
-import { panelArt } from './art/panel';
+import { continueHeight, continueWidth, panelArt } from './art/panel';
 import { Controls } from './controls';
 import { HeroAnimator } from './hero-animator';
+import { continueTop, levelEndArt, levelEndText, type LevelResult } from './level-end';
 import { MessageBox } from './message-box';
 import { Picture, sprite } from './picture';
 import { Sound } from './sound';
@@ -26,7 +27,8 @@ type Phase =
   | { readonly name: 'playing'; readonly restored: boolean }
   | { readonly name: 'holding'; readonly until: number; readonly origin: TilePosition; readonly color: OrbColor }
   | { readonly name: 'restoring'; readonly since: number; readonly origin: TilePosition }
-  | { readonly name: 'closing'; readonly since: number };
+  | { readonly name: 'closing'; readonly since: number; readonly result: LevelResult }
+  | { readonly name: 'ended' };
 
 function element<T extends HTMLElement>(root: Document, selector: string): T {
   const found = root.querySelector<T>(selector);
@@ -126,10 +128,17 @@ export function startGame(root: Document): void {
   watchPixelRatio();
   resizeFromLayout();
 
-  // Until a second level exists, passing through the door starts the first level again from its faded state.
-  const begin = (): { play: PlayLevel; painter: WorldPainter; animator: HeroAnimator; messageBox: MessageBox } => {
+  let frame = 0;
+  // Until a second level exists, continuing after the door starts the first level again from its faded state.
+  const begin = (): { play: PlayLevel; painter: WorldPainter; animator: HeroAnimator; messageBox: MessageBox; startFrame: number } => {
     const play = new PlayLevel(new InMemoryLevelRepository([firstLevel()]));
-    return { play, painter: new WorldPainter(play.view(firstLevelId)), animator: new HeroAnimator(), messageBox: new MessageBox() };
+    return {
+      play,
+      painter: new WorldPainter(play.view(firstLevelId)),
+      animator: new HeroAnimator(),
+      messageBox: new MessageBox(),
+      startFrame: frame,
+    };
   };
   const sound = new Sound(window);
   const soundSwitch = element<HTMLButtonElement>(root, '.sound-switch');
@@ -149,15 +158,41 @@ export function startGame(root: Document): void {
   });
   let run = begin();
   let phase: Phase = { name: 'playing', restored: false };
-  let frame = 0;
+
+  const levelEnd = element<HTMLElement>(root, '.level-end');
+  const levelEndCard = element<HTMLElement>(root, '.level-end-card');
+  const levelEndSummary = element<HTMLElement>(root, '.level-end-summary');
+  const continueButton = element<HTMLButtonElement>(root, '.continue-button');
+  continueButton.style.setProperty('--button-top', String(continueTop));
+  continueButton.style.setProperty('--button-width', String(continueWidth));
+  continueButton.style.setProperty('--button-height', String(continueHeight));
+  const openLevelEnd = (result: LevelResult): void => {
+    const art = levelEndArt(result);
+    const width = art.rows[0]!.length;
+    levelEndCard.style.setProperty('--art', `url(${artUrl(root, art)})`);
+    levelEndCard.style.setProperty('--card-width', String(width));
+    levelEndCard.style.setProperty('--card-height', String(art.rows.length));
+    continueButton.style.setProperty('--button-left', String(Math.floor((width - continueWidth) / 2)));
+    levelEndSummary.textContent = levelEndText(result);
+    levelEnd.hidden = false;
+    continueButton.focus({ preventScroll: true });
+  };
+  const continuePlaying = (): void => {
+    if (phase.name !== 'ended') return;
+    levelEnd.hidden = true;
+    run = begin();
+    phase = { name: 'playing', restored: false };
+  };
+  continueButton.addEventListener('click', continuePlaying);
 
   const tick = (): void => {
     // A press is taken every frame, so one made during a cutscene is not read later by surprise.
     const pressedA = controls.takePress('a');
     const pressedB = controls.takePress('b');
     const { messageBox } = run;
-    if (phase.name === 'playing') {
-      const signpostText = phase.restored ? messages.doorOpen : messages.hint;
+    if (phase.name === 'playing' || phase.name === 'holding' || phase.name === 'restoring') {
+      // The orb is already collected while it is held and the color spreads, so the signpost speaks of the open door.
+      const signpostText = phase.name !== 'playing' || phase.restored ? messages.doorOpen : messages.hint;
       const dismissing = (pressedA || pressedB) && messageBox.text === signpostText;
       if (dismissing) messageBox.hide(frame);
       const reading = (pressedA || pressedB) && !dismissing;
@@ -172,7 +207,10 @@ export function startGame(root: Document): void {
           phase = { name: 'holding', until: frame + holdFrames, origin: event.position, color: event.color };
         } else if (event instanceof LevelCompleted) {
           sound.door();
-          phase = { name: 'closing', since: frame };
+          const level = run.play.view(firstLevelId);
+          const collectedStars = level.collected.length;
+          const result = { frames: frame - run.startFrame, collectedStars, starCount: collectedStars + level.stars.length };
+          phase = { name: 'closing', since: frame, result };
         }
       }
       if (run.play.view(firstLevelId).hero.step?.framesTaken === 0) sound.footstep();
@@ -180,14 +218,17 @@ export function startGame(root: Document): void {
         run.play.view(firstLevelId).hero.step) {
         messageBox.hide(frame);
       }
-    } else if (phase.name === 'holding' && frame >= phase.until) {
+    }
+    if (phase.name === 'holding' && frame >= phase.until) {
       sound.restoring();
       phase = { name: 'restoring', since: frame, origin: phase.origin };
     } else if (phase.name === 'restoring' && frame - phase.since >= run.painter.restorationLength(phase.origin)) {
       phase = { name: 'playing', restored: true };
     } else if (phase.name === 'closing' && frame - phase.since >= closingLength) {
-      run = begin();
-      phase = { name: 'playing', restored: false };
+      openLevelEnd(phase.result);
+      phase = { name: 'ended' };
+    } else if (phase.name === 'ended' && (pressedA || pressedB)) {
+      continuePlaying();
     }
     run.animator.advance(run.play.view(firstLevelId).hero);
     const spoken = run.messageBox.text ?? '';
@@ -205,8 +246,9 @@ export function startGame(root: Document): void {
     };
     if (phase.name === 'restoring') run.painter.paintRestoring(picture, scene, phase.origin, frame - phase.since);
     else if (phase.name === 'closing') run.painter.paintClosing(picture, scene, frame - phase.since);
+    else if (phase.name === 'ended') picture.fill('Ink');
     else run.painter.paint(picture, scene, phase.name === 'playing' && phase.restored ? 'colored' : 'faded');
-    if (phase.name !== 'closing') run.messageBox.paint(picture, frame);
+    if (phase.name !== 'closing' && phase.name !== 'ended') run.messageBox.paint(picture, frame);
     image.data.set(picture.pixels);
     context.putImageData(image, 0, 0);
   };

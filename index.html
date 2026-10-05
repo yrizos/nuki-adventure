@@ -9,6 +9,12 @@
     <main class="screen">
       <div class="game-view">
         <canvas></canvas>
+        <section class="level-end" role="dialog" aria-modal="true" aria-labelledby="level-end-summary" hidden>
+          <div class="level-end-card">
+            <p class="level-end-summary" id="level-end-summary"></p>
+            <button class="continue-button" type="button">ΣΥΝΕΧΕΙΑ</button>
+          </div>
+        </section>
         <button class="full-screen-switch" type="button" aria-label="Full screen" aria-pressed="false"></button>
         <button class="sound-switch" type="button" aria-label="Sound" aria-pressed="true"></button>
       </div>
