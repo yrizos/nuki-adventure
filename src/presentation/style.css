@@ -1,0 +1,191 @@
+:root {
+  --ink: #1c1a2e;
+  --n1: #34344f;
+  --n3: #8a8ca6;
+  --n4: #c4c6d6;
+  --paper: #f5f2e9;
+  --r1: #c2303e;
+  --r2: #f0604f;
+  --w1: #2f67b8;
+  --w2: #4fa0e3;
+  /* The control panel is drawn for a 360 pixel column and scaled as a whole, so its controls keep their shapes and spacing at every width. */
+  --design-width: 360;
+  --control-panel-height: 184;
+  --narrowest-column: 320px;
+  --minimum-game-view: 224px;
+  --device-pixel: 1px;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #000000;
+}
+
+body {
+  display: flex;
+  justify-content: safe center;
+  font-family: Roboto, system-ui, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.screen {
+  --column-width: max(100vw, var(--narrowest-column), var(--minimum-game-view));
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: round(down, var(--column-width), var(--device-pixel));
+  min-height: 100dvh;
+  container-type: inline-size;
+  translate: var(--pixel-alignment, 0px) 0;
+}
+
+@media (min-width: 600px) {
+  .screen {
+    --column-width: max(
+      var(--narrowest-column),
+      var(--minimum-game-view),
+      min(100vw, 100dvh * var(--design-width) / (var(--design-width) + var(--control-panel-height)))
+    );
+  }
+}
+
+.game-view {
+  position: relative;
+  flex: 1;
+  min-height: var(--minimum-game-view);
+  overflow: hidden;
+  background: var(--ink);
+}
+
+.game-view canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  image-rendering: pixelated;
+}
+
+.control-panel {
+  --unit: calc(100cqi / var(--design-width));
+  --button: calc(56 * var(--unit));
+  --gap: calc(8 * var(--unit));
+  --lip: calc(4 * var(--unit));
+
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  height: calc(var(--control-panel-height) * var(--unit));
+  padding: calc(32 * var(--unit));
+  background: var(--n1);
+  touch-action: none;
+}
+
+.joystick {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: calc(120 * var(--unit));
+  height: calc(120 * var(--unit));
+  box-sizing: border-box;
+  border: calc(2 * var(--unit)) solid var(--n3);
+  border-radius: 50%;
+  background: var(--n1);
+  touch-action: none;
+}
+
+.arrow {
+  position: absolute;
+  width: calc(12 * var(--unit));
+  height: calc(8 * var(--unit));
+  background: var(--n3);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.arrow-up {
+  top: calc(8 * var(--unit));
+  left: calc(50% - 6 * var(--unit));
+}
+
+.arrow-down {
+  bottom: calc(8 * var(--unit));
+  left: calc(50% - 6 * var(--unit));
+  rotate: 180deg;
+}
+
+.arrow-left {
+  top: calc(50% - 4 * var(--unit));
+  left: calc(6 * var(--unit));
+  rotate: -90deg;
+}
+
+.arrow-right {
+  top: calc(50% - 4 * var(--unit));
+  right: calc(6 * var(--unit));
+  rotate: 90deg;
+}
+
+.knob {
+  width: var(--button);
+  height: var(--button);
+  border-radius: 50%;
+  background: var(--n4);
+  box-shadow: 0 var(--lip) 0 var(--n3);
+  pointer-events: none;
+}
+
+.joystick.active .knob {
+  box-shadow: none;
+}
+
+.action-cross {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(2, var(--button));
+  grid-template-rows: repeat(2, var(--button));
+  gap: var(--gap);
+}
+
+.action-cross button {
+  width: var(--button);
+  height: var(--button);
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  color: var(--ink);
+  font: 700 calc(22 * var(--unit)) / 1 Roboto, system-ui, sans-serif;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.action-cross button.pressed {
+  box-shadow: none;
+  color: var(--paper);
+  translate: 0 var(--lip);
+}
+
+.button-a {
+  grid-area: 1 / 2;
+  background: var(--r2);
+  box-shadow: 0 var(--lip) 0 var(--r1);
+}
+
+.button-b {
+  grid-area: 2 / 1;
+  background: var(--w2);
+  box-shadow: 0 var(--lip) 0 var(--w1);
+}
+
+.button-a.pressed {
+  background: var(--r1);
+}
+
+.button-b.pressed {
+  background: var(--w1);
+}

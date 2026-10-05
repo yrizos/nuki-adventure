@@ -6,6 +6,22 @@
     <title>The Lost Messages</title>
   </head>
   <body>
+    <main class="screen">
+      <div class="game-view"><canvas></canvas></div>
+      <div class="control-panel">
+        <div class="joystick" aria-hidden="true">
+          <span class="arrow arrow-up"></span>
+          <span class="arrow arrow-right"></span>
+          <span class="arrow arrow-down"></span>
+          <span class="arrow arrow-left"></span>
+          <div class="knob"></div>
+        </div>
+        <div class="action-cross">
+          <button class="button-a" type="button">A</button>
+          <button class="button-b" type="button">B</button>
+        </div>
+      </div>
+    </main>
     <script type="module" src="/src/index.ts"></script>
   </body>
 </html>

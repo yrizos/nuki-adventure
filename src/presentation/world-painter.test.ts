@@ -1,0 +1,260 @@
+import { expect, test, vi } from 'vitest';
+import { Hero, Step } from '../domain/level/hero';
+import { Level, LevelId, Orb, OrbColor, Stone } from '../domain/level/level';
+import { Direction, TilePosition } from '../domain/level/position';
+import { Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
+import { firstLevel } from '../infrastructure/first-level';
+import type { Art } from './art/art';
+import * as scenery from './art/scenery';
+import * as sprites from './art/sprites';
+import { Picture, sprite } from './picture';
+import { faded, palette, type PaletteCode } from './palette';
+import { heroPixels, propVariants, tileSize, WorldPainter } from './world-painter';
+
+function allArt(value: unknown): Art[] {
+  if (value && typeof value === 'object' && 'rows' in value && 'legend' in value) return [value as Art];
+  if (value && typeof value === 'object') return Object.values(value).flatMap(allArt);
+  return [];
+}
+
+function renderingLevel(ground = Ground.Grass, color = OrbColor.Violet, hero = TilePosition.at(2, 2), stones: readonly Stone[] = [], trees: readonly Tree[] = []): Level {
+  return new Level(LevelId.of('render'), Scenery.of(LevelSize.of(12, 12),
+    Array.from({ length: 12 }, () => Array.from({ length: 12 }, () => ground)), trees, []), stones,
+    Orb.at(TilePosition.at(0, 0), color), new Hero(hero, Direction.Down));
+}
+
+function colorAt(picture: Picture, column: number, row: number): string {
+  const offset = (row * picture.width + column) * 4;
+  return `#${[...picture.pixels.subarray(offset, offset + 3)].map((value) => value.toString(16).padStart(2, '0')).join('').toUpperCase()}`;
+}
+
+test('every piece of art uses only its legend and keeps a rectangular shape', () => {
+  const art = allArt({ ...scenery, ...sprites });
+  expect(art.length).toBeGreaterThan(100);
+  for (const piece of art) expect(() => sprite(piece)).not.toThrow();
+});
+
+test('the first level has ground art for every place where terrains meet', () => {
+  expect(() => new WorldPainter(firstLevel())).not.toThrow();
+});
+
+test('native terrain grids cover all 81 three-terrain corner combinations', () => {
+  expect(Object.keys(scenery.terrainArt)).toHaveLength(81);
+  for (const art of allArt(scenery)) {
+    const size = art.legend.t === 'E1' ? 64 : 32;
+    expect(sprite(art).width).toBe(size);
+    expect(sprite(art).height).toBe(size);
+    expect(Object.values(art.legend)).not.toContain('Ink');
+  }
+  for (const topLeft of [Ground.Grass, Ground.Path, Ground.Water]) {
+    for (const topRight of [Ground.Grass, Ground.Path, Ground.Water]) {
+      for (const bottomLeft of [Ground.Grass, Ground.Path, Ground.Water]) {
+        for (const bottomRight of [Ground.Grass, Ground.Path, Ground.Water]) {
+          const ground = Array.from({ length: 4 }, () => Array.from({ length: 4 }, () => Ground.Grass));
+          ground[1]![1] = topLeft;
+          ground[1]![2] = topRight;
+          ground[2]![1] = bottomLeft;
+          ground[2]![2] = bottomRight;
+          const level = new Level(LevelId.of('terrain'), Scenery.of(LevelSize.of(4, 4), ground, [], []), [],
+            Orb.at(TilePosition.at(3, 3), OrbColor.Violet), new Hero(TilePosition.at(0, 0), Direction.Down));
+          expect(() => new WorldPainter(level)).not.toThrow();
+        }
+      }
+    }
+  }
+});
+
+test('native interactive sprites use their documented dimensions and distinct orb symbols', () => {
+  for (const art of allArt(sprites.heroArt)) {
+    expect(sprite(art).width).toBe(32);
+    expect(sprite(art).height).toBe(32);
+  }
+  for (const art of sprites.stoneVariants) expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
+  for (const art of Object.values(sprites.orbArt)) expect([sprite(art).width, sprite(art).height]).toEqual([24, 24]);
+  expect(new Set(Object.values(sprites.orbArt).map((art) => art.rows.join('\n'))).size).toBe(4);
+});
+
+test('interactive sprites keep a closed one-pixel Ink silhouette', () => {
+  const art: readonly Art[] = [...Object.values(sprites.heroArt).flatMap((direction) => [direction.stand, direction.breathe, ...direction.walk, direction.holding!]),
+    ...sprites.stoneVariants, ...Object.values(sprites.orbArt)];
+  for (const piece of art) {
+    piece.rows.forEach((row, vertical) => [...row].forEach((symbol, horizontal) => {
+      if (symbol === '.') return;
+      const boundary = [[horizontal - 1, vertical], [horizontal + 1, vertical], [horizontal, vertical - 1], [horizontal, vertical + 1]]
+        .some(([column, line]) => (piece.rows[line!]?.[column!] ?? '.') === '.');
+      if (boundary) expect(piece.legend[symbol]).toBe('Ink');
+    }));
+  }
+});
+
+test('ground variants keep equal detail density within the allowed twenty percent', () => {
+  for (const [variants, base] of [[scenery.grassArt, 'g'], [scenery.pathArt, 'p'], [scenery.waterArt.map((frames) => frames[0]!), 'w']] as const) {
+    const counts = variants.map((art) => art.rows.join('').replaceAll(base, '').length);
+    expect(new Set(counts).size).toBe(1);
+    expect(counts[0]).toBeLessThanOrEqual(32 * 32 * 0.2);
+    if (base === 'g') expect(counts[0]).toBeGreaterThanOrEqual(32 * 32 * 0.1);
+    for (const art of variants) {
+      expect(art.rows[0]).toBe(base.repeat(32));
+      expect(art.rows[31]).toBe(base.repeat(32));
+      expect(art.rows.every((row) => row[0] === base && row[31] === base)).toBe(true);
+    }
+  }
+});
+
+test('touching prop variants differ and placement is independent of input order', () => {
+  const positions = [TilePosition.at(0, 0), TilePosition.at(1, 0), TilePosition.at(0, 1), TilePosition.at(1, 1)];
+  const variants = propVariants(positions.map((position) => [position]), 5);
+  for (let first = 0; first < positions.length; first++) {
+    for (let second = first + 1; second < positions.length; second++) {
+      if (Math.abs(positions[first]!.column - positions[second]!.column) + Math.abs(positions[first]!.row - positions[second]!.row) === 1) {
+        expect(variants[first]).not.toBe(variants[second]);
+      }
+    }
+  }
+  expect(propVariants(positions.toReversed().map((position) => [position]), 5).toReversed()).toEqual(variants);
+});
+
+test.each([[Ground.Grass, 'G1', 'N2'], [Ground.Path, 'E2', 'N3']] as const)('contact shadows on %s use the surface shade in both world versions', (ground, colored, neutral) => {
+  const level = renderingLevel(ground, OrbColor.Violet, TilePosition.at(2, 2), [Stone.at(TilePosition.at(4, 4))]);
+  const painter = new WorldPainter(level);
+  for (const [version, code] of [['colored', colored], ['faded', neutral]] as const) {
+    const picture = new Picture(384, 384);
+    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, version);
+    expect(colorAt(picture, 73, 96)).toBe(palette[code]);
+    expect(colorAt(picture, 137, 155)).toBe(palette[code]);
+  }
+  const shadow = sprites.groundShadow(14, colored);
+  expect(shadow.rows.map((row) => row.replaceAll('.', '').length)).toEqual([14, 10, 10, 10, 6]);
+});
+
+test.each([[OrbColor.Red, 'R2'], [OrbColor.Blue, 'W2'], [OrbColor.Violet, 'V2'], [OrbColor.Teal, 'T2']] as const)(
+  '%s orbs keep their actual color both on the ground and above the hero', (color, code) => {
+    const level = renderingLevel(Ground.Grass, color);
+    const painter = new WorldPainter(level);
+    const picture = new Picture(384, 384);
+    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, 'faded');
+    expect(colorAt(picture, 20, 10)).toBe(palette[code]);
+    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.holding!, heldOrb: color }, 'faded');
+    expect(colorAt(picture, 84, 52)).toBe(palette[code]);
+  },
+);
+
+test('oversized views extend edge terrain without leaving empty map margins', () => {
+  const level = renderingLevel();
+  const picture = new Picture(801, 901);
+  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, 'colored');
+  for (const [column, row] of [[0, 0], [800, 0], [0, 900], [800, 900]]) {
+    expect(['G1', 'G2', 'G3'].map((code) => palette[code as PaletteCode])).toContain(colorAt(picture, column!, row!));
+  }
+});
+
+test('whole-pixel camera centers the hero until clamped at a map edge', () => {
+  for (const [position, expected] of [[TilePosition.at(5, 5), [96, 115]], [TilePosition.at(0, 0), [0, 0]], [TilePosition.at(11, 11), [193, 231]]] as const) {
+    const level = renderingLevel(Ground.Grass, OrbColor.Violet, position);
+    const picture = new Picture(225, 263);
+    const draw = vi.spyOn(picture, 'draw');
+    new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, 'colored');
+    expect(draw.mock.calls.find(([art]) => art === sprites.heroArt.down.stand)?.slice(1, 3)).toEqual(expected);
+    expect(draw.mock.calls.every(([, column, row]) => Number.isInteger(column) && Number.isInteger(row))).toBe(true);
+  }
+});
+
+test('tall props occlude the hero behind them and never paint over a hero in front', () => {
+  const tree = Tree.at(TilePosition.at(4, 5));
+  for (const [hero, treeLast] of [[TilePosition.at(4, 4), true], [TilePosition.at(4, 6), false]] as const) {
+    const level = renderingLevel(Ground.Grass, OrbColor.Violet, hero, [], [tree]);
+    const picture = new Picture(384, 384);
+    const draw = vi.spyOn(picture, 'draw');
+    new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, 'colored');
+    const heroIndex = draw.mock.calls.findIndex(([art]) => art === sprites.heroArt.down.stand);
+    const treeIndex = draw.mock.calls.findIndex(([art]) => art.legend.t === 'E1');
+    expect(treeIndex > heroIndex).toBe(treeLast);
+  }
+});
+
+test('restoration advances outward with palette-only pixels and matches both endpoint worlds', () => {
+  const level = renderingLevel();
+  const painter = new WorldPainter(level);
+  const scene = { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null };
+  const origin = TilePosition.at(2, 2);
+  const colored = new Picture(224, 224);
+  const neutral = new Picture(224, 224);
+  const dissolve = new Picture(224, 224);
+  painter.paint(colored, scene, 'colored');
+  painter.paint(neutral, scene, 'faded');
+  painter.paintRestoring(dissolve, scene, origin, -1);
+  expect(dissolve.pixels).toEqual(neutral.pixels);
+  painter.paintRestoring(dissolve, scene, origin, painter.restorationLength(origin));
+  expect(dissolve.pixels).toEqual(colored.pixels);
+  const colors = new Set(Object.values(palette));
+  for (const frame of [0, 3, 4, 15, 16, 31]) {
+    painter.paintRestoring(dissolve, scene, origin, frame);
+    for (let row = 0; row < dissolve.height; row++) {
+      for (let column = 0; column < dissolve.width; column++) {
+        expect(colors.has(colorAt(dissolve, column, row) as typeof palette[keyof typeof palette])).toBe(true);
+        expect(dissolve.pixels[(row * dissolve.width + column) * 4 + 3]).toBe(255);
+      }
+    }
+  }
+  painter.paintRestoring(dissolve, scene, origin, 0);
+  expect(colorAt(dissolve, 64, 64)).toBe(colorAt(colored, 64, 64));
+  expect(colorAt(dissolve, 32, 32)).toBe(colorAt(neutral, 32, 32));
+});
+
+test('every palette step fades to a neutral while neutrals preserve their values', () => {
+  const neutrals = ['Ink', 'N1', 'N2', 'N3', 'N4', 'Paper'];
+  for (const code of Object.keys(palette) as (keyof typeof palette)[]) {
+    expect(neutrals).toContain(faded(code));
+    if (neutrals.includes(code)) expect(faded(code)).toBe(code);
+  }
+});
+
+test('corrected faded art preserves dimensions, silhouette, and neutral colors', () => {
+  const art: Art = { legend: { g: 'G2' }, rows: ['gg.'], faded: { legend: { n: 'N4' }, rows: ['nn.'] } };
+  expect([...sprite(art).faded.slice(0, 4)]).toEqual([196, 198, 214, 255]);
+  expect(() => sprite({ ...art, faded: { legend: { n: 'N4' }, rows: ['n.'] } })).toThrow(/dimensions/);
+  expect(() => sprite({ ...art, faded: { legend: { n: 'N4' }, rows: ['n..'] } })).toThrow(/silhouette/);
+  expect(() => sprite({ ...art, faded: { legend: { n: 'G3' }, rows: ['nn.'] } })).toThrow(/neutral/);
+});
+
+test('sprites reject fractional placement instead of corrupting adjacent pixels', () => {
+  const picture = new Picture(32, 32);
+  expect(() => picture.draw({ legend: { g: 'G2' }, rows: ['gg'] }, 0.5, 0, 'colored')).toThrow(/whole pixel/);
+});
+
+test.each([
+  Direction.Up, Direction.Down, Direction.Left, Direction.Right,
+  Direction.UpLeft, Direction.UpRight, Direction.DownLeft, Direction.DownRight,
+])('renders consecutive %s steps without overshooting or snapping backward', (direction) => {
+  const start = TilePosition.at(5, 5);
+  const hero = new Hero(start, direction.facing);
+  const ground = Array.from({ length: 12 }, () => Array.from({ length: 12 }, () => Ground.Grass));
+  const level = new Level(
+    LevelId.of('movement'),
+    Scenery.of(LevelSize.of(12, 12), ground, [], []),
+    [],
+    Orb.at(TilePosition.at(0, 0), OrbColor.Violet),
+    hero,
+  );
+  const duration = Step.begin(direction).duration;
+  expect(tileSize).toBe(32);
+  expect(duration).toBe(direction.isDiagonal ? 23 : 16);
+  let previous = heroPixels(level);
+  for (let frame = 0; frame <= duration * 2; frame++) {
+    hero.steer(direction, () => true);
+    const pixels = heroPixels(level);
+    const travelled = Math.floor(frame / duration) * tileSize + Math.round(((frame % duration) / duration) * tileSize);
+    expect(pixels).toEqual({
+      x: start.column * tileSize + direction.columnStep * travelled,
+      y: start.row * tileSize + direction.rowStep * travelled,
+    });
+    expect(Number.isInteger(pixels.x) && Number.isInteger(pixels.y)).toBe(true);
+    expect(Math.abs(pixels.x - previous.x)).toBeLessThanOrEqual(2);
+    expect(Math.abs(pixels.y - previous.y)).toBeLessThanOrEqual(2);
+    if (frame > 0 && !direction.isDiagonal) {
+      expect(Math.abs(pixels.x - previous.x) + Math.abs(pixels.y - previous.y)).toBe(2);
+    }
+    previous = pixels;
+    hero.advance();
+  }
+});
