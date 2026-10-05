@@ -18,6 +18,10 @@ Use the [Makefile](Makefile) targets for project commands instead of invoking th
 - `make check` runs the combined checks without building.
 - `make check-push` runs tests and the browser build.
 
+## Check Failures
+
+Fix check and hook failures; do not merely report them. Run configured auto-fix hooks or the relevant `make *-fix` target, inspect changes, fix remaining issues manually, and rerun until checks pass. Preserve unrelated work; report a blocker only after exhausting fixes within scope.
+
 ## Markdown
 
 Follow the rules configured in [.markdownlint.json](.markdownlint.json) when editing Markdown and run `make markdown` afterward. The pre-commit hook rejects commits with Markdown lint violations.
@@ -25,6 +29,8 @@ Follow the rules configured in [.markdownlint.json](.markdownlint.json) when edi
 ## User Interface
 
 Read [docs/ui-layout.md](docs/ui-layout.md), which defines layout, sizing, orientation, styling, and controls, before implementing, reviewing, or testing those behaviors.
+
+Use [docs/palette.md](docs/palette.md) as the color source of truth when implementing, reviewing, or testing game art, interface colors, or contrast.
 
 ## Git
 
@@ -51,7 +57,7 @@ Follow these steps in order for every commit.
 
 1. Run `git diff --cached` and verify that every staged change belongs to the intended commit.
 2. Run `pre-commit run --all-files` before invoking `git commit`. Never use `git commit` as the first run of the pre-commit checks.
-3. Inspect automatic hook changes and fix any reported issues that can be resolved within the intended change. Preserve unrelated work, stage only the intended paths, and rerun `pre-commit run --all-files` until all hooks pass. If a failure cannot be resolved within scope, stop and report it instead of committing or bypassing the hook.
+3. Inspect auto-fixes, fix remaining failures, stage only intended paths, and rerun `pre-commit run --all-files` until all hooks pass. File modifications by a hook require another run, not a failure report. Never bypass hooks or commit with failures.
 4. Create the commit with a cryptographic signature. Never create an unsigned commit. If signing fails, stop and report the error.
 5. Verify that the commit was created and is cryptographically signed.
 
