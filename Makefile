@@ -1,6 +1,6 @@
-.DEFAULT_GOAL := check
+.DEFAULT_GOAL := help
 
-.PHONY: help tools dependencies install dev build test test-watch typecheck lint lint-fix markdown markdown-fix audit check check-push hooks
+.PHONY: help tools dependencies install dev build test test-watch typecheck lint fix markdown audit check check-push hooks
 
 help:
 	@printf '%-20s %s\n' \
@@ -14,11 +14,10 @@ help:
 		'make test-watch' 'Run unit tests in watch mode' \
 		'make typecheck' 'Check TypeScript types' \
 		'make lint' 'Check code lint rules' \
-		'make lint-fix' 'Apply code lint fixes' \
+		'make fix' 'Apply all available code and lint fixes' \
 		'make markdown' 'Check Markdown lint rules' \
-		'make markdown-fix' 'Apply Markdown lint fixes' \
 		'make audit' 'Check dependencies for security vulnerabilities' \
-		'make check' 'Run combined checks without building (default)' \
+		'make check' 'Run combined checks without building' \
 		'make check-push' 'Run unit tests and the browser build' \
 		'make hooks' 'Install Git hooks'
 
@@ -52,14 +51,14 @@ typecheck: dependencies
 lint: dependencies
 	npm run lint
 
-lint-fix: dependencies
-	npm run lint:fix
+fix: dependencies
+	@exit_code=0; \
+		npm run lint:fix || exit_code=$$?; \
+		npm run lint:markdown:fix || exit_code=$$?; \
+		exit $$exit_code
 
 markdown: dependencies
 	npm run lint:markdown
-
-markdown-fix: dependencies
-	npm run lint:markdown:fix
 
 audit: dependencies
 	npm run audit

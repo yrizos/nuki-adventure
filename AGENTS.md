@@ -14,13 +14,13 @@ Use the [Makefile](Makefile) targets for project commands instead of invoking th
 - `make build` typechecks and builds the browser application.
 - `make test` runs unit tests, and `make test-watch` runs them in watch mode.
 - `make typecheck`, `make lint`, `make markdown`, and `make audit` run individual checks.
-- `make lint-fix` and `make markdown-fix` apply available lint fixes.
+- `make fix` applies all available code and Markdown lint fixes. It attempts both fixers even if one fails and exits with a failure status if either fails.
 - `make check` runs the combined checks without building.
 - `make check-push` runs tests and the browser build.
 
 ## Check Failures
 
-Fix check and hook failures; do not merely report them. Run configured auto-fix hooks or the relevant `make *-fix` target, inspect changes, fix remaining issues manually, and rerun until checks pass. Preserve unrelated work; report a blocker only after exhausting fixes within scope.
+Fix check and hook failures; do not merely report them. Run configured auto-fix hooks or `make fix`, inspect changes, fix remaining issues manually, and rerun until checks pass. Preserve unrelated work; report a blocker only after exhausting fixes within scope.
 
 ## Markdown
 
