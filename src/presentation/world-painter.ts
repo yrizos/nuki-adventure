@@ -167,7 +167,7 @@ export class WorldPainter {
     };
   }
 
-  // Color is cut along tile edges rather than per prop, because a tree or the door can straddle two areas and only one of them may be restored.
+  // Color is split by tile rather than per prop, because a tree or the door can straddle two areas and only one of them may be restored.
   private compose(target: Picture, scene: Scene, restored: readonly Area[]): void {
     const { columns, rows } = scene.level.scenery.size;
     const colored = Array.from({ length: columns * rows }, (_, index) =>
@@ -181,10 +181,23 @@ export class WorldPainter {
     this.colored = sized(this.colored, target);
     this.paintVersion(this.colored, scene, 'colored', false);
     const camera = this.camera(scene.level, target);
+    const share = (column: number, row: number): number =>
+      colored[clamp(row, 0, rows - 1) * columns + clamp(column, 0, columns - 1)] ? 1 : 0;
+    // Color fades between neighboring tile centers, so the seam is a one tile wide dither band rather than a hard tile edge.
     for (let y = 0; y < target.height; y++) {
-      const row = clamp(Math.floor((y + camera.y) / tileSize), 0, rows - 1);
+      const worldY = y + camera.y;
+      const along = (worldY + 0.5) / tileSize - 0.5;
+      const row = Math.floor(along);
+      const down = along - row;
       for (let x = 0; x < target.width; x++) {
-        if (!colored[row * columns + clamp(Math.floor((x + camera.x) / tileSize), 0, columns - 1)]) continue;
+        const worldX = x + camera.x;
+        const across = (worldX + 0.5) / tileSize - 0.5;
+        const column = Math.floor(across);
+        const right = across - column;
+        const top = share(column, row) * (1 - right) + share(column + 1, row) * right;
+        const bottom = share(column, row + 1) * (1 - right) + share(column + 1, row + 1) * right;
+        const blend = top * (1 - down) + bottom * down;
+        if (bayer[worldY & 3]![worldX & 3]! >= blend * bayer.length * bayer.length) continue;
         const offset = (y * target.width + x) * 4;
         target.pixels.set(this.colored.pixels.subarray(offset, offset + 4), offset);
       }

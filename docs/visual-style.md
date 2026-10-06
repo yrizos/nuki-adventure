@@ -257,6 +257,7 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 - Color returns through an ordered 4 × 4 dither dissolve, each pixel switching from faded to full color at its threshold
 - The dissolve spreads outward from the point of restoration, one tile ring per step
 - Only the area of the collected orb changes, and the rest of the map keeps its current state
+- Where a colored area meets a faded one, the seam is a one tile wide band of the same ordered 4 × 4 dither, centered on the area edge
 - Every frame of the dissolve contains palette colors only
 - The door stays closed until every area is back in color, so during the last restoration it opens where color reaches it
 
