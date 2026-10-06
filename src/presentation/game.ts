@@ -1,6 +1,8 @@
 import { PlayLevel } from '../application/play-level';
+import type { Level } from '../domain/level/level';
 import { firstLevel, firstLevelId } from '../infrastructure/first-level';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
+import { secondLevel, secondLevelId } from '../infrastructure/second-level';
 import { panelArt } from './art/panel';
 import { Controls } from './controls';
 import { GameLoop } from './game-loop';
@@ -27,9 +29,9 @@ export function startGame(root: Document): void {
 
   const sound = new Sound(window);
   connectGameSwitches(root, sound);
+  const playing = (create: () => Level) => () => new PlayLevel(new InMemoryLevelRepository([create()]));
   const session = new GameSession(
-    () => new PlayLevel(new InMemoryLevelRepository([firstLevel()])),
-    firstLevelId,
+    [{ id: firstLevelId, start: playing(firstLevel) }, { id: secondLevelId, start: playing(secondLevel) }],
     controls,
     sound,
     { show: (result) => levelEnd.show(result), hide: () => levelEnd.hide() },

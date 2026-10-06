@@ -1,4 +1,4 @@
-import type { Level, OrbColor } from '../domain/level/level';
+import type { Area, Level, OrbColor } from '../domain/level/level';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Ground, type Scenery } from '../domain/level/scenery';
 import type { Art } from './art/art';
@@ -33,6 +33,9 @@ export interface Scene {
   readonly hero: Art;
   readonly heldOrb: OrbColor | null;
 }
+
+const sized = (picture: Picture, target: Picture): Picture =>
+  picture.width === target.width && picture.height === target.height ? picture : new Picture(target.width, target.height);
 
 const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
 
@@ -90,7 +93,8 @@ export function heroPixels(level: Level): { x: number; y: number } {
 export class WorldPainter {
   private readonly ground: readonly GroundTile[];
   private colored = new Picture(0, 0);
-  private faded = new Picture(0, 0);
+  private before = new Picture(0, 0);
+  private after = new Picture(0, 0);
   private readonly treeChoices: readonly number[];
   private readonly stoneChoices: readonly number[];
   private readonly fencePieces: readonly number[];
@@ -112,17 +116,16 @@ export class WorldPainter {
     return rings * framesPerRing + bayer.length * bayer.length;
   }
 
-  paint(target: Picture, scene: Scene, version: Version): void {
-    this.paintVersion(target, scene, version);
+  paint(target: Picture, scene: Scene, restored: readonly Area[]): void {
+    this.compose(target, scene, restored);
   }
 
-  paintRestoring(target: Picture, scene: Scene, origin: TilePosition, framesSinceStart: number): void {
-    if (this.colored.width !== target.width || this.colored.height !== target.height) {
-      this.colored = new Picture(target.width, target.height);
-      this.faded = new Picture(target.width, target.height);
-    }
-    this.paintVersion(this.colored, scene, 'colored');
-    this.paintVersion(this.faded, scene, 'faded');
+  paintRestoring(target: Picture, scene: Scene, origin: TilePosition, framesSinceStart: number,
+    before: readonly Area[], after: readonly Area[]): void {
+    this.before = sized(this.before, target);
+    this.after = sized(this.after, target);
+    this.compose(this.before, scene, before);
+    this.compose(this.after, scene, after);
     const camera = this.camera(scene.level, target);
     for (let y = 0; y < target.height; y++) {
       for (let x = 0; x < target.width; x++) {
@@ -134,14 +137,14 @@ export class WorldPainter {
         );
         const threshold = ring * framesPerRing + bayer[worldY & 3]![worldX & 3]!;
         const offset = (y * target.width + x) * 4;
-        const source = framesSinceStart >= threshold ? this.colored : this.faded;
+        const source = framesSinceStart >= threshold ? this.after : this.before;
         target.pixels.set(source.pixels.subarray(offset, offset + 4), offset);
       }
     }
   }
 
   paintClosing(target: Picture, scene: Scene, framesSinceStart: number): void {
-    this.paintVersion(target, scene, 'colored');
+    this.paintVersion(target, scene, 'colored', scene.level.door.isOpen);
     const ink = new Picture(1, 1);
     ink.fill('Ink');
     for (let y = 0; y < target.height; y++) {
@@ -164,7 +167,32 @@ export class WorldPainter {
     };
   }
 
-  private paintVersion(picture: Picture, scene: Scene, version: Version): void {
+  // Color is cut along tile edges rather than per prop, because a tree or the door can straddle two areas and only one of them may be restored.
+  private compose(target: Picture, scene: Scene, restored: readonly Area[]): void {
+    const { columns, rows } = scene.level.scenery.size;
+    const colored = Array.from({ length: columns * rows }, (_, index) =>
+      restored.some((area) => area.covers(TilePosition.at(index % columns, Math.floor(index / columns)))));
+    if (colored.every(Boolean)) {
+      this.paintVersion(target, scene, 'colored', scene.level.door.isOpen);
+      return;
+    }
+    this.paintVersion(target, scene, 'faded', false);
+    if (!colored.some(Boolean)) return;
+    this.colored = sized(this.colored, target);
+    this.paintVersion(this.colored, scene, 'colored', false);
+    const camera = this.camera(scene.level, target);
+    for (let y = 0; y < target.height; y++) {
+      const row = clamp(Math.floor((y + camera.y) / tileSize), 0, rows - 1);
+      for (let x = 0; x < target.width; x++) {
+        if (!colored[row * columns + clamp(Math.floor((x + camera.x) / tileSize), 0, columns - 1)]) continue;
+        const offset = (y * target.width + x) * 4;
+        target.pixels.set(this.colored.pixels.subarray(offset, offset + 4), offset);
+      }
+    }
+  }
+
+  // The door opens only once every area is back, so during restoration it opens exactly where color reaches it.
+  private paintVersion(picture: Picture, scene: Scene, version: Version, doorLit: boolean): void {
     const { level, frame } = scene;
     const camera = this.camera(level, picture);
     picture.fill('Ink');
@@ -191,7 +219,6 @@ export class WorldPainter {
 
     const { door } = level;
     const doorBase = (door.left.row + 1) * tileSize;
-    const doorLit = door.isOpen && version === 'colored';
 
     const objects: { base: number; paint: () => void; shadow: () => void }[] = [];
     const shadow = (width: number, position: TilePosition, x: number, y: number): (() => void) => () => {
@@ -213,9 +240,9 @@ export class WorldPainter {
       objects.push({ base: (row + 1) * tileSize, shadow: shadow(14, stone.position, column * tileSize + 9, row * tileSize + 27),
         paint: () => draw(stoneVariants[this.stoneChoices[index]!]!, column * tileSize, row * tileSize) });
     });
-    if (level.signpost) {
-      const { column, row } = level.signpost.position;
-      objects.push({ base: (row + 1) * tileSize, shadow: shadow(10, level.signpost.position, column * tileSize + 11, row * tileSize + 27),
+    for (const signpost of level.signposts) {
+      const { column, row } = signpost.position;
+      objects.push({ base: (row + 1) * tileSize, shadow: shadow(10, signpost.position, column * tileSize + 11, row * tileSize + 27),
         paint: () => draw(signpostArt, column * tileSize, row * tileSize) });
     }
     level.scenery.fences.forEach((fence, index) => {
@@ -223,7 +250,6 @@ export class WorldPainter {
       objects.push({ base: (row + 1) * tileSize, shadow: shadow(8, fence.position, column * tileSize + 12, row * tileSize + 27),
         paint: () => draw(fenceArt[this.fencePieces[index]!]!, column * tileSize, row * tileSize) });
     });
-    // The faded world keeps the door closed, so during restoration it opens exactly where color reaches it.
     const doorFrame = doorLit ? doorArt.open : doorArt.closed;
     const doorTop = doorBase - doorFrame.rows.length;
     const doorLeft = door.left.column * tileSize;
@@ -237,8 +263,7 @@ export class WorldPainter {
           draw(lightMote, doorLeft + column + sway, doorTop + 88 - risen);
         }
       } });
-    const orb = level.orb;
-    if (orb) {
+    for (const orb of level.orbs) {
       const { column, row } = orb.position;
       const bob = orbBob[Math.floor(frame / 10) % orbBob.length]!;
       objects.push({

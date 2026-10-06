@@ -68,7 +68,7 @@ One enclosed part of the game world that the hero plays through, from her start 
 
 ### Door
 
-The exit of a level. It opens once the hero picks up the orb, and stepping into it completes the level.
+The exit of a level. It opens once the hero picks up every orb in the level, and stepping into it completes the level.
 
 ### Reachable
 
@@ -88,11 +88,11 @@ The number of stars a level holds. Each time the level starts, its stars go to r
 
 ### Orb
 
-A collectible in red, blue, violet or teal. Each orb carries its own symbol or shape.
+A collectible in red, blue, violet or teal. Each orb carries its own symbol or shape and restores color to its own area of the level.
 
 ### Signpost
 
-A wooden board in the game world that the player interacts with.
+A wooden board in the game world that the player interacts with. Each signpost shows its own message when read.
 
 ### Stone
 
@@ -131,3 +131,7 @@ The variant of a scenery tile or prop in which each palette step maps to a neutr
 ### Restoration
 
 The return of color to the faded world, which spreads outward from a point.
+
+### Area
+
+A part of a level that returns to color together during restoration. Each orb restores one area, and the areas of a level's orbs together cover every tile.

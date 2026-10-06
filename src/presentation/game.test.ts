@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { PlayLevel } from '../application/play-level';
 import { Hero } from '../domain/level/hero';
-import { Door, Level, LevelId, Orb, OrbColor, Signpost, Star } from '../domain/level/level';
+import { Area, Door, Level, LevelId, Orb, OrbColor, Signpost, SignpostText, Star } from '../domain/level/level';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Ground, LevelSize, Scenery } from '../domain/level/scenery';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
@@ -10,6 +10,12 @@ import { GameLoop } from './game-loop';
 import { GameSession, messages } from './game-session';
 import { Picture } from './picture';
 import { closingLength } from './world-painter';
+
+const area = (keep: (position: TilePosition) => boolean): Area =>
+  Area.of(Array.from({ length: 1600 }, (_, index) => TilePosition.at(index % 40, Math.floor(index / 40))).filter(keep));
+const everywhere = area(() => true);
+const leftHalf = area((position) => position.column < 2);
+const rightHalf = area((position) => position.column >= 2);
 
 test.each([1, 1.25, 1.5, 2, 3])('fits whole, equally sized device pixels at pixel ratio %s', (ratio) => {
   for (const [width, height] of [[320, 405], [360, 316], [375, 475], [430, 712], [529, 529]]) {
@@ -37,7 +43,9 @@ test.each([0, -1, NaN, Infinity])('rejects invalid view dimensions %s', (dimensi
   expect(() => fitCanvas(224, dimension)).toThrow(RangeError);
 });
 
-function gameSession() {
+const hint = 'ΒΡΕΣ ΤΗ ΣΦΑΙΡΑ!';
+
+function gameSession(orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbColor.Violet, everywhere)]) {
   const levelId = LevelId.of('session');
   const pressed = new Set<'a' | 'b'>();
   const controls = {
@@ -49,13 +57,13 @@ function gameSession() {
   let play: PlayLevel;
   const createPlay = vi.fn(() => {
     const scenery = Scenery.of(LevelSize.of(5, 6), Array.from({ length: 6 }, () => Array<Ground>(5).fill(Ground.Path)), [], [], []);
-    const level = new Level(levelId, scenery, [], Orb.at(TilePosition.at(1, 0), OrbColor.Violet),
+    const level = new Level(levelId, scenery, [], orbs,
       Door.closedAt(TilePosition.at(1, 5)), new Hero(TilePosition.at(0, 0), Direction.Right),
-      [Star.at(TilePosition.at(3, 0))], Signpost.at(TilePosition.at(0, 1)));
+      [Star.at(TilePosition.at(3, 0))], [Signpost.at(TilePosition.at(0, 1), SignpostText.of(hint))]);
     play = new PlayLevel(new InMemoryLevelRepository([level]));
     return play;
   });
-  const session = new GameSession(createPlay, levelId, controls, sound, levelEnd);
+  const session = new GameSession([{ id: levelId, start: createPlay }], controls, sound, levelEnd);
   let frames = 0;
   const tick = (): void => {
     session.tick();
@@ -84,13 +92,13 @@ describe('the game session', () => {
   test.each(['a', 'b'] as const)('keeps a signpost message until button %s dismisses it', (button) => {
     const subject = gameSession();
     subject.press(button);
-    expect(subject.session.messageText).toBe(messages.hint);
+    expect(subject.session.messageText).toBe(hint);
     subject.advance(600);
-    expect(subject.session.messageText).toBe(messages.hint);
+    expect(subject.session.messageText).toBe(hint);
     subject.press(button);
     expect(subject.session.messageText).toBe('');
     subject.press(button);
-    expect(subject.session.messageText).toBe(messages.hint);
+    expect(subject.session.messageText).toBe(hint);
   });
 
   test('dismisses the signpost message when walking away', () => {
@@ -113,6 +121,17 @@ describe('the game session', () => {
     expect(subject.sound.star).toHaveBeenCalledOnce();
     expect(subject.sound.restoring).toHaveBeenCalledOnce();
     expect(subject.sound.footstep).toHaveBeenCalledTimes(3);
+  });
+
+  test('tells her to find the other orb until she has both, then opens the door', () => {
+    const subject = gameSession([Orb.at(TilePosition.at(1, 0), OrbColor.Red, leftHalf), Orb.at(TilePosition.at(2, 0), OrbColor.Blue, rightHalf)]);
+    subject.move(Direction.Right);
+    expect(subject.session.messageText).toBe(messages.someColorsBack);
+    expect(subject.level.door.isOpen).toBe(false);
+    subject.move(Direction.Right);
+    expect(subject.session.messageText).toBe(messages.colorsBack);
+    expect(subject.level.door.isOpen).toBe(true);
+    expect(subject.sound.orb).toHaveBeenCalledTimes(2);
   });
 
   test('starts restoration exactly thirty frames after collecting the orb', () => {

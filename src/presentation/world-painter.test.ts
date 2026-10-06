@@ -1,6 +1,6 @@
 import { expect, test, vi } from 'vitest';
 import { Hero, Step } from '../domain/level/hero';
-import { Door, Level, LevelId, Orb, OrbColor, Stone } from '../domain/level/level';
+import { Area, Door, Level, LevelId, Orb, OrbColor, Stone } from '../domain/level/level';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
 import { firstLevel } from '../infrastructure/first-level';
@@ -11,6 +11,12 @@ import { Picture, sprite } from './picture';
 import { faded, palette, type PaletteCode } from './palette';
 import { closingLength, heroPixels, propVariants, tileSize, WorldPainter } from './world-painter';
 
+const area = (keep: (position: TilePosition) => boolean): Area =>
+  Area.of(Array.from({ length: 1600 }, (_, index) => TilePosition.at(index % 40, Math.floor(index / 40))).filter(keep));
+const everywhere = area(() => true);
+const leftHalf = area((position) => position.column < 6);
+const rightHalf = area((position) => position.column >= 6);
+
 function allArt(value: unknown): Art[] {
   if (value && typeof value === 'object' && 'rows' in value && 'legend' in value) return [value as Art];
   if (value && typeof value === 'object') return Object.values(value).flatMap(allArt);
@@ -20,7 +26,7 @@ function allArt(value: unknown): Art[] {
 function renderingLevel(ground = Ground.Grass, color = OrbColor.Violet, hero = TilePosition.at(2, 2), stones: readonly Stone[] = [], trees: readonly Tree[] = []): Level {
   return new Level(LevelId.of('render'), Scenery.of(LevelSize.of(12, 12),
     Array.from({ length: 12 }, () => Array.from({ length: 12 }, () => ground)), trees, []), stones,
-    Orb.at(TilePosition.at(0, 0), color), Door.closedAt(TilePosition.at(0, 11)), new Hero(hero, Direction.Down));
+    [Orb.at(TilePosition.at(0, 0), color, everywhere)], Door.closedAt(TilePosition.at(0, 11)), new Hero(hero, Direction.Down));
 }
 
 function colorAt(picture: Picture, column: number, row: number): string {
@@ -56,7 +62,7 @@ test('native terrain grids cover all 81 three-terrain corner combinations', () =
           ground[2]![1] = bottomLeft;
           ground[2]![2] = bottomRight;
           const level = new Level(LevelId.of('terrain'), Scenery.of(LevelSize.of(4, 4), ground, [], []), [],
-            Orb.at(TilePosition.at(3, 3), OrbColor.Violet), Door.closedAt(TilePosition.at(0, 3)), new Hero(TilePosition.at(0, 0), Direction.Down));
+            [Orb.at(TilePosition.at(3, 3), OrbColor.Violet, everywhere)], Door.closedAt(TilePosition.at(0, 3)), new Hero(TilePosition.at(0, 0), Direction.Down));
           expect(() => new WorldPainter(level)).not.toThrow();
         }
       }
@@ -117,9 +123,9 @@ test('touching prop variants differ and placement is independent of input order'
 test.each([[Ground.Grass, 'G1', 'N2'], [Ground.Path, 'E2', 'N3']] as const)('contact shadows on %s use the surface shade in both world versions', (ground, colored, neutral) => {
   const level = renderingLevel(ground, OrbColor.Violet, TilePosition.at(2, 2), [Stone.at(TilePosition.at(4, 4))]);
   const painter = new WorldPainter(level);
-  for (const [version, code] of [['colored', colored], ['faded', neutral]] as const) {
+  for (const [restored, code] of [[[everywhere], colored], [[], neutral]] as const) {
     const picture = new Picture(384, 384);
-    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, version);
+    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, restored);
     expect(colorAt(picture, 73, 96)).toBe(palette[code]);
     expect(colorAt(picture, 137, 155)).toBe(palette[code]);
   }
@@ -132,9 +138,9 @@ test.each([[OrbColor.Red, 'R2'], [OrbColor.Blue, 'W2'], [OrbColor.Violet, 'V2'],
     const level = renderingLevel(Ground.Grass, color);
     const painter = new WorldPainter(level);
     const picture = new Picture(384, 384);
-    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, 'faded');
+    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, []);
     expect(colorAt(picture, 20, 10)).toBe(palette[code]);
-    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.holding!, heldOrb: color }, 'faded');
+    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.holding!, heldOrb: color }, []);
     expect(colorAt(picture, 84, 52)).toBe(palette[code]);
   },
 );
@@ -142,7 +148,7 @@ test.each([[OrbColor.Red, 'R2'], [OrbColor.Blue, 'W2'], [OrbColor.Violet, 'V2'],
 test('oversized views extend edge terrain without leaving empty map margins', () => {
   const level = renderingLevel();
   const picture = new Picture(801, 901);
-  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, 'colored');
+  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, [everywhere]);
   for (const [column, row] of [[0, 0], [800, 0], [0, 900], [800, 900]]) {
     expect(['G1', 'G2', 'G3'].map((code) => palette[code as PaletteCode])).toContain(colorAt(picture, column!, row!));
   }
@@ -153,7 +159,7 @@ test('whole-pixel camera centers the hero until clamped at a map edge', () => {
     const level = renderingLevel(Ground.Grass, OrbColor.Violet, position);
     const picture = new Picture(225, 263);
     const draw = vi.spyOn(picture, 'draw');
-    new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, 'colored');
+    new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, [everywhere]);
     expect(draw.mock.calls.find(([art]) => art === sprites.heroArt.down.stand)?.slice(1, 3)).toEqual(expected);
     expect(draw.mock.calls.every(([, column, row]) => Number.isInteger(column) && Number.isInteger(row))).toBe(true);
   }
@@ -165,7 +171,7 @@ test('tall props occlude the hero behind them and never paint over a hero in fro
     const level = renderingLevel(Ground.Grass, OrbColor.Violet, hero, [], [tree]);
     const picture = new Picture(384, 384);
     const draw = vi.spyOn(picture, 'draw');
-    new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, 'colored');
+    new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, [everywhere]);
     const heroIndex = draw.mock.calls.findIndex(([art]) => art === sprites.heroArt.down.stand);
     const treeIndex = draw.mock.calls.findIndex(([art]) => art.legend.t === 'E1');
     expect(treeIndex > heroIndex).toBe(treeLast);
@@ -180,15 +186,15 @@ test('restoration advances outward with palette-only pixels and matches both end
   const colored = new Picture(224, 224);
   const neutral = new Picture(224, 224);
   const dissolve = new Picture(224, 224);
-  painter.paint(colored, scene, 'colored');
-  painter.paint(neutral, scene, 'faded');
-  painter.paintRestoring(dissolve, scene, origin, -1);
+  painter.paint(colored, scene, [everywhere]);
+  painter.paint(neutral, scene, []);
+  painter.paintRestoring(dissolve, scene, origin, -1, [], [everywhere]);
   expect(dissolve.pixels).toEqual(neutral.pixels);
-  painter.paintRestoring(dissolve, scene, origin, painter.restorationLength(origin));
+  painter.paintRestoring(dissolve, scene, origin, painter.restorationLength(origin), [], [everywhere]);
   expect(dissolve.pixels).toEqual(colored.pixels);
   const colors = new Set(Object.values(palette));
   for (const frame of [0, 3, 4, 15, 16, 31]) {
-    painter.paintRestoring(dissolve, scene, origin, frame);
+    painter.paintRestoring(dissolve, scene, origin, frame, [], [everywhere]);
     for (let row = 0; row < dissolve.height; row++) {
       for (let column = 0; column < dissolve.width; column++) {
         expect(colors.has(colorAt(dissolve, column, row) as typeof palette[keyof typeof palette])).toBe(true);
@@ -196,9 +202,30 @@ test('restoration advances outward with palette-only pixels and matches both end
       }
     }
   }
-  painter.paintRestoring(dissolve, scene, origin, 0);
+  painter.paintRestoring(dissolve, scene, origin, 0, [], [everywhere]);
   expect(colorAt(dissolve, 64, 64)).toBe(colorAt(colored, 64, 64));
   expect(colorAt(dissolve, 32, 32)).toBe(colorAt(neutral, 32, 32));
+});
+
+test('restoring one area leaves the rest of the map faded', () => {
+  const level = new Level(LevelId.of('areas'), Scenery.of(LevelSize.of(12, 12), Array.from({ length: 12 }, () => Array<Ground>(12).fill(Ground.Grass)), [], []), [],
+    [Orb.at(TilePosition.at(0, 0), OrbColor.Red, leftHalf), Orb.at(TilePosition.at(11, 0), OrbColor.Blue, rightHalf)],
+    Door.closedAt(TilePosition.at(0, 11)), new Hero(TilePosition.at(2, 2), Direction.Down));
+  const painter = new WorldPainter(level);
+  const painted = (restored: readonly Area[]): Picture => {
+    const picture = new Picture(384, 384);
+    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, restored);
+    return picture;
+  };
+  const grass = (['G1', 'G2', 'G3'] as const).map((code) => palette[code]);
+  const neutrals = (['N1', 'N2', 'N3', 'N4', 'Paper'] as const).map((code) => palette[code]);
+  const left = painted([leftHalf]);
+  expect(grass).toContain(colorAt(left, 120, 200));
+  expect(neutrals).toContain(colorAt(left, 300, 200));
+  const right = painted([rightHalf]);
+  expect(neutrals).toContain(colorAt(right, 120, 200));
+  expect(grass).toContain(colorAt(right, 300, 200));
+  expect(painted([leftHalf, rightHalf]).pixels).toEqual(painted([everywhere]).pixels);
 });
 
 test('the door opens only in the colored world once the orb is collected', () => {
@@ -207,7 +234,7 @@ test('the door opens only in the colored world once the orb is collected', () =>
   const drawn = (version: 'colored' | 'faded'): Art[] => {
     const picture = new Picture(384, 384);
     const draw = vi.spyOn(picture, 'draw');
-    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, version);
+    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, version === 'colored' ? [everywhere] : []);
     return draw.mock.calls.map(([art]) => art);
   };
   expect(drawn('colored')).toContain(scenery.doorArt.closed);
@@ -225,7 +252,7 @@ test('closing darkens the colored world to Ink through the ordered dither', () =
   const scene = { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null };
   const colored = new Picture(224, 224);
   const closing = new Picture(224, 224);
-  painter.paint(colored, scene, 'colored');
+  painter.paint(colored, scene, [everywhere]);
   painter.paintClosing(closing, scene, 0);
   expect(closing.pixels).toEqual(colored.pixels);
   painter.paintClosing(closing, scene, closingLength);
@@ -266,7 +293,7 @@ test.each([
     LevelId.of('movement'),
     Scenery.of(LevelSize.of(12, 12), ground, [], []),
     [],
-    Orb.at(TilePosition.at(0, 0), OrbColor.Violet),
+    [Orb.at(TilePosition.at(0, 0), OrbColor.Violet, everywhere)],
     Door.closedAt(TilePosition.at(0, 11)),
     hero,
   );

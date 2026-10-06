@@ -256,14 +256,15 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 
 - Color returns through an ordered 4 × 4 dither dissolve, each pixel switching from faded to full color at its threshold
 - The dissolve spreads outward from the point of restoration, one tile ring per step
+- Only the area of the collected orb changes, and the rest of the map keeps its current state
 - Every frame of the dissolve contains palette colors only
-- The door stays closed in the faded world, so during restoration it opens where color reaches it
+- The door stays closed until every area is back in color, so during the last restoration it opens where color reaches it
 
 ### Leaving a Level
 
 - Stepping into the open doorway completes the level
 - The colored world then darkens to Ink through the same ordered 4 × 4 dither, each pixel switching at its threshold
-- Once the screen is fully Ink, the level end window opens, and until a second level exists, ΣΥΝΕΧΕΙΑ starts the first level again from its faded state
+- Once the screen is fully Ink, the level end window opens, and ΣΥΝΕΧΕΙΑ starts the next level from its faded state, returning to the first level after the last one
 
 ## Motion and Animation
 
