@@ -17,10 +17,22 @@ function channels(code: PaletteCode): readonly number[] {
   return [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
 }
 
-const shading = Object.fromEntries(Object.entries({
-  G2: 'G1', G3: 'G2', G1: 'G0', E3: 'E2', E4: 'E3', E2: 'E1', W1: 'W0', W2: 'W1', W4: 'W3',
-  N3: 'N2', N4: 'N3', Paper: 'N4',
-}).map(([from, to]) => [channels(from as PaletteCode).join(','), channels(to as PaletteCode)]));
+const shading = Object.fromEntries(
+  Object.entries({
+    G2: 'G1',
+    G3: 'G2',
+    G1: 'G0',
+    E3: 'E2',
+    E4: 'E3',
+    E2: 'E1',
+    W1: 'W0',
+    W2: 'W1',
+    W4: 'W3',
+    N3: 'N2',
+    N4: 'N3',
+    Paper: 'N4',
+  }).map(([from, to]) => [channels(from as PaletteCode).join(','), channels(to as PaletteCode)]),
+);
 
 export function sprite(art: Art): Sprite {
   const cached = sprites.get(art);
@@ -42,12 +54,15 @@ export function sprite(art: Art): Sprite {
   });
   if (art.faded) {
     for (const code of Object.values(art.faded.legend)) {
-      if (!['Ink', 'N1', 'N2', 'N3', 'N4', 'Paper'].includes(code)) throw new RangeError('Corrected faded art must use neutral colors');
+      if (!['Ink', 'N1', 'N2', 'N3', 'N4', 'Paper'].includes(code))
+        throw new RangeError('Corrected faded art must use neutral colors');
     }
     const corrected = sprite(art.faded);
-    if (corrected.width !== width || corrected.height !== height) throw new RangeError('Faded art must match the colored dimensions');
+    if (corrected.width !== width || corrected.height !== height)
+      throw new RangeError('Faded art must match the colored dimensions');
     for (let offset = 3; offset < colored.length; offset += 4) {
-      if (corrected.colored[offset] !== colored[offset]) throw new RangeError('Faded art must preserve the colored silhouette');
+      if (corrected.colored[offset] !== colored[offset])
+        throw new RangeError('Faded art must preserve the colored silhouette');
     }
     fadedPixels.set(corrected.colored);
   }
@@ -81,8 +96,15 @@ export class Picture {
     }
   }
 
-  draw(art: Art, x: number, y: number, version: Version, visible: (x: number, y: number) => boolean = () => true): void {
-    if (!Number.isInteger(x) || !Number.isInteger(y)) throw new RangeError('Sprites must be drawn at whole pixel positions');
+  draw(
+    art: Art,
+    x: number,
+    y: number,
+    version: Version,
+    visible: (x: number, y: number) => boolean = () => true,
+  ): void {
+    if (!Number.isInteger(x) || !Number.isInteger(y))
+      throw new RangeError('Sprites must be drawn at whole pixel positions');
     const { width, height, [version]: source } = sprite(art);
     for (let row = 0; row < height; row++) {
       const targetY = y + row;

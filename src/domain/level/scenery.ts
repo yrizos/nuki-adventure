@@ -117,19 +117,33 @@ export class Scenery {
     });
     for (const flower of flowers) {
       if (!size.contains(flower.position) || !groundAt(flower.position).equals(Ground.Grass)) {
-        throw new RangeError(`Flowers must grow on grass inside the level, at ${flower.position.column}, ${flower.position.row}`);
+        throw new RangeError(
+          `Flowers must grow on grass inside the level, at ${flower.position.column}, ${flower.position.row}`,
+        );
       }
     }
     fences.forEach((fence, index) => {
       const { position } = fence;
-      if (!size.contains(position) || !groundAt(position).equals(Ground.Grass) || footprints.some((tile) => tile.equals(position))) {
-        throw new RangeError(`A fence must stand on open grass inside the level, at ${position.column}, ${position.row}`);
+      if (
+        !size.contains(position) ||
+        !groundAt(position).equals(Ground.Grass) ||
+        footprints.some((tile) => tile.equals(position))
+      ) {
+        throw new RangeError(
+          `A fence must stand on open grass inside the level, at ${position.column}, ${position.row}`,
+        );
       }
       if (fences.findIndex((other) => other.equals(fence)) !== index) {
         throw new RangeError(`Fences overlap at ${position.column}, ${position.row}`);
       }
     });
-    return new Scenery(size, ground.map((row) => [...row]), [...trees], [...flowers], [...fences]);
+    return new Scenery(
+      size,
+      ground.map((row) => [...row]),
+      [...trees],
+      [...flowers],
+      [...fences],
+    );
   }
 
   groundAt(position: TilePosition): Ground {

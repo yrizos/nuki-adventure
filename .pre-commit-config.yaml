@@ -1,4 +1,4 @@
-minimum_pre_commit_version: "4.0.0"
+minimum_pre_commit_version: '4.0.0'
 default_install_hook_types: [pre-commit, commit-msg, pre-push]
 default_stages: [pre-commit]
 repos:
@@ -6,7 +6,7 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-added-large-files
-        args: ["--maxkb=1024"]
+        args: ['--maxkb=1024']
       - id: check-case-conflict
       - id: check-merge-conflict
       - id: check-json
@@ -19,9 +19,9 @@ repos:
       - id: detect-private-key
       - id: end-of-file-fixer
       - id: trailing-whitespace
-        args: ["--markdown-linebreak-ext=md"]
+        args: ['--markdown-linebreak-ext=md']
       - id: mixed-line-ending
-        args: ["--fix=lf"]
+        args: ['--fix=lf']
   - repo: https://github.com/gitleaks/gitleaks
     rev: v8.30.1
     hooks:
@@ -38,6 +38,12 @@ repos:
         entry: npm exec -- markdownlint --fix
         language: system
         types: [markdown]
+      - id: prettier
+        name: Prettier (auto-fix)
+        entry: npm exec -- prettier --write --ignore-unknown
+        language: system
+        types: [text]
+        exclude: '\.md$'
       - id: eslint
         name: ESLint (auto-fix and check)
         entry: npm exec -- eslint --fix

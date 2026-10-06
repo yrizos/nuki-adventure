@@ -21,9 +21,12 @@ test.each([
   [60 * 83, 0, 1],
   [60 * 83, 3, 5],
   [60 * 60 * 120, 12, 40],
-])('builds from palette codes for %s frames and %s of %s stars, inside the narrowest column', (frames, collectedStars, starCount) => {
-  const art = levelEndArt({ frames, collectedStars, starCount });
-  expect(() => sprite(art)).not.toThrow();
-  expect(art.rows[0]!.length).toBeLessThanOrEqual(180 - 32);
-  expect(art.rows.length).toBeGreaterThan(continueTop + continueHeight);
-});
+])(
+  'builds from palette codes for %s frames and %s of %s stars, inside the narrowest column',
+  (frames, collectedStars, starCount) => {
+    const art = levelEndArt({ frames, collectedStars, starCount });
+    expect(() => sprite(art)).not.toThrow();
+    expect(art.rows[0]!.length).toBeLessThanOrEqual(180 - 32);
+    expect(art.rows.length).toBeGreaterThan(continueTop + continueHeight);
+  },
+);

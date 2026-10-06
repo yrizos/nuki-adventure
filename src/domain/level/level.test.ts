@@ -1,6 +1,23 @@
 import { describe, expect, test } from 'vitest';
 import { Hero, Step } from './hero';
-import { Area, Door, Level, LevelCompleted, LevelId, Orb, OrbCollected, OrbColor, Signpost, SignpostLeft, SignpostRead, SignpostText, Star, StarCollected, StarCount, Stone } from './level';
+import {
+  Area,
+  Door,
+  Level,
+  LevelCompleted,
+  LevelId,
+  Orb,
+  OrbCollected,
+  OrbColor,
+  Signpost,
+  SignpostLeft,
+  SignpostRead,
+  SignpostText,
+  Star,
+  StarCollected,
+  StarCount,
+  Stone,
+} from './level';
 import { Direction, TilePosition } from './position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree } from './scenery';
 
@@ -18,9 +35,15 @@ function parse(given: readonly string[]): { scenery: Scenery; where: (symbol: st
   const layout = given.some((line) => line.includes('D')) ? given : [...given, 'DDD'.padEnd(given[0]!.length, '.')];
   const size = LevelSize.of(layout[0]!.length, layout.length);
   const ground = layout.map((line) => [...line].map((symbol) => (symbol === '~' ? Ground.Water : Ground.Grass)));
-  const cells = layout.flatMap((line, row) => [...line].map((symbol, column) => ({ symbol, position: at(column, row) })));
-  const where = (symbol: string): TilePosition[] => cells.filter((cell) => cell.symbol === symbol).map((cell) => cell.position);
-  return { scenery: Scenery.of(size, ground, where('T').map(Tree.at), where('*').map(Flower.at), where('F').map(Fence.at)), where };
+  const cells = layout.flatMap((line, row) =>
+    [...line].map((symbol, column) => ({ symbol, position: at(column, row) })),
+  );
+  const where = (symbol: string): TilePosition[] =>
+    cells.filter((cell) => cell.symbol === symbol).map((cell) => cell.position);
+  return {
+    scenery: Scenery.of(size, ground, where('T').map(Tree.at), where('*').map(Flower.at), where('F').map(Fence.at)),
+    where,
+  };
 }
 
 function level(given: readonly string[], start: TilePosition, orb: TilePosition): Level {
@@ -37,11 +60,25 @@ function level(given: readonly string[], start: TilePosition, orb: TilePosition)
   );
 }
 
-function scattered(given: readonly string[], start: TilePosition, orb: TilePosition, count: number,
-  shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[]): Level {
+function scattered(
+  given: readonly string[],
+  start: TilePosition,
+  orb: TilePosition,
+  count: number,
+  shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[],
+): Level {
   const { scenery, where } = parse(given);
-  return Level.withScatteredStars(LevelId.of('test'), scenery, where('o').map(Stone.at), [Orb.at(orb, OrbColor.Violet, everywhere)],
-    Door.closedAt(where('D')[0]!), new Hero(start, Direction.Right), StarCount.of(count), where('P').map(signpostAt), shuffle);
+  return Level.withScatteredStars(
+    LevelId.of('test'),
+    scenery,
+    where('o').map(Stone.at),
+    [Orb.at(orb, OrbColor.Violet, everywhere)],
+    Door.closedAt(where('D')[0]!),
+    new Hero(start, Direction.Right),
+    StarCount.of(count),
+    where('P').map(signpostAt),
+    shuffle,
+  );
 }
 
 function hold(subject: Level, direction: Direction | null, frames: number): void {
@@ -126,8 +163,14 @@ describe('the hero in a level', () => {
 
   test('opens the door only once she has picked up every orb', () => {
     const { scenery, where } = parse(['...', 'DDD']);
-    const subject = new Level(LevelId.of('test'), scenery, [], [Orb.at(at(1, 0), OrbColor.Red, leftHalf), Orb.at(at(2, 0), OrbColor.Blue, rightHalf)],
-      Door.closedAt(where('D')[0]!), new Hero(at(0, 0), Direction.Right));
+    const subject = new Level(
+      LevelId.of('test'),
+      scenery,
+      [],
+      [Orb.at(at(1, 0), OrbColor.Red, leftHalf), Orb.at(at(2, 0), OrbColor.Blue, rightHalf)],
+      Door.closedAt(where('D')[0]!),
+      new Hero(at(0, 0), Direction.Right),
+    );
     hold(subject, Direction.Right, 1 + Step.framesPerTile);
     expect(subject.orbs).toEqual([Orb.at(at(2, 0), OrbColor.Blue, rightHalf)]);
     expect(subject.door.isOpen).toBe(false);
@@ -181,8 +224,16 @@ describe('the hero beside a signpost', () => {
     const { scenery, where } = parse(['P..P', '....']);
     const left = SignpostText.of('ΑΡΙΣΤΕΡΑ');
     const right = SignpostText.of('ΔΕΞΙΑ');
-    const subject = new Level(LevelId.of('test'), scenery, [], [Orb.at(at(2, 1), OrbColor.Violet, everywhere)], Door.closedAt(where('D')[0]!),
-      new Hero(at(1, 0), Direction.Right), [], [Signpost.at(at(0, 0), left), Signpost.at(at(3, 0), right)]);
+    const subject = new Level(
+      LevelId.of('test'),
+      scenery,
+      [],
+      [Orb.at(at(2, 1), OrbColor.Violet, everywhere)],
+      Door.closedAt(where('D')[0]!),
+      new Hero(at(1, 0), Direction.Right),
+      [],
+      [Signpost.at(at(0, 0), left), Signpost.at(at(3, 0), right)],
+    );
     expect(subject.read()).toEqual([new SignpostRead(LevelId.of('test'), at(0, 0), left)]);
     hold(subject, Direction.Right, 1 + Step.framesPerTile);
     hold(subject, null, 1);
@@ -212,36 +263,93 @@ describe('the hero beside a signpost', () => {
 
 describe('a level', () => {
   test('rejects a signpost in water', () => {
-    expect(() => new Level(LevelId.of('test'), Scenery.of(LevelSize.of(3, 2), [[Ground.Grass, Ground.Grass, Ground.Water],
-      [Ground.Grass, Ground.Grass, Ground.Grass]], [], []), [], [Orb.at(at(1, 0), OrbColor.Violet, everywhere)], Door.closedAt(at(0, 1)),
-    new Hero(at(0, 0), Direction.Right), [], [signpostAt(at(2, 0))])).toThrow(RangeError);
+    expect(
+      () =>
+        new Level(
+          LevelId.of('test'),
+          Scenery.of(
+            LevelSize.of(3, 2),
+            [
+              [Ground.Grass, Ground.Grass, Ground.Water],
+              [Ground.Grass, Ground.Grass, Ground.Grass],
+            ],
+            [],
+            [],
+          ),
+          [],
+          [Orb.at(at(1, 0), OrbColor.Violet, everywhere)],
+          Door.closedAt(at(0, 1)),
+          new Hero(at(0, 0), Direction.Right),
+          [],
+          [signpostAt(at(2, 0))],
+        ),
+    ).toThrow(RangeError);
   });
 
-  test.each([OrbColor.Red, OrbColor.Blue, OrbColor.Violet, OrbColor.Teal])('preserves collected %s orb color in its collection event', (color) => {
-    const ground = [[Ground.Grass, Ground.Grass, Ground.Grass], [Ground.Grass, Ground.Grass, Ground.Grass]];
-    const subject = new Level(LevelId.of('color'), Scenery.of(LevelSize.of(3, 2), ground, [], []), [],
-      [Orb.at(at(1, 0), color, everywhere)], Door.closedAt(at(0, 1)), new Hero(at(0, 0), Direction.Right));
-    const events = Array.from({ length: 17 }, () => subject.tick(Direction.Right)).flat();
-    expect(events).toEqual([new OrbCollected(LevelId.of('color'), at(1, 0), color, everywhere)]);
-    expect(subject.orbs).toEqual([]);
-  });
+  test.each([OrbColor.Red, OrbColor.Blue, OrbColor.Violet, OrbColor.Teal])(
+    'preserves collected %s orb color in its collection event',
+    (color) => {
+      const ground = [
+        [Ground.Grass, Ground.Grass, Ground.Grass],
+        [Ground.Grass, Ground.Grass, Ground.Grass],
+      ];
+      const subject = new Level(
+        LevelId.of('color'),
+        Scenery.of(LevelSize.of(3, 2), ground, [], []),
+        [],
+        [Orb.at(at(1, 0), color, everywhere)],
+        Door.closedAt(at(0, 1)),
+        new Hero(at(0, 0), Direction.Right),
+      );
+      const events = Array.from({ length: 17 }, () => subject.tick(Direction.Right)).flat();
+      expect(events).toEqual([new OrbCollected(LevelId.of('color'), at(1, 0), color, everywhere)]);
+      expect(subject.orbs).toEqual([]);
+    },
+  );
 
   test('rejects a level without an orb', () => {
     const { scenery, where } = parse(['...']);
-    expect(() => new Level(LevelId.of('test'), scenery, [], [], Door.closedAt(where('D')[0]!), new Hero(at(0, 0), Direction.Right)))
-      .toThrow(RangeError);
+    expect(
+      () =>
+        new Level(
+          LevelId.of('test'),
+          scenery,
+          [],
+          [],
+          Door.closedAt(where('D')[0]!),
+          new Hero(at(0, 0), Direction.Right),
+        ),
+    ).toThrow(RangeError);
   });
 
   test('rejects two orbs on one tile', () => {
     const { scenery, where } = parse(['...']);
-    expect(() => new Level(LevelId.of('test'), scenery, [], [Orb.at(at(2, 0), OrbColor.Red, leftHalf), Orb.at(at(2, 0), OrbColor.Blue, rightHalf)],
-      Door.closedAt(where('D')[0]!), new Hero(at(0, 0), Direction.Right))).toThrow(RangeError);
+    expect(
+      () =>
+        new Level(
+          LevelId.of('test'),
+          scenery,
+          [],
+          [Orb.at(at(2, 0), OrbColor.Red, leftHalf), Orb.at(at(2, 0), OrbColor.Blue, rightHalf)],
+          Door.closedAt(where('D')[0]!),
+          new Hero(at(0, 0), Direction.Right),
+        ),
+    ).toThrow(RangeError);
   });
 
   test('rejects orbs that leave a tile faded', () => {
     const { scenery, where } = parse(['...']);
-    expect(() => new Level(LevelId.of('test'), scenery, [], [Orb.at(at(2, 0), OrbColor.Red, leftHalf)],
-      Door.closedAt(where('D')[0]!), new Hero(at(0, 0), Direction.Right))).toThrow(RangeError);
+    expect(
+      () =>
+        new Level(
+          LevelId.of('test'),
+          scenery,
+          [],
+          [Orb.at(at(2, 0), OrbColor.Red, leftHalf)],
+          Door.closedAt(where('D')[0]!),
+          new Hero(at(0, 0), Direction.Right),
+        ),
+    ).toThrow(RangeError);
   });
 
   test('rejects an area without tiles', () => {
@@ -261,9 +369,26 @@ describe('a level', () => {
   });
 
   test('rejects a star that cannot be reached', () => {
-    expect(() => new Level(LevelId.of('test'), Scenery.of(LevelSize.of(3, 2), [[Ground.Grass, Ground.Grass, Ground.Water],
-      [Ground.Grass, Ground.Grass, Ground.Grass]], [], []), [], [Orb.at(at(1, 0), OrbColor.Violet, everywhere)], Door.closedAt(at(0, 1)),
-    new Hero(at(0, 0), Direction.Right), [Star.at(at(2, 0))])).toThrow(RangeError);
+    expect(
+      () =>
+        new Level(
+          LevelId.of('test'),
+          Scenery.of(
+            LevelSize.of(3, 2),
+            [
+              [Ground.Grass, Ground.Grass, Ground.Water],
+              [Ground.Grass, Ground.Grass, Ground.Grass],
+            ],
+            [],
+            [],
+          ),
+          [],
+          [Orb.at(at(1, 0), OrbColor.Violet, everywhere)],
+          Door.closedAt(at(0, 1)),
+          new Hero(at(0, 0), Direction.Right),
+          [Star.at(at(2, 0))],
+        ),
+    ).toThrow(RangeError);
   });
 
   test('rejects a star on open ground that fences cut off from the hero', () => {

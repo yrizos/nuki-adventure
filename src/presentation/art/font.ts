@@ -57,8 +57,10 @@ export function writeText(grid: PixelGrid, text: string, column: number, row: nu
   [...text].forEach((character, index) => {
     const glyph = glyphs[character];
     if (!glyph) throw new RangeError(`The font has no "${character}"`);
-    glyph.forEach((pixels, y) => [...pixels].forEach((pixel, x) => {
-      if (pixel === '#') grid.put(column + index * (glyphWidth + letterGap) + x, row + y, symbol);
-    }));
+    glyph.forEach((pixels, y) =>
+      [...pixels].forEach((pixel, x) => {
+        if (pixel === '#') grid.put(column + index * (glyphWidth + letterGap) + x, row + y, symbol);
+      }),
+    );
   });
 }

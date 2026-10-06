@@ -17,7 +17,8 @@ test.each(Object.values(messages))('draws %s with the font inside the narrowest 
 test('dissolves in, then dissolves away after being hidden', () => {
   const picture = new Picture(224, 224);
   const box = new MessageBox();
-  const painted = (): number => picture.pixels.filter((_, index) => index % 4 === 3 && picture.pixels[index] !== 0).length;
+  const painted = (): number =>
+    picture.pixels.filter((_, index) => index % 4 === 3 && picture.pixels[index] !== 0).length;
   box.show(messages.colorsBack, 0);
   box.paint(picture, 0);
   const first = painted();

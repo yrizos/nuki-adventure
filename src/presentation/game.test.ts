@@ -18,7 +18,13 @@ const leftHalf = area((position) => position.column < 2);
 const rightHalf = area((position) => position.column >= 2);
 
 test.each([1, 1.25, 1.5, 2, 3])('fits whole, equally sized device pixels at pixel ratio %s', (ratio) => {
-  for (const [width, height] of [[320, 405], [360, 316], [375, 475], [430, 712], [529, 529]]) {
+  for (const [width, height] of [
+    [320, 405],
+    [360, 316],
+    [375, 475],
+    [430, 712],
+    [529, 529],
+  ]) {
     const deviceWidth = Math.ceil(width! * ratio);
     const deviceHeight = Math.ceil(height! * ratio);
     const fit = fitCanvas(deviceWidth, deviceHeight);
@@ -56,10 +62,23 @@ function gameSession(orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbCo
   const levelEnd = { show: vi.fn(), hide: vi.fn() };
   let play: PlayLevel;
   const createPlay = vi.fn(() => {
-    const scenery = Scenery.of(LevelSize.of(5, 6), Array.from({ length: 6 }, () => Array<Ground>(5).fill(Ground.Path)), [], [], []);
-    const level = new Level(levelId, scenery, [], orbs,
-      Door.closedAt(TilePosition.at(1, 5)), new Hero(TilePosition.at(0, 0), Direction.Right),
-      [Star.at(TilePosition.at(3, 0))], [Signpost.at(TilePosition.at(0, 1), SignpostText.of(hint))]);
+    const scenery = Scenery.of(
+      LevelSize.of(5, 6),
+      Array.from({ length: 6 }, () => Array<Ground>(5).fill(Ground.Path)),
+      [],
+      [],
+      [],
+    );
+    const level = new Level(
+      levelId,
+      scenery,
+      [],
+      orbs,
+      Door.closedAt(TilePosition.at(1, 5)),
+      new Hero(TilePosition.at(0, 0), Direction.Right),
+      [Star.at(TilePosition.at(3, 0))],
+      [Signpost.at(TilePosition.at(0, 1), SignpostText.of(hint))],
+    );
     play = new PlayLevel(new InMemoryLevelRepository([level]));
     return play;
   });
@@ -81,10 +100,24 @@ function gameSession(orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbCo
     advance(step!.duration);
   };
   return {
-    session, controls, sound, levelEnd, createPlay, tick, advance, move,
-    press(button: 'a' | 'b'): void { pressed.add(button); tick(); },
-    get level(): Level { return play.view(levelId); },
-    get frames(): number { return frames; },
+    session,
+    controls,
+    sound,
+    levelEnd,
+    createPlay,
+    tick,
+    advance,
+    move,
+    press(button: 'a' | 'b'): void {
+      pressed.add(button);
+      tick();
+    },
+    get level(): Level {
+      return play.view(levelId);
+    },
+    get frames(): number {
+      return frames;
+    },
   };
 }
 
@@ -124,7 +157,10 @@ describe('the game session', () => {
   });
 
   test('tells her to find the other orb until she has both, then opens the door', () => {
-    const subject = gameSession([Orb.at(TilePosition.at(1, 0), OrbColor.Red, leftHalf), Orb.at(TilePosition.at(2, 0), OrbColor.Blue, rightHalf)]);
+    const subject = gameSession([
+      Orb.at(TilePosition.at(1, 0), OrbColor.Red, leftHalf),
+      Orb.at(TilePosition.at(2, 0), OrbColor.Blue, rightHalf),
+    ]);
     subject.move(Direction.Right);
     expect(subject.session.messageText).toBe(messages.someColorsBack);
     expect(subject.level.door.isOpen).toBe(false);
@@ -169,7 +205,11 @@ describe('the game session', () => {
     subject.advance(closingLength - 1);
     expect(subject.levelEnd.show).not.toHaveBeenCalled();
     subject.advance(1);
-    expect(subject.levelEnd.show).toHaveBeenCalledExactlyOnceWith({ frames: completedAt - 1, collectedStars: 1, starCount: 1 });
+    expect(subject.levelEnd.show).toHaveBeenCalledExactlyOnceWith({
+      frames: completedAt - 1,
+      collectedStars: 1,
+      starCount: 1,
+    });
     const picture = new Picture(224, 224);
     subject.session.paint(picture);
     expect(new Set(picture.pixels.filter((_, index) => index % 4 === 3))).toEqual(new Set([255]));
@@ -210,7 +250,11 @@ describe('the game loop', () => {
 
   test('runs every tick before rendering the frame', () => {
     const calls: string[] = [];
-    const loop = new GameLoop(() => calls.push('tick'), () => calls.push('render'), 0);
+    const loop = new GameLoop(
+      () => calls.push('tick'),
+      () => calls.push('render'),
+      0,
+    );
     loop.advance(51);
     expect(calls).toEqual(['tick', 'tick', 'tick', 'render']);
   });

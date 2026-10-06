@@ -24,10 +24,15 @@ function setup() {
   const keyboard = new EventTarget();
   vi.stubGlobal('window', keyboard);
   let resize = (): void => {};
-  vi.stubGlobal('ResizeObserver', class {
-    constructor(callback: () => void) { resize = callback; }
-    observe() {}
-  });
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor(callback: () => void) {
+        resize = callback;
+      }
+      observe() {}
+    },
+  );
   vi.stubGlobal('getComputedStyle', () => ({ paddingLeft: '6px' }));
   const panel = controlElement(360, 0, 0, 184);
   const joystick = controlElement();
@@ -81,17 +86,20 @@ test('perpendicular held arrows combine and releasing one restores the remaining
 test.each([
   ['ArrowLeft', 'ArrowRight', Direction.Left, Direction.Right],
   ['ArrowUp', 'ArrowDown', Direction.Up, Direction.Down],
-])('the latest opposite arrow wins over %s until %s is released', (previous, latest, previousDirection, latestDirection) => {
-  const { controls, key } = setup();
-  key('keydown', previous);
-  key('keydown', latest);
-  key('keydown', previous);
-  expect(controls.direction()).toBe(latestDirection);
-  key('keyup', latest);
-  expect(controls.direction()).toBe(previousDirection);
-  key('keyup', previous);
-  expect(controls.direction()).toBeNull();
-});
+])(
+  'the latest opposite arrow wins over %s until %s is released',
+  (previous, latest, previousDirection, latestDirection) => {
+    const { controls, key } = setup();
+    key('keydown', previous);
+    key('keydown', latest);
+    key('keydown', previous);
+    expect(controls.direction()).toBe(latestDirection);
+    key('keyup', latest);
+    expect(controls.direction()).toBe(previousDirection);
+    key('keyup', previous);
+    expect(controls.direction()).toBeNull();
+  },
+);
 
 test.each(['pointerup', 'pointercancel'])('touch owns the knob until %s restores keyboard input', (release) => {
   const { knob, controls, key, pointer } = setup();
@@ -115,7 +123,10 @@ test('losing focus clears movement and recenters the joystick', () => {
   expect(joystick.classList.contains('active')).toBe(false);
 });
 
-test.each([['z', ' ', 'a'], ['x', 'Enter', 'b']] as const)('overlapping %s and %s keep %s pressed until both release', (first, second, button) => {
+test.each([
+  ['z', ' ', 'a'],
+  ['x', 'Enter', 'b'],
+] as const)('overlapping %s and %s keep %s pressed until both release', (first, second, button) => {
   const { buttons, key } = setup();
   key('keydown', first);
   key('keydown', second);
@@ -162,15 +173,15 @@ test('a held joystick inside the dead zone does not fall back to keyboard moveme
 test('fractional geometry and resizing keep the knob inside the ring on whole panel pixels', () => {
   const { joystick, knob, key, pointer, resize } = setup();
   const pixel = 58.333333333333336 / 28;
-  joystick.getBoundingClientRect = () => ({ left: 0, top: 0, width: 125, height: 125 } as DOMRect);
-  knob.getBoundingClientRect = () => ({ width: 58.333333333333336 } as DOMRect);
+  joystick.getBoundingClientRect = () => ({ left: 0, top: 0, width: 125, height: 125 }) as DOMRect;
+  knob.getBoundingClientRect = () => ({ width: 58.333333333333336 }) as DOMRect;
   key('keydown', 'ArrowRight');
   const reach = (125 - 12 - 58.333333333333336) / 2;
   const snapped = Math.trunc(reach / pixel) * pixel;
   expect(knob.style.transform).toBe(`translate(${snapped}px, 0px)`);
   pointer('pointerdown', 200, 62.5);
   expect(knob.style.transform).toBe(`translate(${snapped}px, 0px)`);
-  joystick.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 } as DOMRect);
+  joystick.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 }) as DOMRect;
   resize();
   const coordinates = knob.style.transform.match(/-?[\d.]+/g)!.map(Number);
   expect(Math.hypot(...coordinates)).toBeLessThanOrEqual((100 - 12 - 58.333333333333336) / 2);

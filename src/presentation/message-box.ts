@@ -29,8 +29,20 @@ function boxArt(text: string, width: number): Art {
   grid.rectangle(1, 1, width - 2, height - 2, 'e');
   grid.rectangle(2, 2, width - 4, height - 4, 'f');
   // Clipping the corners rounds the box the way the panel's buttons are rounded, instead of a plain modern rectangle.
-  for (const [column, row] of [[0, 0], [width - 1, 0], [0, height - 1], [width - 1, height - 1]] as const) grid.put(column, row, '.');
-  for (const [column, row] of [[1, 1], [width - 2, 1], [1, height - 2], [width - 2, height - 2]] as const) grid.put(column, row, 'k');
+  for (const [column, row] of [
+    [0, 0],
+    [width - 1, 0],
+    [0, height - 1],
+    [width - 1, height - 1],
+  ] as const)
+    grid.put(column, row, '.');
+  for (const [column, row] of [
+    [1, 1],
+    [width - 2, 1],
+    [1, height - 2],
+    [width - 2, height - 2],
+  ] as const)
+    grid.put(column, row, 'k');
   lines.forEach((line, row) => writeText(grid, line, edge + padding, edge + padding + row * lineHeight, 't'));
   return grid.build({ k: 'Ink', e: 'V1', f: 'V0', t: 'Paper' });
 }
@@ -67,6 +79,12 @@ export class MessageBox {
       this.arts.set(key, art);
     }
     // The box dissolves through the same ordered pattern as the restoration, so it needs no transparency.
-    picture.draw(art, margin, picture.height - margin - art.rows.length, 'colored', (x, y) => bayer[y & 3]![x & 3]! < shown);
+    picture.draw(
+      art,
+      margin,
+      picture.height - margin - art.rows.length,
+      'colored',
+      (x, y) => bayer[y & 3]![x & 3]! < shown,
+    );
   }
 }

@@ -9,7 +9,13 @@ import { Picture, type Version } from './picture';
 export const tileSize = 32;
 
 const orbBob = [0, -1, 0, 1];
-const motes = [[22, 0], [34, 37], [47, 14], [58, 51], [71, 26]] as const;
+const motes = [
+  [22, 0],
+  [34, 37],
+  [47, 14],
+  [58, 51],
+  [71, 26],
+] as const;
 const framesPerMoteRise = 4;
 export const bayer = [
   [0, 8, 2, 10],
@@ -35,7 +41,9 @@ export interface Scene {
 }
 
 const sized = (picture: Picture, target: Picture): Picture =>
-  picture.width === target.width && picture.height === target.height ? picture : new Picture(target.width, target.height);
+  picture.width === target.width && picture.height === target.height
+    ? picture
+    : new Picture(target.width, target.height);
 
 const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
 
@@ -49,12 +57,19 @@ function groundTiles(scenery: Scenery): GroundTile[] {
     for (let column = 0; column <= columns; column++) {
       const corners = [at(column - 1, row - 1), at(column, row - 1), at(column - 1, row), at(column, row)];
       const variant = (column * 5 + row * 3 + ((column * row) % 2)) % 3;
-      const mask = (ground: Ground): number => corners.reduce((bits, corner) => (bits << 1) | (corner.equals(ground) ? 1 : 0), 0);
+      const mask = (ground: Ground): number =>
+        corners.reduce((bits, corner) => (bits << 1) | (corner.equals(ground) ? 1 : 0), 0);
       let frames: readonly Art[] | undefined;
       if (mask(Ground.Grass) === 15) frames = [grassArt[variant]!];
       else if (mask(Ground.Path) === 15) frames = [pathArt[variant]!];
       else if (mask(Ground.Water) === 15) frames = waterArt[variant];
-      else frames = terrainArt[corners.map((ground) => ground.equals(Ground.Water) ? 'w' : ground.equals(Ground.Path) ? 'p' : 'g').join('')];
+      else
+        frames =
+          terrainArt[
+            corners
+              .map((ground) => (ground.equals(Ground.Water) ? 'w' : ground.equals(Ground.Path) ? 'p' : 'g'))
+              .join('')
+          ];
       if (!frames) throw new RangeError(`No ground art for ${column}, ${row}`);
       tiles.push({ x: column * tileSize - tileSize / 2, y: row * tileSize - tileSize / 2, frames });
     }
@@ -64,16 +79,28 @@ function groundTiles(scenery: Scenery): GroundTile[] {
 
 export function propVariants(footprints: readonly (readonly TilePosition[])[], count: number): readonly number[] {
   const choices = new Map<number, number>();
-  const ordered = footprints.map((footprint, index) => ({ footprint, index })).sort((first, second) =>
-    first.footprint[0]!.row - second.footprint[0]!.row || first.footprint[0]!.column - second.footprint[0]!.column);
+  const ordered = footprints
+    .map((footprint, index) => ({ footprint, index }))
+    .sort(
+      (first, second) =>
+        first.footprint[0]!.row - second.footprint[0]!.row || first.footprint[0]!.column - second.footprint[0]!.column,
+    );
   for (const { footprint, index } of ordered) {
     const excluded = new Set<number>();
     for (const [neighbor, choice] of choices) {
-      if (footprint.some((position) => footprints[neighbor]!.some((other) =>
-        Math.abs(position.column - other.column) + Math.abs(position.row - other.row) <= 1))) excluded.add(choice);
+      if (
+        footprint.some((position) =>
+          footprints[neighbor]!.some(
+            (other) => Math.abs(position.column - other.column) + Math.abs(position.row - other.row) <= 1,
+          ),
+        )
+      )
+        excluded.add(choice);
     }
     const start = (footprint[0]!.column * 3 + footprint[0]!.row * 5) % count;
-    const selected = Array.from({ length: count }, (_, offset) => (start + offset) % count).find((choice) => !excluded.has(choice));
+    const selected = Array.from({ length: count }, (_, offset) => (start + offset) % count).find(
+      (choice) => !excluded.has(choice),
+    );
     if (selected === undefined) throw new RangeError('Touching props need another art variant');
     choices.set(index, selected);
   }
@@ -102,12 +129,22 @@ export class WorldPainter {
 
   constructor(private readonly level: Level) {
     this.ground = groundTiles(level.scenery);
-    this.treeChoices = propVariants(level.scenery.trees.map((tree) => tree.footprint), treeArt.length);
-    this.stoneChoices = propVariants(level.stones.map((stone) => [stone.position]), stoneVariants.length);
+    this.treeChoices = propVariants(
+      level.scenery.trees.map((tree) => tree.footprint),
+      treeArt.length,
+    );
+    this.stoneChoices = propVariants(
+      level.stones.map((stone) => [stone.position]),
+      stoneVariants.length,
+    );
     const joins = (position: TilePosition): boolean =>
       level.door.covers(position) || level.scenery.fences.some((fence) => fence.position.equals(position));
-    this.fencePieces = level.scenery.fences.map(({ position }) => [Direction.Up, Direction.Down, Direction.Left, Direction.Right]
-      .reduce((piece, direction) => (piece << 1) | (joins(position.neighbor(direction)) ? 1 : 0), 0));
+    this.fencePieces = level.scenery.fences.map(({ position }) =>
+      [Direction.Up, Direction.Down, Direction.Left, Direction.Right].reduce(
+        (piece, direction) => (piece << 1) | (joins(position.neighbor(direction)) ? 1 : 0),
+        0,
+      ),
+    );
   }
 
   restorationLength(origin: TilePosition): number {
@@ -120,8 +157,14 @@ export class WorldPainter {
     this.compose(target, scene, restored);
   }
 
-  paintRestoring(target: Picture, scene: Scene, origin: TilePosition, framesSinceStart: number,
-    before: readonly Area[], after: readonly Area[]): void {
+  paintRestoring(
+    target: Picture,
+    scene: Scene,
+    origin: TilePosition,
+    framesSinceStart: number,
+    before: readonly Area[],
+    after: readonly Area[],
+  ): void {
     this.before = sized(this.before, target);
     this.after = sized(this.after, target);
     this.compose(this.before, scene, before);
@@ -149,7 +192,8 @@ export class WorldPainter {
     ink.fill('Ink');
     for (let y = 0; y < target.height; y++) {
       for (let x = 0; x < target.width; x++) {
-        if (framesSinceStart >= (bayer[y & 3]![x & 3]! + 1) * framesPerDarkening) target.pixels.set(ink.pixels, (y * target.width + x) * 4);
+        if (framesSinceStart >= (bayer[y & 3]![x & 3]! + 1) * framesPerDarkening)
+          target.pixels.set(ink.pixels, (y * target.width + x) * 4);
       }
     }
   }
@@ -171,7 +215,8 @@ export class WorldPainter {
   private compose(target: Picture, scene: Scene, restored: readonly Area[]): void {
     const { columns, rows } = scene.level.scenery.size;
     const colored = Array.from({ length: columns * rows }, (_, index) =>
-      restored.some((area) => area.covers(TilePosition.at(index % columns, Math.floor(index / columns)))));
+      restored.some((area) => area.covers(TilePosition.at(index % columns, Math.floor(index / columns)))),
+    );
     if (colored.every(Boolean)) {
       this.paintVersion(target, scene, 'colored', scene.level.door.isOpen);
       return;
@@ -214,10 +259,22 @@ export class WorldPainter {
 
     const waterFrame = Math.floor(frame / 15) % 4;
     const { columns, rows } = level.scenery.size;
-    for (let row = Math.floor((camera.y + tileSize / 2) / tileSize); row <= Math.floor((camera.y + picture.height - 1 + tileSize / 2) / tileSize); row++) {
-      for (let column = Math.floor((camera.x + tileSize / 2) / tileSize); column <= Math.floor((camera.x + picture.width - 1 + tileSize / 2) / tileSize); column++) {
+    for (
+      let row = Math.floor((camera.y + tileSize / 2) / tileSize);
+      row <= Math.floor((camera.y + picture.height - 1 + tileSize / 2) / tileSize);
+      row++
+    ) {
+      for (
+        let column = Math.floor((camera.x + tileSize / 2) / tileSize);
+        column <= Math.floor((camera.x + picture.width - 1 + tileSize / 2) / tileSize);
+        column++
+      ) {
         const tile = this.ground[clamp(row, 0, rows) * (columns + 1) + clamp(column, 0, columns)]!;
-        draw(tile.frames[waterFrame % tile.frames.length]!, column * tileSize - tileSize / 2, row * tileSize - tileSize / 2);
+        draw(
+          tile.frames[waterFrame % tile.frames.length]!,
+          column * tileSize - tileSize / 2,
+          row * tileSize - tileSize / 2,
+        );
       }
     }
     for (const tree of level.scenery.trees) {
@@ -234,39 +291,59 @@ export class WorldPainter {
     const doorBase = (door.left.row + 1) * tileSize;
 
     const objects: { base: number; paint: () => void; shadow: () => void }[] = [];
-    const shadow = (width: number, position: TilePosition, x: number, y: number): (() => void) => () => {
-      const code = level.scenery.groundAt(position).equals(Ground.Path) ? 'E2' : 'G1';
-      const key = `${width}:${code}`;
-      let art = this.shadows.get(key);
-      if (!art) { art = groundShadow(width, code); this.shadows.set(key, art); }
-      draw(art, x, y);
-    };
+    const shadow =
+      (width: number, position: TilePosition, x: number, y: number): (() => void) =>
+      () => {
+        const code = level.scenery.groundAt(position).equals(Ground.Path) ? 'E2' : 'G1';
+        const key = `${width}:${code}`;
+        let art = this.shadows.get(key);
+        if (!art) {
+          art = groundShadow(width, code);
+          this.shadows.set(key, art);
+        }
+        draw(art, x, y);
+      };
     level.scenery.trees.forEach((tree, index) => {
       const leaves = Math.floor((frame + index * 13) / 40) % 2;
       const art = treeArt[this.treeChoices[index]!]![leaves]!;
       const x = tree.base.column * tileSize;
       const base = (tree.base.row + 1) * tileSize;
-      objects.push({ base, shadow: shadow(12, tree.base, x + 26, base - 4), paint: () => draw(art, x, base - art.rows.length) });
+      objects.push({
+        base,
+        shadow: shadow(12, tree.base, x + 26, base - 4),
+        paint: () => draw(art, x, base - art.rows.length),
+      });
     });
     level.stones.forEach((stone, index) => {
       const { column, row } = stone.position;
-      objects.push({ base: (row + 1) * tileSize, shadow: shadow(14, stone.position, column * tileSize + 9, row * tileSize + 27),
-        paint: () => draw(stoneVariants[this.stoneChoices[index]!]!, column * tileSize, row * tileSize) });
+      objects.push({
+        base: (row + 1) * tileSize,
+        shadow: shadow(14, stone.position, column * tileSize + 9, row * tileSize + 27),
+        paint: () => draw(stoneVariants[this.stoneChoices[index]!]!, column * tileSize, row * tileSize),
+      });
     });
     for (const signpost of level.signposts) {
       const { column, row } = signpost.position;
-      objects.push({ base: (row + 1) * tileSize, shadow: shadow(10, signpost.position, column * tileSize + 11, row * tileSize + 27),
-        paint: () => draw(signpostArt, column * tileSize, row * tileSize) });
+      objects.push({
+        base: (row + 1) * tileSize,
+        shadow: shadow(10, signpost.position, column * tileSize + 11, row * tileSize + 27),
+        paint: () => draw(signpostArt, column * tileSize, row * tileSize),
+      });
     }
     level.scenery.fences.forEach((fence, index) => {
       const { column, row } = fence.position;
-      objects.push({ base: (row + 1) * tileSize, shadow: shadow(8, fence.position, column * tileSize + 12, row * tileSize + 27),
-        paint: () => draw(fenceArt[this.fencePieces[index]!]!, column * tileSize, row * tileSize) });
+      objects.push({
+        base: (row + 1) * tileSize,
+        shadow: shadow(8, fence.position, column * tileSize + 12, row * tileSize + 27),
+        paint: () => draw(fenceArt[this.fencePieces[index]!]!, column * tileSize, row * tileSize),
+      });
     });
     const doorFrame = doorLit ? doorArt.open : doorArt.closed;
     const doorTop = doorBase - doorFrame.rows.length;
     const doorLeft = door.left.column * tileSize;
-    objects.push({ base: doorBase, shadow: shadow(92, door.footprint[1]!, doorLeft + 2, doorBase - 5),
+    objects.push({
+      base: doorBase,
+      shadow: shadow(92, door.footprint[1]!, doorLeft + 2, doorBase - 5),
       paint: () => {
         draw(doorFrame, doorLeft, doorTop);
         if (!doorLit) return;
@@ -275,7 +352,8 @@ export class WorldPainter {
           const sway = Math.floor((frame + offset * 9) / 40) % 2;
           draw(lightMote, doorLeft + column + sway, doorTop + 88 - risen);
         }
-      } });
+      },
+    });
     for (const orb of level.orbs) {
       const { column, row } = orb.position;
       const bob = orbBob[Math.floor(frame / 10) % orbBob.length]!;

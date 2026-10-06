@@ -3,14 +3,32 @@ import { PixelGrid, type Art, type HeroArt, type HeroDirectionArt, type Legend }
 type Grid = readonly string[];
 type Facing = keyof HeroArt;
 type Frames = {
-  readonly idle: Grid; readonly idleInhale: Grid; readonly idleSettle: Grid;
-  readonly idleBlink?: Grid; readonly idleInhaleBlink?: Grid;
-  readonly walkContactA: Grid; readonly walkPassing: Grid; readonly walkContactB: Grid;
+  readonly idle: Grid;
+  readonly idleInhale: Grid;
+  readonly idleSettle: Grid;
+  readonly idleBlink?: Grid;
+  readonly idleInhaleBlink?: Grid;
+  readonly walkContactA: Grid;
+  readonly walkPassing: Grid;
+  readonly walkContactB: Grid;
 };
 
 const heroColors = {
-  k: 'Ink', h: 'E3', H: 'E2', l: 'E4', e: 'E1', c: 'Paper', s: 'S2', S: 'S1', t: 'S3',
-  p: 'P2', P: 'P1', q: 'P3', j: 'W1', J: 'W0', b: 'E1',
+  k: 'Ink',
+  h: 'E3',
+  H: 'E2',
+  l: 'E4',
+  e: 'E1',
+  c: 'Paper',
+  s: 'S2',
+  S: 'S1',
+  t: 'S3',
+  p: 'P2',
+  P: 'P1',
+  q: 'P3',
+  j: 'W1',
+  J: 'W0',
+  b: 'E1',
 } as const satisfies Legend;
 const stoneColors = { k: 'Ink', a: 'N3', b: 'N2', c: 'N4' } as const satisfies Legend;
 
@@ -1134,11 +1152,17 @@ function heroDirection(facing: Facing): HeroDirectionArt {
   };
 }
 
-export const heroArt: HeroArt = { down: heroDirection('down'), up: heroDirection('up'), left: heroDirection('left'), right: heroDirection('right') };
+export const heroArt: HeroArt = {
+  down: heroDirection('down'),
+  up: heroDirection('up'),
+  left: heroDirection('left'),
+  right: heroDirection('right'),
+};
 export const heroHoldingArt = heroArt.down.holding!;
 
 const stoneShapes = [
-  [ // rounded boulder
+  [
+    // rounded boulder
     '...........kkkkkkkk.............',
     '.........kkccccaaaakk...........',
     '........kccccaaaaaaaak..........',
@@ -1157,7 +1181,8 @@ const stoneShapes = [
     '.......kkbbbbbbbbbbbbbkk........',
     '.........kkkkkkkkkkkkk..........',
   ],
-  [ // flat slab
+  [
+    // flat slab
     '..........kkkkkkkkkk............',
     '.......kkkccccaaaaaakkk.........',
     '.....kkccccaaaaaaaaaaaakk.......',
@@ -1173,7 +1198,8 @@ const stoneShapes = [
     '.....kkbbbbbbbbbbbbbbbbbkk......',
     '.......kkkkkkkkkkkkkkkkk........',
   ],
-  [ // pointed rock
+  [
+    // pointed rock
     '..............kkkk..............',
     '............kkccaak.............',
     '...........kcccaaaak............',
@@ -1200,23 +1226,83 @@ const stoneShapes = [
 const stoneTops = [10, 12, 7];
 
 // Each variant pairs a shape with its own crack, so neighbors never repeat even when they share an outline.
-const stoneDetails: readonly { shape: number; crack: readonly (readonly [number, number])[]; chips?: readonly (readonly [number, number, string])[] }[] = [
-  { shape: 0, crack: [[10, 15], [11, 15], [12, 16], [13, 16], [14, 17], [15, 17], [16, 18]] },
-  { shape: 1, crack: [[7, 17], [8, 17], [9, 17], [10, 16], [11, 16], [12, 16]] },
-  { shape: 2, crack: [[12, 13], [13, 14], [14, 15], [15, 16], [16, 17], [17, 18]] },
+const stoneDetails: readonly {
+  shape: number;
+  crack: readonly (readonly [number, number])[];
+  chips?: readonly (readonly [number, number, string])[];
+}[] = [
   {
     shape: 0,
-    crack: [[13, 14], [14, 14], [15, 14], [16, 15], [17, 15], [18, 15]],
-    chips: [[19, 11, '.'], [20, 11, '.'], [18, 11, 'k'], [19, 12, 'k'], [20, 12, 'k']],
+    crack: [
+      [10, 15],
+      [11, 15],
+      [12, 16],
+      [13, 16],
+      [14, 17],
+      [15, 17],
+      [16, 18],
+    ],
   },
-  { shape: 1, crack: [[15, 15], [16, 15], [17, 16], [18, 16], [19, 17], [20, 17]] },
+  {
+    shape: 1,
+    crack: [
+      [7, 17],
+      [8, 17],
+      [9, 17],
+      [10, 16],
+      [11, 16],
+      [12, 16],
+    ],
+  },
+  {
+    shape: 2,
+    crack: [
+      [12, 13],
+      [13, 14],
+      [14, 15],
+      [15, 16],
+      [16, 17],
+      [17, 18],
+    ],
+  },
+  {
+    shape: 0,
+    crack: [
+      [13, 14],
+      [14, 14],
+      [15, 14],
+      [16, 15],
+      [17, 15],
+      [18, 15],
+    ],
+    chips: [
+      [19, 11, '.'],
+      [20, 11, '.'],
+      [18, 11, 'k'],
+      [19, 12, 'k'],
+      [20, 12, 'k'],
+    ],
+  },
+  {
+    shape: 1,
+    crack: [
+      [15, 15],
+      [16, 15],
+      [17, 16],
+      [18, 16],
+      [19, 17],
+      [20, 17],
+    ],
+  },
 ];
 
 function stone({ shape, crack, chips = [] }: (typeof stoneDetails)[number]): Art {
   const grid = new PixelGrid(32, 32);
-  stoneShapes[shape]!.forEach((line, row) => [...line].forEach((symbol, column) => {
-    if (symbol !== '.') grid.put(column, row + stoneTops[shape]!, symbol);
-  }));
+  stoneShapes[shape]!.forEach((line, row) =>
+    [...line].forEach((symbol, column) => {
+      if (symbol !== '.') grid.put(column, row + stoneTops[shape]!, symbol);
+    }),
+  );
   for (const [column, row] of crack) if (grid.get(column, row) === 'a') grid.put(column, row, 'b');
   for (const [column, row, symbol] of chips) grid.put(column, row, symbol);
   return grid.build(stoneColors);
@@ -1246,13 +1332,31 @@ function orb(legend: Legend, symbol: keyof typeof orbSymbols): Art {
       const toward = Math.sqrt(Math.max(0, 1 - across ** 2 - down ** 2));
       // Lighting a true sphere from the top left gives the curved terminator the style asks for instead of a ring of shading.
       const light = -0.45 * across - 0.55 * down + 0.7 * toward;
-      const edge = [[column - 1, row], [column + 1, row], [column, row - 1], [column, row + 1]].some(([x, y]) => !inside(x!, y!));
+      const edge = [
+        [column - 1, row],
+        [column + 1, row],
+        [column, row - 1],
+        [column, row + 1],
+      ].some(([x, y]) => !inside(x!, y!));
       grid.put(column, row, edge ? 'k' : light > 0.38 ? 'a' : 'b');
     }
   }
   // A small hard highlight and a faint bounce light on the far rim are what make the sphere read as glass.
-  for (const [column, row] of [[7, 6], [8, 6], [9, 6], [6, 7], [7, 7], [6, 8]] as const) grid.put(column, row, 'c');
-  for (const [column, row] of [[15, 16], [16, 15], [17, 14]] as const) grid.put(column, row, 'a');
+  for (const [column, row] of [
+    [7, 6],
+    [8, 6],
+    [9, 6],
+    [6, 7],
+    [7, 7],
+    [6, 8],
+  ] as const)
+    grid.put(column, row, 'c');
+  for (const [column, row] of [
+    [15, 16],
+    [16, 15],
+    [17, 14],
+  ] as const)
+    grid.put(column, row, 'a');
   const shape = orbSymbols[symbol];
   const left = 12 - Math.ceil(shape[0]!.length / 2);
   const top = 12 - Math.floor(shape.length / 2);
@@ -1309,11 +1413,19 @@ const starShape = [
 
 function star(): Art {
   const grid = new PixelGrid(24, 24);
-  starShape.forEach((line, row) => [...line].forEach((pixel, column) => {
-    // Shading the half below the diagonal through the center keeps the dark side on the bottom right, away from the light.
-    if (pixel !== '.') grid.put(column + 4, row + 4, pixel === 'k' ? 'k' : column + row >= 18 ? 'b' : 'a');
-  }));
-  for (const [column, row] of [[7, 2], [7, 3], [2, 6], [3, 6]] as const) grid.put(column + 4, row + 4, 'c');
+  starShape.forEach((line, row) =>
+    [...line].forEach((pixel, column) => {
+      // Shading the half below the diagonal through the center keeps the dark side on the bottom right, away from the light.
+      if (pixel !== '.') grid.put(column + 4, row + 4, pixel === 'k' ? 'k' : column + row >= 18 ? 'b' : 'a');
+    }),
+  );
+  for (const [column, row] of [
+    [7, 2],
+    [7, 3],
+    [2, 6],
+    [3, 6],
+  ] as const)
+    grid.put(column + 4, row + 4, 'c');
   return grid.build({ k: 'Ink', a: 'Y2', b: 'Y1', c: 'Y3' });
 }
 
@@ -1326,7 +1438,13 @@ function signpost(): Art {
   grid.rectangle(14, 18, 1, 8, 'h');
   grid.rectangle(17, 18, 1, 8, 's');
   grid.rectangle(5, 6, 22, 13, 'k');
-  for (const [column, row] of [[5, 6], [26, 6], [5, 18], [26, 18]] as const) grid.put(column, row, '.');
+  for (const [column, row] of [
+    [5, 6],
+    [26, 6],
+    [5, 18],
+    [26, 18],
+  ] as const)
+    grid.put(column, row, '.');
   grid.rectangle(6, 7, 20, 11, 'a');
   grid.rectangle(6, 7, 20, 1, 'h');
   grid.rectangle(6, 7, 1, 11, 'h');

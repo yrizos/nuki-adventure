@@ -57,9 +57,12 @@ test('idle blinks for six ticks every three seconds and breathes every ninety ti
   expect(animator.pose(hero, 186, false)).toBe(heroArt.down.stand);
 });
 
-test.each([['down', Direction.Down], ['up', Direction.Up], ['left', Direction.Left], ['right', Direction.Right]] as const)(
-  '%s has its own holding pose', (name, direction) => {
-    const hero = new Hero(TilePosition.at(0, 0), direction);
-    expect(new HeroAnimator().pose(hero, 0, true)).toBe(heroArt[name].holding);
-  },
-);
+test.each([
+  ['down', Direction.Down],
+  ['up', Direction.Up],
+  ['left', Direction.Left],
+  ['right', Direction.Right],
+] as const)('%s has its own holding pose', (name, direction) => {
+  const hero = new Hero(TilePosition.at(0, 0), direction);
+  expect(new HeroAnimator().pose(hero, 0, true)).toBe(heroArt[name].holding);
+});

@@ -34,7 +34,8 @@ export class PixelGrid {
 
   put(column: number, row: number, symbol: string): void {
     if (!Number.isInteger(column) || !Number.isInteger(row)) throw new RangeError('Art positions must be whole pixels');
-    if (this.pixels[row]?.[column] === undefined) throw new RangeError(`Art pixel ${column}, ${row} is outside its grid`);
+    if (this.pixels[row]?.[column] === undefined)
+      throw new RangeError(`Art pixel ${column}, ${row} is outside its grid`);
     this.pixels[row]![column] = symbol;
   }
 

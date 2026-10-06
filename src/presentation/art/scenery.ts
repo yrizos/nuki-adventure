@@ -1,7 +1,16 @@
 import { PixelGrid, type Art, type Legend } from './art';
 
 const groundColors = {
-  g: 'G2', G: 'G3', d: 'G1', p: 'E3', P: 'E4', e: 'E2', w: 'W1', r: 'W2', D: 'W0', f: 'W4',
+  g: 'G2',
+  G: 'G3',
+  d: 'G1',
+  p: 'E3',
+  P: 'E4',
+  e: 'E2',
+  w: 'W1',
+  r: 'W2',
+  D: 'W0',
+  f: 'W4',
 } as const satisfies Legend;
 const treeColors = { a: 'G1', b: 'G0', c: 'G3', t: 'E1', T: 'E0' } as const satisfies Legend;
 const flowerColors = { y: 'Y3', r: 'R3', v: 'V3', w: 'W3', p: 'Paper', d: 'G1' } as const satisfies Legend;
@@ -19,8 +28,10 @@ function scatter(stamps: readonly Stamp[], seed: number): [Stamp, number, number
       if (++attempt > 10000) throw new RangeError('Ground details do not fit in one tile');
       const x = 1 + Math.floor(hash(seed, attempt, 1) * (31 - width));
       const y = 1 + Math.floor(hash(seed, attempt, 2) * (31 - height));
-      const clear = placed.every(([other, left, top]) =>
-        x + width < left || left + other[0]!.length < x || y + height < top || top + other.length < y);
+      const clear = placed.every(
+        ([other, left, top]) =>
+          x + width < left || left + other[0]!.length < x || y + height < top || top + other.length < y,
+      );
       if (clear) {
         placed.push([stamp, x, y]);
         break;
@@ -31,9 +42,11 @@ function scatter(stamps: readonly Stamp[], seed: number): [Stamp, number, number
 }
 
 function stamp(grid: PixelGrid, [pattern, x, y]: [Stamp, number, number]): void {
-  pattern.forEach((line, row) => [...line].forEach((symbol, column) => {
-    if (symbol !== '.') grid.put(x + column, y + row, symbol);
-  }));
+  pattern.forEach((line, row) =>
+    [...line].forEach((symbol, column) => {
+      if (symbol !== '.') grid.put(x + column, y + row, symbol);
+    }),
+  );
 }
 
 const tufts: readonly Stamp[] = [
@@ -69,7 +82,10 @@ const ripplePhases = [0, 1, 2, 3, 0, 2];
 
 function water(variant: number, frame: number): Art {
   const grid = new PixelGrid(32, 32, 'w');
-  const spots = scatter(ripplePhases.map(() => ['..........']), variant + 37);
+  const spots = scatter(
+    ripplePhases.map(() => ['..........']),
+    variant + 37,
+  );
   spots.forEach(([, x, y], index) => {
     const length = rippleLengths[(ripplePhases[index]! + frame) % 4]!;
     grid.rectangle(x + 5 - length / 2, y, length, 1, 'r');
@@ -96,32 +112,53 @@ function wobble(column: number, row: number, seed: number): number {
 }
 
 function transition(corners: readonly GroundCode[], frame: number): Art {
-  const terrain = Array.from({ length: 32 }, (_, row) => Array.from({ length: 32 }, (_, column) => {
-    const weights = [(31 - column) * (31 - row), column * (31 - row), (31 - column) * row, column * row];
-    const totals = { g: 0, p: 0, w: 0 };
-    corners.forEach((ground, index) => { totals[ground] += weights[index]!; });
-    // Wobbling the boundary makes shores and path edges organic, and fading the wobble out toward the tile edges keeps neighbors meeting at the same pixel.
-    const taper = Math.sin((Math.PI * column) / 31) * Math.sin((Math.PI * row) / 31);
-    for (const ground of groundCodes) totals[ground] += taper * 220 * (wobble(column, row, ground.charCodeAt(0)) - 0.5);
-    return groundCodes.reduce((selected, ground) => totals[ground] >= totals[selected] ? ground : selected);
-  }));
+  const terrain = Array.from({ length: 32 }, (_, row) =>
+    Array.from({ length: 32 }, (_, column) => {
+      const weights = [(31 - column) * (31 - row), column * (31 - row), (31 - column) * row, column * row];
+      const totals = { g: 0, p: 0, w: 0 };
+      corners.forEach((ground, index) => {
+        totals[ground] += weights[index]!;
+      });
+      // Wobbling the boundary makes shores and path edges organic, and fading the wobble out toward the tile edges keeps neighbors meeting at the same pixel.
+      const taper = Math.sin((Math.PI * column) / 31) * Math.sin((Math.PI * row) / 31);
+      for (const ground of groundCodes)
+        totals[ground] += taper * 220 * (wobble(column, row, ground.charCodeAt(0)) - 0.5);
+      return groundCodes.reduce((selected, ground) => (totals[ground] >= totals[selected] ? ground : selected));
+    }),
+  );
   const grid = new PixelGrid(32, 32);
   const sources = { g: grassArt[0]!, p: pathArt[0]!, w: waterArt[0]![frame]! };
   for (let row = 0; row < 32; row++) {
     for (let column = 0; column < 32; column++) {
       const ground = terrain[row]![column]!;
-      const neighbors = [[column - 1, row], [column + 1, row], [column, row - 1], [column, row + 1]];
+      const neighbors = [
+        [column - 1, row],
+        [column + 1, row],
+        [column, row - 1],
+        [column, row + 1],
+      ];
       const boundary = neighbors.some(([horizontal, vertical]) => {
         const neighbor = terrain[vertical!]?.[horizontal!];
         return neighbor !== undefined && neighbor !== ground;
       });
-      const nearWaterEdge = ground === 'w' && neighbors.some(([horizontal, vertical]) =>
-        [[horizontal! - 1, vertical!], [horizontal! + 1, vertical!], [horizontal!, vertical! - 1], [horizontal!, vertical! + 1]]
-          .some(([across, down]) => terrain[down!]?.[across!] !== undefined && terrain[down!]![across!] !== 'w'));
-      const symbol = boundary && ground === 'p' ? 'e'
-        : boundary && ground === 'w' ? 'D'
-        : nearWaterEdge && (column + row) % 8 < 5 ? 'f'
-        : sources[ground].rows[row]![column]!;
+      const nearWaterEdge =
+        ground === 'w' &&
+        neighbors.some(([horizontal, vertical]) =>
+          [
+            [horizontal! - 1, vertical!],
+            [horizontal! + 1, vertical!],
+            [horizontal!, vertical! - 1],
+            [horizontal!, vertical! + 1],
+          ].some(([across, down]) => terrain[down!]?.[across!] !== undefined && terrain[down!]![across!] !== 'w'),
+        );
+      const symbol =
+        boundary && ground === 'p'
+          ? 'e'
+          : boundary && ground === 'w'
+            ? 'D'
+            : nearWaterEdge && (column + row) % 8 < 5
+              ? 'f'
+              : sources[ground].rows[row]![column]!;
       grid.put(column, row, symbol);
     }
   }
@@ -129,11 +166,16 @@ function transition(corners: readonly GroundCode[], frame: number): Art {
 }
 
 export const terrainArt: Readonly<Record<string, readonly Art[]>> = Object.fromEntries(
-  groundCodes.flatMap((topLeft) => groundCodes.flatMap((topRight) => groundCodes.flatMap((bottomLeft) =>
-    groundCodes.map((bottomRight) => {
-      const corners = [topLeft, topRight, bottomLeft, bottomRight];
-      return [corners.join(''), [0, 1, 2, 3].map((frame) => transition(corners, frame))];
-    })))),
+  groundCodes.flatMap((topLeft) =>
+    groundCodes.flatMap((topRight) =>
+      groundCodes.flatMap((bottomLeft) =>
+        groundCodes.map((bottomRight) => {
+          const corners = [topLeft, topRight, bottomLeft, bottomRight];
+          return [corners.join(''), [0, 1, 2, 3].map((frame) => transition(corners, frame))];
+        }),
+      ),
+    ),
+  ),
 );
 
 // Art is authored once at load, so a fixed hash keeps every variant identical between runs without storing pixel data for all of them.
@@ -145,16 +187,17 @@ function hash(...values: readonly number[]): number {
 }
 
 // One leaf cluster: highlight on its top left, body, and shadow on its bottom right.
-const leafCluster = [
-  '..HH..',
-  '.HHMM.',
-  'HMMMMD',
-  '.MMMDD',
-  '..DD..',
-];
+const leafCluster = ['..HH..', '.HHMM.', 'HMMMMD', '.MMMDD', '..DD..'];
 
 function trunk(grid: PixelGrid): void {
-  const spans: Record<number, [number, number]> = { 56: [26, 37], 57: [26, 37], 58: [25, 38], 59: [24, 39], 60: [23, 40], 61: [23, 40] };
+  const spans: Record<number, [number, number]> = {
+    56: [26, 37],
+    57: [26, 37],
+    58: [25, 38],
+    59: [24, 39],
+    60: [23, 40],
+    61: [23, 40],
+  };
   for (let row = 38; row <= 61; row++) {
     const [left, right] = spans[row] ?? [27, 36];
     for (let column = left; column <= right; column++) {
@@ -162,10 +205,21 @@ function trunk(grid: PixelGrid): void {
       grid.put(column, row, shaded ? 'T' : 't');
     }
   }
-  for (const [column, top, bottom] of [[29, 47, 55], [32, 49, 58], [30, 57, 60], [35, 58, 61]] as const) {
+  for (const [column, top, bottom] of [
+    [29, 47, 55],
+    [32, 49, 58],
+    [30, 57, 60],
+    [35, 58, 61],
+  ] as const) {
     for (let row = top; row <= bottom; row++) grid.put(column, row, 'T');
   }
-  for (const [column, row] of [[24, 61], [27, 61], [38, 61], [39, 61]] as const) grid.put(column, row, '.');
+  for (const [column, row] of [
+    [24, 61],
+    [27, 61],
+    [38, 61],
+    [39, 61],
+  ] as const)
+    grid.put(column, row, '.');
   grid.rectangle(26, 60, 2, 1, 'T');
   grid.rectangle(37, 59, 2, 1, 't');
 }
@@ -178,8 +232,10 @@ function canopy(variant: number): (column: number, row: number) => boolean {
     const angle = ((index + hash(variant, index) * 0.6) / count) * Math.PI * 2;
     return [32 + Math.cos(angle) * width, 25 + Math.sin(angle) * height, 8 + hash(index, variant) * 4] as const;
   });
-  return (column, row) => row <= 47 && (((column - 32) / width) ** 2 + ((row - 25) / height) ** 2 <= 1
-    || lobes.some(([x, y, radius]) => (column - x) ** 2 + (row - y) ** 2 <= radius ** 2));
+  return (column, row) =>
+    row <= 47 &&
+    (((column - 32) / width) ** 2 + ((row - 25) / height) ** 2 <= 1 ||
+      lobes.some(([x, y, radius]) => (column - x) ** 2 + (row - y) ** 2 <= radius ** 2));
 }
 
 function tree(variant: number, frame: number): Art {
@@ -199,24 +255,35 @@ function tree(variant: number, frame: number): Art {
     }
   }
   // A cluster on the top edge sways on the second frame, which reads as wind without moving the whole crown.
-  const swaying = clusters.filter(([x, y]) => !inside(x + 2, y - 1)).sort((first, second) => first[1] - second[1])[variant % 3];
+  const swaying = clusters.filter(([x, y]) => !inside(x + 2, y - 1)).sort((first, second) => first[1] - second[1])[
+    variant % 3
+  ];
   for (const [x, y] of clusters) {
     const shift = frame === 1 && swaying && x === swaying[0] && y === swaying[1] ? 1 : 0;
     const light = -((x + 2 - 32) / 28) * 0.55 - ((y + 2 - 24) / 22) * 0.85 + (hash(x, y, variant) - 0.5) * 0.35;
     const tone = y > 39 ? 'shadow' : light > 0.05 ? 'lit' : light < -0.55 ? 'shadow' : 'middle';
-    const colors = { lit: { H: 'c', M: 'a', D: 'b' }, middle: { H: 'a', M: 'a', D: 'b' }, shadow: { H: 'a', M: 'b', D: 'b' } }[tone];
-    leafCluster.forEach((line, row) => [...line].forEach((symbol, column) => {
-      const target = [x + column + shift, y + row] as const;
-      if (symbol !== '.' && target[0] >= 0 && target[0] < 64 && target[1] >= 0) leaves.put(target[0], target[1], colors[symbol as 'H' | 'M' | 'D']);
-    }));
+    const colors = {
+      lit: { H: 'c', M: 'a', D: 'b' },
+      middle: { H: 'a', M: 'a', D: 'b' },
+      shadow: { H: 'a', M: 'b', D: 'b' },
+    }[tone];
+    leafCluster.forEach((line, row) =>
+      [...line].forEach((symbol, column) => {
+        const target = [x + column + shift, y + row] as const;
+        if (symbol !== '.' && target[0] >= 0 && target[0] < 64 && target[1] >= 0)
+          leaves.put(target[0], target[1], colors[symbol as 'H' | 'M' | 'D']);
+      }),
+    );
   }
   const rows = leaves.build(treeColors).rows;
-  rows.forEach((line, row) => [...line].forEach((symbol, column) => {
-    if (symbol === '.') return;
-    // Scenery is outlined only on its shaded bottom and right edges, in the darkest step of its ramp.
-    const edge = (rows[row + 1]?.[column] ?? '.') === '.' || (line[column + 1] ?? '.') === '.';
-    grid.put(column, row, edge ? 'b' : symbol);
-  }));
+  rows.forEach((line, row) =>
+    [...line].forEach((symbol, column) => {
+      if (symbol === '.') return;
+      // Scenery is outlined only on its shaded bottom and right edges, in the darkest step of its ramp.
+      const edge = (rows[row + 1]?.[column] ?? '.') === '.' || (line[column + 1] ?? '.') === '.';
+      grid.put(column, row, edge ? 'b' : symbol);
+    }),
+  );
   return grid.build(treeColors);
 }
 
@@ -234,8 +301,15 @@ const swayingBlossom = [
 
 function flowers(variant: number, frame: number): Art {
   const grid = new PixelGrid(32, 32);
-  const colors = [['r', 'p'], ['v', 'w'], ['p', 'v']][variant]!;
-  scatter([0, 1, 2, 3].map(() => ['......', '......', '......', '......', '......', '......']), variant + 53).forEach(([, x, y], index) => {
+  const colors = [
+    ['r', 'p'],
+    ['v', 'w'],
+    ['p', 'v'],
+  ][variant]!;
+  scatter(
+    [0, 1, 2, 3].map(() => ['......', '......', '......', '......', '......', '......']),
+    variant + 53,
+  ).forEach(([, x, y], index) => {
     const shape = (frame === 1 ? swayingBlossom : blossom)[index % 2]!;
     stamp(grid, [shape.map((line) => line.replaceAll('p', colors[index % 2]!)), x, y]);
   });
@@ -259,7 +333,10 @@ function fence(piece: number): Art {
     if (piece & 2) rail(grid, 0, 12, top);
     if (piece & 1) rail(grid, 20, 32, top);
   }
-  for (const [connected, top, bottom] of [[piece & 8, 0, 4], [piece & 4, 27, 32]] as const) {
+  for (const [connected, top, bottom] of [
+    [piece & 8, 0, 4],
+    [piece & 4, 27, 32],
+  ] as const) {
     if (!connected) continue;
     grid.rectangle(14, top, 3, bottom - top, 'w');
     grid.rectangle(17, top, 1, bottom - top, 'd');
@@ -291,8 +368,19 @@ function door(open: boolean): Art {
   grid.rectangle(0, 7, 96, 12, 'w');
   grid.rectangle(0, 19, 96, 1, 'd');
   grid.rectangle(95, 4, 1, 16, 'd');
-  for (const [column, row, length] of [[8, 10, 20], [40, 14, 24], [70, 11, 16]] as const) grid.rectangle(column, row, length, 1, 'd');
-  for (const [column, row] of [[0, 4], [1, 4], [0, 5], [95, 4]] as const) grid.put(column, row, '.');
+  for (const [column, row, length] of [
+    [8, 10, 20],
+    [40, 14, 24],
+    [70, 11, 16],
+  ] as const)
+    grid.rectangle(column, row, length, 1, 'd');
+  for (const [column, row] of [
+    [0, 4],
+    [1, 4],
+    [0, 5],
+    [95, 4],
+  ] as const)
+    grid.put(column, row, '.');
   post(grid, 0);
   post(grid, 86);
   if (open) {

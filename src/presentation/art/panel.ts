@@ -18,10 +18,50 @@ const continuePadding = 12;
 const continueFaceHeight = 23;
 export const continueWidth = textWidth(continueText) + 2 * continuePadding;
 export const continueHeight = continueFaceHeight + lipHeight;
-const speakerOn = ['...x.....x.', '..xx..x...x', 'xxxx...x..x', 'xxxx...x..x', 'xxxx...x..x', 'xxxx...x..x', 'xxxx...x..x', '..xx..x...x', '...x.....x.'];
-const speakerOff = ['...x.......', '..xx.......', 'xxxx..x...x', 'xxxx...x.x.', 'xxxx....x..', 'xxxx...x.x.', 'xxxx..x...x', '..xx.......', '...x.......'];
-const enterFullScreen = ['xxx...xxx', 'x.......x', 'x.......x', '.........', '.........', '.........', 'x.......x', 'x.......x', 'xxx...xxx'];
-const leaveFullScreen = ['..x...x..', '..x...x..', 'xxx...xxx', '.........', '.........', '.........', 'xxx...xxx', '..x...x..', '..x...x..'];
+const speakerOn = [
+  '...x.....x.',
+  '..xx..x...x',
+  'xxxx...x..x',
+  'xxxx...x..x',
+  'xxxx...x..x',
+  'xxxx...x..x',
+  'xxxx...x..x',
+  '..xx..x...x',
+  '...x.....x.',
+];
+const speakerOff = [
+  '...x.......',
+  '..xx.......',
+  'xxxx..x...x',
+  'xxxx...x.x.',
+  'xxxx....x..',
+  'xxxx...x.x.',
+  'xxxx..x...x',
+  '..xx.......',
+  '...x.......',
+];
+const enterFullScreen = [
+  'xxx...xxx',
+  'x.......x',
+  'x.......x',
+  '.........',
+  '.........',
+  '.........',
+  'x.......x',
+  'x.......x',
+  'xxx...xxx',
+];
+const leaveFullScreen = [
+  '..x...x..',
+  '..x...x..',
+  'xxx...xxx',
+  '.........',
+  '.........',
+  '.........',
+  'xxx...xxx',
+  '..x...x..',
+  '..x...x..',
+];
 
 function inDisc(size: number, column: number, row: number): boolean {
   const radius = size / 2;
@@ -43,17 +83,28 @@ function inRoundedRectangle(width: number, height: number, radius: number, colum
   return across >= radius || down >= radius || (radius - across) ** 2 + (radius - down) ** 2 <= radius * radius;
 }
 
-function pressable(width: number, height: number, inside: (column: number, row: number) => boolean, pressed: boolean): PixelGrid {
+function pressable(
+  width: number,
+  height: number,
+  inside: (column: number, row: number) => boolean,
+  pressed: boolean,
+): PixelGrid {
   const grid = new PixelGrid(width, height + lipHeight);
   // A pressed control sinks by its lip height, so touch and keyboard presses read as the same physical push.
   const top = pressed ? lipHeight : 0;
   const face = (column: number, row: number): boolean => inside(column, row - top);
-  const lip = (column: number, row: number): boolean => !pressed && !face(column, row) && inside(column, row - lipHeight);
+  const lip = (column: number, row: number): boolean =>
+    !pressed && !face(column, row) && inside(column, row - lipHeight);
   const solid = (column: number, row: number): boolean => face(column, row) || lip(column, row);
   for (let row = 0; row < height + lipHeight; row++) {
     for (let column = 0; column < width; column++) {
       if (!solid(column, row)) continue;
-      const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([across, down]) => !solid(column + across!, row + down!));
+      const edge = [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ].some(([across, down]) => !solid(column + across!, row + down!));
       if (edge) grid.put(column, row, 'k');
       else if (lip(column, row)) grid.put(column, row, 'l');
       else if (!face(column + 3, row + 3)) grid.put(column, row, 's');
@@ -74,14 +125,17 @@ function control(colors: ControlColors, pressed: boolean, mark: readonly string[
   const width = mark[0]!.length;
   const left = (controlSize - width) / 2;
   const markTop = top + Math.floor((controlSize - mark.length) / 2);
-  mark.forEach((line, row) => [...line].forEach((symbol, column) => {
-    if (symbol === 'x') grid.put(left + column, markTop + row, 'm');
-  }));
+  mark.forEach((line, row) =>
+    [...line].forEach((symbol, column) => {
+      if (symbol === 'x') grid.put(left + column, markTop + row, 'm');
+    }),
+  );
   return grid.build(controlLegend(colors));
 }
 
 function continueButton(colors: ControlColors, pressed: boolean): Art {
-  const inside = (column: number, row: number): boolean => inRoundedRectangle(continueWidth, continueFaceHeight, 6, column, row);
+  const inside = (column: number, row: number): boolean =>
+    inRoundedRectangle(continueWidth, continueFaceHeight, 6, column, row);
   const grid = pressable(continueWidth, continueFaceHeight, inside, pressed);
   const top = (pressed ? lipHeight : 0) + Math.floor((continueFaceHeight - glyphHeight) / 2);
   writeText(grid, continueText, continuePadding, top, 'm');
@@ -94,7 +148,12 @@ function ring(): Art {
   for (let row = 0; row < ringSize; row++) {
     for (let column = 0; column < ringSize; column++) {
       if (!inside(column, row)) continue;
-      const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([across, down]) => !inside(column + across!, row + down!));
+      const edge = [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ].some(([across, down]) => !inside(column + across!, row + down!));
       // A recess catches the top left light on its bottom right wall.
       if (edge) grid.put(column, row, 'o');
       else if (!inside(column + 3, row + 3)) grid.put(column, row, 'b');
@@ -107,7 +166,17 @@ function ring(): Art {
 // Offset rows of small dark dots read as the molded grip of a toy controller without competing with the controls.
 function grip(): Art {
   const grid = new PixelGrid(8, 16, 'p');
-  for (const [column, row] of [[3, 3], [4, 3], [3, 4], [4, 4], [7, 11], [0, 11], [7, 12], [0, 12]] as const) grid.put(column, row, 'd');
+  for (const [column, row] of [
+    [3, 3],
+    [4, 3],
+    [3, 4],
+    [4, 4],
+    [7, 11],
+    [0, 11],
+    [7, 12],
+    [0, 12],
+  ] as const)
+    grid.put(column, row, 'd');
   return grid.build({ p: 'V0', d: 'V0a' });
 }
 
@@ -117,13 +186,27 @@ function switchArt(symbol: readonly string[]): Art {
   const grid = new PixelGrid(size, size, 'k');
   grid.rectangle(1, 1, size - 2, size - 2, 'e');
   grid.rectangle(2, 2, size - 4, size - 4, 'f');
-  for (const [column, row] of [[0, 0], [size - 1, 0], [0, size - 1], [size - 1, size - 1]] as const) grid.put(column, row, '.');
-  for (const [column, row] of [[1, 1], [size - 2, 1], [1, size - 2], [size - 2, size - 2]] as const) grid.put(column, row, 'k');
+  for (const [column, row] of [
+    [0, 0],
+    [size - 1, 0],
+    [0, size - 1],
+    [size - 1, size - 1],
+  ] as const)
+    grid.put(column, row, '.');
+  for (const [column, row] of [
+    [1, 1],
+    [size - 2, 1],
+    [1, size - 2],
+    [size - 2, size - 2],
+  ] as const)
+    grid.put(column, row, 'k');
   const left = (size - symbol[0]!.length) / 2;
   const top = (size - symbol.length) / 2;
-  symbol.forEach((line, row) => [...line].forEach((symbol, column) => {
-    if (symbol === 'x') grid.put(left + column, top + row, 't');
-  }));
+  symbol.forEach((line, row) =>
+    [...line].forEach((symbol, column) => {
+      if (symbol === 'x') grid.put(left + column, top + row, 't');
+    }),
+  );
   return grid.build({ k: 'Ink', e: 'V1', f: 'V0', t: 'Paper' });
 }
 

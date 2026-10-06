@@ -63,7 +63,9 @@ export class Orb {
   }
 
   equals(other: Orb): boolean {
-    return this.position.equals(other.position) && this.color.equals(other.color) && this.restores.equals(other.restores);
+    return (
+      this.position.equals(other.position) && this.color.equals(other.color) && this.restores.equals(other.restores)
+    );
   }
 }
 
@@ -95,7 +97,8 @@ export class StarCount {
   private constructor(readonly value: number) {}
 
   static of(value: number): StarCount {
-    if (!Number.isInteger(value) || value < 0) throw new RangeError(`A star count needs a whole number of zero or more, got ${value}`);
+    if (!Number.isInteger(value) || value < 0)
+      throw new RangeError(`A star count needs a whole number of zero or more, got ${value}`);
     return new StarCount(value);
   }
 
@@ -129,7 +132,9 @@ export class Signpost {
 
   // The board is read from the side or from in front, so standing on any of the four touching tiles is enough.
   isBeside(position: TilePosition): boolean {
-    return [Direction.Up, Direction.Down, Direction.Left, Direction.Right].some((direction) => this.position.neighbor(direction).equals(position));
+    return [Direction.Up, Direction.Down, Direction.Left, Direction.Right].some((direction) =>
+      this.position.neighbor(direction).equals(position),
+    );
   }
 
   equals(other: Signpost): boolean {
@@ -228,14 +233,20 @@ export class Level {
         throw new RangeError(`A stone needs open ground, at ${stone.position.column}, ${stone.position.row}`);
       }
     }
-    if (door.footprint.some((tile) => !scenery.isWalkable(tile) || stones.some((stone) => stone.position.equals(tile)))) {
+    if (
+      door.footprint.some((tile) => !scenery.isWalkable(tile) || stones.some((stone) => stone.position.equals(tile)))
+    ) {
       throw new RangeError('The door needs open ground across its whole width');
     }
     this.currentDoor = door;
     signposts.forEach((signpost, index) => {
       const { position } = signpost;
-      if (!scenery.isWalkable(position) || door.covers(position) || stones.some((stone) => stone.position.equals(position)) ||
-        signposts.findIndex((other) => other.position.equals(position)) !== index) {
+      if (
+        !scenery.isWalkable(position) ||
+        door.covers(position) ||
+        stones.some((stone) => stone.position.equals(position)) ||
+        signposts.findIndex((other) => other.position.equals(position)) !== index
+      ) {
         throw new RangeError(`A signpost needs open ground of its own, at ${position.column}, ${position.row}`);
       }
     });
@@ -256,11 +267,17 @@ export class Level {
     if (!this.canEnter(hero.position)) throw new RangeError('The hero must start on open ground');
     const reachable = this.reachableTiles();
     stars.forEach((star, index) => {
-      if (!reachable.some((tile) => tile.equals(star.position))) throw new RangeError('Every star must lie where the hero can reach it');
+      if (!reachable.some((tile) => tile.equals(star.position)))
+        throw new RangeError('Every star must lie where the hero can reach it');
       if (this.hides(star.position)) {
-        throw new RangeError(`A star must stay visible, not behind a tree or the door, at ${star.position.column}, ${star.position.row}`);
+        throw new RangeError(
+          `A star must stay visible, not behind a tree or the door, at ${star.position.column}, ${star.position.row}`,
+        );
       }
-      if (orbs.some((orb) => orb.position.equals(star.position)) || stars.findIndex((other) => other.equals(star)) !== index) {
+      if (
+        orbs.some((orb) => orb.position.equals(star.position)) ||
+        stars.findIndex((other) => other.equals(star)) !== index
+      ) {
         throw new RangeError(`A star needs a tile of its own, at ${star.position.column}, ${star.position.row}`);
       }
     });
@@ -280,12 +297,24 @@ export class Level {
     shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[],
   ): Level {
     const empty = new Level(id, scenery, stones, orbs, door, hero, [], signposts);
-    const spots = empty.reachableTiles().filter((tile) =>
-      !empty.hides(tile) && !orbs.some((orb) => orb.position.equals(tile)) && !tile.equals(hero.position));
+    const spots = empty
+      .reachableTiles()
+      .filter(
+        (tile) => !empty.hides(tile) && !orbs.some((orb) => orb.position.equals(tile)) && !tile.equals(hero.position),
+      );
     if (spots.length < starCount.value) {
       throw new RangeError(`The level has room for ${spots.length} visible, reachable stars, not ${starCount.value}`);
     }
-    return new Level(id, scenery, stones, orbs, door, hero, shuffle(spots).slice(0, starCount.value).map(Star.at), signposts);
+    return new Level(
+      id,
+      scenery,
+      stones,
+      orbs,
+      door,
+      hero,
+      shuffle(spots).slice(0, starCount.value).map(Star.at),
+      signposts,
+    );
   }
 
   get stars(): readonly Star[] {
@@ -352,7 +381,8 @@ export class Level {
     for (let index = 0; index < reached.length; index++) {
       for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
         const next = reached[index]!.neighbor(direction);
-        if (this.canEnter(next) && !this.currentDoor.covers(next) && !reached.some((tile) => tile.equals(next))) reached.push(next);
+        if (this.canEnter(next) && !this.currentDoor.covers(next) && !reached.some((tile) => tile.equals(next)))
+          reached.push(next);
       }
     }
     return reached;

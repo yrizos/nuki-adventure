@@ -76,7 +76,15 @@ export class Sound {
   private music(start: number): void {
     const context = this.context;
     if (!context) return;
-    melody.forEach((frequency, index) => this.note(frequency, start - context.currentTime + index * melodyNoteLength, melodyNoteLength * 0.9, 'triangle', 0.05));
+    melody.forEach((frequency, index) =>
+      this.note(
+        frequency,
+        start - context.currentTime + index * melodyNoteLength,
+        melodyNoteLength * 0.9,
+        'triangle',
+        0.05,
+      ),
+    );
     const end = start + melody.length * melodyNoteLength;
     // Scheduling the next pass ahead of time keeps the loop seamless even when the timer fires late.
     setTimeout(() => this.music(end), (end - context.currentTime - 1) * 1000);

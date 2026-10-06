@@ -18,7 +18,12 @@ export class Controls {
   private readonly freshPresses = new Set<'a' | 'b'>();
   readonly advance: () => void;
 
-  constructor(panel: HTMLElement, joystick: HTMLElement, knob: HTMLElement, buttons: Readonly<Record<'a' | 'b', HTMLElement>>) {
+  constructor(
+    panel: HTMLElement,
+    joystick: HTMLElement,
+    knob: HTMLElement,
+    buttons: Readonly<Record<'a' | 'b', HTMLElement>>,
+  ) {
     const heldKeys = { a: new Set<string>(), b: new Set<string>() };
     const heldPointers = { a: new Set<number>(), b: new Set<number>() };
     const pointerButtons = new Map<number, 'a' | 'b'>();
@@ -121,7 +126,10 @@ export class Controls {
     const nearestButton = (event: { clientX: number; clientY: number }): 'a' | 'b' => {
       const distance = (name: 'a' | 'b'): number => {
         const bounds = buttons[name].getBoundingClientRect();
-        return Math.hypot(event.clientX - (bounds.left + bounds.width / 2), event.clientY - (bounds.top + bounds.height / 2));
+        return Math.hypot(
+          event.clientX - (bounds.left + bounds.width / 2),
+          event.clientY - (bounds.top + bounds.height / 2),
+        );
       };
       return distance('a') <= distance('b') ? 'a' : 'b';
     };

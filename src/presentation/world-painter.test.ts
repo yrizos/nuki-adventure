@@ -23,15 +23,34 @@ function allArt(value: unknown): Art[] {
   return [];
 }
 
-function renderingLevel(ground = Ground.Grass, color = OrbColor.Violet, hero = TilePosition.at(2, 2), stones: readonly Stone[] = [], trees: readonly Tree[] = []): Level {
-  return new Level(LevelId.of('render'), Scenery.of(LevelSize.of(12, 12),
-    Array.from({ length: 12 }, () => Array.from({ length: 12 }, () => ground)), trees, []), stones,
-    [Orb.at(TilePosition.at(0, 0), color, everywhere)], Door.closedAt(TilePosition.at(0, 11)), new Hero(hero, Direction.Down));
+function renderingLevel(
+  ground = Ground.Grass,
+  color = OrbColor.Violet,
+  hero = TilePosition.at(2, 2),
+  stones: readonly Stone[] = [],
+  trees: readonly Tree[] = [],
+): Level {
+  return new Level(
+    LevelId.of('render'),
+    Scenery.of(
+      LevelSize.of(12, 12),
+      Array.from({ length: 12 }, () => Array.from({ length: 12 }, () => ground)),
+      trees,
+      [],
+    ),
+    stones,
+    [Orb.at(TilePosition.at(0, 0), color, everywhere)],
+    Door.closedAt(TilePosition.at(0, 11)),
+    new Hero(hero, Direction.Down),
+  );
 }
 
 function colorAt(picture: Picture, column: number, row: number): string {
   const offset = (row * picture.width + column) * 4;
-  return `#${[...picture.pixels.subarray(offset, offset + 3)].map((value) => value.toString(16).padStart(2, '0')).join('').toUpperCase()}`;
+  return `#${[...picture.pixels.subarray(offset, offset + 3)]
+    .map((value) => value.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase()}`;
 }
 
 test('every piece of art uses only its legend and keeps a rectangular shape', () => {
@@ -61,8 +80,14 @@ test('native terrain grids cover all 81 three-terrain corner combinations', () =
           ground[1]![2] = topRight;
           ground[2]![1] = bottomLeft;
           ground[2]![2] = bottomRight;
-          const level = new Level(LevelId.of('terrain'), Scenery.of(LevelSize.of(4, 4), ground, [], []), [],
-            [Orb.at(TilePosition.at(3, 3), OrbColor.Violet, everywhere)], Door.closedAt(TilePosition.at(0, 3)), new Hero(TilePosition.at(0, 0), Direction.Down));
+          const level = new Level(
+            LevelId.of('terrain'),
+            Scenery.of(LevelSize.of(4, 4), ground, [], []),
+            [],
+            [Orb.at(TilePosition.at(3, 3), OrbColor.Violet, everywhere)],
+            Door.closedAt(TilePosition.at(0, 3)),
+            new Hero(TilePosition.at(0, 0), Direction.Down),
+          );
           expect(() => new WorldPainter(level)).not.toThrow();
         }
       }
@@ -81,20 +106,38 @@ test('native interactive sprites use their documented dimensions and distinct or
 });
 
 test('interactive sprites keep a closed one-pixel Ink silhouette', () => {
-  const art: readonly Art[] = [...Object.values(sprites.heroArt).flatMap((direction) => [direction.stand, direction.breathe, ...direction.walk, direction.holding!]),
-    ...sprites.stoneVariants, ...Object.values(sprites.orbArt)];
+  const art: readonly Art[] = [
+    ...Object.values(sprites.heroArt).flatMap((direction) => [
+      direction.stand,
+      direction.breathe,
+      ...direction.walk,
+      direction.holding!,
+    ]),
+    ...sprites.stoneVariants,
+    ...Object.values(sprites.orbArt),
+  ];
   for (const piece of art) {
-    piece.rows.forEach((row, vertical) => [...row].forEach((symbol, horizontal) => {
-      if (symbol === '.') return;
-      const boundary = [[horizontal - 1, vertical], [horizontal + 1, vertical], [horizontal, vertical - 1], [horizontal, vertical + 1]]
-        .some(([column, line]) => (piece.rows[line!]?.[column!] ?? '.') === '.');
-      if (boundary) expect(piece.legend[symbol]).toBe('Ink');
-    }));
+    piece.rows.forEach((row, vertical) =>
+      [...row].forEach((symbol, horizontal) => {
+        if (symbol === '.') return;
+        const boundary = [
+          [horizontal - 1, vertical],
+          [horizontal + 1, vertical],
+          [horizontal, vertical - 1],
+          [horizontal, vertical + 1],
+        ].some(([column, line]) => (piece.rows[line!]?.[column!] ?? '.') === '.');
+        if (boundary) expect(piece.legend[symbol]).toBe('Ink');
+      }),
+    );
   }
 });
 
 test('ground variants keep equal detail density within the allowed twenty percent', () => {
-  for (const [variants, base] of [[scenery.grassArt, 'g'], [scenery.pathArt, 'p'], [scenery.waterArt.map((frames) => frames[0]!), 'w']] as const) {
+  for (const [variants, base] of [
+    [scenery.grassArt, 'g'],
+    [scenery.pathArt, 'p'],
+    [scenery.waterArt.map((frames) => frames[0]!), 'w'],
+  ] as const) {
     const counts = variants.map((art) => art.rows.join('').replaceAll(base, '').length);
     expect(new Set(counts).size).toBe(1);
     expect(counts[0]).toBeLessThanOrEqual(32 * 32 * 0.2);
@@ -109,21 +152,39 @@ test('ground variants keep equal detail density within the allowed twenty percen
 
 test('touching prop variants differ and placement is independent of input order', () => {
   const positions = [TilePosition.at(0, 0), TilePosition.at(1, 0), TilePosition.at(0, 1), TilePosition.at(1, 1)];
-  const variants = propVariants(positions.map((position) => [position]), 5);
+  const variants = propVariants(
+    positions.map((position) => [position]),
+    5,
+  );
   for (let first = 0; first < positions.length; first++) {
     for (let second = first + 1; second < positions.length; second++) {
-      if (Math.abs(positions[first]!.column - positions[second]!.column) + Math.abs(positions[first]!.row - positions[second]!.row) === 1) {
+      if (
+        Math.abs(positions[first]!.column - positions[second]!.column) +
+          Math.abs(positions[first]!.row - positions[second]!.row) ===
+        1
+      ) {
         expect(variants[first]).not.toBe(variants[second]);
       }
     }
   }
-  expect(propVariants(positions.toReversed().map((position) => [position]), 5).toReversed()).toEqual(variants);
+  expect(
+    propVariants(
+      positions.toReversed().map((position) => [position]),
+      5,
+    ).toReversed(),
+  ).toEqual(variants);
 });
 
-test.each([[Ground.Grass, 'G1', 'N2'], [Ground.Path, 'E2', 'N3']] as const)('contact shadows on %s use the surface shade in both world versions', (ground, colored, neutral) => {
+test.each([
+  [Ground.Grass, 'G1', 'N2'],
+  [Ground.Path, 'E2', 'N3'],
+] as const)('contact shadows on %s use the surface shade in both world versions', (ground, colored, neutral) => {
   const level = renderingLevel(ground, OrbColor.Violet, TilePosition.at(2, 2), [Stone.at(TilePosition.at(4, 4))]);
   const painter = new WorldPainter(level);
-  for (const [restored, code] of [[[everywhere], colored], [[], neutral]] as const) {
+  for (const [restored, code] of [
+    [[everywhere], colored],
+    [[], neutral],
+  ] as const) {
     const picture = new Picture(384, 384);
     painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, restored);
     expect(colorAt(picture, 73, 96)).toBe(palette[code]);
@@ -133,33 +194,49 @@ test.each([[Ground.Grass, 'G1', 'N2'], [Ground.Path, 'E2', 'N3']] as const)('con
   expect(shadow.rows.map((row) => row.replaceAll('.', '').length)).toEqual([14, 10, 10, 10, 6]);
 });
 
-test.each([[OrbColor.Red, 'R2'], [OrbColor.Blue, 'W2'], [OrbColor.Violet, 'V2'], [OrbColor.Teal, 'T2']] as const)(
-  '%s orbs keep their actual color both on the ground and above the hero', (color, code) => {
-    const level = renderingLevel(Ground.Grass, color);
-    const painter = new WorldPainter(level);
-    const picture = new Picture(384, 384);
-    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, []);
-    expect(colorAt(picture, 20, 10)).toBe(palette[code]);
-    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.holding!, heldOrb: color }, []);
-    expect(colorAt(picture, 84, 52)).toBe(palette[code]);
-  },
-);
+test.each([
+  [OrbColor.Red, 'R2'],
+  [OrbColor.Blue, 'W2'],
+  [OrbColor.Violet, 'V2'],
+  [OrbColor.Teal, 'T2'],
+] as const)('%s orbs keep their actual color both on the ground and above the hero', (color, code) => {
+  const level = renderingLevel(Ground.Grass, color);
+  const painter = new WorldPainter(level);
+  const picture = new Picture(384, 384);
+  painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, []);
+  expect(colorAt(picture, 20, 10)).toBe(palette[code]);
+  painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.holding!, heldOrb: color }, []);
+  expect(colorAt(picture, 84, 52)).toBe(palette[code]);
+});
 
 test('oversized views extend edge terrain without leaving empty map margins', () => {
   const level = renderingLevel();
   const picture = new Picture(801, 901);
-  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, [everywhere]);
-  for (const [column, row] of [[0, 0], [800, 0], [0, 900], [800, 900]]) {
+  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, [
+    everywhere,
+  ]);
+  for (const [column, row] of [
+    [0, 0],
+    [800, 0],
+    [0, 900],
+    [800, 900],
+  ]) {
     expect(['G1', 'G2', 'G3'].map((code) => palette[code as PaletteCode])).toContain(colorAt(picture, column!, row!));
   }
 });
 
 test('whole-pixel camera centers the hero until clamped at a map edge', () => {
-  for (const [position, expected] of [[TilePosition.at(5, 5), [96, 115]], [TilePosition.at(0, 0), [0, 0]], [TilePosition.at(11, 11), [193, 231]]] as const) {
+  for (const [position, expected] of [
+    [TilePosition.at(5, 5), [96, 115]],
+    [TilePosition.at(0, 0), [0, 0]],
+    [TilePosition.at(11, 11), [193, 231]],
+  ] as const) {
     const level = renderingLevel(Ground.Grass, OrbColor.Violet, position);
     const picture = new Picture(225, 263);
     const draw = vi.spyOn(picture, 'draw');
-    new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, [everywhere]);
+    new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, [
+      everywhere,
+    ]);
     expect(draw.mock.calls.find(([art]) => art === sprites.heroArt.down.stand)?.slice(1, 3)).toEqual(expected);
     expect(draw.mock.calls.every(([, column, row]) => Number.isInteger(column) && Number.isInteger(row))).toBe(true);
   }
@@ -167,11 +244,16 @@ test('whole-pixel camera centers the hero until clamped at a map edge', () => {
 
 test('tall props occlude the hero behind them and never paint over a hero in front', () => {
   const tree = Tree.at(TilePosition.at(4, 5));
-  for (const [hero, treeLast] of [[TilePosition.at(4, 4), true], [TilePosition.at(4, 6), false]] as const) {
+  for (const [hero, treeLast] of [
+    [TilePosition.at(4, 4), true],
+    [TilePosition.at(4, 6), false],
+  ] as const) {
     const level = renderingLevel(Ground.Grass, OrbColor.Violet, hero, [], [tree]);
     const picture = new Picture(384, 384);
     const draw = vi.spyOn(picture, 'draw');
-    new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, [everywhere]);
+    new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, [
+      everywhere,
+    ]);
     const heroIndex = draw.mock.calls.findIndex(([art]) => art === sprites.heroArt.down.stand);
     const treeIndex = draw.mock.calls.findIndex(([art]) => art.legend.t === 'E1');
     expect(treeIndex > heroIndex).toBe(treeLast);
@@ -197,7 +279,7 @@ test('restoration advances outward with palette-only pixels and matches both end
     painter.paintRestoring(dissolve, scene, origin, frame, [], [everywhere]);
     for (let row = 0; row < dissolve.height; row++) {
       for (let column = 0; column < dissolve.width; column++) {
-        expect(colors.has(colorAt(dissolve, column, row) as typeof palette[keyof typeof palette])).toBe(true);
+        expect(colors.has(colorAt(dissolve, column, row) as (typeof palette)[keyof typeof palette])).toBe(true);
         expect(dissolve.pixels[(row * dissolve.width + column) * 4 + 3]).toBe(255);
       }
     }
@@ -208,9 +290,19 @@ test('restoration advances outward with palette-only pixels and matches both end
 });
 
 test('restoring one area leaves the rest of the map faded', () => {
-  const level = new Level(LevelId.of('areas'), Scenery.of(LevelSize.of(12, 12), Array.from({ length: 12 }, () => Array<Ground>(12).fill(Ground.Grass)), [], []), [],
+  const level = new Level(
+    LevelId.of('areas'),
+    Scenery.of(
+      LevelSize.of(12, 12),
+      Array.from({ length: 12 }, () => Array<Ground>(12).fill(Ground.Grass)),
+      [],
+      [],
+    ),
+    [],
     [Orb.at(TilePosition.at(0, 0), OrbColor.Red, leftHalf), Orb.at(TilePosition.at(11, 0), OrbColor.Blue, rightHalf)],
-    Door.closedAt(TilePosition.at(0, 11)), new Hero(TilePosition.at(2, 2), Direction.Down));
+    Door.closedAt(TilePosition.at(0, 11)),
+    new Hero(TilePosition.at(2, 2), Direction.Down),
+  );
   const painter = new WorldPainter(level);
   const painted = (restored: readonly Area[]): Picture => {
     const picture = new Picture(384, 384);
@@ -234,7 +326,11 @@ test('the door opens only in the colored world once the orb is collected', () =>
   const drawn = (version: 'colored' | 'faded'): Art[] => {
     const picture = new Picture(384, 384);
     const draw = vi.spyOn(picture, 'draw');
-    painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, version === 'colored' ? [everywhere] : []);
+    painter.paint(
+      picture,
+      { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null },
+      version === 'colored' ? [everywhere] : [],
+    );
     return draw.mock.calls.map(([art]) => art);
   };
   expect(drawn('colored')).toContain(scenery.doorArt.closed);
@@ -283,8 +379,14 @@ test('sprites reject fractional placement instead of corrupting adjacent pixels'
 });
 
 test.each([
-  Direction.Up, Direction.Down, Direction.Left, Direction.Right,
-  Direction.UpLeft, Direction.UpRight, Direction.DownLeft, Direction.DownRight,
+  Direction.Up,
+  Direction.Down,
+  Direction.Left,
+  Direction.Right,
+  Direction.UpLeft,
+  Direction.UpRight,
+  Direction.DownLeft,
+  Direction.DownRight,
 ])('renders consecutive %s steps without overshooting or snapping backward', (direction) => {
   const start = TilePosition.at(5, 5);
   const hero = new Hero(start, direction.facing);

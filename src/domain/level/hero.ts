@@ -90,7 +90,8 @@ export class Hero {
       direction.isDiagonal &&
       (!canEnter(this.currentPosition.neighbor(direction.horizontal!)) ||
         !canEnter(this.currentPosition.neighbor(direction.vertical!)))
-    ) return;
+    )
+      return;
     if (canEnter(this.currentPosition.neighbor(direction))) this.currentStep = Step.begin(direction);
   }
 }

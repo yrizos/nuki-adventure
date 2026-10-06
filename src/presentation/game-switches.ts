@@ -11,7 +11,9 @@ export function connectGameSwitches(root: Document, sound: Pick<Sound, 'on' | 't
   });
   const fullScreenSwitch = element<HTMLButtonElement>(root, '.full-screen-switch');
   fullScreenSwitch.hidden = !root.fullscreenEnabled;
-  root.addEventListener('fullscreenchange', () => fullScreenSwitch.setAttribute('aria-pressed', String(root.fullscreenElement !== null)));
+  root.addEventListener('fullscreenchange', () =>
+    fullScreenSwitch.setAttribute('aria-pressed', String(root.fullscreenElement !== null)),
+  );
   fullScreenSwitch.addEventListener('click', () => {
     (root.fullscreenElement ? root.exitFullscreen() : root.documentElement.requestFullscreen()).catch(() => {});
   });

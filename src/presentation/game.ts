@@ -17,7 +17,8 @@ export { messages } from './game-session';
 
 export function startGame(root: Document): void {
   const screen = element<HTMLElement>(root, '.screen');
-  for (const [name, art] of Object.entries(panelArt)) screen.style.setProperty(`--art-${name}`, `url(${artUrl(root, art)})`);
+  for (const [name, art] of Object.entries(panelArt))
+    screen.style.setProperty(`--art-${name}`, `url(${artUrl(root, art)})`);
   const view = element<HTMLElement>(root, '.game-view');
   const canvas = element<HTMLCanvasElement>(root, '.game-view canvas');
   const controls = new Controls(element(root, '.control-panel'), element(root, '.joystick'), element(root, '.knob'), {
@@ -31,7 +32,10 @@ export function startGame(root: Document): void {
   connectGameSwitches(root, sound);
   const playing = (create: () => Level) => () => new PlayLevel(new InMemoryLevelRepository([create()]));
   const session = new GameSession(
-    [{ id: firstLevelId, start: playing(firstLevel) }, { id: secondLevelId, start: playing(secondLevel) }],
+    [
+      { id: firstLevelId, start: playing(firstLevel) },
+      { id: secondLevelId, start: playing(secondLevel) },
+    ],
     controls,
     sound,
     { show: (result) => levelEnd.show(result), hide: () => levelEnd.hide() },

@@ -13,7 +13,7 @@ Use the [Makefile](Makefile) targets for project commands instead of invoking th
 - `make dev` starts the development server.
 - `make build` typechecks and builds the browser application.
 - `make test` runs unit tests, and `make test-watch` runs them in watch mode.
-- `make typecheck`, `make lint`, `make markdown`, and `make audit` run individual checks.
+- `make typecheck`, `make lint`, `make format`, `make markdown`, and `make audit` run individual checks.
 - `make fix` applies all available code and Markdown lint fixes. It attempts both fixers even if one fails and exits with a failure status if either fails.
 - `make check` runs the combined checks without building.
 - `make check-push` runs tests and the browser build.
