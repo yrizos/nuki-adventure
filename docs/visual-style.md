@@ -130,7 +130,7 @@ This document builds on the color palette and the UI layout documents. Color cod
 
 - Every object meeting the ground has a contact row: one pixel of the surface's shading step directly beneath its base
 - Ground shadows have flattened ends, two pixels shorter on each side of the bottom row
-- Tall objects darken the ground tile behind their overlap by one step along a 4 pixel band
+- Trees darken the ground tile behind their overlap by one step along a 4 pixel band
 - Doorways and openings use the darkest step of their ramp, never Ink
 
 ## Outlines
@@ -193,8 +193,8 @@ A new element uses the smallest size in this table that fits its shape.
 - Each eye is an E1 pupil, and the facing down frame adds a single Paper catchlight on the top left of each eye
 - Her hair has at least three steps, E2, E3 and E4, with E4 as a highlight band across the top left of the head
 - Her t-shirt shows one fold line in P1 on each side, and a W0 row separates the t-shirt from the jeans at the waist
-- Hands are 4 × 4 pixel S2 clusters with an S1 bottom row
-- Shoes are 4 pixels tall in E1
+- Hands are S2 clusters shaded in S1, two pixels wide while she stands or walks and 4 × 4 with an S1 bottom row while she holds an orb
+- Shoes are E1, two pixels tall while she stands or walks and four while she holds an orb
 
 ### Stars and Orbs
 
@@ -209,7 +209,7 @@ A new element uses the smallest size in this table that fits its shape.
 
 ### Door
 
-- The door stands in a fence, framed by an E1 wooden lintel and two E1 posts with E2 highlights on their top and left edges, E0 shading on their right and bottom edges, and E0 grain
+- The door stands in a fence, framed by an E1 wooden lintel and two E1 posts, with an E2 highlight along the top of the lintel and the left of each post, E0 shading on their right and bottom edges, and E0 grain
 - The closed door is made of vertical E2 planks separated by E0 lines, with two rails across each leaf and two E0 handles at the center
 - The open door shows an E0 doorway, with the leaves swung inward visible only as their E2 and E1 edges
 - Paper light motes rise through the open doorway
@@ -237,7 +237,7 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 
 | Neutral | Steps that map to it |
 | --- | --- |
-| N1 | G0, E0, W0, R0, V0, T0, P0 |
+| N1 | G0, E0, W0, R0, V0, V0a, T0, P0 |
 | N2 | G1, E1, W1, Y0, R1, V1, P1, S0 |
 | N3 | G2, E2, W2, Y1, R2, V2, T1, P2, S1 |
 | N4 | G3, E3, W3, Y2, R3, V3, T2, P3, S2 |
@@ -259,7 +259,7 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 - Only the area of the collected orb changes, and the rest of the map keeps its current state
 - Where a colored area meets a faded one, the seam is a one tile wide band of the same ordered 4 × 4 dither, centered on the area edge
 - Every frame of the dissolve contains palette colors only
-- The door stays closed until every area is back in color, so during the last restoration it opens where color reaches it
+- The door opens as soon as the last orb is picked up, but it is drawn closed until color reaches it during the last restoration
 
 ### Leaving a Level
 
@@ -313,7 +313,7 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 
 - A push starts with one frame of the hero leaning in before the object moves
 - An object arriving on a floor trigger shows one frame pressed one pixel down
-- Picking up a star or orb shows the hero holding it above her head for 30 game frames
+- Picking up an orb shows it above the hero's head for 30 game frames, with her arms raised while she stands still
 
 ### Effects
 

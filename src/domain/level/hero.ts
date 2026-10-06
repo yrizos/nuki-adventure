@@ -1,4 +1,4 @@
-import { Direction, TilePosition } from './position';
+import type { Direction, TilePosition } from './position';
 
 export class Step {
   static readonly framesPerTile = 16;
@@ -38,6 +38,18 @@ export class TurnPause {
   }
 }
 
+export class HeroState {
+  private constructor(
+    readonly position: TilePosition,
+    readonly facing: Direction,
+    readonly step: Step | null,
+  ) {}
+
+  static of(position: TilePosition, facing: Direction, step: Step | null): HeroState {
+    return new HeroState(position, facing, step);
+  }
+}
+
 export class Hero {
   private turnPause: TurnPause | null = null;
   private currentStep: Step | null = null;
@@ -57,6 +69,10 @@ export class Hero {
 
   get step(): Step | null {
     return this.currentStep;
+  }
+
+  get state(): HeroState {
+    return HeroState.of(this.currentPosition, this.currentFacing, this.currentStep);
   }
 
   advance(): TilePosition | null {

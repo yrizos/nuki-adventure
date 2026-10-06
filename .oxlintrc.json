@@ -1,0 +1,164 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript"],
+  "categories": {
+    "correctness": "error"
+  },
+  "ignorePatterns": ["dist/**", "coverage/**"],
+  "rules": {
+    "typescript/consistent-type-imports": [
+      "error",
+      {
+        "fixStyle": "inline-type-imports"
+      }
+    ],
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/switch-exhaustiveness-check": "error",
+    "typescript/no-unsafe-assignment": "error",
+    "typescript/no-unsafe-call": "error",
+    "typescript/no-unsafe-member-access": "error",
+    "typescript/no-unsafe-return": "error",
+    "typescript/no-unsafe-argument": "error",
+    "typescript/no-misused-spread": "off",
+    "typescript/unbound-method": "off"
+  },
+  "overrides": [
+    {
+      "files": ["src/domain/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/application/**", "**/infrastructure/**", "**/presentation/**"],
+                "message": "The domain layer depends only on the domain."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "window",
+            "message": "Browser APIs belong in the presentation layer."
+          },
+          {
+            "name": "document",
+            "message": "Browser APIs belong in the presentation layer."
+          },
+          {
+            "name": "localStorage",
+            "message": "Browser APIs belong in the presentation layer."
+          },
+          {
+            "name": "performance",
+            "message": "Browser APIs belong in the presentation layer."
+          },
+          {
+            "name": "requestAnimationFrame",
+            "message": "Browser APIs belong in the presentation layer."
+          }
+        ],
+        "no-restricted-properties": [
+          "error",
+          {
+            "object": "Math",
+            "property": "random",
+            "message": "Randomness comes in from the composition root."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/application/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/infrastructure/**", "**/presentation/**"],
+                "message": "The application layer depends only on the application and domain layers."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "window",
+            "message": "Browser APIs belong in the presentation layer."
+          },
+          {
+            "name": "document",
+            "message": "Browser APIs belong in the presentation layer."
+          },
+          {
+            "name": "localStorage",
+            "message": "Browser APIs belong in the presentation layer."
+          },
+          {
+            "name": "performance",
+            "message": "Browser APIs belong in the presentation layer."
+          },
+          {
+            "name": "requestAnimationFrame",
+            "message": "Browser APIs belong in the presentation layer."
+          }
+        ],
+        "no-restricted-properties": [
+          "error",
+          {
+            "object": "Math",
+            "property": "random",
+            "message": "Randomness comes in from the composition root."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/infrastructure/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/application/**", "**/presentation/**"],
+                "message": "The infrastructure layer depends only on the infrastructure and domain layers."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/presentation/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/infrastructure/**"],
+                "message": "Only src/index.ts chooses infrastructure."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/**/*.test.ts"],
+      "rules": {
+        "no-restricted-imports": "off",
+        "no-restricted-globals": "off",
+        "no-restricted-properties": "off"
+      }
+    }
+  ]
+}

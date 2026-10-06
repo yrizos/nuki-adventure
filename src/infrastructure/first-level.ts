@@ -1,5 +1,7 @@
-import { type Level, LevelId, OrbColor, StarCount } from '../domain/level/level';
-import { levelFromLayout } from './level-layout';
+import { OrbColor, StarCount } from '../domain/level/collectibles';
+import { type Level } from '../domain/level/level';
+import { LevelId } from '../domain/level/level-id';
+import { levelFromLayout, type Shuffle } from './level-layout';
 
 export const firstLevelId = LevelId.of('first');
 
@@ -27,8 +29,8 @@ const layout = [
   'FFFFFFFFFFFFFFFFFF',
 ];
 
-export function firstLevel(): Level {
-  return levelFromLayout(firstLevelId, layout, {
+export function firstLevel(shuffle: Shuffle): Level {
+  return levelFromLayout(firstLevelId, layout, shuffle, {
     orbs: { O: { color: OrbColor.Violet, restores: () => true } },
     signposts: { P: 'ΒΡΕΣ ΤΗ ΜΩΒ ΣΦΑΙΡΑ! ΘΑ ΦΕΡΕΙ ΠΙΣΩ ΤΑ ΧΡΩΜΑΤΑ ΚΑΙ ΘΑ ΑΝΟΙΞΕΙ ΤΗΝ ΠΥΛΗ.' },
     starCount: StarCount.of(5),

@@ -1,53 +1,24 @@
 import { describe, expect, test, vi } from 'vitest';
+import type { LevelView } from '../application/level-view';
 import { PlayLevel } from '../application/play-level';
-import { Hero } from '../domain/level/hero';
-import { Area, Door, Level, LevelId, Orb, OrbColor, Signpost, SignpostText, Star } from '../domain/level/level';
+import { Area, Orb, OrbColor, Star } from '../domain/level/collectibles';
+import { Door } from '../domain/level/door';
+import { Level } from '../domain/level/level';
+import { LevelId } from '../domain/level/level-id';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Ground, LevelSize, Scenery } from '../domain/level/scenery';
+import { Signpost, SignpostText } from '../domain/level/signpost';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
-import { fitCanvas } from './game';
 import { GameLoop } from './game-loop';
 import { GameSession, messages } from './game-session';
 import { Picture } from './picture';
-import { closingLength } from './world-painter';
+import { closingLength } from './world-transition';
 
 const area = (keep: (position: TilePosition) => boolean): Area =>
   Area.of(Array.from({ length: 1600 }, (_, index) => TilePosition.at(index % 40, Math.floor(index / 40))).filter(keep));
 const everywhere = area(() => true);
 const leftHalf = area((position) => position.column < 2);
 const rightHalf = area((position) => position.column >= 2);
-
-test.each([1, 1.25, 1.5, 2, 3])('fits whole, equally sized device pixels at pixel ratio %s', (ratio) => {
-  for (const [width, height] of [
-    [320, 405],
-    [360, 316],
-    [375, 475],
-    [430, 712],
-    [529, 529],
-  ]) {
-    const deviceWidth = Math.ceil(width! * ratio);
-    const deviceHeight = Math.ceil(height! * ratio);
-    const fit = fitCanvas(deviceWidth, deviceHeight);
-    expect(fit.scale).toBe(Math.floor(Math.min(deviceWidth, deviceHeight) / 224));
-    expect(fit.width).toBeGreaterThanOrEqual(224);
-    expect(fit.height).toBeGreaterThanOrEqual(224);
-    expect(fit.width * fit.scale).toBeGreaterThanOrEqual(deviceWidth);
-    expect(fit.height * fit.scale).toBeGreaterThanOrEqual(deviceHeight);
-    expect(fit.width * fit.scale - deviceWidth).toBeLessThan(fit.scale);
-    expect(fit.height * fit.scale - deviceHeight).toBeLessThan(fit.scale);
-  }
-});
-
-test('uses the largest permitted scale at the 224-pixel boundaries', () => {
-  expect(fitCanvas(447, 600)).toEqual({ width: 447, height: 600, scale: 1 });
-  expect(fitCanvas(448, 600)).toEqual({ width: 224, height: 300, scale: 2 });
-  expect(fitCanvas(673, 900)).toEqual({ width: 225, height: 300, scale: 3 });
-});
-
-test.each([0, -1, NaN, Infinity])('rejects invalid view dimensions %s', (dimension) => {
-  expect(() => fitCanvas(dimension, 224)).toThrow(RangeError);
-  expect(() => fitCanvas(224, dimension)).toThrow(RangeError);
-});
 
 const hint = 'ΒΡΕΣ ΤΗ ΣΦΑΙΡΑ!';
 
@@ -69,16 +40,16 @@ function gameSession(orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbCo
       [],
       [],
     );
-    const level = new Level(
-      levelId,
+    const level = Level.create({
+      id: levelId,
       scenery,
-      [],
+      stones: [],
       orbs,
-      Door.closedAt(TilePosition.at(1, 5)),
-      new Hero(TilePosition.at(0, 0), Direction.Right),
-      [Star.at(TilePosition.at(3, 0))],
-      [Signpost.at(TilePosition.at(0, 1), SignpostText.of(hint))],
-    );
+      door: Door.closedAt(TilePosition.at(1, 5)),
+      hero: { position: TilePosition.at(0, 0), facing: Direction.Right },
+      stars: [Star.at(TilePosition.at(3, 0))],
+      signposts: [Signpost.at(TilePosition.at(0, 1), SignpostText.of(hint))],
+    });
     play = new PlayLevel(new InMemoryLevelRepository([level]));
     return play;
   });
@@ -112,7 +83,7 @@ function gameSession(orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbCo
       pressed.add(button);
       tick();
     },
-    get level(): Level {
+    get level(): LevelView {
       return play.view(levelId);
     },
     get frames(): number {
@@ -217,6 +188,92 @@ describe('the game session', () => {
     expect(subject.levelEnd.hide).toHaveBeenCalledOnce();
     expect(subject.createPlay).toHaveBeenCalledTimes(2);
     expect(subject.level.hero.position).toEqual(TilePosition.at(0, 0));
+    expect(subject.session.messageText).toBe('');
+  });
+});
+
+describe('the level sequence', () => {
+  function sequence() {
+    const pressed = new Set<'a' | 'b'>();
+    let direction: Direction | null = null;
+    const controls = { takePress: (button: 'a' | 'b') => pressed.delete(button), direction: () => direction };
+    const sound = { star: vi.fn(), orb: vi.fn(), door: vi.fn(), footstep: vi.fn(), restoring: vi.fn() };
+    const levelEnd = { show: vi.fn(), hide: vi.fn() };
+    const started: string[] = [];
+    const plays: { id: LevelId; play: PlayLevel }[] = [];
+    const playable = (name: string) => {
+      const id = LevelId.of(name);
+      return {
+        id,
+        start: () => {
+          started.push(name);
+          const level = Level.create({
+            id,
+            scenery: Scenery.of(
+              LevelSize.of(3, 3),
+              Array.from({ length: 3 }, () => Array<Ground>(3).fill(Ground.Path)),
+              [],
+              [],
+            ),
+            stones: [],
+            orbs: [Orb.at(TilePosition.at(1, 1), OrbColor.Violet, everywhere)],
+            door: Door.closedAt(TilePosition.at(0, 2)),
+            hero: { position: TilePosition.at(1, 0), facing: Direction.Down },
+          });
+          const play = new PlayLevel(new InMemoryLevelRepository([level]));
+          plays.push({ id, play });
+          return play;
+        },
+      };
+    };
+    const levels = [playable('one'), playable('two')];
+    const session = new GameSession(levels, controls, sound, levelEnd);
+    const complete = (): void => {
+      direction = Direction.Down;
+      for (let frame = 0; frame < 120 && levelEnd.show.mock.calls.length === plays.length - 1; frame++) session.tick();
+      direction = null;
+      for (let frame = 0; frame <= closingLength && levelEnd.show.mock.calls.length < plays.length; frame++)
+        session.tick();
+      expect(levelEnd.show).toHaveBeenCalledTimes(plays.length);
+    };
+    const continueWith = (button: 'a' | 'b'): void => {
+      pressed.add(button);
+      session.tick();
+    };
+    const current = (): LevelView => {
+      const { id, play } = plays.at(-1)!;
+      return play.view(id);
+    };
+    return { session, started, plays, complete, continueWith, current };
+  }
+
+  test('starts with the first level', () => {
+    const subject = sequence();
+    expect(subject.started).toEqual(['one']);
+  });
+
+  test('moves on to the second level, then returns to the first after the last', () => {
+    const subject = sequence();
+    subject.complete();
+    subject.continueWith('a');
+    expect(subject.started).toEqual(['one', 'two']);
+    subject.complete();
+    subject.continueWith('b');
+    expect(subject.started).toEqual(['one', 'two', 'one']);
+  });
+
+  test('starts every level afresh', () => {
+    const subject = sequence();
+    subject.complete();
+    subject.continueWith('a');
+    subject.complete();
+    subject.continueWith('a');
+    const level = subject.current();
+    expect(subject.plays[2]!.play).not.toBe(subject.plays[0]!.play);
+    expect(level.hero.position).toEqual(TilePosition.at(1, 0));
+    expect(level.orbs).toHaveLength(1);
+    expect(level.door.isOpen).toBe(false);
+    expect(level.isComplete).toBe(false);
     expect(subject.session.messageText).toBe('');
   });
 });

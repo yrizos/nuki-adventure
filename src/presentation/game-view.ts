@@ -1,41 +1,6 @@
-import type { Art } from './art/art';
 import type { GameSession } from './game-session';
-import { Picture, sprite } from './picture';
-import { tileSize } from './world-painter';
-
-export const minimumGamePixels = 7 * tileSize;
-
-interface CanvasFit {
-  readonly width: number;
-  readonly height: number;
-  readonly scale: number;
-}
-
-export function fitCanvas(deviceWidth: number, deviceHeight: number): CanvasFit {
-  if (!Number.isFinite(deviceWidth) || !Number.isFinite(deviceHeight) || deviceWidth <= 0 || deviceHeight <= 0) {
-    throw new RangeError('The game view needs positive finite device dimensions');
-  }
-  // Only a whole number of device pixels per game pixel keeps every game pixel the same size.
-  const scale = Math.max(1, Math.floor(Math.min(deviceWidth, deviceHeight) / minimumGamePixels));
-  return { width: Math.ceil(deviceWidth / scale), height: Math.ceil(deviceHeight / scale), scale };
-}
-
-export function element<T extends HTMLElement>(root: Document, selector: string): T {
-  const found = root.querySelector<T>(selector);
-  if (!found) throw new Error(`The page has no ${selector}`);
-  return found;
-}
-
-export function artUrl(root: Document, art: Art): string {
-  const { width, height, colored } = sprite(art);
-  const canvas = root.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const image = new ImageData(width, height);
-  image.data.set(colored);
-  canvas.getContext('2d')?.putImageData(image, 0, 0);
-  return canvas.toDataURL();
-}
+import { Picture } from './picture';
+import { fitCanvas, minimumGamePixels, pixelAlignment } from './viewport-layout';
 
 export class GameView {
   private readonly context: CanvasRenderingContext2D;
@@ -56,8 +21,7 @@ export class GameView {
     this.updatePixelRatio();
     new ResizeObserver(() => {
       const ratio = window.devicePixelRatio || 1;
-      const left = screen.getBoundingClientRect().left - this.alignment;
-      this.alignment = Math.round(left * ratio) / ratio - left;
+      this.alignment = pixelAlignment(screen.getBoundingClientRect().left - this.alignment, ratio);
       screen.style.setProperty('--pixel-alignment', `${this.alignment}px`);
       this.resizeFromLayout();
     }).observe(view);

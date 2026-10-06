@@ -44,6 +44,11 @@ repos:
         language: system
         types: [text]
         exclude: '\.md$'
+      - id: oxlint
+        name: Oxlint (auto-fix and check)
+        entry: npm exec -- oxlint --type-aware --fix
+        language: system
+        files: '\.ts$'
       - id: eslint
         name: ESLint (auto-fix and check)
         entry: npm exec -- eslint --fix

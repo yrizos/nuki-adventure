@@ -1,12 +1,14 @@
-import type { Level, LevelEvent, LevelId } from '../domain/level/level';
+import type { LevelEvent } from '../domain/level/level-events';
+import type { LevelId } from '../domain/level/level-id';
 import type { LevelRepository } from '../domain/level/level-repository';
 import type { Direction } from '../domain/level/position';
+import { type LevelView, levelView } from './level-view';
 
 export class PlayLevel {
   constructor(private readonly levels: LevelRepository) {}
 
-  view(id: LevelId): Level {
-    return this.levels.load(id);
+  view(id: LevelId): LevelView {
+    return levelView(this.levels.load(id));
   }
 
   advance(id: LevelId, direction: Direction | null): readonly LevelEvent[] {

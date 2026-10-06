@@ -1,43 +1,21 @@
 import type { PlayLevel } from '../application/play-level';
-import {
-  type Area,
-  LevelCompleted,
-  type LevelId,
-  OrbCollected,
-  type OrbColor,
-  SignpostLeft,
-  SignpostRead,
-  StarCollected,
-} from '../domain/level/level';
-import type { TilePosition } from '../domain/level/position';
+import type { Area } from '../domain/level/collectibles';
+import { LevelCompleted, OrbCollected, SignpostLeft, SignpostRead, StarCollected } from '../domain/level/level-events';
+import type { LevelId } from '../domain/level/level-id';
 import type { Controls } from './controls';
+import { closingLevel, holdingOrb, type Phase, phaseAfterFrame, playing } from './game-phase';
 import { HeroAnimator } from './hero-animator';
-import type { LevelEndWindow, LevelResult } from './level-end';
+import type { LevelEndWindow } from './level-end';
 import { MessageBox } from './message-box';
 import type { Picture } from './picture';
 import type { Sound } from './sound';
-import { closingLength, WorldPainter } from './world-painter';
-
-const holdFrames = 30;
+import { WorldPainter } from './world-painter';
 
 export const messages = {
   someColorsBack: 'ΜΠΡΑΒΟ! ΜΕΝΕΙ ΑΛΛΗ ΜΙΑ ΣΦΑΙΡΑ!',
   colorsBack: 'ΤΑ ΧΡΩΜΑΤΑ ΕΠΕΣΤΡΕΨΑΝ!',
   doorOpen: 'ΜΠΡΑΒΟ! Η ΠΟΡΤΑ ΓΙΑ ΤΟ ΕΠΟΜΕΝΟ ΕΠΙΠΕΔΟ ΕΙΝΑΙ ΑΝΟΙΧΤΗ!',
 } as const;
-
-type Phase =
-  | { readonly name: 'playing' }
-  | {
-      readonly name: 'holding';
-      readonly until: number;
-      readonly origin: TilePosition;
-      readonly color: OrbColor;
-      readonly restores: Area;
-    }
-  | { readonly name: 'restoring'; readonly since: number; readonly origin: TilePosition; readonly restores: Area }
-  | { readonly name: 'closing'; readonly since: number; readonly result: LevelResult }
-  | { readonly name: 'ended' };
 
 export interface PlayableLevel {
   readonly id: LevelId;
@@ -57,7 +35,7 @@ interface LevelRun {
 
 export class GameSession {
   private frame = 0;
-  private phase: Phase = { name: 'playing' };
+  private phase: Phase = playing;
   private levelIndex = 0;
   private run: LevelRun;
 
@@ -79,7 +57,7 @@ export class GameSession {
     this.levelEnd.hide();
     this.levelIndex = (this.levelIndex + 1) % this.levels.length;
     this.run = this.begin();
-    this.phase = { name: 'playing' };
+    this.phase = playing;
   }
 
   tick(): void {
@@ -106,13 +84,7 @@ export class GameSession {
           if (this.phase.name === 'holding' || this.phase.name === 'restoring')
             this.run.restored = [...this.run.restored, this.phase.restores];
           messageBox.show(play.view(id).orbs.length > 0 ? messages.someColorsBack : messages.colorsBack, this.frame);
-          this.phase = {
-            name: 'holding',
-            until: this.frame + holdFrames,
-            origin: event.position,
-            color: event.color,
-            restores: event.restores,
-          };
+          this.phase = holdingOrb(event, this.frame);
         } else if (event instanceof LevelCompleted) {
           this.sound.door();
           const level = play.view(id);
@@ -122,27 +94,36 @@ export class GameSession {
             collectedStars,
             starCount: collectedStars + level.stars.length,
           };
-          this.phase = { name: 'closing', since: this.frame, result };
+          this.phase = closingLevel(result, this.frame);
         }
       }
       if (play.view(id).hero.step?.framesTaken === 0) this.sound.footstep();
       const restorationMessage = messageBox.text === messages.colorsBack || messageBox.text === messages.someColorsBack;
       if (this.phase.name === 'playing' && restorationMessage && play.view(id).hero.step) messageBox.hide(this.frame);
     }
-    if (this.phase.name === 'holding' && this.frame >= this.phase.until) {
-      this.sound.restoring();
-      this.phase = { name: 'restoring', since: this.frame, origin: this.phase.origin, restores: this.phase.restores };
-    } else if (
-      this.phase.name === 'restoring' &&
-      this.frame - this.phase.since >= this.run.painter.restorationLength(this.phase.origin)
-    ) {
-      this.run.restored = [...this.run.restored, this.phase.restores];
-      this.phase = { name: 'playing' };
-    } else if (this.phase.name === 'closing' && this.frame - this.phase.since >= closingLength) {
-      this.levelEnd.show(this.phase.result);
-      this.phase = { name: 'ended' };
-    } else if (this.phase.name === 'ended' && (pressedA || pressedB)) {
-      this.continuePlaying();
+    const next = phaseAfterFrame(this.phase, {
+      frame: this.frame,
+      restorationLength: (origin) => this.run.painter.restorationLength(origin),
+      continuing: pressedA || pressedB,
+    });
+    if (next !== this.phase) {
+      switch (this.phase.name) {
+        case 'holding':
+          this.sound.restoring();
+          break;
+        case 'restoring':
+          this.run.restored = [...this.run.restored, this.phase.restores];
+          break;
+        case 'closing':
+          this.levelEnd.show(this.phase.result);
+          break;
+        case 'ended':
+          this.continuePlaying();
+          break;
+        case 'playing':
+          break;
+      }
+      this.phase = next;
     }
     this.run.animator.advance(this.run.play.view(this.run.id).hero);
     this.frame++;

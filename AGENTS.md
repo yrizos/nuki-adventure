@@ -161,6 +161,13 @@ Organize `src` by DDD layer, not by feature.
 
 - Every other layer may depend on the domain layer.
 - The domain layer must never depend on another layer.
+- The application layer depends only on the application and domain layers.
+- The infrastructure layer depends only on the infrastructure and domain layers.
+- The presentation layer depends on the presentation, application and domain layers, never on infrastructure.
+- Domain and application code never use `window`, `document`, `localStorage`, `performance`, `requestAnimationFrame` or `Math.random`.
+- Tests are exempt, so they can build fixtures from any layer.
+- [.oxlintrc.json](.oxlintrc.json) enforces these rules, so `make lint` fails on a violation.
+- `src/index.ts` is the composition root. It chooses the infrastructure implementations and passes them to the presentation layer, and it is the only module that may depend on every layer.
 
 ### Domain Model
 
@@ -191,6 +198,7 @@ Organize `src` by DDD layer, not by feature.
 - Keep aggregates small, including only what must stay consistent together.
 - Reference other aggregates by identity only.
 - Change only one aggregate per application service operation.
+- `Level` creates and owns its `Hero` from the starting position and facing it is given. Code outside the aggregate reads the hero through the immutable `HeroState` and moves it only through `Level.tick()` and `Level.read()`.
 
 ### Entities
 

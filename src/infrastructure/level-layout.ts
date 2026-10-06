@@ -1,18 +1,10 @@
-import { Hero } from '../domain/level/hero';
-import {
-  Area,
-  Door,
-  Level,
-  type LevelId,
-  Orb,
-  type OrbColor,
-  Signpost,
-  SignpostText,
-  type StarCount,
-  Stone,
-} from '../domain/level/level';
+import { Area, Orb, type OrbColor, type StarCount } from '../domain/level/collectibles';
+import { Door } from '../domain/level/door';
+import { Level, Stone } from '../domain/level/level';
+import { type LevelId } from '../domain/level/level-id';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
+import { Signpost, SignpostText } from '../domain/level/signpost';
 
 interface LayoutContents {
   readonly orbs: Readonly<
@@ -22,16 +14,14 @@ interface LayoutContents {
   readonly starCount: StarCount;
 }
 
-function shuffled(positions: readonly TilePosition[]): TilePosition[] {
-  const result = [...positions];
-  for (let index = result.length - 1; index > 0; index--) {
-    const other = Math.floor(Math.random() * (index + 1));
-    [result[index], result[other]] = [result[other]!, result[index]!];
-  }
-  return result;
-}
+export type Shuffle = (positions: readonly TilePosition[]) => readonly TilePosition[];
 
-export function levelFromLayout(id: LevelId, layout: readonly string[], contents: LayoutContents): Level {
+export function levelFromLayout(
+  id: LevelId,
+  layout: readonly string[],
+  shuffle: Shuffle,
+  contents: LayoutContents,
+): Level {
   const size = LevelSize.of(layout[0]!.length, layout.length);
   const cells = layout.flatMap((line, row) =>
     [...line].map((symbol, column) => ({ symbol, at: TilePosition.at(column, row) })),
@@ -63,14 +53,16 @@ export function levelFromLayout(id: LevelId, layout: readonly string[], contents
     Signpost.at(one(symbol), SignpostText.of(text)),
   );
   return Level.withScatteredStars(
-    id,
-    scenery,
-    where('o').map(Stone.at),
-    orbs,
-    Door.closedAt(door),
-    new Hero(one('H'), Direction.Up),
+    {
+      id,
+      scenery,
+      stones: where('o').map(Stone.at),
+      orbs,
+      door: Door.closedAt(door),
+      hero: { position: one('H'), facing: Direction.Up },
+      signposts,
+    },
     contents.starCount,
-    signposts,
-    shuffled,
+    shuffle,
   );
 }

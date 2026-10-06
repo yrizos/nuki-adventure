@@ -1,5 +1,7 @@
-import { type Level, LevelId, OrbColor, StarCount } from '../domain/level/level';
-import { levelFromLayout } from './level-layout';
+import { OrbColor, StarCount } from '../domain/level/collectibles';
+import { type Level } from '../domain/level/level';
+import { LevelId } from '../domain/level/level-id';
+import { levelFromLayout, type Shuffle } from './level-layout';
 
 export const secondLevelId = LevelId.of('second');
 
@@ -40,8 +42,8 @@ const layout = [
   'FFFFFFFFFFFFFFFFFFFFFFFFFF',
 ];
 
-export function secondLevel(): Level {
-  return levelFromLayout(secondLevelId, layout, {
+export function secondLevel(shuffle: Shuffle): Level {
+  return levelFromLayout(secondLevelId, layout, shuffle, {
     orbs: {
       R: { color: OrbColor.Red, restores: (position) => position.column < 13 },
       B: { color: OrbColor.Blue, restores: (position) => position.column >= 13 },

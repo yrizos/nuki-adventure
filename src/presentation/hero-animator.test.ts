@@ -1,8 +1,8 @@
 import { expect, test } from 'vitest';
-import type { Art } from './art/art';
 import { Hero } from '../domain/level/hero';
 import { Direction, TilePosition } from '../domain/level/position';
-import { heroArt } from './art/sprites';
+import type { Art } from './art/art';
+import { heroArt } from './art/hero';
 import { HeroAnimator } from './hero-animator';
 
 test('animation history is identical with and without intervening renders', () => {
@@ -28,33 +28,37 @@ test('walk frames last eight ticks across tiles, and stopping on a passing frame
   const shown: Art[] = [];
   for (let frame = 0; frame < 24; frame++) {
     hero.steer(Direction.Down, () => true);
-    animator.advance(hero);
-    shown.push(animator.pose(hero, frame, false));
+    animator.advance(hero.state);
+    shown.push(animator.pose(hero.state, frame, false));
     hero.advance();
   }
   const walk = heroArt.down.walk;
-  expect(shown).toEqual([...Array(8).fill(walk[0]), ...Array(8).fill(walk[1]), ...Array(8).fill(walk[2])]);
+  expect(shown).toEqual([
+    ...Array<Art | undefined>(8).fill(walk[0]),
+    ...Array<Art | undefined>(8).fill(walk[1]),
+    ...Array<Art | undefined>(8).fill(walk[2]),
+  ]);
   for (let frame = 24; frame < 32; frame++) {
     hero.steer(Direction.Down, () => true);
-    animator.advance(hero);
+    animator.advance(hero.state);
     hero.advance();
   }
   for (let frame = 32; frame < 40; frame++) {
     hero.steer(null, () => true);
-    animator.advance(hero);
-    expect(animator.pose(hero, frame, false)).toBe(heroArt.down.settle);
+    animator.advance(hero.state);
+    expect(animator.pose(hero.state, frame, false)).toBe(heroArt.down.settle);
   }
-  animator.advance(hero);
-  expect(animator.pose(hero, 40, false)).toBe(heroArt.down.stand);
+  animator.advance(hero.state);
+  expect(animator.pose(hero.state, 40, false)).toBe(heroArt.down.stand);
 });
 
 test('idle blinks for six ticks every three seconds and breathes every ninety ticks', () => {
   const hero = new Hero(TilePosition.at(0, 0), Direction.Down);
   const animator = new HeroAnimator();
-  expect(animator.pose(hero, 0, false)).toBe(heroArt.down.stand);
-  expect(animator.pose(hero, 90, false)).toBe(heroArt.down.breathe);
-  for (let frame = 180; frame < 186; frame++) expect(animator.pose(hero, frame, false)).toBe(heroArt.down.blink);
-  expect(animator.pose(hero, 186, false)).toBe(heroArt.down.stand);
+  expect(animator.pose(hero.state, 0, false)).toBe(heroArt.down.stand);
+  expect(animator.pose(hero.state, 90, false)).toBe(heroArt.down.breathe);
+  for (let frame = 180; frame < 186; frame++) expect(animator.pose(hero.state, frame, false)).toBe(heroArt.down.blink);
+  expect(animator.pose(hero.state, 186, false)).toBe(heroArt.down.stand);
 });
 
 test.each([

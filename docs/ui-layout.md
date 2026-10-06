@@ -94,7 +94,7 @@ Landscape orientation is not supported.
 - The control panel is pixel art drawn from palette codes, like the game world, so the two areas read as one game
 - The panel is measured in panel pixels, and each panel pixel is a whole number of device pixels, so the art stays crisp at every width
 - A panel pixel is the largest whole number of device pixels that fits 180 panel pixels across the column, and never less than one device pixel
-- Every control has a one pixel Ink outline and takes its light from the top left
+- The knob and the buttons have a one pixel Ink outline, and every control takes its light from the top left
 - The panel is deep violet in V0, which sits between the red A and the blue B, with an Ink row and then a V1 row along its top edge where it meets the game view
 - The panel surface has a grip texture of 2 × 2 dots, spaced 8 pixels apart, with every other row of dots shifted by 4 pixels
 - The space between the joystick and the action buttons absorbs any width left after rounding

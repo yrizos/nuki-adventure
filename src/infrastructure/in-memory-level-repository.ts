@@ -1,4 +1,5 @@
-import type { Level, LevelId } from '../domain/level/level';
+import type { Level } from '../domain/level/level';
+import type { LevelId } from '../domain/level/level-id';
 import type { LevelRepository } from '../domain/level/level-repository';
 
 export class InMemoryLevelRepository implements LevelRepository {

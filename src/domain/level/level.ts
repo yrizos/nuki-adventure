@@ -1,73 +1,18 @@
-import { Hero } from './hero';
+import { type Orb, Star, type StarCount } from './collectibles';
+import type { Door } from './door';
+import { Hero, type HeroState } from './hero';
+import {
+  LevelCompleted,
+  type LevelEvent,
+  OrbCollected,
+  SignpostLeft,
+  SignpostRead,
+  StarCollected,
+} from './level-events';
+import type { LevelId } from './level-id';
 import { Direction, TilePosition } from './position';
-import { Scenery } from './scenery';
-
-export class LevelId {
-  private constructor(readonly value: string) {}
-
-  static of(value: string): LevelId {
-    if (value.trim() === '') throw new RangeError('A level id cannot be empty');
-    return new LevelId(value);
-  }
-
-  equals(other: LevelId): boolean {
-    return this.value === other.value;
-  }
-}
-
-export class OrbColor {
-  static readonly Red = new OrbColor('red');
-  static readonly Blue = new OrbColor('blue');
-  static readonly Violet = new OrbColor('violet');
-  static readonly Teal = new OrbColor('teal');
-
-  private constructor(readonly name: 'red' | 'blue' | 'violet' | 'teal') {}
-
-  equals(other: OrbColor): boolean {
-    return this === other;
-  }
-}
-
-export class Area {
-  private readonly keys: ReadonlySet<string>;
-
-  private constructor(readonly tiles: readonly TilePosition[]) {
-    this.keys = new Set(tiles.map((tile) => `${tile.column},${tile.row}`));
-  }
-
-  static of(tiles: readonly TilePosition[]): Area {
-    const area = new Area([...tiles]);
-    if (tiles.length === 0) throw new RangeError('An area needs at least one tile');
-    if (area.keys.size !== tiles.length) throw new RangeError('An area holds each tile only once');
-    return area;
-  }
-
-  covers(position: TilePosition): boolean {
-    return this.keys.has(`${position.column},${position.row}`);
-  }
-
-  equals(other: Area): boolean {
-    return this.tiles.length === other.tiles.length && this.tiles.every((tile) => other.covers(tile));
-  }
-}
-
-export class Orb {
-  private constructor(
-    readonly position: TilePosition,
-    readonly color: OrbColor,
-    readonly restores: Area,
-  ) {}
-
-  static at(position: TilePosition, color: OrbColor, restores: Area): Orb {
-    return new Orb(position, color, restores);
-  }
-
-  equals(other: Orb): boolean {
-    return (
-      this.position.equals(other.position) && this.color.equals(other.color) && this.restores.equals(other.restores)
-    );
-  }
-}
+import type { Scenery } from './scenery';
+import type { Signpost } from './signpost';
 
 export class Stone {
   private constructor(readonly position: TilePosition) {}
@@ -81,136 +26,19 @@ export class Stone {
   }
 }
 
-export class Star {
-  private constructor(readonly position: TilePosition) {}
-
-  static at(position: TilePosition): Star {
-    return new Star(position);
-  }
-
-  equals(other: Star): boolean {
-    return this.position.equals(other.position);
-  }
+export interface LevelDefinition {
+  readonly id: LevelId;
+  readonly scenery: Scenery;
+  readonly stones: readonly Stone[];
+  readonly orbs: readonly Orb[];
+  readonly door: Door;
+  readonly hero: { readonly position: TilePosition; readonly facing: Direction };
+  readonly stars?: readonly Star[];
+  readonly signposts?: readonly Signpost[];
 }
-
-export class StarCount {
-  private constructor(readonly value: number) {}
-
-  static of(value: number): StarCount {
-    if (!Number.isInteger(value) || value < 0)
-      throw new RangeError(`A star count needs a whole number of zero or more, got ${value}`);
-    return new StarCount(value);
-  }
-
-  equals(other: StarCount): boolean {
-    return this.value === other.value;
-  }
-}
-
-export class SignpostText {
-  private constructor(readonly value: string) {}
-
-  static of(value: string): SignpostText {
-    if (value.trim() === '') throw new RangeError('A signpost needs something written on it');
-    return new SignpostText(value);
-  }
-
-  equals(other: SignpostText): boolean {
-    return this.value === other.value;
-  }
-}
-
-export class Signpost {
-  private constructor(
-    readonly position: TilePosition,
-    readonly text: SignpostText,
-  ) {}
-
-  static at(position: TilePosition, text: SignpostText): Signpost {
-    return new Signpost(position, text);
-  }
-
-  // The board is read from the side or from in front, so standing on any of the four touching tiles is enough.
-  isBeside(position: TilePosition): boolean {
-    return [Direction.Up, Direction.Down, Direction.Left, Direction.Right].some((direction) =>
-      this.position.neighbor(direction).equals(position),
-    );
-  }
-
-  equals(other: Signpost): boolean {
-    return this.position.equals(other.position) && this.text.equals(other.text);
-  }
-}
-
-export class Door {
-  private constructor(
-    readonly left: TilePosition,
-    readonly isOpen: boolean,
-  ) {}
-
-  static closedAt(left: TilePosition): Door {
-    return new Door(left, false);
-  }
-
-  get footprint(): readonly TilePosition[] {
-    const middle = this.left.neighbor(Direction.Right);
-    return [this.left, middle, middle.neighbor(Direction.Right)];
-  }
-
-  covers(position: TilePosition): boolean {
-    return this.footprint.some((tile) => tile.equals(position));
-  }
-
-  // The door stands three tiles tall, so whatever lies on the two tiles above its footprint is drawn behind it.
-  hides(position: TilePosition): boolean {
-    const below = position.neighbor(Direction.Down);
-    return this.covers(below) || this.covers(below.neighbor(Direction.Down));
-  }
-
-  opened(): Door {
-    return new Door(this.left, true);
-  }
-
-  equals(other: Door): boolean {
-    return this.left.equals(other.left) && this.isOpen === other.isOpen;
-  }
-}
-
-export class OrbCollected {
-  constructor(
-    readonly levelId: LevelId,
-    readonly position: TilePosition,
-    readonly color: OrbColor,
-    readonly restores: Area,
-  ) {}
-}
-
-export class StarCollected {
-  constructor(
-    readonly levelId: LevelId,
-    readonly position: TilePosition,
-  ) {}
-}
-
-export class SignpostRead {
-  constructor(
-    readonly levelId: LevelId,
-    readonly position: TilePosition,
-    readonly text: SignpostText,
-  ) {}
-}
-
-export class SignpostLeft {
-  constructor(readonly levelId: LevelId) {}
-}
-
-export class LevelCompleted {
-  constructor(readonly levelId: LevelId) {}
-}
-
-export type LevelEvent = OrbCollected | StarCollected | SignpostRead | SignpostLeft | LevelCompleted;
 
 export class Level {
+  private readonly heroEntity: Hero;
   private remainingOrbs: readonly Orb[];
   private currentDoor: Door;
   private completed = false;
@@ -218,16 +46,17 @@ export class Level {
   private collectedStars: readonly Star[] = [];
   private reading: Signpost | null = null;
 
-  constructor(
-    readonly id: LevelId,
-    readonly scenery: Scenery,
-    readonly stones: readonly Stone[],
-    orbs: readonly Orb[],
-    door: Door,
-    readonly hero: Hero,
-    stars: readonly Star[] = [],
-    readonly signposts: readonly Signpost[] = [],
-  ) {
+  readonly id: LevelId;
+  readonly scenery: Scenery;
+  readonly stones: readonly Stone[];
+  readonly signposts: readonly Signpost[];
+
+  private constructor({ id, scenery, stones, orbs, door, hero, stars = [], signposts = [] }: LevelDefinition) {
+    this.id = id;
+    this.scenery = scenery;
+    this.stones = stones;
+    this.heroEntity = new Hero(hero.position, hero.facing);
+    this.signposts = signposts;
     for (const stone of stones) {
       if (!scenery.isWalkable(stone.position)) {
         throw new RangeError(`A stone needs open ground, at ${stone.position.column}, ${stone.position.row}`);
@@ -285,18 +114,17 @@ export class Level {
     this.remainingStars = [...stars];
   }
 
+  static create(definition: LevelDefinition): Level {
+    return new Level(definition);
+  }
+
   static withScatteredStars(
-    id: LevelId,
-    scenery: Scenery,
-    stones: readonly Stone[],
-    orbs: readonly Orb[],
-    door: Door,
-    hero: Hero,
+    definition: Omit<LevelDefinition, 'stars'>,
     starCount: StarCount,
-    signposts: readonly Signpost[],
     shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[],
   ): Level {
-    const empty = new Level(id, scenery, stones, orbs, door, hero, [], signposts);
+    const { orbs, hero } = definition;
+    const empty = new Level({ ...definition, stars: [] });
     const spots = empty
       .reachableTiles()
       .filter(
@@ -305,16 +133,11 @@ export class Level {
     if (spots.length < starCount.value) {
       throw new RangeError(`The level has room for ${spots.length} visible, reachable stars, not ${starCount.value}`);
     }
-    return new Level(
-      id,
-      scenery,
-      stones,
-      orbs,
-      door,
-      hero,
-      shuffle(spots).slice(0, starCount.value).map(Star.at),
-      signposts,
-    );
+    return new Level({ ...definition, stars: shuffle(spots).slice(0, starCount.value).map(Star.at) });
+  }
+
+  get hero(): HeroState {
+    return this.heroEntity.state;
   }
 
   get stars(): readonly Star[] {
@@ -338,8 +161,8 @@ export class Level {
   }
 
   read(): readonly LevelEvent[] {
-    if (this.completed || this.hero.step) return [];
-    const signpost = this.signposts.find((candidate) => candidate.isBeside(this.hero.position));
+    if (this.completed || this.heroEntity.step) return [];
+    const signpost = this.signposts.find((candidate) => candidate.isBeside(this.heroEntity.position));
     if (!signpost) return [];
     this.reading = signpost;
     return [new SignpostRead(this.id, signpost.position, signpost.text)];
@@ -347,7 +170,7 @@ export class Level {
 
   tick(direction: Direction | null): readonly LevelEvent[] {
     if (this.completed) return [];
-    const arrival = this.hero.advance();
+    const arrival = this.heroEntity.advance();
     const events: LevelEvent[] = [];
     const star = arrival && this.remainingStars.find((candidate) => candidate.position.equals(arrival));
     if (star) {
@@ -365,8 +188,10 @@ export class Level {
       this.completed = true;
       return [...events, new LevelCompleted(this.id)];
     }
-    this.hero.steer(direction, (position) => this.canEnter(position));
-    const leaving = this.hero.step && !this.reading?.isBeside(this.hero.position.neighbor(this.hero.step.direction));
+    this.heroEntity.steer(direction, (position) => this.canEnter(position));
+    const leaving =
+      this.heroEntity.step &&
+      !this.reading?.isBeside(this.heroEntity.position.neighbor(this.heroEntity.step.direction));
     if (this.reading && leaving) {
       this.reading = null;
       events.push(new SignpostLeft(this.id));
@@ -377,7 +202,7 @@ export class Level {
   // Diagonal steps need both straight neighbors open, so straight steps alone reach every tile the hero can.
   // The door counts as closed because stepping onto it ends the level.
   private reachableTiles(): readonly TilePosition[] {
-    const reached = [this.hero.position];
+    const reached = [this.heroEntity.position];
     for (let index = 0; index < reached.length; index++) {
       for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
         const next = reached[index]!.neighbor(direction);

@@ -1,4 +1,4 @@
-import { element } from './game-view';
+import { element } from './dom';
 import type { Sound } from './sound';
 
 export function connectGameSwitches(root: Document, sound: Pick<Sound, 'on' | 'toggle'>): void {

@@ -1,4 +1,4 @@
-import { Direction, TilePosition } from './position';
+import { Direction, type TilePosition } from './position';
 
 export class Ground {
   static readonly Grass = new Ground('grass', true);

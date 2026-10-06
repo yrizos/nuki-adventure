@@ -1,6 +1,6 @@
-import type { Hero } from '../domain/level/hero';
+import type { HeroState } from '../domain/level/hero';
 import type { Art } from './art/art';
-import { heroArt } from './art/sprites';
+import { heroArt } from './art/hero';
 
 const ticksPerWalkFrame = 8;
 const settleTicks = 8;
@@ -12,7 +12,7 @@ export class HeroAnimator {
   private walkTicks = 0;
   private settleLeft = 0;
 
-  advance(hero: Hero): void {
+  advance(hero: HeroState): void {
     if (hero.step) {
       this.walkTicks++;
       this.settleLeft = 0;
@@ -24,7 +24,7 @@ export class HeroAnimator {
     this.walkTicks = 0;
   }
 
-  pose(hero: Hero, frame: number, holdingOrb: boolean): Art {
+  pose(hero: HeroState, frame: number, holdingOrb: boolean): Art {
     const facing = hero.facing;
     const art =
       heroArt[facing.rowStep < 0 ? 'up' : facing.rowStep > 0 ? 'down' : facing.columnStep < 0 ? 'left' : 'right'];

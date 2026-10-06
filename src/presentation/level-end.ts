@@ -1,8 +1,9 @@
 import { PixelGrid, type Art } from './art/art';
 import { glyphHeight, textWidth, writeText } from './art/font';
 import { continueHeight, continueWidth } from './art/panel';
-import { starArt } from './art/sprites';
-import { artUrl, element } from './game-view';
+import { starArt } from './art/collectibles';
+import { artUrl } from './canvas-art';
+import { element } from './dom';
 
 const framesPerSecond = 60;
 const edge = 2;
@@ -129,10 +130,7 @@ export class LevelEndWindow {
   private readonly summary: HTMLElement;
   private readonly continueButton: HTMLButtonElement;
 
-  constructor(
-    private readonly root: Document,
-    onContinue: () => void,
-  ) {
+  constructor(private readonly root: Document) {
     this.overlay = element(root, '.level-end');
     this.card = element(root, '.level-end-card');
     this.summary = element(root, '.level-end-summary');
@@ -140,7 +138,10 @@ export class LevelEndWindow {
     this.continueButton.style.setProperty('--button-top', String(continueTop));
     this.continueButton.style.setProperty('--button-width', String(continueWidth));
     this.continueButton.style.setProperty('--button-height', String(continueHeight));
-    this.continueButton.addEventListener('click', onContinue);
+  }
+
+  whenContinued(listener: () => void): void {
+    this.continueButton.addEventListener('click', listener);
   }
 
   show(result: LevelResult): void {

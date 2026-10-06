@@ -1,15 +1,29 @@
-import { expect, test, vi } from 'vitest';
-import { Hero, Step } from '../domain/level/hero';
-import { Area, Door, Level, LevelId, Orb, OrbColor, Stone } from '../domain/level/level';
+import { describe, expect, test, vi } from 'vitest';
+import { Area, Orb, OrbColor } from '../domain/level/collectibles';
+import { Door } from '../domain/level/door';
+import { Step } from '../domain/level/hero';
+import { Level, Stone } from '../domain/level/level';
+import { LevelId } from '../domain/level/level-id';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
 import { firstLevel } from '../infrastructure/first-level';
+import { randomShuffle } from '../infrastructure/random-shuffle';
 import type { Art } from './art/art';
-import * as scenery from './art/scenery';
-import * as sprites from './art/sprites';
-import { Picture, sprite } from './picture';
+import * as barriers from './art/barriers';
+import * as collectibles from './art/collectibles';
+import * as effects from './art/effects';
+import * as hero from './art/hero';
+import * as objects from './art/objects';
+import * as terrain from './art/terrain';
+import * as vegetation from './art/vegetation';
 import { faded, palette, type PaletteCode } from './palette';
-import { closingLength, heroPixels, propVariants, tileSize, WorldPainter } from './world-painter';
+import { Picture, sprite } from './picture';
+import { heroPixels, tileSize } from './world-geometry';
+import { propVariants, WorldPainter } from './world-painter';
+import { closingLength } from './world-transition';
+
+const scenery = { ...terrain, ...vegetation, ...barriers };
+const sprites = { ...hero, ...collectibles, ...objects, ...effects };
 
 const area = (keep: (position: TilePosition) => boolean): Area =>
   Area.of(Array.from({ length: 1600 }, (_, index) => TilePosition.at(index % 40, Math.floor(index / 40))).filter(keep));
@@ -30,19 +44,19 @@ function renderingLevel(
   stones: readonly Stone[] = [],
   trees: readonly Tree[] = [],
 ): Level {
-  return new Level(
-    LevelId.of('render'),
-    Scenery.of(
+  return Level.create({
+    id: LevelId.of('render'),
+    scenery: Scenery.of(
       LevelSize.of(12, 12),
       Array.from({ length: 12 }, () => Array.from({ length: 12 }, () => ground)),
       trees,
       [],
     ),
     stones,
-    [Orb.at(TilePosition.at(0, 0), color, everywhere)],
-    Door.closedAt(TilePosition.at(0, 11)),
-    new Hero(hero, Direction.Down),
-  );
+    orbs: [Orb.at(TilePosition.at(0, 0), color, everywhere)],
+    door: Door.closedAt(TilePosition.at(0, 11)),
+    hero: { position: hero, facing: Direction.Down },
+  });
 }
 
 function colorAt(picture: Picture, column: number, row: number): string {
@@ -53,6 +67,34 @@ function colorAt(picture: Picture, column: number, row: number): string {
     .toUpperCase()}`;
 }
 
+async function checksum(picture: Picture): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', picture.pixels.slice());
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+describe('whole frames of the first level', () => {
+  const level = firstLevel((positions) => positions);
+  const orb = level.orbs[0]!;
+  const scene = { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null };
+  const painter = new WorldPainter(level);
+  const picture = new Picture(224, 320);
+
+  test('renders the current fully faded fixture unchanged', async () => {
+    painter.paint(picture, scene, []);
+    expect(await checksum(picture)).toBe('1b1bd9ccb6b81a4aaf91318ede10824f6d0759b89d8d95d80b2cb19e5db4a499');
+  });
+
+  test('renders the current partially restored fixture unchanged', async () => {
+    painter.paintRestoring(picture, scene, orb.position, 40, [], [orb.restores]);
+    expect(await checksum(picture)).toBe('1930978cce3040be36d57835e08926e4ee29eb84b0eece2e0b1a133bb4e407fe');
+  });
+
+  test('renders the current fully colored fixture unchanged', async () => {
+    painter.paint(picture, scene, [orb.restores]);
+    expect(await checksum(picture)).toBe('6dd76e208930e450b041c7d1502dae4d377581d07a6e4c1b99abace28c871d1e');
+  });
+});
+
 test('every piece of art uses only its legend and keeps a rectangular shape', () => {
   const art = allArt({ ...scenery, ...sprites });
   expect(art.length).toBeGreaterThan(100);
@@ -60,7 +102,7 @@ test('every piece of art uses only its legend and keeps a rectangular shape', ()
 });
 
 test('the first level has ground art for every place where terrains meet', () => {
-  expect(() => new WorldPainter(firstLevel())).not.toThrow();
+  expect(() => new WorldPainter(firstLevel(randomShuffle))).not.toThrow();
 });
 
 test('native terrain grids cover all 81 three-terrain corner combinations', () => {
@@ -80,14 +122,14 @@ test('native terrain grids cover all 81 three-terrain corner combinations', () =
           ground[1]![2] = topRight;
           ground[2]![1] = bottomLeft;
           ground[2]![2] = bottomRight;
-          const level = new Level(
-            LevelId.of('terrain'),
-            Scenery.of(LevelSize.of(4, 4), ground, [], []),
-            [],
-            [Orb.at(TilePosition.at(3, 3), OrbColor.Violet, everywhere)],
-            Door.closedAt(TilePosition.at(0, 3)),
-            new Hero(TilePosition.at(0, 0), Direction.Down),
-          );
+          const level = Level.create({
+            id: LevelId.of('terrain'),
+            scenery: Scenery.of(LevelSize.of(4, 4), ground, [], []),
+            stones: [],
+            orbs: [Orb.at(TilePosition.at(3, 3), OrbColor.Violet, everywhere)],
+            door: Door.closedAt(TilePosition.at(0, 3)),
+            hero: { position: TilePosition.at(0, 0), facing: Direction.Down },
+          });
           expect(() => new WorldPainter(level)).not.toThrow();
         }
       }
@@ -107,7 +149,7 @@ test('native interactive sprites use their documented dimensions and distinct or
 
 test('interactive sprites keep a closed one-pixel Ink silhouette', () => {
   const art: readonly Art[] = [
-    ...Object.values(sprites.heroArt).flatMap((direction) => [
+    ...[sprites.heroArt.down, sprites.heroArt.up, sprites.heroArt.left, sprites.heroArt.right].flatMap((direction) => [
       direction.stand,
       direction.breathe,
       ...direction.walk,
@@ -290,19 +332,22 @@ test('restoration advances outward with palette-only pixels and matches both end
 });
 
 test('restoring one area leaves the rest of the map faded', () => {
-  const level = new Level(
-    LevelId.of('areas'),
-    Scenery.of(
+  const level = Level.create({
+    id: LevelId.of('areas'),
+    scenery: Scenery.of(
       LevelSize.of(12, 12),
       Array.from({ length: 12 }, () => Array<Ground>(12).fill(Ground.Grass)),
       [],
       [],
     ),
-    [],
-    [Orb.at(TilePosition.at(0, 0), OrbColor.Red, leftHalf), Orb.at(TilePosition.at(11, 0), OrbColor.Blue, rightHalf)],
-    Door.closedAt(TilePosition.at(0, 11)),
-    new Hero(TilePosition.at(2, 2), Direction.Down),
-  );
+    stones: [],
+    orbs: [
+      Orb.at(TilePosition.at(0, 0), OrbColor.Red, leftHalf),
+      Orb.at(TilePosition.at(11, 0), OrbColor.Blue, rightHalf),
+    ],
+    door: Door.closedAt(TilePosition.at(0, 11)),
+    hero: { position: TilePosition.at(2, 2), facing: Direction.Down },
+  });
   const painter = new WorldPainter(level);
   const painted = (restored: readonly Area[]): Picture => {
     const picture = new Picture(384, 384);
@@ -389,22 +434,21 @@ test.each([
   Direction.DownRight,
 ])('renders consecutive %s steps without overshooting or snapping backward', (direction) => {
   const start = TilePosition.at(5, 5);
-  const hero = new Hero(start, direction.facing);
   const ground = Array.from({ length: 12 }, () => Array.from({ length: 12 }, () => Ground.Grass));
-  const level = new Level(
-    LevelId.of('movement'),
-    Scenery.of(LevelSize.of(12, 12), ground, [], []),
-    [],
-    [Orb.at(TilePosition.at(0, 0), OrbColor.Violet, everywhere)],
-    Door.closedAt(TilePosition.at(0, 11)),
-    hero,
-  );
+  const level = Level.create({
+    id: LevelId.of('movement'),
+    scenery: Scenery.of(LevelSize.of(12, 12), ground, [], []),
+    stones: [],
+    orbs: [Orb.at(TilePosition.at(0, 0), OrbColor.Violet, everywhere)],
+    door: Door.closedAt(TilePosition.at(0, 11)),
+    hero: { position: start, facing: direction.facing },
+  });
   const duration = Step.begin(direction).duration;
   expect(tileSize).toBe(32);
   expect(duration).toBe(direction.isDiagonal ? 23 : 16);
   let previous = heroPixels(level);
   for (let frame = 0; frame <= duration * 2; frame++) {
-    hero.steer(direction, () => true);
+    level.tick(direction);
     const pixels = heroPixels(level);
     const travelled = Math.floor(frame / duration) * tileSize + Math.round(((frame % duration) / duration) * tileSize);
     expect(pixels).toEqual({
@@ -418,6 +462,5 @@ test.each([
       expect(Math.abs(pixels.x - previous.x) + Math.abs(pixels.y - previous.y)).toBe(2);
     }
     previous = pixels;
-    hero.advance();
   }
 });

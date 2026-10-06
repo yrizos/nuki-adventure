@@ -1,4 +1,5 @@
-import type { Level, LevelId } from './level';
+import type { Level } from './level';
+import type { LevelId } from './level-id';
 
 export interface LevelRepository {
   load(id: LevelId): Level;

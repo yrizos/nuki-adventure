@@ -1,21 +1,17 @@
-import { PlayLevel } from '../application/play-level';
-import type { Level } from '../domain/level/level';
-import { firstLevel, firstLevelId } from '../infrastructure/first-level';
-import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
-import { secondLevel, secondLevelId } from '../infrastructure/second-level';
 import { panelArt } from './art/panel';
+import { artUrl } from './canvas-art';
 import { Controls } from './controls';
+import { element } from './dom';
 import { GameLoop } from './game-loop';
-import { GameSession } from './game-session';
+import { GameSession, type PlayableLevel } from './game-session';
 import { connectGameSwitches } from './game-switches';
-import { artUrl, element, GameView } from './game-view';
+import { GameView } from './game-view';
 import { LevelEndWindow } from './level-end';
 import { Sound } from './sound';
 
-export { fitCanvas } from './game-view';
 export { messages } from './game-session';
 
-export function startGame(root: Document): void {
+export function startGame(root: Document, levels: readonly PlayableLevel[]): void {
   const screen = element<HTMLElement>(root, '.screen');
   for (const [name, art] of Object.entries(panelArt))
     screen.style.setProperty(`--art-${name}`, `url(${artUrl(root, art)})`);
@@ -30,17 +26,9 @@ export function startGame(root: Document): void {
 
   const sound = new Sound(window);
   connectGameSwitches(root, sound);
-  const playing = (create: () => Level) => () => new PlayLevel(new InMemoryLevelRepository([create()]));
-  const session = new GameSession(
-    [
-      { id: firstLevelId, start: playing(firstLevel) },
-      { id: secondLevelId, start: playing(secondLevel) },
-    ],
-    controls,
-    sound,
-    { show: (result) => levelEnd.show(result), hide: () => levelEnd.hide() },
-  );
-  const levelEnd = new LevelEndWindow(root, () => session.continuePlaying());
+  const levelEnd = new LevelEndWindow(root);
+  const session = new GameSession(levels, controls, sound, levelEnd);
+  levelEnd.whenContinued(() => session.continuePlaying());
 
   const tick = (): void => {
     session.tick();
