@@ -1,7 +1,8 @@
 import { expect, test } from 'vitest';
+import { Door } from '../domain/level/door';
 import { TilePosition } from '../domain/level/position';
 import { LevelSize } from '../domain/level/scenery';
-import { closingLength, isDarkened, isRestored, restorationLength } from './world-transition';
+import { closingLength, doorOpeningLength, isDarkened, isRestored, restorationLength } from './world-transition';
 
 test('spreads restoration one ring of tiles every four frames until it reaches the farthest edge', () => {
   expect(restorationLength(LevelSize.of(18, 20), TilePosition.at(15, 9))).toBe(15 * 4 + 16);
@@ -16,4 +17,13 @@ test('darkens every pixel to Ink over forty-eight frames', () => {
   expect(isDarkened(0, 0, 3)).toBe(true);
   expect(isDarkened(0, 3, 47)).toBe(false);
   expect(isDarkened(0, 3, 48)).toBe(true);
+});
+
+test('opens the door once color covers its art and never later than the whole level', () => {
+  expect(doorOpeningLength(Door.closedAt(TilePosition.at(2, 12)), LevelSize.of(18, 20), TilePosition.at(15, 9))).toBe(
+    13 * 4 + 16,
+  );
+  expect(doorOpeningLength(Door.closedAt(TilePosition.at(16, 4)), LevelSize.of(18, 5), TilePosition.at(0, 2))).toBe(
+    17 * 4 + 16,
+  );
 });

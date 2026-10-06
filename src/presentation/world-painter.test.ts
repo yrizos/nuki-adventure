@@ -20,7 +20,7 @@ import { faded, palette, type PaletteCode } from './palette';
 import { Picture, sprite } from './picture';
 import { heroPixels, tileSize } from './world-geometry';
 import { propVariants, WorldPainter } from './world-painter';
-import { closingLength } from './world-transition';
+import { closingLength, restorationLength } from './world-transition';
 
 const scenery = { ...terrain, ...vegetation, ...barriers };
 const sprites = { ...hero, ...collectibles, ...objects, ...effects };
@@ -314,7 +314,14 @@ test('restoration advances outward with palette-only pixels and matches both end
   painter.paint(neutral, scene, []);
   painter.paintRestoring(dissolve, scene, origin, -1, [], [everywhere]);
   expect(dissolve.pixels).toEqual(neutral.pixels);
-  painter.paintRestoring(dissolve, scene, origin, painter.restorationLength(origin), [], [everywhere]);
+  painter.paintRestoring(
+    dissolve,
+    scene,
+    origin,
+    restorationLength(scene.level.scenery.size, origin),
+    [],
+    [everywhere],
+  );
   expect(dissolve.pixels).toEqual(colored.pixels);
   const colors = new Set(Object.values(palette));
   for (const frame of [0, 3, 4, 15, 16, 31]) {

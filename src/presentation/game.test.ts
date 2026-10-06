@@ -328,3 +328,51 @@ describe('the game loop', () => {
     expect(calls).toEqual(['tick', 'tick', 'tick', 'render']);
   });
 });
+
+async function checksum(picture: Picture): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', picture.pixels.slice());
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function paintedChecksum(subject: ReturnType<typeof gameSession>): Promise<string> {
+  const picture = new Picture(224, 224);
+  subject.session.paint(picture);
+  return checksum(picture);
+}
+
+describe('whole frames of the game session', () => {
+  test('paints the current signpost message fixture unchanged', async () => {
+    const subject = gameSession();
+    subject.press('a');
+    expect(await paintedChecksum(subject)).toBe('d143aa2dfa4af5a544fff0a3ff0528cbb43702e7f151147decd88f7abdbffaa8');
+  });
+
+  test('paints the current held orb fixture unchanged', async () => {
+    const subject = gameSession();
+    subject.move(Direction.Right);
+    expect(await paintedChecksum(subject)).toBe('28c2c1ea04ef534ac779f27e37ce8811ebd697ce0ce0a4a0b9e1f8768047a559');
+  });
+
+  test('paints the current spreading color fixture unchanged', async () => {
+    const subject = gameSession();
+    subject.move(Direction.Right);
+    subject.advance(50);
+    expect(await paintedChecksum(subject)).toBe('d021a964621e7ef2ec9ddb79c796f6ac53b87a19a8b961604d08c324199db070');
+  });
+
+  test('paints the current closing fixture unchanged', async () => {
+    const subject = gameSession();
+    for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
+    for (let tile = 0; tile < 5; tile++) subject.move(Direction.Down);
+    subject.advance(closingLength / 2);
+    expect(await paintedChecksum(subject)).toBe('3ad5c0a94d12cd63249e4e5a8ef689a501be0ee9981561b722a8d25112300d23');
+  });
+
+  test('paints the current ended fixture unchanged', async () => {
+    const subject = gameSession();
+    for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
+    for (let tile = 0; tile < 5; tile++) subject.move(Direction.Down);
+    subject.advance(closingLength);
+    expect(await paintedChecksum(subject)).toBe('b0e49ba2a219b20e3667492745d5a2c174cd71b7e40425753260c1d6e7cfbdb3');
+  });
+});

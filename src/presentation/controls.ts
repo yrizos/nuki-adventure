@@ -1,5 +1,6 @@
 import { Direction } from '../domain/level/position';
 import { controlSize } from './art/panel';
+import { heldOffset, returnOffset, snapTowardCenter, steer } from './joystick';
 
 const arrowKeys: Readonly<Record<string, Direction>> = {
   ArrowUp: Direction.Up,
@@ -8,8 +9,6 @@ const arrowKeys: Readonly<Record<string, Direction>> = {
   ArrowRight: Direction.Right,
 };
 const buttonKeys: Readonly<Record<string, 'a' | 'b'>> = { z: 'a', ' ': 'a', x: 'b', Enter: 'b' };
-// The knob glides home and overshoots by one panel pixel, so a child sees that letting go is what stopped the hero.
-const returnFractions = [0.5, 0.15] as const;
 
 export class Controls {
   private readonly heldArrows: Direction[] = [];
@@ -35,11 +34,9 @@ export class Controls {
     let offset = { x: 0, y: 0 };
     let returning: { readonly x: number; readonly y: number; frame: number } | null = null;
     const pixelSize = (): number => knob.getBoundingClientRect().width / controlSize;
-    // Snapping toward the center keeps the knob on whole panel pixels without pushing it past its reach.
     const show = (x: number, y: number): void => {
       const pixel = pixelSize();
-      const snap = (value: number): number => (pixel > 0 ? Math.trunc(value / pixel) * pixel : 0);
-      knob.style.transform = `translate(${snap(x)}px, ${snap(y)}px)`;
+      knob.style.transform = `translate(${snapTowardCenter(x, pixel)}px, ${snapTowardCenter(y, pixel)}px)`;
     };
     const place = (x: number, y: number): void => {
       returning = null;
@@ -52,15 +49,13 @@ export class Controls {
     };
     this.advance = (): void => {
       if (!returning) return;
-      const { x, y, frame } = returning;
-      const fraction = returnFractions[frame];
-      if (fraction !== undefined) show(x * fraction, y * fraction);
-      else if (frame === returnFractions.length) show(-Math.sign(x) * pixelSize(), -Math.sign(y) * pixelSize());
-      else {
+      const position = returnOffset(returning, returning.frame, pixelSize());
+      if (!position) {
         knob.style.transform = '';
         returning = null;
         return;
       }
+      show(position.x, position.y);
       returning.frame++;
     };
     const showDirection = (): void => {
@@ -78,8 +73,8 @@ export class Controls {
         recenter();
         return;
       }
-      const travel = reach() / (direction.isDiagonal ? Math.SQRT2 : 1);
-      place(direction.columnStep * travel, direction.rowStep * travel);
+      const offset = heldOffset(direction, reach());
+      place(offset.x, offset.y);
     };
     window.addEventListener('keydown', (event) => {
       const arrow = arrowKeys[event.key];
@@ -157,24 +152,13 @@ export class Controls {
 
     const move = (event: { clientX: number; clientY: number }): void => {
       const ring = joystick.getBoundingClientRect();
-      const travel = reach();
-      let x = event.clientX - (ring.left + ring.width / 2);
-      let y = event.clientY - (ring.top + ring.height / 2);
-      const distance = Math.hypot(x, y);
-      if (distance > travel) {
-        x = (x / distance) * travel;
-        y = (y / distance) * travel;
-      }
-      place(x, y);
-      // A dead zone keeps a resting thumb from walking the hero by accident.
-      if (travel === 0 || distance < travel * 0.3) this.joystickDirection = null;
-      else {
-        // Wider straight sectors suit grid movement, since a thumb aimed straight often drifts a little off the line.
-        const threshold = Math.tan(Math.PI / 6);
-        const horizontal = Math.abs(x) > Math.abs(y) * threshold ? (x > 0 ? Direction.Right : Direction.Left) : null;
-        const vertical = Math.abs(y) > Math.abs(x) * threshold ? (y > 0 ? Direction.Down : Direction.Up) : null;
-        this.joystickDirection = Direction.combine(horizontal, vertical);
-      }
+      const steered = steer(
+        event.clientX - (ring.left + ring.width / 2),
+        event.clientY - (ring.top + ring.height / 2),
+        reach(),
+      );
+      place(steered.offset.x, steered.offset.y);
+      this.joystickDirection = steered.direction;
       showDirection();
     };
     const release = (event: PointerEvent): void => {

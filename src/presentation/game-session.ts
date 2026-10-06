@@ -10,6 +10,7 @@ import { MessageBox } from './message-box';
 import type { Picture } from './picture';
 import type { Sound } from './sound';
 import { WorldPainter } from './world-painter';
+import { doorOpeningLength, restorationLength } from './world-transition';
 
 export const messages = {
   someColorsBack: 'ΜΠΡΑΒΟ! ΜΕΝΕΙ ΑΛΛΗ ΜΙΑ ΣΦΑΙΡΑ!',
@@ -103,12 +104,13 @@ export class GameSession {
     }
     if (this.phase.name === 'restoring') {
       const level = play.view(id);
-      const doorShown = this.frame - this.phase.since >= this.run.painter.doorOpeningLength(this.phase.origin);
+      const doorShown =
+        this.frame - this.phase.since >= doorOpeningLength(level.door, level.scenery.size, this.phase.origin);
       if (level.orbs.length === 0 && !level.door.isOpen && doorShown) play.openDoor(id);
     }
     const next = phaseAfterFrame(this.phase, {
       frame: this.frame,
-      restorationLength: (origin) => this.run.painter.restorationLength(origin),
+      restorationLength: (origin) => restorationLength(play.view(id).scenery.size, origin),
       continuing: pressedA || pressedB,
     });
     if (next !== this.phase) {

@@ -1,4 +1,5 @@
-import type { TilePosition } from '../domain/level/position';
+import type { Door } from '../domain/level/door';
+import { Direction, type TilePosition } from '../domain/level/position';
 import type { LevelSize } from '../domain/level/scenery';
 import { ditherSteps, ditherThreshold } from './ordered-dither';
 import { tileSize } from './world-geometry';
@@ -18,6 +19,15 @@ export function restorationCovers(tiles: readonly TilePosition[], origin: TilePo
     ...tiles.map((tile) => Math.max(Math.abs(tile.column - origin.column), Math.abs(tile.row - origin.row))),
   );
   return rings * framesPerRing + ditherSteps;
+}
+
+// The door art rises two tiles above its footprint, and it reads as open only once color covers all of it.
+export function doorOpeningLength(door: Door, size: LevelSize, origin: TilePosition): number {
+  const tiles = door.footprint.flatMap((tile) => {
+    const above = tile.neighbor(Direction.Up);
+    return [tile, above, above.neighbor(Direction.Up)];
+  });
+  return Math.min(restorationCovers(tiles, origin), restorationLength(size, origin));
 }
 
 export function isRestored(worldX: number, worldY: number, origin: TilePosition, framesSinceStart: number): boolean {

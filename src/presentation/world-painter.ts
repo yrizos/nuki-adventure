@@ -12,7 +12,7 @@ import { flowerArt, treeArt } from './art/vegetation';
 import { ditherSteps, ditherThreshold } from './ordered-dither';
 import { Picture, type Version } from './picture';
 import { cameraPosition, clamp, heroPixels, tileSize } from './world-geometry';
-import { isDarkened, isRestored, restorationCovers, restorationLength } from './world-transition';
+import { isDarkened, isRestored } from './world-transition';
 
 const orbBob = [0, -1, 0, 1];
 const motes = [
@@ -113,7 +113,7 @@ export class WorldPainter {
   private readonly fencePieces: readonly number[];
   private readonly shadows = new Map<string, Art>();
 
-  constructor(private readonly level: LevelView) {
+  constructor(level: LevelView) {
     this.ground = groundTiles(level.scenery);
     this.treeChoices = propVariants(
       level.scenery.trees.map((tree) => tree.footprint),
@@ -135,19 +135,6 @@ export class WorldPainter {
         0,
       ),
     );
-  }
-
-  restorationLength(origin: TilePosition): number {
-    return restorationLength(this.level.scenery.size, origin);
-  }
-
-  // The door art rises two tiles above its footprint, and it reads as open only once color covers all of it.
-  doorOpeningLength(origin: TilePosition): number {
-    const tiles = this.level.door.footprint.flatMap((tile) => {
-      const above = tile.neighbor(Direction.Up);
-      return [tile, above, above.neighbor(Direction.Up)];
-    });
-    return Math.min(restorationCovers(tiles, origin), this.restorationLength(origin));
   }
 
   paint(target: Picture, scene: Scene, restored: readonly Area[]): void {
