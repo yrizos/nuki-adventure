@@ -49,6 +49,7 @@ export function startGame(root: Document): void {
   };
 
   const render = (): void => {
+    controls.advance();
     gameView.paint(session);
   };
 
