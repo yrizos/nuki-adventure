@@ -259,7 +259,7 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 - Only the area of the collected orb changes, and the rest of the map keeps its current state
 - Where a colored area meets a faded one, the seam is a one tile wide band of the same ordered 4 × 4 dither, centered on the area edge
 - Every frame of the dissolve contains palette colors only
-- The door opens as soon as the last orb is picked up, but it is drawn closed until color reaches it during the last restoration
+- The door stays closed until every orb is picked up. During the last restoration it is drawn open where color reaches it, and the hero can step into it once color covers the whole door
 
 ### Leaving a Level
 

@@ -68,7 +68,7 @@ One enclosed part of the game world that the hero plays through, from her start 
 
 ### Door
 
-The exit of a level. It opens once the hero picks up every orb in the level, and stepping into it completes the level.
+The exit of a level. It opens once the hero has picked up every orb in the level and color has returned to the whole door, and stepping into it completes the level.
 
 ### Reachable
 

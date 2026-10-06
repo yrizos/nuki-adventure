@@ -13,6 +13,13 @@ export function restorationLength(size: LevelSize, origin: TilePosition): number
   return rings * framesPerRing + ditherSteps;
 }
 
+export function restorationCovers(tiles: readonly TilePosition[], origin: TilePosition): number {
+  const rings = Math.max(
+    ...tiles.map((tile) => Math.max(Math.abs(tile.column - origin.column), Math.abs(tile.row - origin.row))),
+  );
+  return rings * framesPerRing + ditherSteps;
+}
+
 export function isRestored(worldX: number, worldY: number, origin: TilePosition, framesSinceStart: number): boolean {
   const ring = Math.max(
     Math.abs(Math.floor(worldX / tileSize) - origin.column),

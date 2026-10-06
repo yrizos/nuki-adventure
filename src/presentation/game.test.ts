@@ -127,7 +127,7 @@ describe('the game session', () => {
     expect(subject.sound.footstep).toHaveBeenCalledTimes(3);
   });
 
-  test('tells her to find the other orb until she has both, then opens the door', () => {
+  test('tells her to find the other orb until she has both', () => {
     const subject = gameSession([
       Orb.at(TilePosition.at(1, 0), OrbColor.Red, leftHalf),
       Orb.at(TilePosition.at(2, 0), OrbColor.Blue, rightHalf),
@@ -137,8 +137,20 @@ describe('the game session', () => {
     expect(subject.level.door.isOpen).toBe(false);
     subject.move(Direction.Right);
     expect(subject.session.messageText).toBe(messages.colorsBack);
-    expect(subject.level.door.isOpen).toBe(true);
+    expect(subject.level.door.isOpen).toBe(false);
     expect(subject.sound.orb).toHaveBeenCalledTimes(2);
+  });
+
+  test('keeps the door shut until the spreading color has drawn all of it open', () => {
+    const subject = gameSession();
+    subject.move(Direction.Right);
+    subject.advance(30);
+    expect(subject.sound.restoring).toHaveBeenCalledOnce();
+    // The door art reaches row 3 to row 5, five rings below the orb, so color covers it after 5 * 4 + 16 frames.
+    subject.advance(35);
+    expect(subject.level.door.isOpen).toBe(false);
+    subject.advance(1);
+    expect(subject.level.door.isOpen).toBe(true);
   });
 
   test('starts restoration exactly thirty frames after collecting the orb', () => {

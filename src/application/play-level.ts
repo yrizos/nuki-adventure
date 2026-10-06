@@ -18,6 +18,12 @@ export class PlayLevel {
     return events;
   }
 
+  openDoor(id: LevelId): void {
+    const level = this.levels.load(id);
+    level.openDoor();
+    this.levels.save(level);
+  }
+
   read(id: LevelId): readonly LevelEvent[] {
     const level = this.levels.load(id);
     const events = level.read();

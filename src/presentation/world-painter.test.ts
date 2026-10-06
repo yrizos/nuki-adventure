@@ -5,7 +5,7 @@ import { Step } from '../domain/level/hero';
 import { Level, Stone } from '../domain/level/level';
 import { LevelId } from '../domain/level/level-id';
 import { Direction, TilePosition } from '../domain/level/position';
-import { Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
+import { Flower, Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
 import { firstLevel } from '../infrastructure/first-level';
 import { randomShuffle } from '../infrastructure/random-shuffle';
 import type { Art } from './art/art';
@@ -81,17 +81,17 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    expect(await checksum(picture)).toBe('1b1bd9ccb6b81a4aaf91318ede10824f6d0759b89d8d95d80b2cb19e5db4a499');
+    expect(await checksum(picture)).toBe('33d4e3609cb975e126c52786bd108b53748a2bbf15aba7e1dad9d75668d93399');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     painter.paintRestoring(picture, scene, orb.position, 40, [], [orb.restores]);
-    expect(await checksum(picture)).toBe('1930978cce3040be36d57835e08926e4ee29eb84b0eece2e0b1a133bb4e407fe');
+    expect(await checksum(picture)).toBe('80552febb2729c579bbe0656f6f755e8fbabfa4287d5d0d847797db4293c003f');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [orb.restores]);
-    expect(await checksum(picture)).toBe('6dd76e208930e450b041c7d1502dae4d377581d07a6e4c1b99abace28c871d1e');
+    expect(await checksum(picture)).toBe('f021e88163dfa4f2effc55c7178ed5c181ea17dbdb6ca4fd00de24027a2de9af');
   });
 });
 
@@ -365,7 +365,39 @@ test('restoring one area leaves the rest of the map faded', () => {
   expect(painted([leftHalf, rightHalf]).pixels).toEqual(painted([everywhere]).pixels);
 });
 
-test('the door opens only in the colored world once the orb is collected', () => {
+test('flowers stacked above each other use different variants, each with a ground shadow under every stem', () => {
+  const flowers = [
+    Flower.at(TilePosition.at(4, 4)),
+    Flower.at(TilePosition.at(4, 5)),
+    Flower.at(TilePosition.at(4, 6)),
+  ];
+  const level = Level.create({
+    id: LevelId.of('flowers'),
+    scenery: Scenery.of(
+      LevelSize.of(12, 12),
+      Array.from({ length: 12 }, () => Array.from({ length: 12 }, () => Ground.Grass)),
+      [],
+      flowers,
+    ),
+    stones: [],
+    orbs: [Orb.at(TilePosition.at(0, 0), OrbColor.Violet, everywhere)],
+    door: Door.closedAt(TilePosition.at(0, 11)),
+    hero: { position: TilePosition.at(2, 2), facing: Direction.Down },
+  });
+  const picture = new Picture(384, 384);
+  const draw = vi.spyOn(picture, 'draw');
+  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, [
+    everywhere,
+  ]);
+  const flowerFrames = scenery.flowerArt.flat();
+  const drawn = draw.mock.calls.map(([art]) => art).filter((art) => flowerFrames.includes(art));
+  expect(drawn).toHaveLength(3);
+  expect(drawn[0]).not.toBe(drawn[1]);
+  expect(drawn[1]).not.toBe(drawn[2]);
+  for (const art of flowerFrames) expect(art.rows.join('\n').match(/(?<!d)ddd(?!d)/g)).toHaveLength(4);
+});
+
+test('the door is drawn open only in the colored world once the orb is collected', () => {
   const level = renderingLevel(Ground.Grass, OrbColor.Violet, TilePosition.at(1, 0));
   const painter = new WorldPainter(level);
   const drawn = (version: 'colored' | 'faded'): Art[] => {
@@ -381,7 +413,8 @@ test('the door opens only in the colored world once the orb is collected', () =>
   expect(drawn('colored')).toContain(scenery.doorArt.closed);
   expect(drawn('faded')).toContain(scenery.doorArt.closed);
   for (let frame = 0; frame < 30; frame++) level.tick(Direction.Left);
-  expect(level.door.isOpen).toBe(true);
+  expect(level.orbs).toEqual([]);
+  expect(level.door.isOpen).toBe(false);
   expect(drawn('colored')).toContain(scenery.doorArt.open);
   expect(drawn('colored')).not.toContain(scenery.doorArt.closed);
   expect(drawn('faded')).toContain(scenery.doorArt.closed);

@@ -160,6 +160,12 @@ export class Level {
     return this.completed;
   }
 
+  // Collecting the last orb only allows the door to open, because it should not let the hero through before it is seen to open.
+  openDoor(): void {
+    if (this.remainingOrbs.length > 0) throw new Error('The door opens only once every orb is picked up');
+    this.currentDoor = this.currentDoor.opened();
+  }
+
   read(): readonly LevelEvent[] {
     if (this.completed || this.heroEntity.step) return [];
     const signpost = this.signposts.find((candidate) => candidate.isBeside(this.heroEntity.position));
@@ -181,7 +187,6 @@ export class Level {
     const orb = arrival && this.remainingOrbs.find((candidate) => candidate.position.equals(arrival));
     if (orb) {
       this.remainingOrbs = this.remainingOrbs.filter((candidate) => candidate !== orb);
-      if (this.remainingOrbs.length === 0) this.currentDoor = this.currentDoor.opened();
       return [...events, new OrbCollected(this.id, orb.position, orb.color, orb.restores)];
     }
     if (arrival && this.currentDoor.covers(arrival)) {

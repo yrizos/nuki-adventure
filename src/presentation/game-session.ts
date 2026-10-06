@@ -101,6 +101,11 @@ export class GameSession {
       const restorationMessage = messageBox.text === messages.colorsBack || messageBox.text === messages.someColorsBack;
       if (this.phase.name === 'playing' && restorationMessage && play.view(id).hero.step) messageBox.hide(this.frame);
     }
+    if (this.phase.name === 'restoring') {
+      const level = play.view(id);
+      const doorShown = this.frame - this.phase.since >= this.run.painter.doorOpeningLength(this.phase.origin);
+      if (level.orbs.length === 0 && !level.door.isOpen && doorShown) play.openDoor(id);
+    }
     const next = phaseAfterFrame(this.phase, {
       frame: this.frame,
       restorationLength: (origin) => this.run.painter.restorationLength(origin),

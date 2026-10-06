@@ -107,13 +107,14 @@ function tree(variant: number, frame: number): Art {
 export const treeArt = Array.from({ length: 8 }, (_, variant) => [tree(variant, 0), tree(variant, 1)]);
 
 // Three petals of three pixels each read as a blossom tilted toward the camera, and the stem leans a pixel when it sways.
+// The bottom row is the ground shadow, drawn into the art because flowers sit in the ground decoration layer below every object.
 const blossom = [
-  ['.p.p.', 'ppypp', '.ppp.', '..d..', '..dd.', '..d..'],
-  ['.p.p.', 'ppypp', '.ppp.', '..d..', '.dd..', '..d..'],
+  ['.p.p.', 'ppypp', '.ppp.', '..d..', '..dd.', '..d..', '.ddd.'],
+  ['.p.p.', 'ppypp', '.ppp.', '..d..', '.dd..', '..d..', '.ddd.'],
 ];
 const swayingBlossom = [
-  ['..p.p', '.ppyp', '..ppp', '..d..', '..dd.', '..d..'],
-  ['..p.p', '.ppyp', '..ppp', '..d..', '.dd..', '..d..'],
+  ['..p.p', '.ppyp', '..ppp', '..d..', '..dd.', '..d..', '.ddd.'],
+  ['..p.p', '.ppyp', '..ppp', '..d..', '.dd..', '..d..', '.ddd.'],
 ];
 
 function flowers(variant: number, frame: number): Art {

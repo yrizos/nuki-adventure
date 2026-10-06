@@ -139,13 +139,13 @@ describe('the hero in a level', () => {
     expect(subject.hero.position).toEqual(at(1, 0));
   });
 
-  test('picks up the orb, which opens the door and stops her there', () => {
+  test('picks up the orb and stops her there, leaving the door closed', () => {
     const subject = level(['....'], at(0, 0), at(2, 0));
     let events = subject.tick(Direction.Right);
     for (let frame = 0; frame < 80 && events.length === 0; frame++) events = subject.tick(Direction.Right);
     expect(events).toEqual([new OrbCollected(LevelId.of('test'), at(2, 0), OrbColor.Violet, everywhere)]);
     expect(subject.orbs).toEqual([]);
-    expect(subject.door.isOpen).toBe(true);
+    expect(subject.door.isOpen).toBe(false);
     expect(subject.isComplete).toBe(false);
     expect(subject.hero.position).toEqual(at(2, 0));
     expect(subject.hero.step).toBeNull();
@@ -163,9 +163,12 @@ describe('the hero in a level', () => {
     });
     hold(subject, Direction.Right, 1 + Step.framesPerTile);
     expect(subject.orbs).toEqual([Orb.at(at(2, 0), OrbColor.Blue, rightHalf)]);
+    expect(() => subject.openDoor()).toThrow('The door opens only once every orb is picked up');
     expect(subject.door.isOpen).toBe(false);
     hold(subject, Direction.Right, 1 + Step.framesPerTile);
     expect(subject.orbs).toEqual([]);
+    expect(subject.door.isOpen).toBe(false);
+    subject.openDoor();
     expect(subject.door.isOpen).toBe(true);
   });
 
@@ -181,9 +184,18 @@ describe('the hero in a level', () => {
   test('completes the level without picking up the stars', () => {
     const subject = level(['S..', '...', '...', 'DDD'], at(1, 0), at(2, 0));
     hold(subject, Direction.Right, 1 + Step.framesPerTile);
+    subject.openDoor();
     const events = Array.from({ length: 80 }, () => subject.tick(Direction.Down)).flat();
     expect(events).toEqual([new LevelCompleted(LevelId.of('test'))]);
     expect(subject.stars).toEqual([Star.at(at(0, 0))]);
+  });
+
+  test('is stopped by the door after picking up every orb until the door opens', () => {
+    const subject = level(['...', 'DDD'], at(0, 0), at(1, 0));
+    hold(subject, Direction.Right, 1 + Step.framesPerTile);
+    hold(subject, Direction.Down, 40);
+    expect(subject.hero.position).toEqual(at(1, 0));
+    expect(subject.isComplete).toBe(false);
   });
 
   test('is stopped by a closed door', () => {
@@ -195,6 +207,8 @@ describe('the hero in a level', () => {
   test('completes the level by stepping into the open doorway, after which nothing moves', () => {
     const subject = level(['...', 'DDD'], at(0, 0), at(1, 0));
     hold(subject, Direction.Right, 1 + Step.framesPerTile);
+    expect(subject.door.isOpen).toBe(false);
+    subject.openDoor();
     expect(subject.door.isOpen).toBe(true);
     const events = Array.from({ length: 80 }, () => subject.tick(Direction.Down)).flat();
     expect(events).toEqual([new LevelCompleted(LevelId.of('test'))]);

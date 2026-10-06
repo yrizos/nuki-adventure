@@ -12,7 +12,7 @@ import { flowerArt, treeArt } from './art/vegetation';
 import { ditherSteps, ditherThreshold } from './ordered-dither';
 import { Picture, type Version } from './picture';
 import { cameraPosition, clamp, heroPixels, tileSize } from './world-geometry';
-import { isDarkened, isRestored, restorationLength } from './world-transition';
+import { isDarkened, isRestored, restorationCovers, restorationLength } from './world-transition';
 
 const orbBob = [0, -1, 0, 1];
 const motes = [
@@ -109,6 +109,7 @@ export class WorldPainter {
   private after = new Picture(0, 0);
   private readonly treeChoices: readonly number[];
   private readonly stoneChoices: readonly number[];
+  private readonly flowerChoices: readonly number[];
   private readonly fencePieces: readonly number[];
   private readonly shadows = new Map<string, Art>();
 
@@ -122,6 +123,10 @@ export class WorldPainter {
       level.stones.map((stone) => [stone.position]),
       stoneVariants.length,
     );
+    this.flowerChoices = propVariants(
+      level.scenery.flowers.map((flower) => [flower.position]),
+      flowerArt.length,
+    );
     const joins = (position: TilePosition): boolean =>
       level.door.covers(position) || level.scenery.fences.some((fence) => fence.position.equals(position));
     this.fencePieces = level.scenery.fences.map(({ position }) =>
@@ -134,6 +139,15 @@ export class WorldPainter {
 
   restorationLength(origin: TilePosition): number {
     return restorationLength(this.level.scenery.size, origin);
+  }
+
+  // The door art rises two tiles above its footprint, and it reads as open only once color covers all of it.
+  doorOpeningLength(origin: TilePosition): number {
+    const tiles = this.level.door.footprint.flatMap((tile) => {
+      const above = tile.neighbor(Direction.Up);
+      return [tile, above, above.neighbor(Direction.Up)];
+    });
+    return Math.min(restorationCovers(tiles, origin), this.restorationLength(origin));
   }
 
   paint(target: Picture, scene: Scene, restored: readonly Area[]): void {
@@ -180,7 +194,7 @@ export class WorldPainter {
       restored.some((area) => area.covers(TilePosition.at(index % columns, Math.floor(index / columns)))),
     );
     if (colored.every(Boolean)) {
-      this.paintVersion(target, scene, 'colored', scene.level.door.isOpen);
+      this.paintVersion(target, scene, 'colored', scene.level.orbs.length === 0);
       return;
     }
     this.paintVersion(target, scene, 'faded', false);
@@ -211,7 +225,7 @@ export class WorldPainter {
     }
   }
 
-  // The door opens only once every area is back, so during restoration it opens exactly where color reaches it.
+  // The door is drawn open once every orb is picked up, so during the last restoration it opens exactly where color reaches it.
   private paintVersion(picture: Picture, scene: Scene, version: Version, doorLit: boolean): void {
     const { level, frame } = scene;
     const camera = cameraPosition(level, picture.width, picture.height);
@@ -243,11 +257,11 @@ export class WorldPainter {
       picture.shade(tree.base.column * tileSize - camera.x, tree.base.row * tileSize - 4 - camera.y, 64, 4);
     }
 
-    for (const flower of level.scenery.flowers) {
+    level.scenery.flowers.forEach((flower, index) => {
       const { column, row } = flower.position;
       const sway = Math.floor((frame + (column * 11 + row * 17) * 7) / 30) % 2;
-      draw(flowerArt[(column * 7 + row * 3) % flowerArt.length]![sway]!, column * tileSize, row * tileSize);
-    }
+      draw(flowerArt[this.flowerChoices[index]!]![sway]!, column * tileSize, row * tileSize);
+    });
 
     const { door } = level;
     const doorBase = (door.left.row + 1) * tileSize;
