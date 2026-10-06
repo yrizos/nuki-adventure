@@ -2,6 +2,7 @@ import { PixelGrid, type Art } from './art/art';
 import { glyphHeight, textWidth, writeText } from './art/font';
 import { continueHeight, continueWidth } from './art/panel';
 import { starArt } from './art/sprites';
+import { artUrl, element } from './game-view';
 
 const framesPerSecond = 60;
 const edge = 2;
@@ -93,4 +94,38 @@ export function levelEndArt(result: LevelResult): Art {
   writeText(grid, time, left + iconSize + iconGap, timeRow + textTop, 't');
   writeText(grid, stars, left + iconSize + iconGap, starsRow + textTop, 't');
   return grid.build({ k: 'Ink', e: 'V1', f: 'V0', a: 'Y2', b: 'Y1', c: 'Y3', p: 'Paper', q: 'N4', t: 'Paper' });
+}
+
+export class LevelEndWindow {
+  private readonly overlay: HTMLElement;
+  private readonly card: HTMLElement;
+  private readonly summary: HTMLElement;
+  private readonly continueButton: HTMLButtonElement;
+
+  constructor(private readonly root: Document, onContinue: () => void) {
+    this.overlay = element(root, '.level-end');
+    this.card = element(root, '.level-end-card');
+    this.summary = element(root, '.level-end-summary');
+    this.continueButton = element(root, '.continue-button');
+    this.continueButton.style.setProperty('--button-top', String(continueTop));
+    this.continueButton.style.setProperty('--button-width', String(continueWidth));
+    this.continueButton.style.setProperty('--button-height', String(continueHeight));
+    this.continueButton.addEventListener('click', onContinue);
+  }
+
+  show(result: LevelResult): void {
+    const art = levelEndArt(result);
+    const width = art.rows[0]!.length;
+    this.card.style.setProperty('--art', `url(${artUrl(this.root, art)})`);
+    this.card.style.setProperty('--card-width', String(width));
+    this.card.style.setProperty('--card-height', String(art.rows.length));
+    this.continueButton.style.setProperty('--button-left', String(Math.floor((width - continueWidth) / 2)));
+    this.summary.textContent = levelEndText(result);
+    this.overlay.hidden = false;
+    this.continueButton.focus({ preventScroll: true });
+  }
+
+  hide(): void {
+    this.overlay.hidden = true;
+  }
 }

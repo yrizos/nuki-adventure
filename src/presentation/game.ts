@@ -1,67 +1,17 @@
 import { PlayLevel } from '../application/play-level';
-import { LevelCompleted, OrbCollected, type OrbColor, SignpostLeft, SignpostRead, StarCollected } from '../domain/level/level';
-import type { TilePosition } from '../domain/level/position';
 import { firstLevel, firstLevelId } from '../infrastructure/first-level';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
-import type { Art } from './art/art';
-import { continueHeight, continueWidth, panelArt } from './art/panel';
+import { panelArt } from './art/panel';
 import { Controls } from './controls';
-import { HeroAnimator } from './hero-animator';
-import { continueTop, levelEndArt, levelEndText, type LevelResult } from './level-end';
-import { MessageBox } from './message-box';
-import { Picture, sprite } from './picture';
+import { GameLoop } from './game-loop';
+import { GameSession } from './game-session';
+import { connectGameSwitches } from './game-switches';
+import { artUrl, element, GameView } from './game-view';
+import { LevelEndWindow } from './level-end';
 import { Sound } from './sound';
-import { closingLength, tileSize, WorldPainter } from './world-painter';
 
-const frameLength = 1000 / 60;
-const holdFrames = 30;
-const smallestViewTiles = 7;
-
-export const messages = {
-  hint: 'ΒΡΕΣ ΤΗ ΜΩΒ ΣΦΑΙΡΑ! ΘΑ ΦΕΡΕΙ ΠΙΣΩ ΤΑ ΧΡΩΜΑΤΑ ΚΑΙ ΘΑ ΑΝΟΙΞΕΙ ΤΗΝ ΠΥΛΗ.',
-  colorsBack: 'ΤΑ ΧΡΩΜΑΤΑ ΕΠΕΣΤΡΕΨΑΝ!',
-  doorOpen: 'ΜΠΡΑΒΟ! Η ΠΟΡΤΑ ΓΙΑ ΤΟ ΕΠΟΜΕΝΟ ΕΠΙΠΕΔΟ ΕΙΝΑΙ ΑΝΟΙΧΤΗ!',
-} as const;
-
-type Phase =
-  | { readonly name: 'playing'; readonly restored: boolean }
-  | { readonly name: 'holding'; readonly until: number; readonly origin: TilePosition; readonly color: OrbColor }
-  | { readonly name: 'restoring'; readonly since: number; readonly origin: TilePosition }
-  | { readonly name: 'closing'; readonly since: number; readonly result: LevelResult }
-  | { readonly name: 'ended' };
-
-function element<T extends HTMLElement>(root: Document, selector: string): T {
-  const found = root.querySelector<T>(selector);
-  if (!found) throw new Error(`The page has no ${selector}`);
-  return found;
-}
-
-interface CanvasFit {
-  readonly width: number;
-  readonly height: number;
-  readonly scale: number;
-}
-
-export function fitCanvas(deviceWidth: number, deviceHeight: number): CanvasFit {
-  if (!Number.isFinite(deviceWidth) || !Number.isFinite(deviceHeight) || deviceWidth <= 0 || deviceHeight <= 0) {
-    throw new RangeError('The game view needs positive finite device dimensions');
-  }
-  const smallest = smallestViewTiles * tileSize;
-  // Only a whole number of device pixels per game pixel keeps every game pixel the same size.
-  const scale = Math.max(1, Math.floor(Math.min(deviceWidth, deviceHeight) / smallest));
-  return { width: Math.ceil(deviceWidth / scale), height: Math.ceil(deviceHeight / scale), scale };
-}
-
-function artUrl(root: Document, art: Art): string {
-  const { width, height, colored } = sprite(art);
-  const canvas = root.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const image = new ImageData(width, height);
-  image.data.set(colored);
-  canvas.getContext('2d')?.putImageData(image, 0, 0);
-  return canvas.toDataURL();
-}
+export { fitCanvas } from './game-view';
+export { messages } from './game-session';
 
 export function startGame(root: Document): void {
   const screen = element<HTMLElement>(root, '.screen');
@@ -73,197 +23,32 @@ export function startGame(root: Document): void {
     b: element(root, '.button-b'),
   });
   const announcement = element<HTMLElement>(root, '.announcement');
+  const gameView = new GameView(screen, view, canvas);
 
-  const context = canvas.getContext('2d');
-  if (!context) throw new Error('The canvas cannot draw in 2D');
-  let picture = new Picture(1, 1);
-  let image = new ImageData(1, 1);
-  let alignment = 0;
-
-  const updatePixelRatio = (): void => {
-    const ratio = window.devicePixelRatio || 1;
-    screen.style.setProperty('--minimum-game-view', `${(smallestViewTiles * tileSize) / ratio}px`);
-    screen.style.setProperty('--device-pixel', `${1 / ratio}px`);
-  };
-  updatePixelRatio();
-
-  const resize = (deviceWidth: number, deviceHeight: number): void => {
-    if (deviceWidth <= 0 || deviceHeight <= 0) return;
-    const fit = fitCanvas(deviceWidth, deviceHeight);
-    const ratio = window.devicePixelRatio || 1;
-    canvas.style.width = `${(fit.width * fit.scale) / ratio}px`;
-    canvas.style.height = `${(fit.height * fit.scale) / ratio}px`;
-    if (fit.width === picture.width && fit.height === picture.height) return;
-    canvas.width = fit.width;
-    canvas.height = fit.height;
-    context.imageSmoothingEnabled = false;
-    picture = new Picture(fit.width, fit.height);
-    image = new ImageData(fit.width, fit.height);
-  };
-  const resizeFromLayout = (): void => {
-    const ratio = window.devicePixelRatio || 1;
-    const bounds = view.getBoundingClientRect();
-    resize(Math.ceil(bounds.width * ratio), Math.ceil(bounds.height * ratio));
-  };
-  // Device emulation can report devicePixelContentBoxSize in CSS pixels, so the canvas is sized from layout and the device pixel ratio instead.
-  new ResizeObserver(() => {
-    const ratio = window.devicePixelRatio || 1;
-    const left = screen.getBoundingClientRect().left - alignment;
-    alignment = Math.round(left * ratio) / ratio - left;
-    screen.style.setProperty('--pixel-alignment', `${alignment}px`);
-    resizeFromLayout();
-  }).observe(view);
-  // A media query only reports leaving one pixel ratio, so a fresh query is needed after every zoom or display change.
-  const watchPixelRatio = (): void => {
-    window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`).addEventListener(
-      'change',
-      () => {
-        updatePixelRatio();
-        resizeFromLayout();
-        watchPixelRatio();
-      },
-      { once: true },
-    );
-  };
-  watchPixelRatio();
-  resizeFromLayout();
-
-  let frame = 0;
-  // Until a second level exists, continuing after the door starts the first level again from its faded state.
-  const begin = (): { play: PlayLevel; painter: WorldPainter; animator: HeroAnimator; messageBox: MessageBox; startFrame: number } => {
-    const play = new PlayLevel(new InMemoryLevelRepository([firstLevel()]));
-    return {
-      play,
-      painter: new WorldPainter(play.view(firstLevelId)),
-      animator: new HeroAnimator(),
-      messageBox: new MessageBox(),
-      startFrame: frame,
-    };
-  };
   const sound = new Sound(window);
-  const soundSwitch = element<HTMLButtonElement>(root, '.sound-switch');
-  const showSound = (): void => soundSwitch.setAttribute('aria-pressed', String(sound.on));
-  showSound();
-  soundSwitch.addEventListener('click', () => {
-    sound.toggle();
-    showSound();
-  });
-  const fullScreenSwitch = element<HTMLButtonElement>(root, '.full-screen-switch');
-  // iPhone Safari cannot show a page full screen, so the switch only appears where it works.
-  fullScreenSwitch.hidden = !root.fullscreenEnabled;
-  root.addEventListener('fullscreenchange', () => fullScreenSwitch.setAttribute('aria-pressed', String(root.fullscreenElement !== null)));
-  // A refused request leaves the page as it was, and the switch already shows that state.
-  fullScreenSwitch.addEventListener('click', () => {
-    (root.fullscreenElement ? root.exitFullscreen() : root.documentElement.requestFullscreen()).catch(() => {});
-  });
-  let run = begin();
-  let phase: Phase = { name: 'playing', restored: false };
-
-  const levelEnd = element<HTMLElement>(root, '.level-end');
-  const levelEndCard = element<HTMLElement>(root, '.level-end-card');
-  const levelEndSummary = element<HTMLElement>(root, '.level-end-summary');
-  const continueButton = element<HTMLButtonElement>(root, '.continue-button');
-  continueButton.style.setProperty('--button-top', String(continueTop));
-  continueButton.style.setProperty('--button-width', String(continueWidth));
-  continueButton.style.setProperty('--button-height', String(continueHeight));
-  const openLevelEnd = (result: LevelResult): void => {
-    const art = levelEndArt(result);
-    const width = art.rows[0]!.length;
-    levelEndCard.style.setProperty('--art', `url(${artUrl(root, art)})`);
-    levelEndCard.style.setProperty('--card-width', String(width));
-    levelEndCard.style.setProperty('--card-height', String(art.rows.length));
-    continueButton.style.setProperty('--button-left', String(Math.floor((width - continueWidth) / 2)));
-    levelEndSummary.textContent = levelEndText(result);
-    levelEnd.hidden = false;
-    continueButton.focus({ preventScroll: true });
-  };
-  const continuePlaying = (): void => {
-    if (phase.name !== 'ended') return;
-    levelEnd.hidden = true;
-    run = begin();
-    phase = { name: 'playing', restored: false };
-  };
-  continueButton.addEventListener('click', continuePlaying);
+  connectGameSwitches(root, sound);
+  const session = new GameSession(
+    () => new PlayLevel(new InMemoryLevelRepository([firstLevel()])),
+    firstLevelId,
+    controls,
+    sound,
+    { show: (result) => levelEnd.show(result), hide: () => levelEnd.hide() },
+  );
+  const levelEnd = new LevelEndWindow(root, () => session.continuePlaying());
 
   const tick = (): void => {
-    // A press is taken every frame, so one made during a cutscene is not read later by surprise.
-    const pressedA = controls.takePress('a');
-    const pressedB = controls.takePress('b');
-    const { messageBox } = run;
-    if (phase.name === 'playing' || phase.name === 'holding' || phase.name === 'restoring') {
-      // The orb is already collected while it is held and the color spreads, so the signpost speaks of the open door.
-      const signpostText = phase.name !== 'playing' || phase.restored ? messages.doorOpen : messages.hint;
-      const dismissing = (pressedA || pressedB) && messageBox.text === signpostText;
-      if (dismissing) messageBox.hide(frame);
-      const reading = (pressedA || pressedB) && !dismissing;
-      const events = [...(reading ? run.play.read(firstLevelId) : []), ...run.play.advance(firstLevelId, controls.direction())];
-      for (const event of events) {
-        if (event instanceof SignpostRead) messageBox.show(signpostText, frame);
-        else if (event instanceof SignpostLeft && messageBox.text === signpostText) messageBox.hide(frame);
-        else if (event instanceof StarCollected) sound.star();
-        else if (event instanceof OrbCollected) {
-          sound.orb();
-          messageBox.show(messages.colorsBack, frame);
-          phase = { name: 'holding', until: frame + holdFrames, origin: event.position, color: event.color };
-        } else if (event instanceof LevelCompleted) {
-          sound.door();
-          const level = run.play.view(firstLevelId);
-          const collectedStars = level.collected.length;
-          const result = { frames: frame - run.startFrame, collectedStars, starCount: collectedStars + level.stars.length };
-          phase = { name: 'closing', since: frame, result };
-        }
-      }
-      if (run.play.view(firstLevelId).hero.step?.framesTaken === 0) sound.footstep();
-      if (phase.name === 'playing' && phase.restored && messageBox.text === messages.colorsBack &&
-        run.play.view(firstLevelId).hero.step) {
-        messageBox.hide(frame);
-      }
-    }
-    if (phase.name === 'holding' && frame >= phase.until) {
-      sound.restoring();
-      phase = { name: 'restoring', since: frame, origin: phase.origin };
-    } else if (phase.name === 'restoring' && frame - phase.since >= run.painter.restorationLength(phase.origin)) {
-      phase = { name: 'playing', restored: true };
-    } else if (phase.name === 'closing' && frame - phase.since >= closingLength) {
-      openLevelEnd(phase.result);
-      phase = { name: 'ended' };
-    } else if (phase.name === 'ended' && (pressedA || pressedB)) {
-      continuePlaying();
-    }
-    run.animator.advance(run.play.view(firstLevelId).hero);
-    const spoken = run.messageBox.text ?? '';
+    session.tick();
+    const spoken = session.messageText;
     if (announcement.textContent !== spoken) announcement.textContent = spoken;
-    frame++;
   };
 
   const render = (): void => {
-    const level = run.play.view(firstLevelId);
-    const scene = {
-      level,
-      frame,
-      hero: run.animator.pose(level.hero, frame, phase.name === 'holding'),
-      heldOrb: phase.name === 'holding' ? phase.color : null,
-    };
-    if (phase.name === 'restoring') run.painter.paintRestoring(picture, scene, phase.origin, frame - phase.since);
-    else if (phase.name === 'closing') run.painter.paintClosing(picture, scene, frame - phase.since);
-    else if (phase.name === 'ended') picture.fill('Ink');
-    else run.painter.paint(picture, scene, phase.name === 'playing' && phase.restored ? 'colored' : 'faded');
-    if (phase.name !== 'closing' && phase.name !== 'ended') run.messageBox.paint(picture, frame);
-    image.data.set(picture.pixels);
-    context.putImageData(image, 0, 0);
+    gameView.paint(session);
   };
 
-  let previous = performance.now();
-  let pending = 0;
+  const gameLoop = new GameLoop(tick, render, performance.now());
   const loop = (now: number): void => {
-    // Capping the catch-up keeps a backgrounded tab from fast-forwarding the game when it returns.
-    pending = Math.min(pending + now - previous, frameLength * 10);
-    previous = now;
-    while (pending >= frameLength) {
-      tick();
-      pending -= frameLength;
-    }
-    render();
+    gameLoop.advance(now);
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
