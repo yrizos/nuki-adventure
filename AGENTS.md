@@ -58,9 +58,9 @@ Read [docs/visual-style.md](docs/visual-style.md) before implementing, reviewing
 Follow these steps in order for every commit.
 
 1. Run `git diff --cached` and verify that every staged change belongs to the intended commit.
-2. Run `pre-commit run --all-files` before invoking `git commit`. Never use `git commit` as the first run of the pre-commit checks.
-3. Inspect auto-fixes, fix remaining failures, stage only intended paths, and rerun `pre-commit run --all-files` until all hooks pass. File modifications by a hook require another run, not a failure report. Never bypass hooks or commit with failures.
-4. Create the commit with a cryptographic signature. Never create an unsigned commit. If signing fails, stop and report the error.
+2. Invoke `git commit` with a cryptographic signature and let the installed Git hooks run the checks. Do not run `pre-commit run --all-files` separately before committing.
+3. If a hook fails or modifies files, inspect auto-fixes, fix remaining failures, stage only intended paths, recheck `git diff --cached`, and retry the signed commit. Never bypass hooks or commit with failures.
+4. Never create an unsigned commit. If signing fails, stop and report the error.
 5. Verify that the commit was created and is cryptographically signed.
 
 ## Commit Messages
