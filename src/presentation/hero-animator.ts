@@ -1,8 +1,8 @@
 import type { HeroState } from '../domain/level/hero';
 import type { Art } from './art/art';
-import { heroArt } from './art/hero';
+import { heroArt, heroWalkFrameLength } from './sprite-library';
 
-const ticksPerWalkFrame = 8;
+const ticksPerWalkFrame = heroWalkFrameLength;
 const settleTicks = 8;
 const blinkEvery = 180;
 const blinkFrames = 6;

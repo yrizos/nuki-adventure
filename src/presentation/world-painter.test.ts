@@ -9,21 +9,32 @@ import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { firstLevel } from '../infrastructure/first-level';
 import { randomShuffle } from '../infrastructure/random-shuffle';
 import type { Art } from './art/art';
-import * as barriers from './art/barriers';
-import * as collectibles from './art/collectibles';
-import * as effects from './art/effects';
-import * as hero from './art/hero';
-import * as objects from './art/objects';
-import * as terrain from './art/terrain';
-import * as vegetation from './art/vegetation';
+import * as library from './sprite-library';
 import { faded, palette, type PaletteCode } from './palette';
 import { Picture, sprite } from './picture';
 import { heroPixels, tileSize } from './world-geometry';
 import { propVariants, WorldPainter } from './world-painter';
 import { closingLength, restorationLength } from './world-transition';
 
-const scenery = { ...terrain, ...vegetation, ...barriers };
-const sprites = { ...hero, ...collectibles, ...objects, ...effects };
+const scenery = {
+  grassArt: library.grassArt,
+  pathArt: library.pathArt,
+  waterArt: library.waterArt,
+  terrainArt: library.terrainArt,
+  treeArt: library.treeArt,
+  flowerArt: library.flowerArt,
+  fenceArt: library.fenceArt,
+  doorArt: library.doorArt,
+};
+const sprites = {
+  heroArt: library.heroArt,
+  orbArt: library.orbArt,
+  starArt: library.starArt,
+  stoneVariants: library.stoneVariants,
+  signpostArt: library.signpostArt,
+  lightMote: library.lightMote,
+  groundShadow: library.groundShadow,
+};
 
 const area = (keep: (position: TilePosition) => boolean): Area =>
   Area.of(Array.from({ length: 1600 }, (_, index) => TilePosition.at(index % 40, Math.floor(index / 40))).filter(keep));
@@ -330,7 +341,7 @@ test('restoration advances outward with palette-only pixels and matches both end
     painter.paintRestoring(dissolve, scene, origin, frame, [], [everywhere]);
     for (let row = 0; row < dissolve.height; row++) {
       for (let column = 0; column < dissolve.width; column++) {
-        expect(colors.has(colorAt(dissolve, column, row) as (typeof palette)[keyof typeof palette])).toBe(true);
+        expect(colors.has(colorAt(dissolve, column, row))).toBe(true);
         expect(dissolve.pixels[(row * dissolve.width + column) * 4 + 3]).toBe(255);
       }
     }

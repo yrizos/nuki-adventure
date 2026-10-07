@@ -3,7 +3,7 @@ import { Hero } from '../domain/level/hero';
 import type { Obstacles } from '../domain/level/obstacles';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
 import type { Art } from './art/art';
-import { heroArt } from './art/hero';
+import { heroArt } from './sprite-library';
 import { HeroAnimator } from './hero-animator';
 
 const openGround: Obstacles = { walk: (_, to) => to };

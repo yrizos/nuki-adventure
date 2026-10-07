@@ -26,7 +26,7 @@ This document builds on the color palette and the UI layout documents. Color cod
 - Sprites and the camera are drawn at whole pixel positions only
 - Sprites are never scaled, rotated, skewed or filtered at draw time
 - Mirroring is the only transform, used only for art drawn to be symmetric
-- Tiles and sprites are authored as pixel data in code, as grids of palette codes, never as image files
+- Tiles and world sprites are authored as grids of palette codes in `src/presentation/sprites/<name>/data.js` and reviewed in the `preview.html` beside each one, never as image files
 
 ## Grid and Perspective
 

@@ -2,7 +2,7 @@ import type { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import { PixelGrid, type Art } from './art/art';
 import { glyphHeight, textWidth, writeText } from './art/font';
 import { continueHeight, continueWidth } from './art/panel';
-import { starArt } from './art/collectibles';
+import { starArt } from './sprite-library';
 import { artUrl } from './canvas-art';
 import { element } from './dom';
 

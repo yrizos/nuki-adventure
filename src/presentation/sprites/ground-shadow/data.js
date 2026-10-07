@@ -1,0 +1,36 @@
+(globalThis.sprites ??= {})['ground-shadow'] = {
+  legend: {
+    d: 'G1',
+    a: 'E2',
+    b: 'E2',
+    c: 'E2',
+    e: 'E2',
+    f: 'E2',
+  },
+  frames: {
+    '8-G1': ['dddddddd', '..dddd..', '..dddd..', '..dddd..', '........'],
+    '10-G1': ['dddddddddd', '..dddddd..', '..dddddd..', '..dddddd..', '....dd....'],
+    '12-G1': ['dddddddddddd', '..dddddddd..', '..dddddddd..', '..dddddddd..', '....dddd....'],
+    '14-G1': ['dddddddddddddd', '..dddddddddd..', '..dddddddddd..', '..dddddddddd..', '....dddddd....'],
+    '92-G1': [
+      'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+      '..dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd..',
+      '..dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd..',
+      '..dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd..',
+      '....dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd....',
+    ],
+    '8-E2': ['aaaaaaaa', '..aaaa..', '..aaaa..', '..aaaa..', '........'],
+    '10-E2': ['bbbbbbbbbb', '..bbbbbb..', '..bbbbbb..', '..bbbbbb..', '....bb....'],
+    '12-E2': ['cccccccccccc', '..cccccccc..', '..cccccccc..', '..cccccccc..', '....cccc....'],
+    '14-E2': ['eeeeeeeeeeeeee', '..eeeeeeeeee..', '..eeeeeeeeee..', '..eeeeeeeeee..', '....eeeeee....'],
+    '92-E2': [
+      'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+      '..ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff..',
+      '..ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff..',
+      '..ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff..',
+      '....ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff....',
+    ],
+  },
+  faded: {},
+  animations: {},
+};

@@ -3,14 +3,27 @@ import type { Area, OrbColor } from '../domain/level/collectibles';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Ground, type Scenery } from '../domain/level/scenery';
 import type { Art } from './art/art';
-import { doorArt, fenceArt } from './art/barriers';
-import { orbArt, starArt } from './art/collectibles';
-import { groundShadow, lightMote } from './art/effects';
-import { signpostArt, stoneVariants } from './art/objects';
-import { grassArt, pathArt, terrainArt, waterArt } from './art/terrain';
-import { flowerArt, treeArt } from './art/vegetation';
 import { ditherSteps, ditherThreshold } from './ordered-dither';
 import { Picture, type Version } from './picture';
+import {
+  doorArt,
+  fenceArt,
+  flowerArt,
+  flowerFrameLength,
+  grassArt,
+  groundShadow,
+  lightMote,
+  orbArt,
+  pathArt,
+  signpostArt,
+  starArt,
+  stoneVariants,
+  terrainArt,
+  treeArt,
+  treeFrameLength,
+  waterArt,
+  waterFrameLength,
+} from './sprite-library';
 import { cameraPosition, clamp, heroPixels, tileSize } from './world-geometry';
 import { isDarkened, isRestored } from './world-transition';
 
@@ -220,7 +233,7 @@ export class WorldPainter {
     const draw = (art: Art, x: number, y: number, artVersion: Version = version): void =>
       picture.draw(art, x - camera.x, y - camera.y, artVersion);
 
-    const waterFrame = Math.floor(frame / 15) % 4;
+    const waterFrame = Math.floor(frame / waterFrameLength) % 4;
     const { columns, rows } = level.scenery.size;
     for (
       let row = Math.floor((camera.y + tileSize / 2) / tileSize);
@@ -246,7 +259,7 @@ export class WorldPainter {
 
     level.scenery.flowers.forEach((flower, index) => {
       const { column, row } = flower.position;
-      const sway = Math.floor((frame + (column * 11 + row * 17) * 7) / 30) % 2;
+      const sway = Math.floor((frame + (column * 11 + row * 17) * 7) / flowerFrameLength) % 2;
       draw(flowerArt[this.flowerChoices[index]!]![sway]!, column * tileSize, row * tileSize);
     });
 
@@ -267,7 +280,7 @@ export class WorldPainter {
         draw(art, x, y);
       };
     level.scenery.trees.forEach((tree, index) => {
-      const leaves = Math.floor((frame + index * 13) / 40) % 2;
+      const leaves = Math.floor((frame + index * 13) / treeFrameLength) % 2;
       const art = treeArt[this.treeChoices[index]!]![leaves]!;
       const x = tree.base.column * tileSize;
       const base = (tree.base.row + 1) * tileSize;
