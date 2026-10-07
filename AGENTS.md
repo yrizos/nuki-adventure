@@ -22,6 +22,17 @@ Use the [Makefile](Makefile) targets for project commands instead of invoking th
 
 Fix check and hook failures; do not merely report them. Run configured auto-fix hooks or `make fix`, inspect changes, fix remaining issues manually, and rerun until checks pass. Preserve unrelated work; report a blocker only after exhausting fixes within scope.
 
+## Dependencies
+
+[.npmrc](.npmrc) blocks releases younger than 3 days and install scripts not approved in `allowScripts`. Add a new dependency only when all of these hold:
+
+- It is a stable release at least 30 days old, and the project is not deprecated or archived.
+- It comes from the npm registry, not from Git, a URL or a local path.
+- Its version is exact.
+- The user has approved its install scripts, if it has any.
+
+A security fix may use a younger release with `--min-release-age=0`, and its commit body must say why.
+
 ## Markdown
 
 Follow the rules configured in [.markdownlint.json](.markdownlint.json) when editing Markdown and run `make markdown` afterward. The pre-commit hook rejects commits with Markdown lint violations.
