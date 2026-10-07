@@ -51,7 +51,9 @@ Every meaningful navigation decision has a recognizable landmark, such as a dist
 
 ### Star Placement
 
-Stars reward exploration. They belong on optional dead ends, on side routes, in places worth seeing away from the mandatory route and in places the player can see before knowing how to reach. They never mark the mandatory route, and stars are never required to complete a level.
+Stars exist to encourage exploration of the whole map, so every star is placed by hand and a level never uses a star count for random placement. Spread them across the map rather than gathering them in one place.
+
+They belong on optional dead ends, on side routes, in places worth seeing away from the mandatory route and in places the player can see before knowing how to reach. They never mark the mandatory route, and stars are never required to complete a level.
 
 ### Optional Paths and Dead Ends
 

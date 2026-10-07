@@ -13,6 +13,7 @@ Read first: docs/level-design.md, docs/glossary.md, src/infrastructure/level-lay
 Rules:
 
 - level-layout.ts validation is the hard floor. Passing it does not satisfy docs/level-design.md. Check each guideline in that file and report any you could not meet.
+- Place every star by hand and never give a star count. Stars exist to encourage exploration of the whole map, so random placement defeats them. Spread them across the map on optional spots away from the mandatory route.
 
 Validate: make check.
 

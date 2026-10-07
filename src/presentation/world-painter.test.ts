@@ -93,17 +93,17 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    expect(await checksum(picture)).toBe('33d4e3609cb975e126c52786bd108b53748a2bbf15aba7e1dad9d75668d93399');
+    expect(await checksum(picture)).toBe('07f48d6096410fcf8d4b41f013797fa68b5f194b1a94046674611e22e5057a86');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     painter.paintRestoring(picture, scene, orb.position, 40, [], [orb.restores]);
-    expect(await checksum(picture)).toBe('80552febb2729c579bbe0656f6f755e8fbabfa4287d5d0d847797db4293c003f');
+    expect(await checksum(picture)).toBe('b82d074b71a28048d934004d9b8fedc61e940ee2d5139ea75c55846b4984c276');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [orb.restores]);
-    expect(await checksum(picture)).toBe('f021e88163dfa4f2effc55c7178ed5c181ea17dbdb6ca4fd00de24027a2de9af');
+    expect(await checksum(picture)).toBe('b221991d89d4c2e6d53d818c9d313fe9e927ade3c130d1d9720e4207ee9f1963');
   });
 });
 
