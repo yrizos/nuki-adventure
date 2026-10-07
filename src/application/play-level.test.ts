@@ -3,7 +3,7 @@ import { Area, Orb, OrbColor, Star } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
 import { Level } from '../domain/level/level';
 import { SignpostRead, StarCollected } from '../domain/level/level-events';
-import { LevelId } from '../domain/level/level-id';
+import { LevelId } from '../domain/shared/level-id';
 import type { LevelRepository } from '../domain/level/level-repository';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
 import { Ground, LevelSize, Scenery } from '../domain/level/scenery';

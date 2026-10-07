@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "check2d": "9.36.4",
-    "nipplejs": "1.0.4"
+    "nipplejs": "1.0.4",
+    "zod": "4.6.5"
   }
 }

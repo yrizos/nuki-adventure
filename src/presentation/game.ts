@@ -1,3 +1,4 @@
+import type { ManageProgress } from '../application/manage-progress';
 import { panelArt } from './art/panel';
 import { artUrl } from './canvas-art';
 import { Controls } from './controls';
@@ -9,10 +10,15 @@ import { GameView } from './game-view';
 import { LevelEndWindow } from './level-end';
 import { drawObstacles } from './obstacle-overlay';
 import { Sound } from './sound';
+import { StartScreen } from './start-screen';
 
 export { messages } from './game-session';
 
-export function startGame(root: Document, levels: readonly PlayableLevel[]): void {
+export function startGame(
+  root: Document,
+  levels: readonly PlayableLevel[],
+  progress: Pick<ManageProgress, 'view' | 'reach' | 'complete'>,
+): void {
   const screen = element<HTMLElement>(root, '.screen');
   for (const [name, art] of Object.entries(panelArt))
     screen.style.setProperty(`--art-${name}`, `url(${artUrl(root, art)})`);
@@ -26,13 +32,29 @@ export function startGame(root: Document, levels: readonly PlayableLevel[]): voi
   const gameView = new GameView(screen, view, canvas);
 
   const sound = new Sound(window);
-  connectGameSwitches(root, sound);
   const levelEnd = new LevelEndWindow(root);
-  const session = new GameSession(levels, controls, sound, levelEnd);
-  levelEnd.whenContinued(() => session.continuePlaying());
+  const startScreen = new StartScreen(root);
+  let session: GameSession | null = null;
+  const openStartScreen = (): void => {
+    session = null;
+    levelEnd.hide();
+    announcement.textContent = '';
+    startScreen.show(progress.view());
+  };
+  startScreen.whenChosen((level) => {
+    startScreen.hide();
+    // A press that chose the level must not also act inside it.
+    controls.takePress('a');
+    controls.takePress('b');
+    session = new GameSession(levels, controls, sound, levelEnd, progress, level);
+  });
+  connectGameSwitches(root, sound, openStartScreen);
+  levelEnd.whenContinued(() => session?.continuePlaying());
+  openStartScreen();
 
   const tick = (): void => {
     controls.advance();
+    if (!session) return;
     session.tick();
     const spoken = session.messageText;
     if (announcement.textContent !== spoken) announcement.textContent = spoken;
@@ -40,10 +62,12 @@ export function startGame(root: Document, levels: readonly PlayableLevel[]): voi
 
   const showObstacles = import.meta.env.DEV && new URLSearchParams(window.location.search).has('obstacles');
   const render = (tickProgress: number): void => {
+    if (!session) return;
+    const playing = session;
     gameView.paint(
-      session,
+      playing,
       tickProgress,
-      showObstacles ? (context) => drawObstacles(context, session.level) : undefined,
+      showObstacles ? (context) => drawObstacles(context, playing.level) : undefined,
     );
   };
 

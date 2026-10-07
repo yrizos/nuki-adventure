@@ -1,8 +1,9 @@
 import { describe, expect, test } from 'vitest';
-import { OrbColor, StarCount } from '../domain/level/collectibles';
+import { OrbColor } from '../domain/level/collectibles';
+import { StarCount } from '../domain/shared/star-count';
 import { Door } from '../domain/level/door';
 import { Stone } from '../domain/level/level';
-import { LevelId } from '../domain/level/level-id';
+import { LevelId } from '../domain/shared/level-id';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Fence, Flower, Ground, Tree } from '../domain/level/scenery';
 import { Signpost, SignpostText } from '../domain/level/signpost';

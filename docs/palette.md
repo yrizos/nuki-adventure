@@ -162,9 +162,9 @@ UI colors map onto Material 3 color roles.
 | Surface container | Message box fill | V0 |
 | Outline | Message box edge | Ink outline, then a V1 inner edge |
 | On surface | Message box text | Paper |
-| Surface container | Sound and full screen switch fill | V0 |
-| Outline | Sound and full screen switch edge | Ink outline, then a V1 inner edge |
-| On surface | Sound switch speaker and full screen switch corners | Paper |
+| Surface container | Sound, full screen and menu switch fill | V0 |
+| Outline | Sound, full screen and menu switch edge | Ink outline, then a V1 inner edge |
+| On surface | Sound switch speaker, full screen switch corners and menu switch bars | Paper |
 | Surface container | Level end window fill | V0 |
 | Outline | Level end window edge | Ink outline, then a V1 inner edge |
 | On surface | Level end window title | Y2, with Y3 sparkles |
@@ -172,6 +172,14 @@ UI colors map onto Material 3 color roles.
 | On surface | Level end window clock | Paper face, N4 shading, Ink outline, marks and hands |
 | On surface | Level end window star | Matches the star in the game world |
 | Primary | ΣΥΝΕΧΕΙΑ button | Matches the A button, including its pressed state |
+| Surface container | Start screen background | V0, with the control panel grip dots in V0a |
+| On surface | Start screen game name | Y2 |
+| Primary | Start screen ΣΥΝΕΧΕΙΑ and ΝΕΟ ΠΑΙΧΝΙΔΙ buttons | Match the A button, including its pressed state |
+| Surface container | Level picker row fill | V0 |
+| Outline | Level picker row edge | Ink outline, then a V1 inner edge |
+| On surface | Level picker numbers, times and stars | Paper, with the level end window clock and star |
+| On surface variant | Locked level number | N4 |
+| Outline | Focused start screen button or row | Paper |
 
 ### Pressed State
 
@@ -198,6 +206,9 @@ Text targets the Web Content Accessibility Guidelines (WCAG) minimum of 4.5:1, a
 | P2 on V0, joystick knob | 4.9:1 |
 | V2 on Ink, joystick arrows | 5.8:1 |
 | P3 on Ink, lit joystick arrows | 11.3:1 |
+| Paper on V0, level picker text and focus outline | 11.3:1 |
+| Y2 on V0, start screen game name | 8.3:1 |
+| N4 on V0, locked level number | 7.5:1 |
 | Paper on V0, message text | 11.3:1 |
 | Paper on V0, sound and full screen switch symbols | 11.3:1 |
 | Paper on V0, level end window numbers | 11.3:1 |

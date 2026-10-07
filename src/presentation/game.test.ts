@@ -4,7 +4,9 @@ import { PlayLevel } from '../application/play-level';
 import { Area, Orb, OrbColor, Star } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
 import { Level } from '../domain/level/level';
-import { LevelId } from '../domain/level/level-id';
+import { Playthrough, PlayTime } from '../domain/progress/playthrough';
+import { LevelId } from '../domain/shared/level-id';
+import { StarCount } from '../domain/shared/star-count';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
 import { Ground, LevelSize, Scenery } from '../domain/level/scenery';
 import { Signpost, SignpostText } from '../domain/level/signpost';
@@ -32,6 +34,7 @@ function gameSession(orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbCo
   };
   const sound = { star: vi.fn(), orb: vi.fn(), door: vi.fn(), footstep: vi.fn(), restoring: vi.fn() };
   const levelEnd = { show: vi.fn(), hide: vi.fn() };
+  const progress = { reach: vi.fn<(level: LevelId) => void>(), complete: vi.fn() };
   let play: PlayLevel;
   const createPlay = vi.fn(() => {
     const scenery = Scenery.of(
@@ -55,7 +58,7 @@ function gameSession(orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbCo
     play = new PlayLevel(new InMemoryLevelRepository([level]));
     return play;
   });
-  const session = new GameSession([{ id: levelId, start: createPlay }], controls, sound, levelEnd);
+  const session = new GameSession([{ id: levelId, start: createPlay }], controls, sound, levelEnd, progress, levelId);
   let frames = 0;
   const tick = (): void => {
     session.tick();
@@ -86,6 +89,7 @@ function gameSession(orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbCo
     controls,
     sound,
     levelEnd,
+    progress,
     createPlay,
     tick,
     advance,
@@ -200,11 +204,9 @@ describe('the game session', () => {
     subject.advance(closingLength - 1);
     expect(subject.levelEnd.show).not.toHaveBeenCalled();
     subject.advance(1);
-    expect(subject.levelEnd.show).toHaveBeenCalledExactlyOnceWith({
-      frames: completedAt - 1,
-      collectedStars: 1,
-      starCount: 1,
-    });
+    const playthrough = Playthrough.of(PlayTime.ofFrames(completedAt - 1), StarCount.of(1), StarCount.of(1));
+    expect(subject.levelEnd.show).toHaveBeenCalledExactlyOnceWith(playthrough);
+    expect(subject.progress.complete).toHaveBeenCalledExactlyOnceWith(subject.level.id, playthrough);
     const picture = new Picture(224, 224);
     subject.session.paint(picture);
     expect(new Set(picture.pixels.filter((_, index) => index % 4 === 3))).toEqual(new Set([255]));
@@ -217,12 +219,13 @@ describe('the game session', () => {
 });
 
 describe('the level sequence', () => {
-  function sequence() {
+  function sequence(first = 'one') {
     const pressed = new Set<'a' | 'b'>();
     let heading: Heading | null = null;
     const controls = { takePress: (button: 'a' | 'b') => pressed.delete(button), heading: () => heading };
     const sound = { star: vi.fn(), orb: vi.fn(), door: vi.fn(), footstep: vi.fn(), restoring: vi.fn() };
     const levelEnd = { show: vi.fn(), hide: vi.fn() };
+    const progress = { reach: vi.fn<(level: LevelId) => void>(), complete: vi.fn() };
     const started: string[] = [];
     const plays: { id: LevelId; play: PlayLevel }[] = [];
     const playable = (name: string) => {
@@ -252,7 +255,7 @@ describe('the level sequence', () => {
       };
     };
     const levels = [playable('one'), playable('two')];
-    const session = new GameSession(levels, controls, sound, levelEnd);
+    const session = new GameSession(levels, controls, sound, levelEnd, progress, LevelId.of(first));
     const complete = (): void => {
       heading = Heading.of(Direction.Down);
       for (let frame = 0; frame < 120 && levelEnd.show.mock.calls.length === plays.length - 1; frame++) session.tick();
@@ -269,7 +272,7 @@ describe('the level sequence', () => {
       const { id, play } = plays.at(-1)!;
       return play.view(id);
     };
-    return { session, started, plays, complete, continueWith, current };
+    return { session, started, plays, progress, complete, continueWith, current };
   }
 
   test('starts with the first level', () => {
@@ -285,6 +288,21 @@ describe('the level sequence', () => {
     subject.complete();
     subject.continueWith('b');
     expect(subject.started).toEqual(['one', 'two', 'one']);
+  });
+
+  test('starts with the level it is given and moves on from there', () => {
+    const subject = sequence('two');
+    expect(subject.started).toEqual(['two']);
+    subject.complete();
+    subject.continueWith('a');
+    expect(subject.started).toEqual(['two', 'one']);
+  });
+
+  test('saves every level it reaches as the continue level', () => {
+    const subject = sequence();
+    subject.complete();
+    subject.continueWith('a');
+    expect(subject.progress.reach.mock.calls.map(([id]) => id.value)).toEqual(['one', 'two']);
   });
 
   test('starts every level afresh', () => {

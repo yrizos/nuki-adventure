@@ -2,6 +2,7 @@
   --ink: #1c1a2e;
   --v0: #3f2466;
   --v1: #7a45bf;
+  --paper: #f5f2e9;
   /* The control panel is laid out for a 360 pixel column, which keeps the desktop column wide enough for the panel and a square game view. */
   --design-width: 360;
   --control-panel-height: 184;
@@ -33,6 +34,7 @@ body {
   flex-direction: column;
   width: round(down, var(--column-width), var(--device-pixel));
   min-height: 100dvh;
+  position: relative;
   container-type: inline-size;
   translate: var(--pixel-alignment, 0px) 0;
 }
@@ -123,7 +125,8 @@ body {
 
 /* The switches are placed in panel pixels from the column edge, so their art lands on whole device pixels like the panel's. */
 .sound-switch,
-.full-screen-switch {
+.full-screen-switch,
+.menu-switch {
   position: absolute;
   top: calc(env(safe-area-inset-top) + 8 * var(--pixel));
   width: calc(19 * var(--pixel));
@@ -148,10 +151,24 @@ body {
 }
 
 /* The gap matches the touch margins of both switches, so their touch areas meet without overlapping. */
+.game-view {
+  --switch-step: calc(19 * var(--pixel) + max(4 * var(--pixel), 48px - 19 * var(--pixel)));
+}
+
 .full-screen-switch {
   --art: var(--art-full-screen-enter);
 
-  right: calc(27 * var(--pixel) + max(4 * var(--pixel), 48px - 19 * var(--pixel)));
+  right: calc(8 * var(--pixel) + var(--switch-step));
+}
+
+.menu-switch {
+  --art: var(--art-menu);
+
+  right: calc(8 * var(--pixel) + 2 * var(--switch-step));
+}
+
+.menu-switch:has(+ .full-screen-switch[hidden]) {
+  right: calc(8 * var(--pixel) + var(--switch-step));
 }
 
 .full-screen-switch[aria-pressed='true'] {
@@ -161,7 +178,9 @@ body {
 /* A drawn switch is smaller than a finger at narrow widths, so an invisible margin keeps the touch area at the Material minimum. */
 .sound-switch::before,
 .full-screen-switch::before,
-.continue-button::before {
+.menu-switch::before,
+.continue-button::before,
+.start-button::before {
   content: '';
   position: absolute;
   inset: min(0px, (100% - 48px) / 2);
@@ -169,7 +188,8 @@ body {
 
 /* Panel pixels are whole device pixels, so the panel art stays as crisp as the game view at every width. */
 .game-view,
-.control-panel {
+.control-panel,
+.start-screen {
   --pixel: max(var(--device-pixel), round(down, 100cqi / 180, var(--device-pixel)));
 }
 
@@ -192,6 +212,10 @@ body {
 
 .sound-switch,
 .full-screen-switch,
+.menu-switch,
+.start-title,
+.start-button,
+.level-row,
 .level-end-card,
 .continue-button,
 .joystick,
@@ -326,4 +350,95 @@ body {
 
 .button-b.pressed {
   --art: var(--art-button-b-pressed);
+}
+
+/* The start screen covers the control panel too, because nothing on the panel acts until a level starts. */
+.start-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(12 * var(--pixel));
+  box-sizing: border-box;
+  margin: 0;
+  padding: calc(env(safe-area-inset-top) + 24 * var(--pixel)) calc(8 * var(--pixel))
+    calc(env(safe-area-inset-bottom) + 16 * var(--pixel));
+  overflow-y: auto;
+  background: var(--v0) var(--art-panel-grip) 0 0 / calc(8 * var(--pixel)) calc(16 * var(--pixel)) repeat;
+  image-rendering: pixelated;
+}
+
+.start-screen[hidden] {
+  display: none;
+}
+
+.start-title {
+  flex: none;
+  margin: 0 0 calc(12 * var(--pixel));
+  color: transparent;
+  font-size: 0;
+}
+
+.start-title,
+.start-button,
+.level-row {
+  width: calc(var(--art-width) * var(--pixel));
+  height: calc(var(--art-height) * var(--pixel));
+}
+
+.start-button,
+.level-row {
+  position: relative;
+  flex: none;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+  color: transparent;
+  font-size: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.start-button[hidden] {
+  display: none;
+}
+
+.start-continue {
+  --art: var(--art-continue);
+}
+
+.start-continue:active {
+  --art: var(--art-continue-pressed);
+}
+
+.start-new-game {
+  --art: var(--art-new-game);
+}
+
+.start-new-game:active {
+  --art: var(--art-new-game-pressed);
+}
+
+/* The rows are smaller than a finger at narrow widths, so the gap keeps each row's touch area at the Material minimum. */
+.level-picker {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: max(4 * var(--pixel), 48px - 32 * var(--pixel));
+  margin: calc(4 * var(--pixel)) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.level-row:disabled {
+  cursor: default;
+}
+
+.start-button:focus-visible,
+.level-row:focus-visible {
+  outline: var(--pixel) solid var(--paper);
+  outline-offset: var(--pixel);
 }

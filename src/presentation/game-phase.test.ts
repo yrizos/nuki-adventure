@@ -1,15 +1,20 @@
 import { describe, expect, test } from 'vitest';
+import { Playthrough, PlayTime } from '../domain/progress/playthrough';
+import { StarCount } from '../domain/shared/star-count';
 import { Area, OrbColor } from '../domain/level/collectibles';
 import { OrbCollected } from '../domain/level/level-events';
-import { LevelId } from '../domain/level/level-id';
+import { LevelId } from '../domain/shared/level-id';
 import { TilePosition } from '../domain/level/position';
 import { closingLevel, holdFrames, holdingOrb, type Phase, phaseAfterFrame, playing } from './game-phase';
 import { closingLength } from './world-transition';
 
+const playthrough = (frames: number, collectedStars: number, starCount: number): Playthrough =>
+  Playthrough.of(PlayTime.ofFrames(frames), StarCount.of(collectedStars), StarCount.of(starCount));
+
 const origin = TilePosition.at(3, 4);
 const restores = Area.of([origin]);
 const orb = new OrbCollected(LevelId.of('phase'), origin, OrbColor.Teal, restores);
-const result = { frames: 600, collectedStars: 2, starCount: 5 };
+const completed = playthrough(600, 2, 5);
 const after = (phase: Phase, frame: number, continuing = false): Phase =>
   phaseAfterFrame(phase, { frame, restorationLength: () => 40, continuing });
 
@@ -38,8 +43,8 @@ describe('the game phase', () => {
   });
 
   test('ends the level once the screen has darkened', () => {
-    const closing = closingLevel(result, 200);
-    expect(closing).toEqual({ name: 'closing', since: 200, result });
+    const closing = closingLevel(completed, 200);
+    expect(closing).toEqual({ name: 'closing', since: 200, playthrough: completed });
     expect(after(closing, 200 + closingLength - 1)).toBe(closing);
     expect(after(closing, 200 + closingLength)).toEqual({ name: 'ended' });
   });

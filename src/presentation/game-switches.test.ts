@@ -14,10 +14,12 @@ function fakeElement() {
 function page({ fullscreenEnabled = true, on = true } = {}) {
   const soundSwitch = fakeElement();
   const fullScreenSwitch = fakeElement();
+  const menuSwitch = fakeElement();
   const documentElement = fakeElement();
   const elements: Record<string, unknown> = {
     '.sound-switch': soundSwitch,
     '.full-screen-switch': fullScreenSwitch,
+    '.menu-switch': menuSwitch,
   };
   const root = Object.assign(new EventTarget(), {
     fullscreenEnabled,
@@ -32,9 +34,10 @@ function page({ fullscreenEnabled = true, on = true } = {}) {
       sound.on = !sound.on;
     }),
   };
-  connectGameSwitches(root as unknown as Document, sound);
+  const openStartScreen = vi.fn();
+  connectGameSwitches(root as unknown as Document, sound, openStartScreen);
   const click = (target: EventTarget): void => void target.dispatchEvent(new Event('click'));
-  return { root, sound, soundSwitch, fullScreenSwitch, documentElement, click };
+  return { root, sound, soundSwitch, fullScreenSwitch, menuSwitch, openStartScreen, documentElement, click };
 }
 
 describe('the sound switch', () => {
@@ -93,5 +96,13 @@ describe('the full screen switch', () => {
     subject.click(subject.fullScreenSwitch);
     expect(refusal.catch).toHaveBeenCalledOnce();
     expect(() => refusal.catch.mock.calls[0]![0](new Error('refused'))).not.toThrow();
+  });
+});
+
+describe('the menu switch', () => {
+  test('opens the start screen', () => {
+    const subject = page();
+    subject.click(subject.menuSwitch);
+    expect(subject.openStartScreen).toHaveBeenCalledOnce();
   });
 });

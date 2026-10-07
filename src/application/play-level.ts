@@ -1,5 +1,5 @@
 import type { LevelEvent } from '../domain/level/level-events';
-import type { LevelId } from '../domain/level/level-id';
+import type { LevelId } from '../domain/shared/level-id';
 import type { LevelRepository } from '../domain/level/level-repository';
 import type { Heading } from '../domain/level/position';
 import { type LevelView, levelView } from './level-view';

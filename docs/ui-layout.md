@@ -59,6 +59,12 @@ Landscape orientation is not supported.
 - It shows the whole page full screen or returns it to normal
 - It appears only in browsers that can show a page full screen, so it is hidden on iPhone
 
+### Menu Switch
+
+- A menu switch sits just left of the full screen switch, or just left of the sound switch where full screen is hidden, with the same size, frame and gap
+- A Paper symbol of three stacked bars sits at its center
+- It leaves the level in progress at once and opens the start screen, and the level starts afresh when chosen again
+
 ### Level End Window
 
 - Once the screen has darkened to Ink after the door, a window opens centered in the game view, starting below the switches
@@ -71,6 +77,29 @@ Landscape orientation is not supported.
 - A ΣΥΝΕΧΕΙΑ button at the bottom wears the A button colors, with a lip, and sinks into its lip while pressed
 - Tapping ΣΥΝΕΧΕΙΑ or pressing A or B closes the window and starts the next level
 - The window takes keyboard focus on ΣΥΝΕΧΕΙΑ, and screen readers hear the title, the time and the stars in words
+
+## Start Screen
+
+- The start screen covers the whole page, including the control panel, whenever the game opens and whenever the menu switch is pressed
+- It is pixel art on the panel pixel grid, in V0 with the control panel grip texture
+- The game name, Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ ΤΗΣ ΝΟΥΚΙ, sits at the top in Y2, in the message box font, over two centered lines
+- Below it sit two buttons in the A button colors with a lip, each sinking into its lip while pressed: ΣΥΝΕΧΕΙΑ starts the continue level and ΝΕΟ ΠΑΙΧΝΙΔΙ starts the first level
+- ΣΥΝΕΧΕΙΑ is hidden while the continue level is the first level, so a new player sees only ΝΕΟ ΠΑΙΧΝΙΔΙ
+- Starting the first level from ΝΕΟ ΠΑΙΧΝΙΔΙ keeps every unlocked level and every best playthrough
+- The start screen scrolls when its contents do not fit
+
+### Level Picker
+
+- The level picker sits below the two buttons and lists every level of the game in order, one row per level
+- Each row is a window in the message box frame, 32 panel pixels tall, and the rows share one width so their columns line up
+- Each row shows the level number in Paper, then the clock drawing beside the best play time and the star drawing beside the best stars out of all stars
+- An unlocked level that has no completed playthrough shows its number with a dash in place of the time and the stars
+- A locked level shows its number in N4 with no time or stars and cannot be chosen
+- Tapping an unlocked row starts that level
+- Arrow keys move keyboard focus between the buttons and the rows, and A or B chooses the focused one
+- The focused button or row shows a one pixel Paper outline
+- The rows are spaced so each touch area stays above the Material minimum touch target
+- Screen readers hear each row as the level number, then the best time and stars in words, or that it is locked
 
 ## Control Panel
 

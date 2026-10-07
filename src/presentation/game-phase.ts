@@ -1,7 +1,7 @@
 import type { Area, OrbColor } from '../domain/level/collectibles';
 import type { OrbCollected } from '../domain/level/level-events';
 import type { TilePosition } from '../domain/level/position';
-import type { LevelResult } from './level-end';
+import type { Playthrough } from '../domain/progress/playthrough';
 import { closingLength } from './world-transition';
 
 export const holdFrames = 30;
@@ -16,7 +16,7 @@ export type Phase =
       readonly restores: Area;
     }
   | { readonly name: 'restoring'; readonly since: number; readonly origin: TilePosition; readonly restores: Area }
-  | { readonly name: 'closing'; readonly since: number; readonly result: LevelResult }
+  | { readonly name: 'closing'; readonly since: number; readonly playthrough: Playthrough }
   | { readonly name: 'ended' };
 
 export const playing: Phase = { name: 'playing' };
@@ -25,8 +25,8 @@ export function holdingOrb(orb: OrbCollected, frame: number): Phase {
   return { name: 'holding', until: frame + holdFrames, origin: orb.position, color: orb.color, restores: orb.restores };
 }
 
-export function closingLevel(result: LevelResult, frame: number): Phase {
-  return { name: 'closing', since: frame, result };
+export function closingLevel(playthrough: Playthrough, frame: number): Phase {
+  return { name: 'closing', since: frame, playthrough };
 }
 
 interface FrameEnd {

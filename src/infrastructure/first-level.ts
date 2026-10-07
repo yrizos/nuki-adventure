@@ -1,6 +1,7 @@
-import { OrbColor, StarCount } from '../domain/level/collectibles';
+import { OrbColor } from '../domain/level/collectibles';
+import { StarCount } from '../domain/shared/star-count';
 import { type Level } from '../domain/level/level';
-import { LevelId } from '../domain/level/level-id';
+import { LevelId } from '../domain/shared/level-id';
 import { levelFromLayout, type Shuffle } from './level-layout';
 
 export const firstLevelId = LevelId.of('first');

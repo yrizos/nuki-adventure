@@ -14,10 +14,13 @@ const dimple = ['.xx.', 'xxxx', 'xxxx', '.xx.'];
 const arrowUp = ['...xx...', '..xxxx..', '.xxxxxx.', 'xxxxxxxx'];
 const switchSize = 19;
 const continueText = 'ΣΥΝΕΧΕΙΑ';
-const continuePadding = 12;
-const continueFaceHeight = 23;
-export const continueWidth = textWidth(continueText) + 2 * continuePadding;
-export const continueHeight = continueFaceHeight + lipHeight;
+const newGameText = 'ΝΕΟ ΠΑΙΧΝΙΔΙ';
+const textButtonPadding = 12;
+const textButtonFaceHeight = 23;
+const textButtonWidth = (text: string): number => textWidth(text) + 2 * textButtonPadding;
+export const continueWidth = textButtonWidth(continueText);
+export const newGameWidth = textButtonWidth(newGameText);
+export const continueHeight = textButtonFaceHeight + lipHeight;
 const speakerOn = [
   '...x.....x.',
   '..xx..x...x',
@@ -50,6 +53,17 @@ const enterFullScreen = [
   'x.......x',
   'x.......x',
   'xxx...xxx',
+];
+const menu = [
+  '.........',
+  'xxxxxxxxx',
+  '.........',
+  '.........',
+  'xxxxxxxxx',
+  '.........',
+  '.........',
+  'xxxxxxxxx',
+  '.........',
 ];
 const leaveFullScreen = [
   '..x...x..',
@@ -133,12 +147,13 @@ function control(colors: ControlColors, pressed: boolean, mark: readonly string[
   return grid.build(controlLegend(colors));
 }
 
-function continueButton(colors: ControlColors, pressed: boolean): Art {
+function textButton(text: string, colors: ControlColors, pressed: boolean): Art {
+  const width = textButtonWidth(text);
   const inside = (column: number, row: number): boolean =>
-    inRoundedRectangle(continueWidth, continueFaceHeight, 6, column, row);
-  const grid = pressable(continueWidth, continueFaceHeight, inside, pressed);
-  const top = (pressed ? lipHeight : 0) + Math.floor((continueFaceHeight - glyphHeight) / 2);
-  writeText(grid, continueText, continuePadding, top, 'm');
+    inRoundedRectangle(width, textButtonFaceHeight, 6, column, row);
+  const grid = pressable(width, textButtonFaceHeight, inside, pressed);
+  const top = (pressed ? lipHeight : 0) + Math.floor((textButtonFaceHeight - glyphHeight) / 2);
+  writeText(grid, text, textButtonPadding, top, 'm');
   return grid.build(controlLegend(colors));
 }
 
@@ -247,6 +262,9 @@ export const panelArt: Readonly<Record<string, Art>> = {
   'full-screen-enter': switchArt(enterFullScreen),
   'full-screen-leave': switchArt(leaveFullScreen),
   // ΣΥΝΕΧΕΙΑ wears the A button colors, so the way forward looks like the button that already means yes.
-  continue: continueButton(buttonA, false),
-  'continue-pressed': continueButton(buttonAPressed, true),
+  continue: textButton(continueText, buttonA, false),
+  'continue-pressed': textButton(continueText, buttonAPressed, true),
+  'new-game': textButton(newGameText, buttonA, false),
+  'new-game-pressed': textButton(newGameText, buttonAPressed, true),
+  menu: switchArt(menu),
 };

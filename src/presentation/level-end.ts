@@ -1,3 +1,4 @@
+import type { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import { PixelGrid, type Art } from './art/art';
 import { glyphHeight, textWidth, writeText } from './art/font';
 import { continueHeight, continueWidth } from './art/panel';
@@ -8,8 +9,8 @@ import { element } from './dom';
 const framesPerSecond = 60;
 const edge = 2;
 const padding = 10;
-const iconSize = 16;
-const iconGap = 8;
+export const iconSize = 16;
+export const iconGap = 8;
 const titleRow = 10;
 const timeRow = 28;
 const starsRow = 52;
@@ -51,35 +52,47 @@ function clockFace(): readonly string[] {
 
 const clock = clockFace();
 
-export interface LevelResult {
-  readonly frames: number;
-  readonly collectedStars: number;
-  readonly starCount: number;
+export const iconTextTop = Math.floor((iconSize - glyphHeight) / 2);
+export const windowLegend = {
+  k: 'Ink',
+  e: 'V1',
+  f: 'V0',
+  a: 'Y2',
+  b: 'Y1',
+  c: 'Y3',
+  p: 'Paper',
+  q: 'N4',
+  t: 'Paper',
+} as const;
+
+function putIcon(grid: PixelGrid, rows: readonly string[], left: number, top: number): void {
+  rows.forEach((line, y) =>
+    [...line].forEach((pixel, x) => {
+      if (pixel !== '.') grid.put(left + x, top + y, pixel);
+    }),
+  );
 }
 
-export function playTime(frames: number): string {
-  const seconds = Math.floor(frames / framesPerSecond);
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+export function putClock(grid: PixelGrid, left: number, top: number): void {
+  putIcon(grid, clock, left, top);
 }
 
-function starsText(result: LevelResult): string {
-  return `${result.collectedStars}/${result.starCount}`;
+export function putStar(grid: PixelGrid, left: number, top: number): void {
+  putIcon(
+    grid,
+    starArt.rows
+      .slice(starArtMargin, starArtMargin + iconSize)
+      .map((line) => line.slice(starArtMargin, starArtMargin + iconSize)),
+    left,
+    top,
+  );
 }
 
-// The window shows pictures instead of words, so screen readers get the words here.
-export function levelEndText(result: LevelResult): string {
-  return `${title} ΧΡΟΝΟΣ ${playTime(result.frames)}. ΑΣΤΕΡΙΑ ${starsText(result)}.`;
-}
-
-export function levelEndArt(result: LevelResult): Art {
-  const time = playTime(result.frames);
-  const stars = starsText(result);
-  const content = iconSize + iconGap + Math.max(textWidth(time), textWidth(stars));
-  const width = Math.max(continueWidth, content) + 2 * (edge + padding);
+// The clipped corners match the message box and the switches, so every window over the game world looks like one set.
+export function windowFrame(width: number, height: number): PixelGrid {
   const grid = new PixelGrid(width, height, 'k');
   grid.rectangle(1, 1, width - 2, height - 2, 'e');
   grid.rectangle(2, 2, width - 4, height - 4, 'f');
-  // The clipped corners match the message box and the switches, so every window over the game world looks like one set.
   for (const [column, row] of [
     [0, 0],
     [width - 1, 0],
@@ -94,6 +107,29 @@ export function levelEndArt(result: LevelResult): Art {
     [width - 2, height - 2],
   ] as const)
     grid.put(column, row, 'k');
+  return grid;
+}
+
+export function playTime(time: PlayTime): string {
+  const seconds = Math.floor(time.frames / framesPerSecond);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+export function starsText(playthrough: Playthrough): string {
+  return `${playthrough.collectedStars.value}/${playthrough.starCount.value}`;
+}
+
+// The window shows pictures instead of words, so screen readers get the words here.
+export function levelEndText(playthrough: Playthrough): string {
+  return `${title} ΧΡΟΝΟΣ ${playTime(playthrough.time)}. ΑΣΤΕΡΙΑ ${starsText(playthrough)}.`;
+}
+
+export function levelEndArt(playthrough: Playthrough): Art {
+  const time = playTime(playthrough.time);
+  const stars = starsText(playthrough);
+  const content = iconSize + iconGap + Math.max(textWidth(time), textWidth(stars));
+  const width = Math.max(continueWidth, content) + 2 * (edge + padding);
+  const grid = windowFrame(width, height);
 
   // The exclamation mark sits in the middle column of its glyph, so the title's drawn width ends two columns early.
   const titleWidth = textWidth(title) - 2;
@@ -108,20 +144,11 @@ export function levelEndArt(result: LevelResult): Art {
   }
 
   const left = Math.floor((width - content) / 2);
-  const textTop = Math.floor((iconSize - glyphHeight) / 2);
-  clock.forEach((line, y) =>
-    [...line].forEach((pixel, x) => {
-      if (pixel !== '.') grid.put(left + x, timeRow + y, pixel);
-    }),
-  );
-  starArt.rows.slice(starArtMargin, starArtMargin + iconSize).forEach((line, y) => {
-    [...line.slice(starArtMargin, starArtMargin + iconSize)].forEach((pixel, x) => {
-      if (pixel !== '.') grid.put(left + x, starsRow + y, pixel);
-    });
-  });
-  writeText(grid, time, left + iconSize + iconGap, timeRow + textTop, 't');
-  writeText(grid, stars, left + iconSize + iconGap, starsRow + textTop, 't');
-  return grid.build({ k: 'Ink', e: 'V1', f: 'V0', a: 'Y2', b: 'Y1', c: 'Y3', p: 'Paper', q: 'N4', t: 'Paper' });
+  putClock(grid, left, timeRow);
+  putStar(grid, left, starsRow);
+  writeText(grid, time, left + iconSize + iconGap, timeRow + iconTextTop, 't');
+  writeText(grid, stars, left + iconSize + iconGap, starsRow + iconTextTop, 't');
+  return grid.build(windowLegend);
 }
 
 export class LevelEndWindow {
@@ -144,14 +171,14 @@ export class LevelEndWindow {
     this.continueButton.addEventListener('click', listener);
   }
 
-  show(result: LevelResult): void {
-    const art = levelEndArt(result);
+  show(playthrough: Playthrough): void {
+    const art = levelEndArt(playthrough);
     const width = art.rows[0]!.length;
     this.card.style.setProperty('--art', `url(${artUrl(this.root, art)})`);
     this.card.style.setProperty('--card-width', String(width));
     this.card.style.setProperty('--card-height', String(art.rows.length));
     this.continueButton.style.setProperty('--button-left', String(Math.floor((width - continueWidth) / 2)));
-    this.summary.textContent = levelEndText(result);
+    this.summary.textContent = levelEndText(playthrough);
     this.overlay.hidden = false;
     this.continueButton.focus({ preventScroll: true });
   }

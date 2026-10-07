@@ -1,4 +1,5 @@
-import { type Orb, Star, type StarCount } from './collectibles';
+import { type Orb, Star } from './collectibles';
+import type { StarCount } from '../shared/star-count';
 import type { Door } from './door';
 import { Hero, type HeroState } from './hero';
 import {
@@ -9,7 +10,7 @@ import {
   SignpostRead,
   StarCollected,
 } from './level-events';
-import type { LevelId } from './level-id';
+import type { LevelId } from '../shared/level-id';
 import { type Obstacles, Outline, type PlaceObstacles } from './obstacles';
 import { Direction, type Heading, TilePosition, WorldPosition } from './position';
 import type { Scenery } from './scenery';

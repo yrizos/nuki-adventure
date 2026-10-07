@@ -15,9 +15,16 @@
             <button class="continue-button" type="button">ΣΥΝΕΧΕΙΑ</button>
           </div>
         </section>
+        <button class="menu-switch" type="button" aria-label="Menu"></button>
         <button class="full-screen-switch" type="button" aria-label="Full screen" aria-pressed="false"></button>
         <button class="sound-switch" type="button" aria-label="Sound" aria-pressed="true"></button>
       </div>
+      <section class="start-screen" role="dialog" aria-modal="true" aria-label="ΝΟΥΚΙ" hidden>
+        <h1 class="start-title" aria-label="Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ ΤΗΣ ΝΟΥΚΙ"></h1>
+        <button class="start-button start-continue" type="button">ΣΥΝΕΧΕΙΑ</button>
+        <button class="start-button start-new-game" type="button">ΝΕΟ ΠΑΙΧΝΙΔΙ</button>
+        <ol class="level-picker"></ol>
+      </section>
       <p class="announcement" aria-live="polite"></p>
       <div class="control-panel">
         <div class="joystick" aria-hidden="true">

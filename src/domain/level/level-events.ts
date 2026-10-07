@@ -1,5 +1,5 @@
 import type { Area, OrbColor } from './collectibles';
-import type { LevelId } from './level-id';
+import type { LevelId } from '../shared/level-id';
 import type { TilePosition } from './position';
 import type { SignpostText } from './signpost';
 

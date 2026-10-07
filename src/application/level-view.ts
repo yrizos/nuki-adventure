@@ -2,7 +2,7 @@ import type { Orb, Star } from '../domain/level/collectibles';
 import type { Door } from '../domain/level/door';
 import type { HeroState } from '../domain/level/hero';
 import type { Level, Stone } from '../domain/level/level';
-import type { LevelId } from '../domain/level/level-id';
+import type { LevelId } from '../domain/shared/level-id';
 import type { Outline } from '../domain/level/obstacles';
 import type { Scenery } from '../domain/level/scenery';
 import type { Signpost } from '../domain/level/signpost';

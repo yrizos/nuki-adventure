@@ -26,6 +26,18 @@ The button beside the sound switch that shows the page full screen or returns it
 
 The window that opens after the hero completes a level. It shows the time the level took and the stars collected out of all stars, and its ΣΥΝΕΧΕΙΑ button starts the next level.
 
+### Start Screen
+
+The screen that covers the whole page when the game opens. It shows the game name, starts the continue level or the first level, and holds the level picker.
+
+### Level Picker
+
+The part of the start screen that lists every level by its number with its best playthrough, and starts any unlocked level.
+
+### Menu Switch
+
+The button beside the full screen switch that leaves the level in progress and opens the start screen.
+
 ## Joystick
 
 The virtual joystick on the left side of the control panel that the player uses for movement. It consists of a ring and a knob.
@@ -151,3 +163,29 @@ The return of color to the faded world, which spreads outward from a point.
 ### Area
 
 A part of a level that returns to color together during restoration. Each orb restores one area, and the areas of a level's orbs together cover every tile.
+
+## Saved Progress
+
+### Progress
+
+What the game remembers between visits: the continue level, the unlocked levels and the best playthrough of each level. It never holds the state of a level in progress.
+
+### Playthrough
+
+One play of a level from its start to the door, made of its play time, the stars collected and the level's star count.
+
+### Play Time
+
+The number of game frames from the start of a level until the hero steps into the door.
+
+### Best Playthrough
+
+The completed playthrough of a level with the most stars collected, where fewer frames of play time decide between equal stars. A playthrough always replaces one made when the level held a different star count.
+
+### Unlocked Level
+
+A level that the player has reached at least once. The first level is always unlocked, and a level never locks again.
+
+### Continue Level
+
+The level that the player reached most recently, which the start screen starts when the player continues.

@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import { Playthrough, PlayTime } from '../domain/progress/playthrough';
+import { StarCount } from '../domain/shared/star-count';
 import { continueHeight, continueWidth } from './art/panel';
 import { continueTop, LevelEndWindow, levelEndArt, levelEndText, playTime } from './level-end';
 import { sprite } from './picture';
+
+const playthrough = (frames: number, collectedStars: number, starCount: number): Playthrough =>
+  Playthrough.of(PlayTime.ofFrames(frames), StarCount.of(collectedStars), StarCount.of(starCount));
 
 test.each([
   [0, '0:00'],
@@ -10,11 +15,11 @@ test.each([
   [60 * 65, '1:05'],
   [60 * 60 * 120, '120:00'],
 ])('shows %s frames as %s', (frames, shown) => {
-  expect(playTime(frames)).toBe(shown);
+  expect(playTime(PlayTime.ofFrames(frames))).toBe(shown);
 });
 
 test('reads the time and the stars out for screen readers', () => {
-  expect(levelEndText({ frames: 60 * 83, collectedStars: 3, starCount: 5 })).toBe('ΜΠΡΑΒΟ! ΧΡΟΝΟΣ 1:23. ΑΣΤΕΡΙΑ 3/5.');
+  expect(levelEndText(playthrough(60 * 83, 3, 5))).toBe('ΜΠΡΑΒΟ! ΧΡΟΝΟΣ 1:23. ΑΣΤΕΡΙΑ 3/5.');
 });
 
 test.each([
@@ -24,7 +29,7 @@ test.each([
 ])(
   'builds from palette codes for %s frames and %s of %s stars, inside the narrowest column',
   (frames, collectedStars, starCount) => {
-    const art = levelEndArt({ frames, collectedStars, starCount });
+    const art = levelEndArt(playthrough(frames, collectedStars, starCount));
     expect(() => sprite(art)).not.toThrow();
     expect(art.rows[0]!.length).toBeLessThanOrEqual(180 - 32);
     expect(art.rows.length).toBeGreaterThan(continueTop + continueHeight);
@@ -91,7 +96,7 @@ describe('the level end window', () => {
 
   test('shows the result art, summary and focused continue button', () => {
     const subject = opened();
-    const result = { frames: 60 * 83, collectedStars: 3, starCount: 5 };
+    const result = playthrough(60 * 83, 3, 5);
     subject.window.show(result);
     const art = levelEndArt(result);
     const width = art.rows[0]!.length;
@@ -106,7 +111,7 @@ describe('the level end window', () => {
 
   test('hides again', () => {
     const subject = opened();
-    subject.window.show({ frames: 0, collectedStars: 0, starCount: 1 });
+    subject.window.show(playthrough(0, 0, 1));
     subject.window.hide();
     expect(subject.overlay.hidden).toBe(true);
   });

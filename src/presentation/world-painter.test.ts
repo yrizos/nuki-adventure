@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { Area, Orb, OrbColor } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
 import { Level, Stone } from '../domain/level/level';
-import { LevelId } from '../domain/level/level-id';
+import { LevelId } from '../domain/shared/level-id';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
 import { Flower, Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';

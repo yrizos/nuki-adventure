@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { Area, Orb, OrbColor, Star, StarCount } from './collectibles';
+import { Area, Orb, OrbColor, Star } from './collectibles';
+import { StarCount } from '../shared/star-count';
 import { Door } from './door';
 import { Level, Stone } from './level';
 import {
@@ -10,7 +11,7 @@ import {
   SignpostRead,
   StarCollected,
 } from './level-events';
-import { LevelId } from './level-id';
+import { LevelId } from '../shared/level-id';
 import { Direction, Heading, TilePosition } from './position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree } from './scenery';
 import { check2dObstacles } from '../../infrastructure/check2d-obstacles';

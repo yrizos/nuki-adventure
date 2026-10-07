@@ -1,7 +1,12 @@
 import { element } from './dom';
 import type { Sound } from './sound';
 
-export function connectGameSwitches(root: Document, sound: Pick<Sound, 'on' | 'toggle'>): void {
+export function connectGameSwitches(
+  root: Document,
+  sound: Pick<Sound, 'on' | 'toggle'>,
+  openStartScreen: () => void,
+): void {
+  element<HTMLButtonElement>(root, '.menu-switch').addEventListener('click', openStartScreen);
   const soundSwitch = element<HTMLButtonElement>(root, '.sound-switch');
   const showSound = (): void => soundSwitch.setAttribute('aria-pressed', String(sound.on));
   showSound();

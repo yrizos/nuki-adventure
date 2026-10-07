@@ -1,8 +1,11 @@
 import type { LevelView } from '../application/level-view';
+import type { ManageProgress } from '../application/manage-progress';
 import type { PlayLevel } from '../application/play-level';
 import type { Area } from '../domain/level/collectibles';
 import { LevelCompleted, OrbCollected, SignpostLeft, SignpostRead, StarCollected } from '../domain/level/level-events';
-import type { LevelId } from '../domain/level/level-id';
+import { Playthrough, PlayTime } from '../domain/progress/playthrough';
+import type { LevelId } from '../domain/shared/level-id';
+import { StarCount } from '../domain/shared/star-count';
 import type { Controls } from './controls';
 import { closingLevel, holdingOrb, type Phase, phaseAfterFrame, playing } from './game-phase';
 import { HeroAnimator } from './hero-animator';
@@ -46,7 +49,13 @@ export class GameSession {
     private readonly controls: Pick<Controls, 'takePress' | 'heading'>,
     private readonly sound: Pick<Sound, 'star' | 'orb' | 'door' | 'footstep' | 'restoring'>,
     private readonly levelEnd: Pick<LevelEndWindow, 'show' | 'hide'>,
+    private readonly progress: Pick<ManageProgress, 'reach' | 'complete'>,
+    first: LevelId,
   ) {
+    this.levelIndex = Math.max(
+      0,
+      levels.findIndex(({ id }) => id.equals(first)),
+    );
     this.run = this.begin();
   }
 
@@ -94,13 +103,13 @@ export class GameSession {
         } else if (event instanceof LevelCompleted) {
           this.sound.door();
           const level = play.view(id);
-          const collectedStars = level.collected.length;
-          const result = {
-            frames: this.frame - this.run.startFrame,
-            collectedStars,
-            starCount: collectedStars + level.stars.length,
-          };
-          this.phase = closingLevel(result, this.frame);
+          const playthrough = Playthrough.of(
+            PlayTime.ofFrames(this.frame - this.run.startFrame),
+            StarCount.of(level.collected.length),
+            StarCount.of(level.collected.length + level.stars.length),
+          );
+          this.progress.complete(id, playthrough);
+          this.phase = closingLevel(playthrough, this.frame);
         }
       }
       const restorationMessage = messageBox.text === messages.colorsBack || messageBox.text === messages.someColorsBack;
@@ -127,7 +136,7 @@ export class GameSession {
           this.run.restored = [...this.run.restored, this.phase.restores];
           break;
         case 'closing':
-          this.levelEnd.show(this.phase.result);
+          this.levelEnd.show(this.phase.playthrough);
           break;
         case 'ended':
           this.continuePlaying();
@@ -167,6 +176,7 @@ export class GameSession {
   private begin(): LevelRun {
     const { id, start } = this.levels[this.levelIndex]!;
     const play = start();
+    this.progress.reach(id);
     return {
       id,
       play,

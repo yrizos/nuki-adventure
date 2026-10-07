@@ -1,7 +1,8 @@
-import { Area, Orb, type OrbColor, type StarCount } from '../domain/level/collectibles';
+import { Area, Orb, type OrbColor } from '../domain/level/collectibles';
+import type { StarCount } from '../domain/shared/star-count';
 import { Door } from '../domain/level/door';
 import { Level, Stone } from '../domain/level/level';
-import { type LevelId } from '../domain/level/level-id';
+import { type LevelId } from '../domain/shared/level-id';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
 import { Signpost, SignpostText } from '../domain/level/signpost';
