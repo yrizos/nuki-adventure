@@ -4,6 +4,15 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'src/**/*.ts'
+      - 'src/**/*.css'
+      - 'src/presentation/sprites/*/data.js'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'vite.config.mjs'
   workflow_dispatch:
 
 permissions:
