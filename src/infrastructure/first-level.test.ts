@@ -25,7 +25,11 @@ test('the first level hides one violet orb that restores the whole level', () =>
   expect(level.orbs.map((orb) => [orb.position, orb.color])).toEqual([[at(1, 4), OrbColor.Violet]]);
   expect(level.orbs[0]!.restores.tiles).toHaveLength(17 * 15);
   expect(level.signposts).toEqual([
-    Signpost.at(at(15, 12), SignpostText.of('ΒΡΕΣ ΤΗ ΜΩΒ ΣΦΑΙΡΑ! ΘΑ ΦΕΡΕΙ ΠΙΣΩ ΤΑ ΧΡΩΜΑΤΑ ΚΑΙ ΘΑ ΑΝΟΙΞΕΙ ΤΗΝ ΠΥΛΗ.')),
+    Signpost.at(
+      at(14, 12),
+      SignpostText.of('Η ΜΩΒ ΣΦΑΙΡΑ ΠΕΡΙΜΕΝΕΙ ΔΙΠΛΑ ΣΤΑ ΛΟΥΛΟΥΔΙΑ, ΚΟΝΤΑ ΣΤΑ ΔΕΝΤΡΑ ΧΩΡΙΣ ΚΑΡΠΟΥΣ.'),
+    ),
+    Signpost.at(at(8, 3), SignpostText.of('ΒΡΕΣ ΤΗ ΣΦΑΙΡΑ. ΘΑ ΦΕΡΕΙ ΠΙΣΩ ΤΑ ΧΡΩΜΑΤΑ ΚΑΙ ΘΑ ΑΝΟΙΞΕΙ ΤΗΝ ΠΥΛΗ.')),
   ]);
   expect(level.stones.map((stone) => stone.position)).toEqual([
     at(10, 6),

@@ -2,11 +2,11 @@
 
 This document defines how levels are designed. It builds on the [glossary](glossary.md) for domain terms and on the [visual style](visual-style.md) for what the game view shows.
 
-Hard constraints are enforced by code, and a level that breaks one fails to load. Design guidance is judged by people and by playtesting, so no check enforces it.
+Hard constraints are enforced by construction checks and authored-level regression tests. A level that breaks a hard constraint must not ship. Design guidance is judged by people and by playtesting.
 
 ## Hard Constraints
 
-The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/domain/level/scenery.ts` and `levelFromLayout` in `src/infrastructure/level-layout.ts` enforce these rules.
+The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/domain/level/scenery.ts`, `levelFromLayout` in `src/infrastructure/level-layout.ts` and the authored-level tests enforce these rules.
 
 ### Hero and Door
 
@@ -14,6 +14,17 @@ The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/dom
 - A layout has exactly one door, three tiles wide, on open ground.
 - The door stands on the top edge of the playable area, facing inward. Scenery may lie behind it, outside the area the hero can reach.
 - The door stands beside a reachable tile, so the hero can walk through it once it opens.
+- The hero never starts near the exit door. With the current top-edge exits, the hero starts on the bottom playable edge, facing into the level.
+- After the first level, the start represents entry from the previous level's exit. Align its column with the previous door's center, scaled to the new map's width, within one tile. Do not move the start beside the new exit for convenience.
+
+### Signposts
+
+- Every orb has a hint sign on its approach. Every traversable route from the hero start to that orb must enter the hint sign's reading range before the orb can be collected. A shorter recommended route is not enough if another route bypasses the sign.
+- Every exit door has its own reachable, readable sign beside it. Its text gives a general hint about completing the level and opening the door, separate from the orb's location hint.
+- Place the exit sign as close to the fence as possible, on reachable ground immediately inside it and beside either end of the door. For the current layouts, it stands one row below the fence and one column outside the door's width, either left or right. Both sides are valid. Keep the doorway clear and the fence intact; never move the door to match another level's sign coordinates.
+- Sign text matches the level's actual number of orbs. A one-orb level uses singular nouns, verbs and pronouns, and never implies that the player must find additional orbs.
+- Signposts refer to recognizable, visible landmarks such as apple trees, a lake, flowers or a group of rocks. They never use compass directions, compass abbreviations or bearings. This includes north, south, east, west and their combinations or equivalents in any language. The player has no compass.
+- Test entry placement, sign-before-orb ordering, exit sign placement beside the door and against the fence, objective-count wording and forbidden compass wording for every authored level. Use movement and actual reading range for route checks, not only marker distances or sign counts.
 
 ### Orbs
 

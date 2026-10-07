@@ -193,8 +193,8 @@ A new element uses the smallest size in this table that fits its shape.
 - Each eye is an E1 pupil, and the facing down frame adds a single Paper catchlight on the top left of each eye
 - Her hair has at least three steps, E2, E3 and E4, with E4 as a highlight band across the top left of the head
 - Her t-shirt shows one fold line in P1 on each side, and a W0 row separates the t-shirt from the jeans at the waist
-- Hands are S2 clusters shaded in S1, two pixels wide while she stands or walks and 4 × 4 with an S1 bottom row while she holds an orb
-- Shoes are E1, two pixels tall while she stands or walks and four while she holds an orb
+- Hands are S2 clusters shaded in S1, two pixels wide while she stands or walks
+- Shoes are E1, two pixels tall while she stands or walks
 
 ### Stars and Orbs
 
@@ -312,7 +312,7 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 
 - A push starts with one frame of the hero leaning in before the object moves
 - An object arriving on a floor trigger shows one frame pressed one pixel down
-- Picking up an orb shows it above the hero's head for 30 game frames, with her arms raised while she stands still
+- Orbs are collected by walking onto them, like stars, without a pause, raised-arm pose or held-orb animation. Color restoration starts immediately, movement continues normally and a congratulations message appears
 
 ### Effects
 

@@ -57,8 +57,8 @@ export class Sound {
     this.note(110, 0, 0.04, 'triangle', 0.15);
   }
 
-  star(): void {
-    this.notes([1319, 1760], 0.06, 'square', 0.08);
+  star(last = false): void {
+    this.notes(last ? [1319, 1760, 2093, 2637] : [1319, 1760], last ? 0.09 : 0.06, 'square', 0.08);
   }
 
   orb(): void {

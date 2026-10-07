@@ -1,54 +1,40 @@
 import { OrbColor } from '../domain/level/collectibles';
 import { type Level } from '../domain/level/level';
+import { FlowerVariant } from '../domain/level/scenery';
 import { LevelId } from '../domain/shared/level-id';
 import { levelFromLayout, type Shuffle } from './level-layout';
 
 export const secondLevelId = LevelId.of('second');
 
 const layout = [
-  'FFFFFFFFFFFDDDFFFFFFFFFFFF',
-  'F#######RF1###.~~~~~~~~~~F',
-  'FTtTtTt##F.###.~~~~~~~~~~F',
-  'F=#######F.###.~~~~~~~~~~F',
-  'F########F.###.~~~~~~~~~~F',
-  'F##TtTtTtF.###.~~~B######F',
-  'F#######=F.###.~~~~~~~~~#F',
-  'F########F.###.~~~~~~~~~#F',
-  'FTtTtTt##F.###.~~~~~~~~~#F',
-  'F########F.###.~~~~~~~~~#F',
-  'F########F.###.+.~~~~~~~#F',
-  'F##TtTtTtF.###....3...+.#F',
-  'F##FFFFFFF.##############F',
-  'F##.......###.~~~~~~~~~..F',
-  'F##..Tt...###.~~~~~~~~~..F',
-  'F##.......###.~~~~~~~~~..F',
-  'F########################F',
-  'F..2.##......Tt......##..F',
-  'F~~~+##.....*........##..F',
-  'F~~~.##.FFFFFFFF.....##..F',
-  'F~~~.##.F=#####F..~~~##..F',
-  'F~~~.##.F##o###F..~~~##TtF',
-  'F~~~.##.F######F..~~~##..F',
-  'F....##################..F',
-  'F..........###...........F',
-  'F~~~~......###.......Tt..F',
-  'F~~~~~+....###..~~~~~....F',
-  'F~~~~~.....###..~~~~~.Tt.F',
-  'F~~~~......#H#...~~~.....F',
-  'F..Tt......###.........+.F',
-  'FFFFFFFFFFFFFFFFFFFFFFFFFF',
+  '..Nt...***....Nt.....',
+  '.Nt...*****....Nt....',
+  'FFFFFFFFFDDDFFFFFFFFF',
+  'F.+**...E##....***..F',
+  'F..**....###..**.O.+F',
+  'F.Nt.Nt.#########**.F',
+  'F.......#~~~~~~~~~~~F',
+  'F.Nt.Nt###....~~~~~~F',
+  'F.**..##..~~~.##~~~~F',
+  'F.....#..~~~~~.###~~F',
+  'F..+..#.~~~~~~.#.oo.F',
+  'F.oo..#..~~~~..#**o.F',
+  'F.o...##..~~..##.*..F',
+  'F......########.....F',
+  'F..**..#..**..#.Lt..F',
+  'F..At.At......###.**F',
+  'F..**..#######...Lt.F',
+  'F.+At.AtH1**......+.F',
+  'FFFFFFFFFFFFFFFFFFFFF',
 ];
 
 export function secondLevel(shuffle: Shuffle): Level {
   return levelFromLayout(secondLevelId, layout, shuffle, {
-    orbs: {
-      R: { color: OrbColor.Red, restores: (position) => position.column < 13 },
-      B: { color: OrbColor.Blue, restores: (position) => position.column >= 13 },
-    },
+    flowerVariants: [FlowerVariant.WhiteCoral, FlowerVariant.BlueViolet],
+    orbs: { O: { color: OrbColor.Teal, restores: () => true } },
     signposts: {
-      1: 'ΔΥΟ ΣΦΑΙΡΕΣ ΚΡΥΒΟΝΤΑΙ ΕΔΩ. Η ΠΥΛΗ ΑΝΟΙΓΕΙ ΜΟΝΟ ΜΕ ΤΙΣ ΔΥΟ.',
-      2: 'ΟΠΟΥ ΤΑ ΔΕΝΤΡΑ ΣΤΕΚΟΝΤΑΙ ΠΥΚΝΑ, ΚΑΤΙ ΚΟΚΚΙΝΟ ΠΕΡΙΜΕΝΕΙ ΣΤΗΝ ΑΚΡΗ.',
-      3: 'ΤΟ ΝΕΡΟ ΔΕΝ ΣΕ ΑΦΗΝΕΙ ΝΑ ΠΕΡΑΣΕΙΣ. ΔΟΚΙΜΑΣΕ ΤΗΝ ΑΛΛΗ ΟΧΘΗ.',
+      1: 'Η ΤΥΡΚΟΥΑΖ ΣΦΑΙΡΑ ΣΕ ΠΕΡΙΜΕΝΕΙ ΣΤΑ ΛΟΥΛΟΥΔΙΑ ΔΙΠΛΑ ΣΤΗ ΛΙΜΝΗ.',
+      E: 'ΒΡΕΣ ΤΗ ΣΦΑΙΡΑ. ΘΑ ΦΕΡΕΙ ΠΙΣΩ ΤΑ ΧΡΩΜΑΤΑ ΚΑΙ ΘΑ ΑΝΟΙΞΕΙ ΤΗΝ ΠΥΛΗ.',
     },
   });
 }

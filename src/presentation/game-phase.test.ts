@@ -5,7 +5,7 @@ import { Area, OrbColor } from '../domain/level/collectibles';
 import { OrbCollected } from '../domain/level/level-events';
 import { LevelId } from '../domain/shared/level-id';
 import { TilePosition } from '../domain/level/position';
-import { closingLevel, holdFrames, holdingOrb, type Phase, phaseAfterFrame, playing } from './game-phase';
+import { closingLevel, restoringOrb, type Phase, phaseAfterFrame, playing } from './game-phase';
 import { closingLength } from './world-transition';
 
 const playthrough = (frames: number, collectedStars: number, starCount: number): Playthrough =>
@@ -19,12 +19,10 @@ const after = (phase: Phase, frame: number, continuing = false): Phase =>
   phaseAfterFrame(phase, { frame, restorationLength: () => 40, continuing });
 
 describe('the game phase', () => {
-  test('holds a collected orb for thirty frames before restoring its area', () => {
-    const holding = holdingOrb(orb, 100);
-    expect(holding).toEqual({ name: 'holding', until: 130, origin, color: OrbColor.Teal, restores });
-    expect(holdFrames).toBe(30);
-    expect(after(holding, 129)).toBe(holding);
-    expect(after(holding, 130)).toEqual({ name: 'restoring', since: 130, origin, restores });
+  test('starts restoring the collected orb area on the pickup frame', () => {
+    const restoring = restoringOrb(orb, 100);
+    expect(restoring).toEqual({ name: 'restoring', since: 100, origin, restores });
+    expect(after(restoring, 100)).toBe(restoring);
   });
 
   test('plays on once the restoration has spread', () => {

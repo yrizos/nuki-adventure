@@ -7,7 +7,7 @@ import { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import type { LevelId } from '../domain/shared/level-id';
 import { StarCount } from '../domain/shared/star-count';
 import type { Controls } from './controls';
-import { closingLevel, holdingOrb, type Phase, phaseAfterFrame, playing } from './game-phase';
+import { closingLevel, restoringOrb, type Phase, phaseAfterFrame, playing } from './game-phase';
 import { HeroAnimator } from './hero-animator';
 import type { LevelEndWindow } from './level-end';
 import { MessageBox } from './message-box';
@@ -18,7 +18,7 @@ import { doorOpeningLength, restorationLength } from './world-transition';
 
 export const messages = {
   someColorsBack: 'ΜΠΡΑΒΟ! ΜΕΝΕΙ ΑΛΛΗ ΜΙΑ ΣΦΑΙΡΑ!',
-  colorsBack: 'ΤΑ ΧΡΩΜΑΤΑ ΕΠΕΣΤΡΕΨΑΝ!',
+  colorsBack: 'ΜΠΡΑΒΟ! ΤΑ ΧΡΩΜΑΤΑ ΕΠΕΣΤΡΕΨΑΝ!',
   doorOpen: 'ΜΠΡΑΒΟ! Η ΠΟΡΤΑ ΓΙΑ ΤΟ ΕΠΟΜΕΝΟ ΕΠΙΠΕΔΟ ΕΙΝΑΙ ΑΝΟΙΧΤΗ!',
 } as const;
 
@@ -79,7 +79,7 @@ export class GameSession {
     const pressedA = this.controls.takePress('a');
     const pressedB = this.controls.takePress('b');
     const { messageBox, id, play } = this.run;
-    if (this.phase.name === 'playing' || this.phase.name === 'holding' || this.phase.name === 'restoring') {
+    if (this.phase.name === 'playing' || this.phase.name === 'restoring') {
       const dismissing =
         (pressedA || pressedB) && messageBox.text !== null && messageBox.text === this.run.signpostText;
       if (dismissing) messageBox.hide(this.frame);
@@ -87,19 +87,18 @@ export class GameSession {
       const events = [...(reading ? play.read(id) : []), ...play.advance(id, this.controls.heading())];
       for (const event of events) {
         if (event instanceof SignpostRead) {
-          // Once the door is open every signpost points the way out, whatever hint it gave before.
           this.run.signpostText = play.view(id).door.isOpen ? messages.doorOpen : event.text.value;
           messageBox.show(this.run.signpostText, this.frame);
         } else if (event instanceof SignpostLeft && messageBox.text === this.run.signpostText)
           messageBox.hide(this.frame);
-        else if (event instanceof StarCollected) this.sound.star();
+        else if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
         else if (event instanceof OrbCollected) {
           this.sound.orb();
           // A second orb picked up before the first one's color finishes spreading still keeps the first one's area colored.
-          if (this.phase.name === 'holding' || this.phase.name === 'restoring')
-            this.run.restored = [...this.run.restored, this.phase.restores];
+          if (this.phase.name === 'restoring') this.run.restored = [...this.run.restored, this.phase.restores];
           messageBox.show(play.view(id).orbs.length > 0 ? messages.someColorsBack : messages.colorsBack, this.frame);
-          this.phase = holdingOrb(event, this.frame);
+          this.phase = restoringOrb(event, this.frame);
+          this.sound.restoring();
         } else if (event instanceof LevelCompleted) {
           this.sound.door();
           const level = play.view(id);
@@ -129,9 +128,6 @@ export class GameSession {
     });
     if (next !== this.phase) {
       switch (this.phase.name) {
-        case 'holding':
-          this.sound.restoring();
-          break;
         case 'restoring':
           this.run.restored = [...this.run.restored, this.phase.restores];
           break;
@@ -158,8 +154,8 @@ export class GameSession {
     const scene = {
       level,
       frame: this.frame,
-      hero: this.run.animator.pose(level.hero, this.frame, this.phase.name === 'holding'),
-      heldOrb: this.phase.name === 'holding' ? this.phase.color : null,
+      hero: this.run.animator.pose(level.hero, this.frame, false),
+      heldOrb: null,
     };
     if (this.phase.name === 'restoring') {
       this.run.painter.paintRestoring(picture, scene, this.phase.origin, this.frame - this.phase.since, restored, [
