@@ -20,10 +20,10 @@ test('darkens every pixel to Ink over forty-eight frames', () => {
 });
 
 test('opens the door once color covers its art and never later than the whole level', () => {
-  expect(doorOpeningLength(Door.closedAt(TilePosition.at(2, 12)), LevelSize.of(18, 20), TilePosition.at(15, 9))).toBe(
+  expect(doorOpeningLength(Door.closedAt(TilePosition.at(2, 0)), LevelSize.of(18, 20), TilePosition.at(15, 9))).toBe(
     13 * 4 + 16,
   );
-  expect(doorOpeningLength(Door.closedAt(TilePosition.at(16, 4)), LevelSize.of(18, 5), TilePosition.at(0, 2))).toBe(
+  expect(doorOpeningLength(Door.closedAt(TilePosition.at(15, 0)), LevelSize.of(18, 5), TilePosition.at(0, 2))).toBe(
     17 * 4 + 16,
   );
 });

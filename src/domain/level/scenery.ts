@@ -92,6 +92,38 @@ export class Tree {
   }
 }
 
+export class FlowerVariant {
+  static readonly WhiteCoral = new FlowerVariant('white and coral');
+  static readonly BlueViolet = new FlowerVariant('blue and violet');
+  static readonly WhiteViolet = new FlowerVariant('white and violet');
+  static readonly CoralBlue = new FlowerVariant('coral and blue');
+  static readonly CoralViolet = new FlowerVariant('coral and violet');
+  static readonly WhiteBlue = new FlowerVariant('white and blue');
+  static readonly White = new FlowerVariant('white');
+  static readonly Coral = new FlowerVariant('coral');
+  static readonly Blue = new FlowerVariant('blue');
+  static readonly Violet = new FlowerVariant('violet');
+
+  static readonly All: readonly FlowerVariant[] = [
+    FlowerVariant.WhiteCoral,
+    FlowerVariant.BlueViolet,
+    FlowerVariant.WhiteViolet,
+    FlowerVariant.CoralBlue,
+    FlowerVariant.CoralViolet,
+    FlowerVariant.WhiteBlue,
+    FlowerVariant.White,
+    FlowerVariant.Coral,
+    FlowerVariant.Blue,
+    FlowerVariant.Violet,
+  ];
+
+  private constructor(readonly name: string) {}
+
+  equals(other: FlowerVariant): boolean {
+    return this === other;
+  }
+}
+
 export class Flower {
   private constructor(readonly position: TilePosition) {}
 
@@ -137,6 +169,7 @@ export class Scenery {
     readonly trees: readonly Tree[],
     readonly flowers: readonly Flower[],
     readonly fences: readonly Fence[],
+    readonly flowerVariants: readonly FlowerVariant[],
   ) {}
 
   static of(
@@ -145,7 +178,11 @@ export class Scenery {
     trees: readonly Tree[],
     flowers: readonly Flower[],
     fences: readonly Fence[] = [],
+    flowerVariants: readonly FlowerVariant[] = FlowerVariant.All,
   ): Scenery {
+    if (flowerVariants.length === 0 || new Set(flowerVariants).size !== flowerVariants.length) {
+      throw new RangeError('Scenery needs a nonempty selection of distinct flower variants');
+    }
     if (ground.length !== size.rows || ground.some((row) => row.length !== size.columns)) {
       throw new RangeError('Every tile of the level needs ground');
     }
@@ -197,6 +234,7 @@ export class Scenery {
       [...trees],
       [...flowers],
       [...fences],
+      [...flowerVariants],
     );
   }
 

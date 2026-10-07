@@ -48,12 +48,12 @@ function gameSession(orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbCo
       id: levelId,
       scenery,
       stones: [],
-      orbs,
-      door: Door.closedAt(TilePosition.at(1, 5)),
-      hero: { position: TilePosition.at(0, 0), facing: Direction.Right },
+      orbs: orbs.map((orb) => Orb.at(TilePosition.at(orb.position.column, 5), orb.color, orb.restores)),
+      door: Door.closedAt(TilePosition.at(1, 0)),
+      hero: { position: TilePosition.at(0, 5), facing: Direction.Right },
       obstacles: check2dObstacles,
-      stars: [Star.at(TilePosition.at(3, 0))],
-      signposts: [Signpost.at(TilePosition.at(0, 1), SignpostText.of(hint))],
+      stars: [Star.at(TilePosition.at(3, 5))],
+      signposts: [Signpost.at(TilePosition.at(0, 4), SignpostText.of(hint))],
     });
     play = new PlayLevel(new InMemoryLevelRepository([level]));
     return play;
@@ -137,7 +137,7 @@ describe('the game session', () => {
     expect(subject.session.messageText).toBe(messages.colorsBack);
     subject.move(Direction.Right);
     subject.move(Direction.Right);
-    expect(subject.level.hero.position).toEqual(TilePosition.at(3, 0));
+    expect(subject.level.hero.position).toEqual(TilePosition.at(3, 5));
     expect(subject.sound.star).toHaveBeenCalledOnce();
     expect(subject.sound.restoring).toHaveBeenCalledOnce();
     expect(subject.sound.footstep).toHaveBeenCalledTimes(3);
@@ -162,7 +162,6 @@ describe('the game session', () => {
     subject.walkUntil(Direction.Right, () => subject.sound.orb.mock.calls.length > 0);
     subject.advance(30);
     expect(subject.sound.restoring).toHaveBeenCalledOnce();
-    // The door art reaches row 3 to row 5, five rings below the orb, so color covers it after 5 * 4 + 16 frames.
     subject.advance(35);
     expect(subject.level.door.isOpen).toBe(false);
     subject.advance(1);
@@ -197,7 +196,7 @@ describe('the game session', () => {
   test.each(['a', 'b'] as const)('shows completion after the closing transition and continues with %s', (button) => {
     const subject = gameSession();
     for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
-    for (let tile = 0; tile < 5; tile++) subject.move(Direction.Down);
+    for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
     const completedAt = subject.frames;
     expect(subject.sound.door).toHaveBeenCalledOnce();
     expect(subject.levelEnd.show).not.toHaveBeenCalled();
@@ -213,7 +212,7 @@ describe('the game session', () => {
     subject.press(button);
     expect(subject.levelEnd.hide).toHaveBeenCalledOnce();
     expect(subject.createPlay).toHaveBeenCalledTimes(2);
-    expect(subject.level.hero.position).toEqual(TilePosition.at(0, 0));
+    expect(subject.level.hero.position).toEqual(TilePosition.at(0, 5));
     expect(subject.session.messageText).toBe('');
   });
 });
@@ -243,9 +242,9 @@ describe('the level sequence', () => {
               [],
             ),
             stones: [],
-            orbs: [Orb.at(TilePosition.at(1, 1), OrbColor.Violet, everywhere)],
-            door: Door.closedAt(TilePosition.at(0, 4)),
-            hero: { position: TilePosition.at(1, 0), facing: Direction.Down },
+            orbs: [Orb.at(TilePosition.at(1, 3), OrbColor.Violet, everywhere)],
+            door: Door.closedAt(TilePosition.at(0, 0)),
+            hero: { position: TilePosition.at(1, 4), facing: Direction.Up },
             obstacles: check2dObstacles,
           });
           const play = new PlayLevel(new InMemoryLevelRepository([level]));
@@ -257,7 +256,7 @@ describe('the level sequence', () => {
     const levels = [playable('one'), playable('two')];
     const session = new GameSession(levels, controls, sound, levelEnd, progress, LevelId.of(first));
     const complete = (): void => {
-      heading = Heading.of(Direction.Down);
+      heading = Heading.of(Direction.Up);
       for (let frame = 0; frame < 120 && levelEnd.show.mock.calls.length === plays.length - 1; frame++) session.tick();
       heading = null;
       for (let frame = 0; frame <= closingLength && levelEnd.show.mock.calls.length < plays.length; frame++)
@@ -313,7 +312,7 @@ describe('the level sequence', () => {
     subject.continueWith('a');
     const level = subject.current();
     expect(subject.plays[2]!.play).not.toBe(subject.plays[0]!.play);
-    expect(level.hero.position).toEqual(TilePosition.at(1, 0));
+    expect(level.hero.position).toEqual(TilePosition.at(1, 4));
     expect(level.orbs).toHaveLength(1);
     expect(level.door.isOpen).toBe(false);
     expect(level.isComplete).toBe(false);
@@ -413,34 +412,34 @@ describe('whole frames of the game session', () => {
   test('paints the current signpost message fixture unchanged', async () => {
     const subject = gameSession();
     subject.press('a');
-    expect(await paintedChecksum(subject)).toBe('d143aa2dfa4af5a544fff0a3ff0528cbb43702e7f151147decd88f7abdbffaa8');
+    expect(await paintedChecksum(subject)).toBe('38eff61e9c0182f493628b78f5b2475bfbd6c103ec51e486aebe199ac4e836a1');
   });
 
   test('paints the current held orb fixture unchanged', async () => {
     const subject = gameSession();
     subject.move(Direction.Right);
-    expect(await paintedChecksum(subject)).toBe('d9f79fa42e3268ad98ed3f06c4073611e684d90279ff5c863259c5bf5cea2705');
+    expect(await paintedChecksum(subject)).toBe('a19c0ef76548728ffb79acea5fdf1dad1c2e19abfc105c60e7c468f644e6782d');
   });
 
   test('paints the current spreading color fixture unchanged', async () => {
     const subject = gameSession();
     subject.move(Direction.Right);
     subject.advance(50);
-    expect(await paintedChecksum(subject)).toBe('307bbce0f6b87d06157f9e9e2b6a64e028b9eef64996ac7732163b2981d0716d');
+    expect(await paintedChecksum(subject)).toBe('a647e4a5a209b4681f40a6f8c397158d31628639abd66bb6b918dd09b32c2fa2');
   });
 
   test('paints the current closing fixture unchanged', async () => {
     const subject = gameSession();
     for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
-    for (let tile = 0; tile < 5; tile++) subject.move(Direction.Down);
+    for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
     subject.advance(closingLength / 2);
-    expect(await paintedChecksum(subject)).toBe('2864691947c76a403eb2544a843dc5924c18e948834873afa23495c27bf0bf78');
+    expect(await paintedChecksum(subject)).toBe('d01ad9c5da9e6a897b90094076fa2278dec177b994adc0fea521b32eb608a175');
   });
 
   test('paints the current ended fixture unchanged', async () => {
     const subject = gameSession();
     for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
-    for (let tile = 0; tile < 5; tile++) subject.move(Direction.Down);
+    for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
     subject.advance(closingLength);
     expect(await paintedChecksum(subject)).toBe('b0e49ba2a219b20e3667492745d5a2c174cd71b7e40425753260c1d6e7cfbdb3');
   });

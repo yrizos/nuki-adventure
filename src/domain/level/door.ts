@@ -20,7 +20,6 @@ export class Door {
     return this.footprint.some((tile) => tile.equals(position));
   }
 
-  // The door stands three tiles tall, so whatever lies on the two tiles above its footprint is drawn behind it.
   hides(position: TilePosition): boolean {
     const below = position.neighbor(Direction.Down);
     return this.covers(below) || this.covers(below.neighbor(Direction.Down));

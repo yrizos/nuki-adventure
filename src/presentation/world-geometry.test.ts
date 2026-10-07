@@ -16,10 +16,10 @@ test('centers the hero in pixels away from the map edges', () => {
 });
 
 test('stops at the map edges', () => {
-  expect(cameraPosition(standingAt(0, 0), 224, 320)).toEqual({ x: 0, y: 0 });
+  expect(cameraPosition(standingAt(0, 0), 224, 320)).toEqual({ x: 0, y: -64 });
   expect(cameraPosition(standingAt(19, 19), 224, 320)).toEqual({ x: 640 - 224, y: 640 - 320 });
 });
 
 test('centers a map smaller than the view', () => {
-  expect(cameraPosition(standingAt(1, 1, 5, 5), 224, 320)).toEqual({ x: -32, y: -80 });
+  expect(cameraPosition(standingAt(1, 1, 5, 5), 224, 320)).toEqual({ x: -32, y: -112 });
 });

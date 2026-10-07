@@ -10,8 +10,9 @@ The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/dom
 
 ### Hero and Door
 
-- A layout has exactly one hero start.
+- A layout has exactly one explicit hero start.
 - A layout has exactly one door, three tiles wide, on open ground.
+- The door stands on the top edge of the playable area, facing inward. Scenery may lie behind it, outside the area the hero can reach.
 - The door stands beside a reachable tile, so the hero can walk through it once it opens.
 
 ### Orbs
@@ -119,10 +120,12 @@ Flowers grow in beds, in patches or along edges such as fences and paths. They a
 ### Rocks
 
 Stones gather in small groups or lie along shores and paths. They are not spread evenly across open ground.
+Use varied stone silhouettes within those groups, drawing from the five stone variants. Identical variants never touch.
 
 ### Tree Variants
 
 Levels use all four tree variants across the game, but a level does not need every variant. A small level uses one or two, and larger levels add more, up to all four.
+Favor different variants between distinct clusters or places so their silhouettes and fruit help distinguish landmarks. Every tree within a cluster still uses the same variant.
 
 ### Tree Size
 

@@ -4,7 +4,16 @@ import { Door } from '../domain/level/door';
 import { Level, Stone } from '../domain/level/level';
 import { type LevelId } from '../domain/shared/level-id';
 import { Direction, TilePosition } from '../domain/level/position';
-import { Fence, Flower, Ground, LevelSize, Scenery, Tree, TreeVariant } from '../domain/level/scenery';
+import {
+  Fence,
+  Flower,
+  type FlowerVariant,
+  Ground,
+  LevelSize,
+  Scenery,
+  Tree,
+  TreeVariant,
+} from '../domain/level/scenery';
 import { Signpost, SignpostText } from '../domain/level/signpost';
 import { check2dObstacles } from './check2d-obstacles';
 
@@ -14,6 +23,7 @@ interface LayoutContents {
   >;
   readonly signposts: Readonly<Record<string, string>>;
   readonly starCount?: StarCount;
+  readonly flowerVariants?: readonly FlowerVariant[];
 }
 
 const treeVariants = new Map([
@@ -49,6 +59,7 @@ export function levelFromLayout(
     }),
     where('*').map(Flower.at),
     where('F').map(Fence.at),
+    contents.flowerVariants,
   );
   const one = (symbol: string): TilePosition => {
     const [position, ...others] = where(symbol);

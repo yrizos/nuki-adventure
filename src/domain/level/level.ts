@@ -120,6 +120,12 @@ export class Level {
     });
     if (!this.canEnter(hero.position)) throw new RangeError('The hero must start on open ground');
     const reachable = this.reachableTiles();
+    if (reachable.some((tile) => tile.row < door.left.row)) {
+      throw new RangeError('The door must stand on the top edge of the playable area');
+    }
+    if (orbs.some((orb) => !reachable.some((tile) => tile.equals(orb.position)))) {
+      throw new RangeError('Every orb must lie where the hero can reach it');
+    }
     const directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
     if (
       !door.footprint.some((tile) =>

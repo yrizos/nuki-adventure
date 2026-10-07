@@ -1,7 +1,7 @@
 import type { LevelView } from '../application/level-view';
 import type { Area, OrbColor } from '../domain/level/collectibles';
 import { Direction, TilePosition } from '../domain/level/position';
-import { Ground, type Scenery, TreeVariant } from '../domain/level/scenery';
+import { FlowerVariant, Ground, type Scenery, TreeVariant } from '../domain/level/scenery';
 import type { Art } from './art/art';
 import { ditherSteps, ditherThreshold } from './ordered-dither';
 import { Picture, type Version } from './picture';
@@ -149,8 +149,8 @@ export class WorldPainter {
     );
     this.flowerChoices = propVariants(
       level.scenery.flowers.map((flower) => [flower.position]),
-      flowerArt.length,
-    );
+      level.scenery.flowerVariants.length,
+    ).map((choice) => FlowerVariant.All.indexOf(level.scenery.flowerVariants[choice]!));
     const joins = (position: TilePosition): boolean =>
       level.door.covers(position) || level.scenery.fences.some((fence) => fence.position.equals(position));
     this.fencePieces = level.scenery.fences.map(({ position }) =>
@@ -274,9 +274,6 @@ export class WorldPainter {
       draw(flowerArt[this.flowerChoices[index]!]![sway]!, column * tileSize, row * tileSize);
     });
 
-    const { door } = level;
-    const doorBase = (door.left.row + 1) * tileSize;
-
     const objects: { base: number; paint: () => void; shadow: () => void }[] = [];
     const shadow =
       (width: number, position: TilePosition, x: number, y: number): (() => void) =>
@@ -325,6 +322,8 @@ export class WorldPainter {
         paint: () => draw(fenceArt[this.fencePieces[index]!]!, column * tileSize, row * tileSize),
       });
     });
+    const { door } = level;
+    const doorBase = (door.left.row + 1) * tileSize;
     const doorFrame = doorLit ? doorArt.open : doorArt.closed;
     const doorTop = doorBase - doorFrame.rows.length;
     const doorLeft = door.left.column * tileSize;

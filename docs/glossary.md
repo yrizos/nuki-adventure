@@ -92,7 +92,7 @@ A star or an orb that the hero picks up.
 
 ### Level
 
-One enclosed part of the game world that the hero plays through, from her start tile to the door.
+One enclosed part of the game world that the hero plays through.
 
 ### Door
 
@@ -141,6 +141,10 @@ A scenery object that stands on the ground, such as a tree, as opposed to a grou
 ### Tree Variant
 
 The kind of fruit a tree bears: no fruit, oranges, apples or lemons.
+
+### Flower Variant
+
+A flower cluster's petal colors and arrangement. Each level chooses which flower variants grow there.
 
 ### Tree Cluster
 

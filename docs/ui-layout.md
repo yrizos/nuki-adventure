@@ -178,4 +178,5 @@ All values are in panel pixels.
 - Arrow keys move the hero
 - Z or Space presses A
 - X or Enter presses B
+- Escape opens the start screen, like the menu switch
 - A key press shows the matching action button as pressed

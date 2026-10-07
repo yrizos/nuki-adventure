@@ -4,7 +4,7 @@ import { Door } from '../domain/level/door';
 import { Level, Stone } from '../domain/level/level';
 import { LevelId } from '../domain/shared/level-id';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
-import { Flower, Ground, LevelSize, Scenery, Tree, TreeVariant } from '../domain/level/scenery';
+import { Flower, FlowerVariant, Ground, LevelSize, Scenery, Tree, TreeVariant } from '../domain/level/scenery';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { firstLevel } from '../infrastructure/first-level';
 import { randomShuffle } from '../infrastructure/random-shuffle';
@@ -12,7 +12,7 @@ import type { Art } from './art/art';
 import * as library from './sprite-library';
 import { faded, palette, type PaletteCode } from './palette';
 import { Picture, sprite } from './picture';
-import { heroPixels, tileSize } from './world-geometry';
+import { cameraPosition, heroPixels, tileSize } from './world-geometry';
 import { propVariants, WorldPainter } from './world-painter';
 import { closingLength, restorationLength } from './world-transition';
 
@@ -55,6 +55,8 @@ function renderingLevel(
   hero = TilePosition.at(2, 2),
   stones: readonly Stone[] = [],
   trees: readonly Tree[] = [],
+  flowers: readonly Flower[] = [],
+  flowerVariants: readonly FlowerVariant[] = FlowerVariant.All,
 ): Level {
   return Level.create({
     id: LevelId.of('render'),
@@ -62,11 +64,13 @@ function renderingLevel(
       LevelSize.of(12, 12),
       Array.from({ length: 12 }, () => Array.from({ length: 12 }, () => ground)),
       trees,
+      flowers,
       [],
+      flowerVariants,
     ),
     stones,
     orbs: [Orb.at(TilePosition.at(0, 0), color, everywhere)],
-    door: Door.closedAt(TilePosition.at(0, 11)),
+    door: Door.closedAt(TilePosition.at(9, 0)),
     hero: { position: hero, facing: Direction.Down },
     obstacles: check2dObstacles,
   });
@@ -94,17 +98,17 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    expect(await checksum(picture)).toBe('be5881bd7215ba6463408093b29a906ad1f79f1e5e62a3803644aaa35babd47f');
+    expect(await checksum(picture)).toBe('663e7922ee81f390a9f10ccaed1387f741111c17efb619bd6be5af8ed9677934');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     painter.paintRestoring(picture, scene, orb.position, 40, [], [orb.restores]);
-    expect(await checksum(picture)).toBe('c99eb7fd8fa70d1d76bd653631f8a5a03e937c87df2f7c221e586167bd4288c5');
+    expect(await checksum(picture)).toBe('218a97837b3899dc06657048d34b31f343bcda18cdce7f5a92c1e397f5ca4de1');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [orb.restores]);
-    expect(await checksum(picture)).toBe('37bc4c28e27dea3b350ede170f770b1c9e192f01c3bc4ae8a4e7baaecde6cdaf');
+    expect(await checksum(picture)).toBe('3738c825ebca831a8f0826df927ec44fdc87e017c474807fbf72ff46ef91b356');
   });
 });
 
@@ -140,8 +144,8 @@ test('native terrain grids cover all 81 three-terrain corner combinations', () =
             scenery: Scenery.of(LevelSize.of(4, 4), ground, [], []),
             stones: [],
             orbs: [Orb.at(TilePosition.at(3, 3), OrbColor.Violet, everywhere)],
-            door: Door.closedAt(TilePosition.at(0, 3)),
-            hero: { position: TilePosition.at(0, 0), facing: Direction.Down },
+            door: Door.closedAt(TilePosition.at(0, 0)),
+            hero: { position: TilePosition.at(0, 3), facing: Direction.Down },
             obstacles: check2dObstacles,
           });
           expect(() => new WorldPainter(level)).not.toThrow();
@@ -231,6 +235,120 @@ test('touching prop variants differ and placement is independent of input order'
   ).toEqual(variants);
 });
 
+function flowerArtDrawn(level: Level, frame: number): Art[] {
+  const picture = new Picture(level.scenery.size.columns * tileSize, level.scenery.size.rows * tileSize);
+  const camera = cameraPosition(level, picture.width, picture.height);
+  const draw = vi.spyOn(picture, 'draw');
+  new WorldPainter(level).paint(picture, { level, frame, hero: sprites.heroArt.down.stand, heldOrb: null }, [
+    level.orbs[0]!.restores,
+  ]);
+  const flowerFrames = scenery.flowerArt.flat();
+  const calls = draw.mock.calls.filter(([art]) => flowerFrames.includes(art));
+  expect(calls).toHaveLength(level.scenery.flowers.length);
+  return level.scenery.flowers.map(({ position }) => {
+    const atPosition = calls.filter(
+      ([, column, row]) =>
+        column === position.column * tileSize - camera.x && row === position.row * tileSize - camera.y,
+    );
+    expect(atPosition).toHaveLength(1);
+    return atPosition[0]![0];
+  });
+}
+
+test('all first-level flowers render exactly the two allowed variants in both sway frames', () => {
+  const level = firstLevel((positions) => positions);
+  expect(level.scenery.flowers).toHaveLength(25);
+  const first = flowerArtDrawn(level, 0);
+  const second = flowerArtDrawn(level, library.flowerFrameLength);
+  const allowed = [scenery.flowerArt[0]!, scenery.flowerArt[1]!];
+  expect(new Set([...first, ...second])).toEqual(new Set(allowed.flat()));
+  first.forEach((art, index) => {
+    const frames = allowed.find((variant) => variant.includes(art));
+    expect(frames).toBeDefined();
+    expect(new Set([art, second[index]!])).toEqual(new Set(frames));
+  });
+});
+
+test.each([0, library.flowerFrameLength])('touching first-level flowers never share a variant at frame %i', (frame) => {
+  const level = firstLevel((positions) => positions);
+  const drawn = flowerArtDrawn(level, frame);
+  const variants = drawn.map((art) => scenery.flowerArt.findIndex((frames) => frames.includes(art)));
+  let touchingPairs = 0;
+  level.scenery.flowers.forEach(({ position }, first) => {
+    for (let second = first + 1; second < level.scenery.flowers.length; second++) {
+      const neighbor = level.scenery.flowers[second]!.position;
+      if (Math.abs(position.column - neighbor.column) + Math.abs(position.row - neighbor.row) !== 1) continue;
+      touchingPairs++;
+      expect(variants[first]).not.toBe(variants[second]);
+    }
+  });
+  expect(touchingPairs).toBeGreaterThan(0);
+});
+
+test('flower choices use the allowed count and map a non-prefix selection to sprite indices 9 and 7', () => {
+  const flowers = [TilePosition.at(1, 1), TilePosition.at(2, 1), TilePosition.at(1, 2), TilePosition.at(2, 2)].map(
+    Flower.at,
+  );
+  const level = renderingLevel(Ground.Grass, OrbColor.Violet, TilePosition.at(2, 2), [], [], flowers, [
+    FlowerVariant.Violet,
+    FlowerVariant.Coral,
+  ]);
+  const choices = propVariants(
+    flowers.map(({ position }) => [position]),
+    2,
+  );
+  expect(new Set(choices)).toEqual(new Set([0, 1]));
+  const first = flowerArtDrawn(level, 0);
+  const second = flowerArtDrawn(level, library.flowerFrameLength);
+  choices.forEach((choice, index) => {
+    expect(new Set([first[index]!, second[index]!])).toEqual(new Set(scenery.flowerArt[[9, 7][choice]!]));
+  });
+});
+
+function firstLevelStoneArtDrawn(): { position: TilePosition; art: Art }[] {
+  const level = firstLevel((positions) => positions);
+  const picture = new Picture(level.scenery.size.columns * tileSize, level.scenery.size.rows * tileSize);
+  const camera = cameraPosition(level, picture.width, picture.height);
+  const draw = vi.spyOn(picture, 'draw');
+  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, [
+    level.orbs[0]!.restores,
+  ]);
+  return level.stones.map(({ position }) => {
+    const calls = draw.mock.calls.filter(
+      ([art, column, row]) =>
+        sprites.stoneVariants.includes(art) &&
+        column === position.column * tileSize - camera.x &&
+        row === position.row * tileSize - camera.y,
+    );
+    expect(calls).toHaveLength(1);
+    return { position, art: calls[0]![0] };
+  });
+}
+
+test('the first level renders at least three distinct stone variants', () => {
+  const drawn = firstLevelStoneArtDrawn();
+  expect(new Set(drawn.map(({ art }) => art)).size).toBeGreaterThanOrEqual(3);
+});
+
+test('the first level renders different stone art for each touching neighbor', () => {
+  const drawn = firstLevelStoneArtDrawn();
+  let touchingPairs = 0;
+  for (let first = 0; first < drawn.length; first++) {
+    for (let second = first + 1; second < drawn.length; second++) {
+      const left = drawn[first]!;
+      const right = drawn[second]!;
+      if (
+        Math.abs(left.position.column - right.position.column) + Math.abs(left.position.row - right.position.row) !==
+        1
+      )
+        continue;
+      touchingPairs++;
+      expect(left.art).not.toBe(right.art);
+    }
+  }
+  expect(touchingPairs).toBe(3);
+});
+
 test.each([
   [Ground.Grass, 'G1', 'N2'],
   [Ground.Path, 'E2', 'N3'],
@@ -243,8 +361,8 @@ test.each([
   ] as const) {
     const picture = new Picture(384, 384);
     painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, restored);
-    expect(colorAt(picture, 73, 96)).toBe(palette[code]);
-    expect(colorAt(picture, 137, 155)).toBe(palette[code]);
+    expect(colorAt(picture, 73, 160)).toBe(palette[code]);
+    expect(colorAt(picture, 137, 219)).toBe(palette[code]);
   }
   const shadow = sprites.groundShadow(14, colored);
   expect(shadow.rows.map((row) => row.replaceAll('.', '').length)).toEqual([14, 10, 10, 10, 6]);
@@ -260,9 +378,9 @@ test.each([
   const painter = new WorldPainter(level);
   const picture = new Picture(384, 384);
   painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, []);
-  expect(colorAt(picture, 20, 10)).toBe(palette[code]);
+  expect(colorAt(picture, 20, 74)).toBe(palette[code]);
   painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.holding!, heldOrb: color }, []);
-  expect(colorAt(picture, 84, 52)).toBe(palette[code]);
+  expect(colorAt(picture, 84, 116)).toBe(palette[code]);
 });
 
 test('oversized views extend edge terrain without leaving empty map margins', () => {
@@ -284,7 +402,7 @@ test('oversized views extend edge terrain without leaving empty map margins', ()
 test('whole-pixel camera centers the hero until clamped at a map edge', () => {
   for (const [position, expected] of [
     [TilePosition.at(5, 5), [96, 115]],
-    [TilePosition.at(0, 0), [0, 0]],
+    [TilePosition.at(0, 0), [0, 64]],
     [TilePosition.at(11, 11), [193, 231]],
   ] as const) {
     const level = renderingLevel(Ground.Grass, OrbColor.Violet, position);
@@ -348,8 +466,8 @@ test('restoration advances outward with palette-only pixels and matches both end
     }
   }
   painter.paintRestoring(dissolve, scene, origin, 0, [], [everywhere]);
-  expect(colorAt(dissolve, 64, 64)).toBe(colorAt(colored, 64, 64));
-  expect(colorAt(dissolve, 32, 32)).toBe(colorAt(neutral, 32, 32));
+  expect(colorAt(dissolve, 64, 96)).toBe(colorAt(colored, 64, 96));
+  expect(colorAt(dissolve, 32, 64)).toBe(colorAt(neutral, 32, 64));
 });
 
 test('restoring one area leaves the rest of the map faded', () => {
@@ -364,9 +482,9 @@ test('restoring one area leaves the rest of the map faded', () => {
     stones: [],
     orbs: [
       Orb.at(TilePosition.at(0, 0), OrbColor.Red, leftHalf),
-      Orb.at(TilePosition.at(11, 0), OrbColor.Blue, rightHalf),
+      Orb.at(TilePosition.at(11, 1), OrbColor.Blue, rightHalf),
     ],
-    door: Door.closedAt(TilePosition.at(0, 11)),
+    door: Door.closedAt(TilePosition.at(9, 0)),
     hero: { position: TilePosition.at(2, 2), facing: Direction.Down },
     obstacles: check2dObstacles,
   });
@@ -445,7 +563,7 @@ test('flowers stacked above each other use different variants, each with a groun
     ),
     stones: [],
     orbs: [Orb.at(TilePosition.at(0, 0), OrbColor.Violet, everywhere)],
-    door: Door.closedAt(TilePosition.at(0, 11)),
+    door: Door.closedAt(TilePosition.at(9, 0)),
     hero: { position: TilePosition.at(2, 2), facing: Direction.Down },
     obstacles: check2dObstacles,
   });
@@ -473,16 +591,29 @@ test('the door is drawn open only in the colored world once the orb is collected
       { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null },
       version === 'colored' ? [everywhere] : [],
     );
-    return draw.mock.calls.map(([art]) => art);
+    return draw.mock.calls
+      .map(([art]) => art)
+      .filter((art) => art === scenery.doorArt.closed || art === scenery.doorArt.open);
   };
-  expect(drawn('colored')).toContain(scenery.doorArt.closed);
-  expect(drawn('faded')).toContain(scenery.doorArt.closed);
+  expect(drawn('colored')).toEqual([scenery.doorArt.closed]);
+  expect(drawn('faded')).toEqual([scenery.doorArt.closed]);
   for (let frame = 0; frame < 30; frame++) level.tick(Heading.of(Direction.Left));
   expect(level.orbs).toEqual([]);
   expect(level.door.isOpen).toBe(false);
-  expect(drawn('colored')).toContain(scenery.doorArt.open);
-  expect(drawn('colored')).not.toContain(scenery.doorArt.closed);
-  expect(drawn('faded')).toContain(scenery.doorArt.closed);
+  expect(drawn('colored')).toEqual([scenery.doorArt.open]);
+  expect(drawn('faded')).toEqual([scenery.doorArt.closed]);
+});
+
+test('keeps the top-edge door art inside the game view when the hero approaches it', () => {
+  const level = renderingLevel(Ground.Grass, OrbColor.Violet, TilePosition.at(10, 1));
+  const picture = new Picture(224, 224);
+  const draw = vi.spyOn(picture, 'draw');
+  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.up.stand, heldOrb: null }, [
+    everywhere,
+  ]);
+  const door = draw.mock.calls.find(([art]) => art === scenery.doorArt.closed);
+  expect(door).toBeDefined();
+  expect(door![2]).toBeGreaterThanOrEqual(0);
 });
 
 test('closing darkens the colored world to Ink through the ordered dither', () => {
@@ -538,7 +669,7 @@ test.each([
     scenery: Scenery.of(LevelSize.of(12, 12), ground, [], []),
     stones: [],
     orbs: [Orb.at(TilePosition.at(0, 0), OrbColor.Violet, everywhere)],
-    door: Door.closedAt(TilePosition.at(0, 11)),
+    door: Door.closedAt(TilePosition.at(9, 0)),
     hero: { position: start, facing: direction.facing },
     obstacles: check2dObstacles,
   });
