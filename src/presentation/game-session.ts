@@ -69,10 +69,7 @@ export class GameSession {
 
   continuePlaying(): void {
     if (this.phase.name !== 'ended') return;
-    this.levelEnd.hide();
-    this.levelIndex = (this.levelIndex + 1) % this.levels.length;
-    this.run = this.begin();
-    this.phase = playing;
+    this.transitionTo(playing);
   }
 
   tick(): void {
@@ -94,11 +91,8 @@ export class GameSession {
         else if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
         else if (event instanceof OrbCollected) {
           this.sound.orb();
-          // A second orb picked up before the first one's color finishes spreading still keeps the first one's area colored.
-          if (this.phase.name === 'restoring') this.run.restored = [...this.run.restored, this.phase.restores];
           messageBox.show(play.view(id).orbs.length > 0 ? messages.someColorsBack : messages.colorsBack, this.frame);
-          this.phase = restoringOrb(event, this.frame);
-          this.sound.restoring();
+          this.transitionTo(restoringOrb(event, this.frame));
         } else if (event instanceof LevelCompleted) {
           this.sound.door();
           const level = play.view(id);
@@ -108,7 +102,7 @@ export class GameSession {
             StarCount.of(level.collected.length + level.stars.length),
           );
           this.progress.complete(id, playthrough);
-          this.phase = closingLevel(playthrough, this.frame);
+          this.transitionTo(closingLevel(playthrough, this.frame));
         }
       }
       const restorationMessage = messageBox.text === messages.colorsBack || messageBox.text === messages.someColorsBack;
@@ -121,27 +115,13 @@ export class GameSession {
         this.frame - this.phase.since >= doorOpeningLength(level.door, level.scenery.size, this.phase.origin);
       if (level.orbs.length === 0 && !level.door.isOpen && doorShown) play.openDoor(id);
     }
-    const next = phaseAfterFrame(this.phase, {
-      frame: this.frame,
-      restorationLength: (origin) => restorationLength(play.view(id).scenery.size, origin),
-      continuing: pressedA || pressedB,
-    });
-    if (next !== this.phase) {
-      switch (this.phase.name) {
-        case 'restoring':
-          this.run.restored = [...this.run.restored, this.phase.restores];
-          break;
-        case 'closing':
-          this.levelEnd.show(this.phase.playthrough);
-          break;
-        case 'ended':
-          this.continuePlaying();
-          break;
-        case 'playing':
-          break;
-      }
-      this.phase = next;
-    }
+    this.transitionTo(
+      phaseAfterFrame(this.phase, {
+        frame: this.frame,
+        restorationLength: (origin) => restorationLength(play.view(id).scenery.size, origin),
+        continuing: pressedA || pressedB,
+      }),
+    );
     this.run.animator.advance(this.run.play.view(this.run.id).hero);
     if (this.run.animator.footfall) this.sound.footstep();
     this.frame++;
@@ -167,6 +147,21 @@ export class GameSession {
     else if (this.phase.name === 'ended') picture.fill('Ink');
     else this.run.painter.paint(picture, scene, restored);
     if (this.phase.name !== 'closing' && this.phase.name !== 'ended') this.run.messageBox.paint(picture, this.frame);
+  }
+
+  private transitionTo(next: Phase): void {
+    const previous = this.phase;
+    if (next === previous) return;
+    if (previous.name === 'restoring' && (next.name === 'playing' || next.name === 'restoring'))
+      this.run.restored = [...this.run.restored, previous.restores];
+    if (previous.name === 'closing' && next.name === 'ended') this.levelEnd.show(previous.playthrough);
+    if (previous.name === 'ended' && next.name === 'playing') {
+      this.levelEnd.hide();
+      this.levelIndex = (this.levelIndex + 1) % this.levels.length;
+      this.run = this.begin();
+    }
+    this.phase = next;
+    if (next.name === 'restoring') this.sound.restoring();
   }
 
   private begin(): LevelRun {

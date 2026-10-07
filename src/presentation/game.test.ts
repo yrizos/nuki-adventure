@@ -19,7 +19,7 @@ import { MessageBox } from './message-box';
 import { Picture } from './picture';
 import { cameraPosition, heroPixels } from './world-geometry';
 import { WorldPainter } from './world-painter';
-import { closingLength } from './world-transition';
+import { closingLength, restorationLength } from './world-transition';
 
 const area = (keep: (position: TilePosition) => boolean): Area =>
   Area.of(Array.from({ length: 1600 }, (_, index) => TilePosition.at(index % 40, Math.floor(index / 40))).filter(keep));
@@ -32,6 +32,7 @@ const hint = 'ΒΡΕΣ ΤΗ ΣΦΑΙΡΑ!';
 function gameSession(
   orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbColor.Violet, everywhere)],
   stars: readonly Star[] = [Star.at(TilePosition.at(3, 5))],
+  size: LevelSize = LevelSize.of(5, 6),
 ) {
   const levelId = LevelId.of('session');
   const pressed = new Set<'a' | 'b'>();
@@ -45,8 +46,8 @@ function gameSession(
   let play: PlayLevel;
   const createPlay = vi.fn(() => {
     const scenery = Scenery.of(
-      LevelSize.of(5, 6),
-      Array.from({ length: 6 }, () => Array<Ground>(5).fill(Ground.Path)),
+      size,
+      Array.from({ length: size.rows }, () => Array<Ground>(size.columns).fill(Ground.Path)),
       [],
       [],
       [],
@@ -283,28 +284,68 @@ describe('the game session', () => {
     expect(subject.levelEnd.hide).not.toHaveBeenCalled();
   });
 
-  test.each(['a', 'b'] as const)('shows completion after the closing transition and continues with %s', (button) => {
-    const subject = gameSession();
-    for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
-    for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
-    const completedAt = subject.frames;
-    expect(subject.sound.door).toHaveBeenCalledOnce();
-    expect(subject.levelEnd.show).not.toHaveBeenCalled();
-    subject.advance(closingLength - 1);
-    expect(subject.levelEnd.show).not.toHaveBeenCalled();
-    subject.advance(1);
-    const playthrough = Playthrough.of(PlayTime.ofFrames(completedAt - 1), StarCount.of(1), StarCount.of(1));
-    expect(subject.levelEnd.show).toHaveBeenCalledExactlyOnceWith(playthrough);
-    expect(subject.progress.complete).toHaveBeenCalledExactlyOnceWith(subject.level.id, playthrough);
-    const picture = new Picture(224, 224);
-    subject.session.paint(picture);
-    expect(new Set(picture.pixels.filter((_, index) => index % 4 === 3))).toEqual(new Set([255]));
-    subject.press(button);
-    expect(subject.levelEnd.hide).toHaveBeenCalledOnce();
-    expect(subject.createPlay).toHaveBeenCalledTimes(2);
-    expect(subject.level.hero.position).toEqual(TilePosition.at(0, 5));
-    expect(subject.session.messageText).toBe('');
-  });
+  test.each(['level-end button', 'a', 'b'] as const)(
+    'shows completion after the closing transition and continues with %s',
+    (button) => {
+      const subject = gameSession();
+      const continuePlaying = (): void => {
+        if (button === 'level-end button') subject.session.continuePlaying();
+        else subject.press(button);
+      };
+      continuePlaying();
+      expect(subject.createPlay).toHaveBeenCalledOnce();
+      expect(subject.levelEnd.hide).not.toHaveBeenCalled();
+      for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
+      for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
+      const completedAt = subject.frames;
+      expect(subject.sound.door).toHaveBeenCalledOnce();
+      expect(subject.levelEnd.show).not.toHaveBeenCalled();
+      continuePlaying();
+      expect(subject.createPlay).toHaveBeenCalledOnce();
+      expect(subject.levelEnd.hide).not.toHaveBeenCalled();
+      subject.advance(closingLength - 1 - (button === 'level-end button' ? 0 : 1));
+      expect(subject.levelEnd.show).not.toHaveBeenCalled();
+      subject.advance(1);
+      const playthrough = Playthrough.of(PlayTime.ofFrames(completedAt - 1), StarCount.of(1), StarCount.of(1));
+      expect(subject.levelEnd.show).toHaveBeenCalledExactlyOnceWith(playthrough);
+      expect(subject.progress.complete).toHaveBeenCalledExactlyOnceWith(subject.level.id, playthrough);
+      const picture = new Picture(224, 224);
+      subject.session.paint(picture);
+      expect(new Set(picture.pixels.filter((_, index) => index % 4 === 3))).toEqual(new Set([255]));
+      continuePlaying();
+      expect(subject.levelEnd.hide).toHaveBeenCalledOnce();
+      expect(subject.createPlay).toHaveBeenCalledTimes(2);
+      expect(subject.level.hero.position).toEqual(TilePosition.at(0, 5));
+      expect(subject.session.messageText).toBe('');
+      expect(subject.level.orbs).toHaveLength(1);
+      expect(subject.level.stars).toHaveLength(1);
+      expect(subject.level.door.isOpen).toBe(false);
+      expect(subject.level.isComplete).toBe(false);
+      const freshAnimator = new HeroAnimator();
+      for (const walking of [false, true]) {
+        if (walking) {
+          subject.controls.heading.mockReturnValue(Heading.of(Direction.Right));
+          subject.tick();
+          freshAnimator.advance(subject.session.level.hero);
+        }
+        const actual = new Picture(224, 224);
+        const expected = new Picture(224, 224);
+        const level = subject.session.level;
+        new WorldPainter(level).paint(
+          expected,
+          { level, frame: subject.frames, hero: freshAnimator.pose(level.hero, subject.frames, false), heldOrb: null },
+          [],
+        );
+        subject.session.paint(actual);
+        expect(actual.pixels).toEqual(expected.pixels);
+      }
+      subject.controls.heading.mockReturnValue(null);
+      continuePlaying();
+      expect(subject.levelEnd.hide).toHaveBeenCalledOnce();
+      expect(subject.createPlay).toHaveBeenCalledTimes(2);
+      expect(subject.progress.complete).toHaveBeenCalledOnce();
+    },
+  );
 });
 
 describe('the level sequence', () => {
@@ -369,15 +410,29 @@ describe('the level sequence', () => {
     expect(subject.started).toEqual(['one']);
   });
 
-  test('moves on to the second level, then returns to the first after the last', () => {
-    const subject = sequence();
-    subject.complete();
-    subject.continueWith('a');
-    expect(subject.started).toEqual(['one', 'two']);
-    subject.complete();
-    subject.continueWith('b');
-    expect(subject.started).toEqual(['one', 'two', 'one']);
-  });
+  test.each(['level-end button', 'a', 'b'] as const)(
+    'advances once and wraps after the last level with %s',
+    (button) => {
+      const subject = sequence();
+      const continuePlaying = (): void => {
+        if (button === 'level-end button') subject.session.continuePlaying();
+        else subject.continueWith(button);
+      };
+      continuePlaying();
+      expect(subject.started).toEqual(['one']);
+      subject.complete();
+      continuePlaying();
+      continuePlaying();
+      expect(subject.started).toEqual(['one', 'two']);
+      expect(subject.current().isComplete).toBe(false);
+      subject.complete();
+      continuePlaying();
+      continuePlaying();
+      expect(subject.started).toEqual(['one', 'two', 'one']);
+      expect(subject.progress.reach.mock.calls.map(([id]) => id.value)).toEqual(['one', 'two', 'one']);
+      expect(subject.progress.complete).toHaveBeenCalledTimes(2);
+    },
+  );
 
   test('starts with the level it is given and moves on from there', () => {
     const subject = sequence('two');
@@ -550,34 +605,84 @@ describe('whole frames of the game session', () => {
     expect(await paintedChecksum(subject)).toBe('38eff61e9c0182f493628b78f5b2475bfbd6c103ec51e486aebe199ac4e836a1');
   });
 
-  test('paints spreading colors with the normal hero and congratulations message', () => {
-    const subject = gameSession();
+  test.each([false, true])(
+    'paints spreading colors with the normal hero and message, interrupted: %s',
+    (interrupted) => {
+      const subject = interrupted
+        ? gameSession([
+            Orb.at(TilePosition.at(1, 0), OrbColor.Red, leftHalf),
+            Orb.at(TilePosition.at(2, 0), OrbColor.Blue, rightHalf),
+          ])
+        : gameSession();
+      const orbs = subject.level.orbs;
+      const orb = orbs.at(-1)!;
+      const restored = interrupted ? [orbs[0]!.restores] : [];
+      subject.walkUntil(Direction.Right, () => subject.level.orbs.length < orbs.length);
+      const firstPickupFrame = subject.frames - 1;
+      if (interrupted) {
+        subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
+        expect(subject.frames - 1 - firstPickupFrame).toBeLessThan(
+          restorationLength(subject.level.scenery.size, orbs[0]!.position),
+        );
+      }
+      const pickupFrame = subject.frames - 1;
+      subject.advance(20);
+      const actual = new Picture(224, 224);
+      const expected = new Picture(224, 224);
+      const level = { ...subject.session.level, hero: subject.session.level.hero.between(1) };
+      const scene = {
+        level,
+        frame: subject.frames,
+        hero: subject.normalAnimator.pose(level.hero, subject.frames, false),
+        heldOrb: null,
+      };
+      new WorldPainter(level).paintRestoring(expected, scene, orb.position, subject.frames - pickupFrame, restored, [
+        ...restored,
+        orb.restores,
+      ]);
+      const congratulations = new MessageBox();
+      congratulations.show(messages.colorsBack, pickupFrame);
+      congratulations.paint(expected, subject.frames);
+      subject.session.paint(actual);
+      expect(actual.pixels).toEqual(expected.pixels);
+    },
+  );
+
+  test('closes the colored world without a restoration message when completion interrupts spreading', () => {
+    const subject = gameSession(undefined, [], LevelSize.of(22, 6));
     const orb = subject.level.orbs[0]!;
     subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
     const pickupFrame = subject.frames - 1;
-    subject.advance(20);
-    const actual = new Picture(224, 224);
-    const expected = new Picture(224, 224);
-    const level = { ...subject.session.level, hero: subject.session.level.hero.between(1) };
-    const scene = {
-      level,
-      frame: subject.frames,
-      hero: subject.normalAnimator.pose(level.hero, subject.frames, false),
-      heldOrb: null,
-    };
-    new WorldPainter(level).paintRestoring(
-      expected,
-      scene,
-      orb.position,
-      subject.frames - pickupFrame,
-      [],
-      [orb.restores],
-    );
-    const congratulations = new MessageBox();
-    congratulations.show(messages.colorsBack, pickupFrame);
-    congratulations.paint(expected, subject.frames);
-    subject.session.paint(actual);
-    expect(actual.pixels).toEqual(expected.pixels);
+    subject.move(Direction.Right);
+    subject.walkUntil(Direction.Up, () => subject.level.isComplete);
+    const completedFrame = subject.frames - 1;
+    expect(completedFrame - pickupFrame).toBeLessThan(restorationLength(subject.level.scenery.size, orb.position));
+    const playthrough = Playthrough.of(PlayTime.ofFrames(completedFrame), StarCount.of(0), StarCount.of(0));
+    expect(subject.progress.complete).toHaveBeenCalledExactlyOnceWith(subject.level.id, playthrough);
+    expect(subject.levelEnd.show).not.toHaveBeenCalled();
+    for (const elapsed of [1, closingLength / 2, closingLength]) {
+      subject.advance(elapsed - (subject.frames - completedFrame));
+      const actual = new Picture(224, 224);
+      const expected = new Picture(224, 224);
+      const level = subject.session.level;
+      new WorldPainter(level).paintClosing(
+        expected,
+        {
+          level,
+          frame: subject.frames,
+          hero: subject.normalAnimator.pose(level.hero, subject.frames, false),
+          heldOrb: null,
+        },
+        elapsed,
+      );
+      subject.session.paint(actual);
+      expect(actual.pixels).toEqual(expected.pixels);
+      expect(subject.levelEnd.show).not.toHaveBeenCalled();
+      expect(subject.progress.complete).toHaveBeenCalledOnce();
+    }
+    subject.tick();
+    expect(subject.levelEnd.show).toHaveBeenCalledExactlyOnceWith(playthrough);
+    expect(subject.progress.complete).toHaveBeenCalledOnce();
   });
 
   test('paints the current closing fixture unchanged', async () => {
