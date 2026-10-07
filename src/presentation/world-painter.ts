@@ -1,7 +1,7 @@
 import type { LevelView } from '../application/level-view';
 import type { Area, OrbColor } from '../domain/level/collectibles';
 import { Direction, TilePosition } from '../domain/level/position';
-import { Ground, type Scenery } from '../domain/level/scenery';
+import { Ground, type Scenery, TreeVariant } from '../domain/level/scenery';
 import type { Art } from './art/art';
 import { ditherSteps, ditherThreshold } from './ordered-dither';
 import { Picture, type Version } from './picture';
@@ -10,6 +10,7 @@ import {
   fenceArt,
   flowerArt,
   flowerFrameLength,
+  fruitTreeArt,
   grassArt,
   groundShadow,
   lightMote,
@@ -120,7 +121,7 @@ export class WorldPainter {
   private colored = new Picture(0, 0);
   private before = new Picture(0, 0);
   private after = new Picture(0, 0);
-  private readonly treeChoices: readonly number[];
+  private readonly treeFrames: readonly (readonly Art[])[];
   private readonly stoneChoices: readonly number[];
   private readonly flowerChoices: readonly number[];
   private readonly fencePieces: readonly number[];
@@ -128,9 +129,19 @@ export class WorldPainter {
 
   constructor(level: LevelView) {
     this.ground = groundTiles(level.scenery);
-    this.treeChoices = propVariants(
-      level.scenery.trees.map((tree) => tree.footprint),
+    // A tree cluster shares one variant, so no-fruit trees only ever touch each other and are spread over their own art.
+    const fruitArt = new Map([
+      [TreeVariant.Oranges, fruitTreeArt.orange],
+      [TreeVariant.Apples, fruitTreeArt.apple],
+      [TreeVariant.Lemons, fruitTreeArt.lemon],
+    ]);
+    const plainTrees = level.scenery.trees.filter((tree) => tree.variant.equals(TreeVariant.NoFruit));
+    const plainChoices = propVariants(
+      plainTrees.map((tree) => tree.footprint),
       treeArt.length,
+    );
+    this.treeFrames = level.scenery.trees.map(
+      (tree) => fruitArt.get(tree.variant) ?? treeArt[plainChoices[plainTrees.indexOf(tree)]!]!,
     );
     this.stoneChoices = propVariants(
       level.stones.map((stone) => [stone.position]),
@@ -281,7 +292,7 @@ export class WorldPainter {
       };
     level.scenery.trees.forEach((tree, index) => {
       const leaves = Math.floor((frame + index * 13) / treeFrameLength) % 2;
-      const art = treeArt[this.treeChoices[index]!]![leaves]!;
+      const art = this.treeFrames[index]![leaves]!;
       const x = tree.base.column * tileSize;
       const base = (tree.base.row + 1) * tileSize;
       objects.push({

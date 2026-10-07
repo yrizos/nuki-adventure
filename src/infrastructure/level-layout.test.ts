@@ -5,7 +5,7 @@ import { Door } from '../domain/level/door';
 import { Stone } from '../domain/level/level';
 import { LevelId } from '../domain/shared/level-id';
 import { Direction, TilePosition } from '../domain/level/position';
-import { Fence, Flower, Ground, Tree } from '../domain/level/scenery';
+import { Fence, Flower, Ground, Tree, TreeVariant } from '../domain/level/scenery';
 import { Signpost, SignpostText } from '../domain/level/signpost';
 import { levelFromLayout } from './level-layout';
 
@@ -43,9 +43,19 @@ describe('a level built from a layout', () => {
 
   test('places stones, trees, flowers and fences', () => {
     expect(level.stones).toEqual([Stone.at(at(3, 2))]);
-    expect(level.scenery.trees).toEqual([Tree.at(at(0, 0))]);
+    expect(level.scenery.trees).toEqual([Tree.at(at(0, 0), TreeVariant.NoFruit)]);
     expect(level.scenery.flowers).toEqual([Flower.at(at(2, 2))]);
     expect(level.scenery.fences).toEqual([Fence.at(at(5, 0))]);
+  });
+
+  test.each([
+    ['T', TreeVariant.NoFruit],
+    ['N', TreeVariant.Oranges],
+    ['A', TreeVariant.Apples],
+    ['L', TreeVariant.Lemons],
+  ])('plants a tree of the variant its base symbol %s picks', (symbol, variant) => {
+    const planted = levelFromLayout(LevelId.of('layout'), [`${symbol}t...F`, ...layout.slice(1)], keepOrder, contents);
+    expect(planted.scenery.trees).toEqual([Tree.at(at(0, 0), variant)]);
   });
 
   test('gives each orb its color and the area its rule selects', () => {

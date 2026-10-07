@@ -4,7 +4,7 @@ import { Door } from '../domain/level/door';
 import { Level, Stone } from '../domain/level/level';
 import { type LevelId } from '../domain/shared/level-id';
 import { Direction, TilePosition } from '../domain/level/position';
-import { Fence, Flower, Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
+import { Fence, Flower, Ground, LevelSize, Scenery, Tree, TreeVariant } from '../domain/level/scenery';
 import { Signpost, SignpostText } from '../domain/level/signpost';
 import { check2dObstacles } from './check2d-obstacles';
 
@@ -15,6 +15,13 @@ interface LayoutContents {
   readonly signposts: Readonly<Record<string, string>>;
   readonly starCount?: StarCount;
 }
+
+const treeVariants = new Map([
+  ['T', TreeVariant.NoFruit],
+  ['N', TreeVariant.Oranges],
+  ['A', TreeVariant.Apples],
+  ['L', TreeVariant.Lemons],
+]);
 
 export type Shuffle = (positions: readonly TilePosition[]) => readonly TilePosition[];
 
@@ -36,7 +43,10 @@ export function levelFromLayout(
   const scenery = Scenery.of(
     size,
     ground,
-    where('T').map(Tree.at),
+    cells.flatMap(({ symbol, at }) => {
+      const variant = treeVariants.get(symbol);
+      return variant ? [Tree.at(at, variant)] : [];
+    }),
     where('*').map(Flower.at),
     where('F').map(Fence.at),
   );

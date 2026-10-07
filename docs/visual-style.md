@@ -200,12 +200,11 @@ A new element uses the smallest size in this table that fits its shape.
 
 - Stars and orbs sit centered in their tile with a four pixel empty margin
 - Each orb has its own symbol or shape
-- Only stars and orbs use the brightest, most saturated steps
 
 ### Scenery Props
 
 - Every prop has a ground shadow
-- Repeated props have at least two variants, and identical variants never touch
+- Repeated props have at least two variants, and identical variants never touch. Fruit trees are the exception, because each fruit has one tree shape and every tree in a tree cluster bears the same fruit
 
 ### Door
 

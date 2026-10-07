@@ -138,6 +138,14 @@ Everything in the game world that the player does not interact with, such as gra
 
 A scenery object that stands on the ground, such as a tree, as opposed to a ground tile.
 
+### Tree Variant
+
+The kind of fruit a tree bears: no fruit, oranges, apples or lemons.
+
+### Tree Cluster
+
+A group of trees whose footprints touch, including at a corner. Every tree in a cluster has the same tree variant.
+
 ### Ground Shadow
 
 The shadow directly below an object, drawn in the shading step of the surface beneath it.

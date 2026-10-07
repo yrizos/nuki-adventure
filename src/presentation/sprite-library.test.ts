@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { sprite } from './picture';
-import { readSprite, sprites, terrainArt, waterFrameLength } from './sprite-library';
+import { fruitTreeArt, readSprite, sprites, terrainArt, treeArt, waterFrameLength } from './sprite-library';
 
 const valid = {
   legend: { k: 'Ink', g: 'G2' },
@@ -30,6 +30,11 @@ test('terrain transitions animate on the water clock', () => {
   expect(new Set(Object.values(sprites['terrain-transitions']!.animations).map(({ length }) => length))).toEqual(
     new Set([waterFrameLength]),
   );
+});
+
+test('no-fruit trees choose among eight leafy shapes that leave out every fruit tree', () => {
+  expect(treeArt).toHaveLength(8);
+  for (const frame of Object.values(fruitTreeArt).flat()) expect(treeArt.flat()).not.toContain(frame);
 });
 
 test('animations share frames by identity', () => {

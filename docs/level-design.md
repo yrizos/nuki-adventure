@@ -6,7 +6,7 @@ Hard constraints are enforced by code, and a level that breaks one fails to load
 
 ## Hard Constraints
 
-The `Level` constructor in `src/domain/level/level.ts` and `levelFromLayout` in `src/infrastructure/level-layout.ts` enforce these rules.
+The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/domain/level/scenery.ts` and `levelFromLayout` in `src/infrastructure/level-layout.ts` enforce these rules.
 
 ### Hero and Door
 
@@ -25,6 +25,10 @@ The `Level` constructor in `src/domain/level/level.ts` and `levelFromLayout` in 
 - Every star is reachable and not hidden.
 - No star shares a tile with an orb, the hero start or another star.
 - A layout either places its stars by hand or gives a star count for random placement, never both.
+
+### Trees
+
+- Every tree in a tree cluster has the same tree variant.
 
 ### Areas
 
@@ -115,6 +119,10 @@ Flowers grow in beds, in patches or along edges such as fences and paths. They a
 ### Rocks
 
 Stones gather in small groups or lie along shores and paths. They are not spread evenly across open ground.
+
+### Tree Variants
+
+Levels use all four tree variants across the game, but a level does not need every variant. A small level uses one or two, and larger levels add more, up to all four.
 
 ### Tree Size
 

@@ -126,7 +126,14 @@ export const terrainArt: Readonly<Record<string, readonly Art[]>> = Object.fromE
   Object.entries(sprite('terrain-transitions').animations).map(([corners, { frames }]) => [corners, frames]),
 );
 
-export const treeArt = animatedVariants('tree');
+export const treeArt = Object.entries(sprite('tree').animations)
+  .filter(([name]) => name.startsWith('variant-'))
+  .map(([, { frames }]) => frames);
+export const fruitTreeArt = {
+  orange: animation('tree', 'fruit-orange').frames,
+  apple: animation('tree', 'fruit-apple').frames,
+  lemon: animation('tree', 'fruit-lemon').frames,
+} as const;
 export const treeFrameLength = frameLength('tree');
 export const flowerArt = animatedVariants('flowers');
 export const flowerFrameLength = frameLength('flowers');

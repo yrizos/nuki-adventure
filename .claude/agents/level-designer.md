@@ -14,6 +14,7 @@ Rules:
 
 - level-layout.ts validation is the hard floor. Passing it does not satisfy docs/level-design.md. Check each guideline in that file and report any you could not meet.
 - Place every star by hand and never give a star count. Stars exist to encourage exploration of the whole map, so random placement defeats them. Spread them across the map on optional spots away from the mandatory route.
+- Use the tree variants (no fruit, oranges, apples, lemons) across levels. Give every tree in a tree cluster the same variant. A small level uses one or two variants, and larger levels add more, up to all four.
 
 Validate: make check.
 

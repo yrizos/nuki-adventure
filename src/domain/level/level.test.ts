@@ -13,7 +13,7 @@ import {
 } from './level-events';
 import { LevelId } from '../shared/level-id';
 import { Direction, Heading, TilePosition } from './position';
-import { Fence, Flower, Ground, LevelSize, Scenery, Tree } from './scenery';
+import { Fence, Flower, Ground, LevelSize, Scenery, Tree, TreeVariant } from './scenery';
 import { check2dObstacles } from '../../infrastructure/check2d-obstacles';
 import { Signpost, SignpostText } from './signpost';
 
@@ -37,7 +37,13 @@ function parse(given: readonly string[]): { scenery: Scenery; where: (symbol: st
   const where = (symbol: string): TilePosition[] =>
     cells.filter((cell) => cell.symbol === symbol).map((cell) => cell.position);
   return {
-    scenery: Scenery.of(size, ground, where('T').map(Tree.at), where('*').map(Flower.at), where('F').map(Fence.at)),
+    scenery: Scenery.of(
+      size,
+      ground,
+      where('T').map((base) => Tree.at(base, TreeVariant.NoFruit)),
+      where('*').map(Flower.at),
+      where('F').map(Fence.at),
+    ),
     where,
   };
 }
@@ -491,6 +497,50 @@ describe('a level', () => {
 
   test('rejects trees standing in water', () => {
     expect(() => level(['.T~'], at(0, 0), at(0, 0))).toThrow(RangeError);
+  });
+});
+
+describe('trees in the scenery', () => {
+  const grove = (...trees: Tree[]): Scenery =>
+    Scenery.of(
+      LevelSize.of(6, 4),
+      Array.from({ length: 4 }, () => Array.from({ length: 6 }, () => Ground.Grass)),
+      trees,
+      [],
+    );
+
+  test.each([
+    ['side by side', at(2, 0)],
+    ['one above the other', at(0, 1)],
+    ['only at a corner', at(2, 1)],
+  ])('rejects a tree cluster of different variants touching %s', (_, base) => {
+    expect(() => grove(Tree.at(at(0, 0), TreeVariant.NoFruit), Tree.at(base, TreeVariant.Apples))).toThrow(RangeError);
+  });
+
+  test('accepts a tree cluster of one variant', () => {
+    expect(() =>
+      grove(
+        Tree.at(at(0, 0), TreeVariant.Lemons),
+        Tree.at(at(2, 0), TreeVariant.Lemons),
+        Tree.at(at(4, 1), TreeVariant.Lemons),
+      ),
+    ).not.toThrow();
+  });
+
+  test('accepts separate tree clusters of different variants two tiles apart', () => {
+    expect(() =>
+      grove(
+        Tree.at(at(0, 0), TreeVariant.NoFruit),
+        Tree.at(at(3, 0), TreeVariant.Oranges),
+        Tree.at(at(0, 2), TreeVariant.Apples),
+      ),
+    ).not.toThrow();
+  });
+
+  test('are equal only with the same base and variant', () => {
+    expect(Tree.at(at(1, 1), TreeVariant.Apples).equals(Tree.at(at(1, 1), TreeVariant.Apples))).toBe(true);
+    expect(Tree.at(at(1, 1), TreeVariant.Apples).equals(Tree.at(at(1, 1), TreeVariant.Lemons))).toBe(false);
+    expect(Tree.at(at(1, 1), TreeVariant.Apples).equals(Tree.at(at(2, 1), TreeVariant.Apples))).toBe(false);
   });
 });
 

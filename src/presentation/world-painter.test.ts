@@ -4,7 +4,7 @@ import { Door } from '../domain/level/door';
 import { Level, Stone } from '../domain/level/level';
 import { LevelId } from '../domain/shared/level-id';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
-import { Flower, Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
+import { Flower, Ground, LevelSize, Scenery, Tree, TreeVariant } from '../domain/level/scenery';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { firstLevel } from '../infrastructure/first-level';
 import { randomShuffle } from '../infrastructure/random-shuffle';
@@ -22,6 +22,7 @@ const scenery = {
   waterArt: library.waterArt,
   terrainArt: library.terrainArt,
   treeArt: library.treeArt,
+  fruitTreeArt: library.fruitTreeArt,
   flowerArt: library.flowerArt,
   fenceArt: library.fenceArt,
   doorArt: library.doorArt,
@@ -93,17 +94,17 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    expect(await checksum(picture)).toBe('07f48d6096410fcf8d4b41f013797fa68b5f194b1a94046674611e22e5057a86');
+    expect(await checksum(picture)).toBe('be5881bd7215ba6463408093b29a906ad1f79f1e5e62a3803644aaa35babd47f');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     painter.paintRestoring(picture, scene, orb.position, 40, [], [orb.restores]);
-    expect(await checksum(picture)).toBe('b82d074b71a28048d934004d9b8fedc61e940ee2d5139ea75c55846b4984c276');
+    expect(await checksum(picture)).toBe('c99eb7fd8fa70d1d76bd653631f8a5a03e937c87df2f7c221e586167bd4288c5');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [orb.restores]);
-    expect(await checksum(picture)).toBe('b221991d89d4c2e6d53d818c9d313fe9e927ade3c130d1d9720e4207ee9f1963');
+    expect(await checksum(picture)).toBe('37bc4c28e27dea3b350ede170f770b1c9e192f01c3bc4ae8a4e7baaecde6cdaf');
   });
 });
 
@@ -298,7 +299,7 @@ test('whole-pixel camera centers the hero until clamped at a map edge', () => {
 });
 
 test('tall props occlude the hero behind them and never paint over a hero in front', () => {
-  const tree = Tree.at(TilePosition.at(4, 5));
+  const tree = Tree.at(TilePosition.at(4, 5), TreeVariant.NoFruit);
   for (const [hero, treeLast] of [
     [TilePosition.at(4, 4), true],
     [TilePosition.at(4, 6), false],
@@ -384,6 +385,48 @@ test('restoring one area leaves the rest of the map faded', () => {
   expect(neutrals).toContain(colorAt(right, 120, 200));
   expect(grass).toContain(colorAt(right, 300, 200));
   expect(painted([leftHalf, rightHalf]).pixels).toEqual(painted([everywhere]).pixels);
+});
+
+function treeArtDrawn(trees: readonly Tree[]): (tree: Tree) => Art | undefined {
+  const level = renderingLevel(Ground.Grass, OrbColor.Violet, TilePosition.at(2, 2), [], trees);
+  const picture = new Picture(384, 384);
+  const draw = vi.spyOn(picture, 'draw');
+  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null }, [
+    everywhere,
+  ]);
+  const frames = [...scenery.treeArt.flat(), ...Object.values(scenery.fruitTreeArt).flat()];
+  return (tree) => draw.mock.calls.find(([art, x]) => frames.includes(art) && x === tree.base.column * tileSize)?.[0];
+}
+
+test('each fruit tree is drawn with its own fruit art', () => {
+  const trees = [
+    [Tree.at(TilePosition.at(3, 5), TreeVariant.Oranges), scenery.fruitTreeArt.orange],
+    [Tree.at(TilePosition.at(6, 5), TreeVariant.Apples), scenery.fruitTreeArt.apple],
+    [Tree.at(TilePosition.at(9, 5), TreeVariant.Lemons), scenery.fruitTreeArt.lemon],
+  ] as const;
+  const drawn = treeArtDrawn(trees.map(([tree]) => tree));
+  for (const [tree, frames] of trees) expect(frames).toContain(drawn(tree));
+});
+
+test('touching no-fruit trees use different leafy shapes', () => {
+  const trees = [
+    Tree.at(TilePosition.at(4, 5), TreeVariant.NoFruit),
+    Tree.at(TilePosition.at(6, 5), TreeVariant.NoFruit),
+  ];
+  const drawn = treeArtDrawn(trees);
+  const [first, second] = trees.map((tree) => scenery.treeArt.findIndex((frames) => frames.includes(drawn(tree)!)));
+  expect(first).not.toBe(-1);
+  expect(second).not.toBe(-1);
+  expect(first).not.toBe(second);
+});
+
+test('touching trees of one fruit are both drawn with that fruit art', () => {
+  const trees = [
+    Tree.at(TilePosition.at(4, 5), TreeVariant.Apples),
+    Tree.at(TilePosition.at(6, 5), TreeVariant.Apples),
+  ];
+  const drawn = treeArtDrawn(trees);
+  for (const tree of trees) expect(scenery.fruitTreeArt.apple).toContain(drawn(tree));
 });
 
 test('flowers stacked above each other use different variants, each with a ground shadow under every stem', () => {

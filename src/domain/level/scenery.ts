@@ -38,11 +38,27 @@ export class LevelSize {
   }
 }
 
-export class Tree {
-  private constructor(readonly base: TilePosition) {}
+export class TreeVariant {
+  static readonly NoFruit = new TreeVariant('no fruit');
+  static readonly Oranges = new TreeVariant('oranges');
+  static readonly Apples = new TreeVariant('apples');
+  static readonly Lemons = new TreeVariant('lemons');
 
-  static at(base: TilePosition): Tree {
-    return new Tree(base);
+  private constructor(readonly name: 'no fruit' | 'oranges' | 'apples' | 'lemons') {}
+
+  equals(other: TreeVariant): boolean {
+    return this === other;
+  }
+}
+
+export class Tree {
+  private constructor(
+    readonly base: TilePosition,
+    readonly variant: TreeVariant,
+  ) {}
+
+  static at(base: TilePosition, variant: TreeVariant): Tree {
+    return new Tree(base, variant);
   }
 
   get footprint(): readonly TilePosition[] {
@@ -51,6 +67,15 @@ export class Tree {
 
   covers(position: TilePosition): boolean {
     return this.footprint.some((tile) => tile.equals(position));
+  }
+
+  // Canopies that meet only at a corner still read as one group, so they belong to the same cluster.
+  sharesClusterWith(other: Tree): boolean {
+    return this.footprint.some((tile) =>
+      other.footprint.some(
+        (neighbor) => Math.abs(tile.column - neighbor.column) <= 1 && Math.abs(tile.row - neighbor.row) <= 1,
+      ),
+    );
   }
 
   get obstacle(): Outline {
@@ -63,7 +88,7 @@ export class Tree {
   }
 
   equals(other: Tree): boolean {
-    return this.base.equals(other.base);
+    return this.base.equals(other.base) && this.variant.equals(other.variant);
   }
 }
 
@@ -134,6 +159,16 @@ export class Scenery {
         throw new RangeError(`Trees overlap at ${tile.column}, ${tile.row}`);
       }
     });
+    for (const tree of trees) {
+      const other = trees.find(
+        (neighbor) => neighbor.sharesClusterWith(tree) && !neighbor.variant.equals(tree.variant),
+      );
+      if (other) {
+        throw new RangeError(
+          `Trees in one cluster need the same variant, at ${tree.base.column}, ${tree.base.row} and ${other.base.column}, ${other.base.row}`,
+        );
+      }
+    }
     for (const flower of flowers) {
       if (!size.contains(flower.position) || !groundAt(flower.position).equals(Ground.Grass)) {
         throw new RangeError(

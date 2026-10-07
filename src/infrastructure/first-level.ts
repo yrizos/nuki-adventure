@@ -7,19 +7,19 @@ export const firstLevelId = LevelId.of('first');
 
 // The two rows outside the fence give the door, which stands three tiles tall, room above its base.
 const layout = [
-  '.Tt.......Tt..',
-  'Tt..........Tt',
+  '.Nt.......Nt..',
+  'Nt..........Nt',
   'FFFFFDDDFFFFFF',
-  'F+**P###...TtF',
+  'F+**P###...NtF',
   'F.*...#....**F',
-  'F.....H..Tt.+F',
-  'FTt...##.....F',
-  'F..Tt..#.Tt..F',
-  'FTt....##....F',
+  'F.....H..Nt.+F',
+  'FAt...##.....F',
+  'F..At..#.Nt..F',
+  'FAt....##....F',
   'F+....**#.oo.F',
-  'F..Tt...##o..F',
+  'F..Nt...##o..F',
   'F.......~#O~.F',
-  'F.Tt...~~~~~+F',
+  'F.Nt...~~~~~+F',
   'F+.**.o~~~~~~F',
   'FFFFFFFFFFFFFF',
 ];
