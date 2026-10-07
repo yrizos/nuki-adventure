@@ -5,6 +5,7 @@ import { type LevelId } from '../domain/level/level-id';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
 import { Signpost, SignpostText } from '../domain/level/signpost';
+import { check2dObstacles } from './check2d-obstacles';
 
 interface LayoutContents {
   readonly orbs: Readonly<
@@ -61,6 +62,7 @@ export function levelFromLayout(
       door: Door.closedAt(door),
       hero: { position: one('H'), facing: Direction.Up },
       signposts,
+      obstacles: check2dObstacles,
     },
     contents.starCount,
     shuffle,

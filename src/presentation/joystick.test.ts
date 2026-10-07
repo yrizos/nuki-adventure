@@ -1,28 +1,25 @@
 import { expect, test } from 'vitest';
-import { Direction } from '../domain/level/position';
-import { heldOffset, returnOffset, snapTowardCenter, steer } from './joystick';
+import { Direction, Heading } from '../domain/level/position';
+import { heldOffset, litArrows, returnOffset, snapTowardCenter, thumbHeading } from './joystick';
 
-test('a thumb inside the dead zone or on a joystick without reach steers nowhere', () => {
-  expect(steer(29, 0, 100).direction).toBeNull();
-  expect(steer(30, 0, 100).direction).toBe(Direction.Right);
-  expect(steer(5, 5, 0)).toEqual({ offset: { x: 0, y: 0 }, direction: null });
+test('a thumb starts the hero at thirty percent of its travel and keeps her going down to twenty five', () => {
+  expect(thumbHeading(1, 0, 0.29, false)).toBeNull();
+  expect(thumbHeading(1, 0, 0.3, false)).toEqual(Heading.toward(1, 0));
+  expect(thumbHeading(1, 0, 0.26, true)).toEqual(Heading.toward(1, 0));
+  expect(thumbHeading(1, 0, 0.24, true)).toBeNull();
+  expect(thumbHeading(0, 0, 1, true)).toBeNull();
 });
 
-test('straight directions cover sixty degrees and diagonals the thirty degrees between them', () => {
+test('arrows light once the heading leans more than 22.5 degrees their way', () => {
   const at = (degrees: number): Direction | null =>
-    steer(Math.cos((degrees * Math.PI) / 180) * 50, Math.sin((degrees * Math.PI) / 180) * 50, 100).direction;
+    litArrows(Heading.toward(Math.cos((degrees * Math.PI) / 180), Math.sin((degrees * Math.PI) / 180)));
   expect(at(0)).toBe(Direction.Right);
-  expect(at(29)).toBe(Direction.Right);
-  expect(at(31)).toBe(Direction.DownRight);
-  expect(at(59)).toBe(Direction.DownRight);
-  expect(at(61)).toBe(Direction.Down);
+  expect(at(22)).toBe(Direction.Right);
+  expect(at(23)).toBe(Direction.DownRight);
+  expect(at(67)).toBe(Direction.DownRight);
+  expect(at(68)).toBe(Direction.Down);
   expect(at(-90)).toBe(Direction.Up);
   expect(at(180)).toBe(Direction.Left);
-});
-
-test('a thumb past the rim keeps the knob at the edge of its reach', () => {
-  expect(steer(300, 400, 50).offset).toEqual({ x: 30, y: 40 });
-  expect(steer(3, 4, 50).offset).toEqual({ x: 3, y: 4 });
 });
 
 test('held arrows push the knob to its reach, shortened on diagonals to stay inside the ring', () => {

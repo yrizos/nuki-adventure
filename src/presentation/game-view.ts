@@ -29,10 +29,15 @@ export class GameView {
     this.resizeFromLayout();
   }
 
-  paint(session: Pick<GameSession, 'paint'>): void {
-    session.paint(this.picture);
+  paint(
+    session: Pick<GameSession, 'paint'>,
+    tickProgress: number,
+    overlay?: (context: CanvasRenderingContext2D) => void,
+  ): void {
+    session.paint(this.picture, tickProgress);
     this.image.data.set(this.picture.pixels);
     this.context.putImageData(this.image, 0, 0);
+    overlay?.(this.context);
   }
 
   private updatePixelRatio(): void {

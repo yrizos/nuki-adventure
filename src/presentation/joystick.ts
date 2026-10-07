@@ -1,4 +1,4 @@
-import { Direction } from '../domain/level/position';
+import { Direction, Heading } from '../domain/level/position';
 
 export interface KnobOffset {
   readonly x: number;
@@ -13,18 +13,21 @@ export function heldOffset(direction: Direction, reach: number): KnobOffset {
   return { x: direction.columnStep * travel, y: direction.rowStep * travel };
 }
 
-export function steer(x: number, y: number, reach: number): { offset: KnobOffset; direction: Direction | null } {
-  const distance = Math.hypot(x, y);
-  const offset = distance > reach ? { x: (x / distance) * reach, y: (y / distance) * reach } : { x, y };
-  // A dead zone keeps a resting thumb from walking the hero by accident.
-  if (reach === 0 || distance < reach * 0.3) return { offset, direction: null };
-  // Wider straight sectors suit grid movement, since a thumb aimed straight often drifts a little off the line.
-  const threshold = Math.tan(Math.PI / 6);
-  const horizontal =
-    Math.abs(offset.x) > Math.abs(offset.y) * threshold ? (offset.x > 0 ? Direction.Right : Direction.Left) : null;
-  const vertical =
-    Math.abs(offset.y) > Math.abs(offset.x) * threshold ? (offset.y > 0 ? Direction.Down : Direction.Up) : null;
-  return { offset, direction: Direction.combine(horizontal, vertical) };
+// Starting needs a firmer push than stopping, so a thumb resting near the edge of the dead zone does not start and stop the hero.
+const startsAt = 0.3;
+const stopsBelow = 0.25;
+// An arrow lights once the thumb leans more than 22.5 degrees its way, which splits the ring into eight equal parts.
+const lean = Math.sin(Math.PI / 8);
+
+export function thumbHeading(x: number, y: number, travel: number, moving: boolean): Heading | null {
+  if (travel < (moving ? stopsBelow : startsAt) || (x === 0 && y === 0)) return null;
+  return Heading.toward(x, y);
+}
+
+export function litArrows(heading: Heading): Direction | null {
+  const horizontal = heading.x > lean ? Direction.Right : heading.x < -lean ? Direction.Left : null;
+  const vertical = heading.y > lean ? Direction.Down : heading.y < -lean ? Direction.Up : null;
+  return Direction.combine(horizontal, vertical);
 }
 
 // Snapping toward the center keeps the knob on whole panel pixels without pushing it past its reach.

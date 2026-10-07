@@ -126,11 +126,11 @@ All values are in panel pixels.
 - The knob matches the size of the action buttons
 - The knob never travels beyond the inner edge of the rim, so it never covers the rim
 - The knob moves in whole panel pixels
-- Four arrows inside the ring point up, right, down and left, and the arrows for the held direction light up
+- Four arrows inside the ring point up, right, down and left, and an arrow lights up while the thumb leans more than 22.5 degrees toward it
 - The knob sits on a lip below it, and while the joystick is held the knob sinks into its lip, so the lip disappears
 - The knob has a thumb dimple at its center
-- A dead zone of 30 percent of the knob's travel keeps a resting thumb from moving the hero
-- Up, right, down and left each cover 60 degrees around their arrow, and each diagonal covers the 30 degrees between them, so a thumb aimed slightly off a straight line still moves the hero straight
+- The hero starts walking once the knob travels 30 percent of its reach and stops when it falls back below 25 percent, so a resting thumb neither moves her nor starts and stops her
+- The hero walks along the exact angle of the thumb
 
 ### Action Buttons
 

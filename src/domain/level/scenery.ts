@@ -1,4 +1,5 @@
-import { Direction, type TilePosition } from './position';
+import { Outline, wholeTile } from './obstacles';
+import { Direction, TilePosition, tileSize, WorldPosition } from './position';
 
 export class Ground {
   static readonly Grass = new Ground('grass', true);
@@ -52,6 +53,10 @@ export class Tree {
     return this.footprint.some((tile) => tile.equals(position));
   }
 
+  get obstacle(): Outline {
+    return Outline.oval(WorldPosition.within(this.base, tileSize, 26), 18, 12);
+  }
+
   // The canopy rises one tile above the footprint, so whatever lies on that tile is drawn behind it.
   hides(position: TilePosition): boolean {
     return this.covers(position.neighbor(Direction.Down));
@@ -79,6 +84,20 @@ export class Fence {
 
   static at(position: TilePosition): Fence {
     return new Fence(position);
+  }
+
+  // A lone post leaves gaps her feet fit through, so the rails reach to every neighbor the fence joins.
+  obstacles(joins: (direction: Direction) => boolean): readonly Outline[] {
+    const [left, top, right, bottom] = [12, 17, 20, tileSize];
+    const outline = (from: number, upper: number, to: number, lower: number): Outline =>
+      Outline.spanning(this.position, from, upper, to, lower);
+    return [
+      outline(left, top, right, bottom),
+      ...(joins(Direction.Left) ? [outline(0, top, right, bottom)] : []),
+      ...(joins(Direction.Right) ? [outline(left, top, tileSize, bottom)] : []),
+      ...(joins(Direction.Up) ? [outline(left, 0, right, bottom)] : []),
+      ...(joins(Direction.Down) ? [outline(left, top, right, tileSize)] : []),
+    ];
   }
 
   equals(other: Fence): boolean {
@@ -149,6 +168,32 @@ export class Scenery {
   groundAt(position: TilePosition): Ground {
     if (!this.size.contains(position)) throw new RangeError(`${position.column}, ${position.row} is outside the level`);
     return this.ground[position.row]![position.column]!;
+  }
+
+  obstacles(joinsFence: (position: TilePosition) => boolean): readonly Outline[] {
+    const { columns, rows } = this.size;
+    const width = columns * tileSize;
+    const height = rows * tileSize;
+    const water: Outline[] = [];
+    for (let row = 0; row < rows; row++) {
+      for (let column = 0; column < columns; column++) {
+        const tile = TilePosition.at(column, row);
+        if (!this.groundAt(tile).isWalkable) water.push(wholeTile(tile));
+      }
+    }
+    const joins = (fence: Fence) => (direction: Direction) => {
+      const neighbor = fence.position.neighbor(direction);
+      return joinsFence(neighbor) || this.fences.some((other) => other.position.equals(neighbor));
+    };
+    return [
+      Outline.box(WorldPosition.at(-tileSize / 2, height / 2), tileSize, height + 2 * tileSize),
+      Outline.box(WorldPosition.at(width + tileSize / 2, height / 2), tileSize, height + 2 * tileSize),
+      Outline.box(WorldPosition.at(width / 2, -tileSize / 2), width + 2 * tileSize, tileSize),
+      Outline.box(WorldPosition.at(width / 2, height + tileSize / 2), width + 2 * tileSize, tileSize),
+      ...water,
+      ...this.trees.map((tree) => tree.obstacle),
+      ...this.fences.flatMap((fence) => fence.obstacles(joins(fence))),
+    ];
   }
 
   isWalkable(position: TilePosition): boolean {

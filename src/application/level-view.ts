@@ -3,6 +3,7 @@ import type { Door } from '../domain/level/door';
 import type { HeroState } from '../domain/level/hero';
 import type { Level, Stone } from '../domain/level/level';
 import type { LevelId } from '../domain/level/level-id';
+import type { Outline } from '../domain/level/obstacles';
 import type { Scenery } from '../domain/level/scenery';
 import type { Signpost } from '../domain/level/signpost';
 
@@ -17,6 +18,7 @@ export interface LevelView {
   readonly door: Door;
   readonly hero: HeroState;
   readonly isComplete: boolean;
+  readonly outlines: readonly Outline[];
 }
 
 export function levelView(level: Level): LevelView {
@@ -31,5 +33,6 @@ export function levelView(level: Level): LevelView {
     door: level.door,
     hero: level.hero,
     isComplete: level.isComplete,
+    outlines: level.outlines,
   };
 }

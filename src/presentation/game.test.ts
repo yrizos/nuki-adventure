@@ -5,9 +5,10 @@ import { Area, Orb, OrbColor, Star } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
 import { Level } from '../domain/level/level';
 import { LevelId } from '../domain/level/level-id';
-import { Direction, TilePosition } from '../domain/level/position';
+import { Direction, Heading, TilePosition } from '../domain/level/position';
 import { Ground, LevelSize, Scenery } from '../domain/level/scenery';
 import { Signpost, SignpostText } from '../domain/level/signpost';
+import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
 import { GameLoop } from './game-loop';
 import { GameSession, messages } from './game-session';
@@ -27,7 +28,7 @@ function gameSession(orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbCo
   const pressed = new Set<'a' | 'b'>();
   const controls = {
     takePress: vi.fn((button: 'a' | 'b') => pressed.delete(button)),
-    direction: vi.fn<() => Direction | null>(() => null),
+    heading: vi.fn<() => Heading | null>(() => null),
   };
   const sound = { star: vi.fn(), orb: vi.fn(), door: vi.fn(), footstep: vi.fn(), restoring: vi.fn() };
   const levelEnd = { show: vi.fn(), hide: vi.fn() };
@@ -47,6 +48,7 @@ function gameSession(orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbCo
       orbs,
       door: Door.closedAt(TilePosition.at(1, 5)),
       hero: { position: TilePosition.at(0, 0), facing: Direction.Right },
+      obstacles: check2dObstacles,
       stars: [Star.at(TilePosition.at(3, 0))],
       signposts: [Signpost.at(TilePosition.at(0, 1), SignpostText.of(hint))],
     });
@@ -62,13 +64,22 @@ function gameSession(orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbCo
   const advance = (count: number): void => {
     for (let frame = 0; frame < count; frame++) tick();
   };
+  // Walking one tile's width from a tile's middle ends in the middle of the next tile.
   const move = (direction: Direction): void => {
-    controls.direction.mockReturnValue(direction);
-    for (let frame = 0; frame < 4 && !play.view(levelId).hero.step; frame++) tick();
-    const step = play.view(levelId).hero.step;
-    expect(step).not.toBeNull();
-    controls.direction.mockReturnValue(null);
-    advance(step!.duration);
+    const start = play.view(levelId).hero.feet;
+    const travelled = (): number => {
+      const { feet } = play.view(levelId).hero;
+      return Math.hypot(feet.x - start.x, feet.y - start.y);
+    };
+    controls.heading.mockReturnValue(Heading.of(direction));
+    for (let frame = 0; frame < 40 && travelled() < 32 && !play.view(levelId).isComplete; frame++) tick();
+    controls.heading.mockReturnValue(null);
+  };
+  const walkUntil = (direction: Direction, done: () => boolean): void => {
+    controls.heading.mockReturnValue(Heading.of(direction));
+    for (let frame = 0; frame < 80 && !done(); frame++) tick();
+    expect(done()).toBe(true);
+    controls.heading.mockReturnValue(null);
   };
   return {
     session,
@@ -79,6 +90,7 @@ function gameSession(orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbCo
     tick,
     advance,
     move,
+    walkUntil,
     press(button: 'a' | 'b'): void {
       pressed.add(button);
       tick();
@@ -108,10 +120,10 @@ describe('the game session', () => {
   test('dismisses the signpost message when walking away', () => {
     const subject = gameSession();
     subject.press('a');
-    subject.controls.direction.mockReturnValue(Direction.Right);
-    subject.tick();
-    expect(subject.session.messageText).toBe('');
-    expect(subject.level.hero.step).not.toBeNull();
+    subject.controls.heading.mockReturnValue(Heading.of(Direction.Right));
+    for (let frame = 0; frame < 40 && subject.session.messageText === hint; frame++) subject.tick();
+    expect(subject.session.messageText).not.toBe(hint);
+    expect(subject.level.hero.isWalking).toBe(true);
   });
 
   test('keeps walking and collecting stars while the orb is held and colors spread', () => {
@@ -143,7 +155,7 @@ describe('the game session', () => {
 
   test('keeps the door shut until the spreading color has drawn all of it open', () => {
     const subject = gameSession();
-    subject.move(Direction.Right);
+    subject.walkUntil(Direction.Right, () => subject.sound.orb.mock.calls.length > 0);
     subject.advance(30);
     expect(subject.sound.restoring).toHaveBeenCalledOnce();
     // The door art reaches row 3 to row 5, five rings below the orb, so color covers it after 5 * 4 + 16 frames.
@@ -155,7 +167,7 @@ describe('the game session', () => {
 
   test('starts restoration exactly thirty frames after collecting the orb', () => {
     const subject = gameSession();
-    subject.move(Direction.Right);
+    subject.walkUntil(Direction.Right, () => subject.sound.orb.mock.calls.length > 0);
     subject.advance(29);
     expect(subject.sound.restoring).not.toHaveBeenCalled();
     subject.advance(1);
@@ -207,8 +219,8 @@ describe('the game session', () => {
 describe('the level sequence', () => {
   function sequence() {
     const pressed = new Set<'a' | 'b'>();
-    let direction: Direction | null = null;
-    const controls = { takePress: (button: 'a' | 'b') => pressed.delete(button), direction: () => direction };
+    let heading: Heading | null = null;
+    const controls = { takePress: (button: 'a' | 'b') => pressed.delete(button), heading: () => heading };
     const sound = { star: vi.fn(), orb: vi.fn(), door: vi.fn(), footstep: vi.fn(), restoring: vi.fn() };
     const levelEnd = { show: vi.fn(), hide: vi.fn() };
     const started: string[] = [];
@@ -231,6 +243,7 @@ describe('the level sequence', () => {
             orbs: [Orb.at(TilePosition.at(1, 1), OrbColor.Violet, everywhere)],
             door: Door.closedAt(TilePosition.at(0, 2)),
             hero: { position: TilePosition.at(1, 0), facing: Direction.Down },
+            obstacles: check2dObstacles,
           });
           const play = new PlayLevel(new InMemoryLevelRepository([level]));
           plays.push({ id, play });
@@ -241,9 +254,9 @@ describe('the level sequence', () => {
     const levels = [playable('one'), playable('two')];
     const session = new GameSession(levels, controls, sound, levelEnd);
     const complete = (): void => {
-      direction = Direction.Down;
+      heading = Heading.of(Direction.Down);
       for (let frame = 0; frame < 120 && levelEnd.show.mock.calls.length === plays.length - 1; frame++) session.tick();
-      direction = null;
+      heading = null;
       for (let frame = 0; frame <= closingLength && levelEnd.show.mock.calls.length < plays.length; frame++)
         session.tick();
       expect(levelEnd.show).toHaveBeenCalledTimes(plays.length);
@@ -317,6 +330,44 @@ describe('the game loop', () => {
     expect(render).toHaveBeenCalledTimes(3);
   });
 
+  test('renders from a frame stamped before the loop started', () => {
+    const render = vi.fn();
+    const loop = new GameLoop(() => {}, render, 100);
+    loop.advance(95);
+    expect(render).toHaveBeenLastCalledWith(0);
+  });
+
+  test('tells the render how far it is toward the next tick', () => {
+    const render = vi.fn();
+    const loop = new GameLoop(() => {}, render, 0);
+    loop.advance(25);
+    expect(render).toHaveBeenLastCalledWith(expect.closeTo(0.5, 5));
+    loop.advance(25 + 1000 / 120);
+    expect(render).toHaveBeenLastCalledWith(expect.closeTo(0, 5));
+  });
+
+  test.each([60, 90, 120, 144])('runs the same ticks in a second shown at %s frames per second', (rate) => {
+    let ticks = 0;
+    const loop = new GameLoop(
+      () => ticks++,
+      () => {},
+      0,
+    );
+    for (let frame = 1; frame <= rate; frame++) loop.advance((frame * 1000) / rate + 0.001);
+    expect(ticks).toBe(60);
+  });
+
+  test('runs the same ticks when frames are skipped', () => {
+    let ticks = 0;
+    const loop = new GameLoop(
+      () => ticks++,
+      () => {},
+      0,
+    );
+    for (const now of [16.7, 100, 101, 250, 400, 550, 700, 850, 1000.001]) loop.advance(now);
+    expect(ticks).toBe(60);
+  });
+
   test('runs every tick before rendering the frame', () => {
     const calls: string[] = [];
     const loop = new GameLoop(
@@ -350,14 +401,14 @@ describe('whole frames of the game session', () => {
   test('paints the current held orb fixture unchanged', async () => {
     const subject = gameSession();
     subject.move(Direction.Right);
-    expect(await paintedChecksum(subject)).toBe('28c2c1ea04ef534ac779f27e37ce8811ebd697ce0ce0a4a0b9e1f8768047a559');
+    expect(await paintedChecksum(subject)).toBe('d9f79fa42e3268ad98ed3f06c4073611e684d90279ff5c863259c5bf5cea2705');
   });
 
   test('paints the current spreading color fixture unchanged', async () => {
     const subject = gameSession();
     subject.move(Direction.Right);
     subject.advance(50);
-    expect(await paintedChecksum(subject)).toBe('d021a964621e7ef2ec9ddb79c796f6ac53b87a19a8b961604d08c324199db070');
+    expect(await paintedChecksum(subject)).toBe('307bbce0f6b87d06157f9e9e2b6a64e028b9eef64996ac7732163b2981d0716d');
   });
 
   test('paints the current closing fixture unchanged', async () => {
@@ -365,7 +416,7 @@ describe('whole frames of the game session', () => {
     for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
     for (let tile = 0; tile < 5; tile++) subject.move(Direction.Down);
     subject.advance(closingLength / 2);
-    expect(await paintedChecksum(subject)).toBe('3ad5c0a94d12cd63249e4e5a8ef689a501be0ee9981561b722a8d25112300d23');
+    expect(await paintedChecksum(subject)).toBe('2864691947c76a403eb2544a843dc5924c18e948834873afa23495c27bf0bf78');
   });
 
   test('paints the current ended fixture unchanged', async () => {

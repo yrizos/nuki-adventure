@@ -1,7 +1,7 @@
 import type { LevelEvent } from '../domain/level/level-events';
 import type { LevelId } from '../domain/level/level-id';
 import type { LevelRepository } from '../domain/level/level-repository';
-import type { Direction } from '../domain/level/position';
+import type { Heading } from '../domain/level/position';
 import { type LevelView, levelView } from './level-view';
 
 export class PlayLevel {
@@ -11,9 +11,9 @@ export class PlayLevel {
     return levelView(this.levels.load(id));
   }
 
-  advance(id: LevelId, direction: Direction | null): readonly LevelEvent[] {
+  advance(id: LevelId, heading: Heading | null): readonly LevelEvent[] {
     const level = this.levels.load(id);
-    const events = level.tick(direction);
+    const events = level.tick(heading);
     this.levels.save(level);
     return events;
   }

@@ -1,4 +1,5 @@
-import { Direction, type TilePosition } from './position';
+import { Outline } from './obstacles';
+import { Direction, type TilePosition, tileSize } from './position';
 
 export class SignpostText {
   private constructor(readonly value: string) {}
@@ -23,10 +24,18 @@ export class Signpost {
     return new Signpost(position, text);
   }
 
+  get obstacle(): Outline {
+    return Outline.spanning(this.position, 13, 19, 19, tileSize);
+  }
+
   // The board is read from the side or from in front, so standing on any of the four touching tiles is enough.
-  isBeside(position: TilePosition): boolean {
-    return [Direction.Up, Direction.Down, Direction.Left, Direction.Right].some((direction) =>
-      this.position.neighbor(direction).equals(position),
+  // The post is narrower than its tile, so her feet can also stand on the signpost's own tile.
+  isReadableFrom(position: TilePosition): boolean {
+    return (
+      this.position.equals(position) ||
+      [Direction.Up, Direction.Down, Direction.Left, Direction.Right].some((direction) =>
+        this.position.neighbor(direction).equals(position),
+      )
     );
   }
 

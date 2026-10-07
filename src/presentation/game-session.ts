@@ -1,3 +1,4 @@
+import type { LevelView } from '../application/level-view';
 import type { PlayLevel } from '../application/play-level';
 import type { Area } from '../domain/level/collectibles';
 import { LevelCompleted, OrbCollected, SignpostLeft, SignpostRead, StarCollected } from '../domain/level/level-events';
@@ -42,11 +43,15 @@ export class GameSession {
 
   constructor(
     private readonly levels: readonly PlayableLevel[],
-    private readonly controls: Pick<Controls, 'takePress' | 'direction'>,
+    private readonly controls: Pick<Controls, 'takePress' | 'heading'>,
     private readonly sound: Pick<Sound, 'star' | 'orb' | 'door' | 'footstep' | 'restoring'>,
     private readonly levelEnd: Pick<LevelEndWindow, 'show' | 'hide'>,
   ) {
     this.run = this.begin();
+  }
+
+  get level(): LevelView {
+    return this.run.play.view(this.run.id);
   }
 
   get messageText(): string {
@@ -70,7 +75,7 @@ export class GameSession {
         (pressedA || pressedB) && messageBox.text !== null && messageBox.text === this.run.signpostText;
       if (dismissing) messageBox.hide(this.frame);
       const reading = (pressedA || pressedB) && !dismissing;
-      const events = [...(reading ? play.read(id) : []), ...play.advance(id, this.controls.direction())];
+      const events = [...(reading ? play.read(id) : []), ...play.advance(id, this.controls.heading())];
       for (const event of events) {
         if (event instanceof SignpostRead) {
           // Once the door is open every signpost points the way out, whatever hint it gave before.
@@ -98,9 +103,9 @@ export class GameSession {
           this.phase = closingLevel(result, this.frame);
         }
       }
-      if (play.view(id).hero.step?.framesTaken === 0) this.sound.footstep();
       const restorationMessage = messageBox.text === messages.colorsBack || messageBox.text === messages.someColorsBack;
-      if (this.phase.name === 'playing' && restorationMessage && play.view(id).hero.step) messageBox.hide(this.frame);
+      if (this.phase.name === 'playing' && restorationMessage && play.view(id).hero.isWalking)
+        messageBox.hide(this.frame);
     }
     if (this.phase.name === 'restoring') {
       const level = play.view(id);
@@ -133,12 +138,14 @@ export class GameSession {
       this.phase = next;
     }
     this.run.animator.advance(this.run.play.view(this.run.id).hero);
+    if (this.run.animator.footfall) this.sound.footstep();
     this.frame++;
   }
 
-  paint(picture: Picture): void {
+  paint(picture: Picture, tickProgress = 1): void {
     const { restored } = this.run;
-    const level = this.run.play.view(this.run.id);
+    const current = this.run.play.view(this.run.id);
+    const level = { ...current, hero: current.hero.between(tickProgress) };
     const scene = {
       level,
       frame: this.frame,

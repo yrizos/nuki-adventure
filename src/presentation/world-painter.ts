@@ -336,8 +336,7 @@ export class WorldPainter {
       });
     }
     const hero = heroPixels(level);
-    const { position, step } = level.hero;
-    const standingOn = step && step.framesTaken >= step.duration / 2 ? position.neighbor(step.direction) : position;
+    const standingOn = level.hero.position;
     objects.push({
       base: hero.y + tileSize,
       shadow: shadow(14, standingOn, hero.x + 9, hero.y + tileSize),

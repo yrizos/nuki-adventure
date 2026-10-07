@@ -63,3 +63,60 @@ export class TilePosition {
     return this.column === other.column && this.row === other.row;
   }
 }
+
+export const tileSize = 32;
+
+export class WorldPosition {
+  private constructor(
+    readonly x: number,
+    readonly y: number,
+  ) {}
+
+  static at(x: number, y: number): WorldPosition {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      throw new RangeError(`A world position needs finite numbers, got ${x}, ${y}`);
+    }
+    return new WorldPosition(x, y);
+  }
+
+  static within(tile: TilePosition, x: number, y: number): WorldPosition {
+    return WorldPosition.at(tile.column * tileSize + x, tile.row * tileSize + y);
+  }
+
+  moved(heading: Heading, distance: number): WorldPosition {
+    return WorldPosition.at(this.x + heading.x * distance, this.y + heading.y * distance);
+  }
+
+  get tile(): TilePosition {
+    return TilePosition.at(Math.floor(this.x / tileSize), Math.floor(this.y / tileSize));
+  }
+
+  equals(other: WorldPosition): boolean {
+    return this.x === other.x && this.y === other.y;
+  }
+}
+
+export class Heading {
+  private constructor(
+    readonly x: number,
+    readonly y: number,
+  ) {}
+
+  static toward(x: number, y: number): Heading {
+    const length = Math.hypot(x, y);
+    if (!(length > 0) || !Number.isFinite(length)) throw new RangeError(`A heading needs a direction, got ${x}, ${y}`);
+    return new Heading(x / length, y / length);
+  }
+
+  static of(direction: Direction): Heading {
+    return Heading.toward(direction.columnStep, direction.rowStep);
+  }
+
+  alignment(direction: Direction): number {
+    return this.x * direction.columnStep + this.y * direction.rowStep;
+  }
+
+  equals(other: Heading): boolean {
+    return this.x === other.x && this.y === other.y;
+  }
+}

@@ -1,4 +1,5 @@
-import { Direction, type TilePosition } from './position';
+import { Outline } from './obstacles';
+import { Direction, type TilePosition, tileSize } from './position';
 
 export class Door {
   private constructor(
@@ -23,6 +24,11 @@ export class Door {
   hides(position: TilePosition): boolean {
     const below = position.neighbor(Direction.Down);
     return this.covers(below) || this.covers(below.neighbor(Direction.Down));
+  }
+
+  // The closed door fills its tiles, so her feet never stand on a door tile until it opens.
+  get obstacle(): Outline {
+    return Outline.spanning(this.left, 0, 0, 3 * tileSize, tileSize);
   }
 
   opened(): Door {

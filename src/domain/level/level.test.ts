@@ -1,12 +1,19 @@
 import { describe, expect, test } from 'vitest';
 import { Area, Orb, OrbColor, Star, StarCount } from './collectibles';
 import { Door } from './door';
-import { Step } from './hero';
 import { Level, Stone } from './level';
-import { LevelCompleted, OrbCollected, SignpostLeft, SignpostRead, StarCollected } from './level-events';
+import {
+  LevelCompleted,
+  type LevelEvent,
+  OrbCollected,
+  SignpostLeft,
+  SignpostRead,
+  StarCollected,
+} from './level-events';
 import { LevelId } from './level-id';
-import { Direction, TilePosition } from './position';
+import { Direction, Heading, TilePosition } from './position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree } from './scenery';
+import { check2dObstacles } from '../../infrastructure/check2d-obstacles';
 import { Signpost, SignpostText } from './signpost';
 
 const at = TilePosition.at;
@@ -43,6 +50,7 @@ function level(given: readonly string[], start: TilePosition, orb: TilePosition)
     orbs: [Orb.at(orb, OrbColor.Violet, everywhere)],
     door: Door.closedAt(where('D')[0]!),
     hero: { position: start, facing: Direction.Right },
+    obstacles: check2dObstacles,
     stars: where('S').map(Star.at),
     signposts: where('P').map(signpostAt),
   });
@@ -64,6 +72,7 @@ function scattered(
       orbs: [Orb.at(orb, OrbColor.Violet, everywhere)],
       door: Door.closedAt(where('D')[0]!),
       hero: { position: start, facing: Direction.Right },
+      obstacles: check2dObstacles,
       signposts: where('P').map(signpostAt),
     },
     StarCount.of(count),
@@ -71,84 +80,130 @@ function scattered(
   );
 }
 
-function hold(subject: Level, direction: Direction | null, frames: number): void {
-  for (let frame = 0; frame < frames; frame++) subject.tick(direction);
+const toward = (direction: Direction | null): Heading | null => direction && Heading.of(direction);
+
+function hold(subject: Level, direction: Direction | null, frames: number): readonly LevelEvent[] {
+  return Array.from({ length: frames }, () => subject.tick(toward(direction))).flat();
 }
 
 describe('the hero in a level', () => {
-  test.each([
-    [Direction.UpLeft, at(0, 0)],
-    [Direction.UpRight, at(2, 0)],
-    [Direction.DownLeft, at(0, 2)],
-    [Direction.DownRight, at(2, 2)],
-  ])('walks diagonally %s without increasing speed', (direction, destination) => {
-    const subject = level(['...', '...', '...'], at(1, 1), at(0, 1));
-    hold(subject, direction, 3);
-    expect(subject.hero.step?.direction).toBe(direction);
-    expect(subject.hero.facing).toBe(direction.vertical);
-    hold(subject, direction, Step.framesPerTile);
-    expect(subject.hero.position).toEqual(at(1, 1));
-    hold(subject, null, Math.ceil(Step.framesPerTile * Math.SQRT2) - Step.framesPerTile);
-    expect(subject.hero.position).toEqual(destination);
-  });
+  test.each([Direction.UpLeft, Direction.UpRight, Direction.DownLeft, Direction.DownRight])(
+    'walks diagonally %s as fast as she walks straight',
+    (direction) => {
+      const straight = level(['.....', '.....', '.....', '.....', '.....'], at(2, 2), at(0, 0));
+      const diagonal = level(['.....', '.....', '.....', '.....', '.....'], at(2, 2), at(0, 0));
+      const travelled = (subject: Level, heading: Direction): number => {
+        hold(subject, heading, 3);
+        const { x, y } = subject.hero.feet;
+        hold(subject, heading, 10);
+        return Math.hypot(subject.hero.feet.x - x, subject.hero.feet.y - y);
+      };
+      expect(travelled(straight, Direction.Right)).toBeCloseTo(20);
+      expect(travelled(diagonal, direction)).toBeCloseTo(20);
+    },
+  );
 
-  test.each([
-    ['.o.', '...', '...'],
-    ['...', '..o', '...'],
-    ['..o', '...', '...'],
-    ['.~.', '...', '...'],
-    ['...', '..~', '...'],
-  ])('does not cross a blocked diagonal corner or destination in %j', (...layout) => {
-    const subject = level(layout, at(1, 1), at(0, 2));
-    hold(subject, Direction.UpRight, 40);
-    expect(subject.hero.position).toEqual(at(1, 1));
+  test('shows her part of the way along her last move between ticks', () => {
+    const subject = level(['.....'], at(0, 0), at(4, 0));
+    hold(subject, Direction.Right, 3);
+    expect(subject.hero.between(0).feet.x).toBe(20);
+    expect(subject.hero.between(0.25).feet.x).toBe(20.5);
+    expect(subject.hero.between(1).feet).toEqual(subject.hero.feet);
+    hold(subject, null, 1);
+    expect(subject.hero.between(0.5).feet).toEqual(subject.hero.feet);
   });
 
   test('walks one tile in sixteen frames', () => {
     const subject = level(['.....'], at(0, 0), at(4, 0));
-    hold(subject, Direction.Right, 1 + Step.framesPerTile);
+    hold(subject, Direction.Right, 16);
+    expect(subject.hero.feet.x).toBe(48);
     expect(subject.hero.position).toEqual(at(1, 0));
   });
 
   test('shows a new facing for two frames before moving', () => {
     const subject = level(['...', '...'], at(0, 0), at(2, 1));
-    subject.tick(Direction.Down);
+    const start = subject.hero.feet;
+    hold(subject, Direction.Down, 1);
     expect(subject.hero.facing).toBe(Direction.Down);
-    subject.tick(Direction.Down);
-    expect(subject.hero.step).toBeNull();
-    subject.tick(Direction.Down);
-    expect(subject.hero.step?.direction).toBe(Direction.Down);
+    hold(subject, Direction.Down, 1);
+    expect(subject.hero.feet).toEqual(start);
+    hold(subject, Direction.Down, 1);
+    expect(subject.hero.feet.y).toBe(start.y + 2);
+  });
+
+  test('turns while walking without stopping', () => {
+    const subject = level(['...', '...', '...'], at(0, 0), at(2, 2));
+    hold(subject, Direction.Right, 4);
+    const before = subject.hero.feet;
+    hold(subject, Direction.Down, 1);
+    expect(subject.hero.facing).toBe(Direction.Down);
+    expect(subject.hero.feet.y).toBe(before.y + 2);
+  });
+
+  test('keeps her facing while the heading wavers around a diagonal', () => {
+    const subject = level(['.....', '.....', '.....'], at(0, 0), at(4, 2));
+    for (const angle of [40, 50, 44, 52, 46]) {
+      const radians = (angle * Math.PI) / 180;
+      subject.tick(Heading.toward(Math.cos(radians), Math.sin(radians)));
+      expect(subject.hero.facing).toBe(Direction.Right);
+    }
   });
 
   test.each([
-    ['a stone', '.o..'],
-    ['a tree', '.Tt.'],
-    ['a fence', '.F..'],
-    ['water', '.~..'],
-    ['the level edge', '....'],
-  ])('is stopped by %s', (_, line) => {
-    const start = line === '....' ? at(3, 0) : at(0, 0);
-    const subject = level([line], start, at(line === '....' ? 0 : 3, 0));
+    ['a stone', '.o..', 37, 48],
+    ['a tree', '.Tt.', 55, 64],
+    ['a fence', '.F..', 44, 44],
+    ['water', '.~..', 32, 32],
+    ['a signpost', '.P..', 45, 45],
+  ])('walks up to the base of %s without passing it', (_, line, nearest, farthest) => {
+    const subject = level([line], at(0, 0), at(3, 0));
     hold(subject, Direction.Right, 40);
-    expect(subject.hero.position).toEqual(start);
+    const front = subject.hero.feet.x + 7;
+    expect(front).toBeGreaterThan(nearest - 0.5);
+    expect(front).toBeLessThan(farthest + 0.5);
+  });
+
+  test('stops at the level edge', () => {
+    const subject = level(['....'], at(3, 0), at(0, 0));
+    hold(subject, Direction.Right, 40);
+    expect(subject.hero.feet.x + 7).toBeCloseTo(128, 0);
+  });
+
+  test('slides along water when pushed diagonally into it', () => {
+    const subject = level(['.....', '~~~~~'], at(0, 0), at(4, 0));
+    hold(subject, Direction.DownRight, 40);
+    expect(subject.hero.position.row).toBe(0);
+    expect(subject.hero.feet.x).toBeGreaterThan(16 + 40);
+  });
+
+  test('slides along a fence when pushed diagonally into it', () => {
+    const subject = level(['.F.', '.F.', '.F.', '...'], at(0, 0), at(2, 3));
+    hold(subject, Direction.DownRight, 30);
+    expect(subject.hero.feet.x + 7).toBeLessThan(44.5);
+    expect(subject.hero.feet.y).toBeGreaterThan(28 + 30);
+  });
+
+  test('curves around a stone she walks into and carries on', () => {
+    const subject = level(['...', '.o.', '...'], at(0, 1), at(2, 0));
+    hold(subject, Direction.Right, 60);
+    expect(subject.hero.position.column).toBe(2);
   });
 
   test('walks over flowers', () => {
     const subject = level(['.*..'], at(0, 0), at(3, 0));
-    hold(subject, Direction.Right, 1 + Step.framesPerTile);
+    hold(subject, Direction.Right, 16);
     expect(subject.hero.position).toEqual(at(1, 0));
   });
 
-  test('picks up the orb and stops her there, leaving the door closed', () => {
+  test('picks up the orb once her feet reach its tile, leaving the door closed', () => {
     const subject = level(['....'], at(0, 0), at(2, 0));
-    let events = subject.tick(Direction.Right);
-    for (let frame = 0; frame < 80 && events.length === 0; frame++) events = subject.tick(Direction.Right);
+    let events = subject.tick(toward(Direction.Right));
+    for (let frame = 0; frame < 80 && events.length === 0; frame++) events = subject.tick(toward(Direction.Right));
     expect(events).toEqual([new OrbCollected(LevelId.of('test'), at(2, 0), OrbColor.Violet, everywhere)]);
     expect(subject.orbs).toEqual([]);
     expect(subject.door.isOpen).toBe(false);
     expect(subject.isComplete).toBe(false);
     expect(subject.hero.position).toEqual(at(2, 0));
-    expect(subject.hero.step).toBeNull();
   });
 
   test('opens the door only once she has picked up every orb', () => {
@@ -160,12 +215,13 @@ describe('the hero in a level', () => {
       orbs: [Orb.at(at(1, 0), OrbColor.Red, leftHalf), Orb.at(at(2, 0), OrbColor.Blue, rightHalf)],
       door: Door.closedAt(where('D')[0]!),
       hero: { position: at(0, 0), facing: Direction.Right },
+      obstacles: check2dObstacles,
     });
-    hold(subject, Direction.Right, 1 + Step.framesPerTile);
+    hold(subject, Direction.Right, 16);
     expect(subject.orbs).toEqual([Orb.at(at(2, 0), OrbColor.Blue, rightHalf)]);
     expect(() => subject.openDoor()).toThrow('The door opens only once every orb is picked up');
     expect(subject.door.isOpen).toBe(false);
-    hold(subject, Direction.Right, 1 + Step.framesPerTile);
+    hold(subject, Direction.Right, 16);
     expect(subject.orbs).toEqual([]);
     expect(subject.door.isOpen).toBe(false);
     subject.openDoor();
@@ -174,25 +230,25 @@ describe('the hero in a level', () => {
 
   test('picks up a star by walking onto it and keeps walking', () => {
     const subject = level(['.S..', '....', '....'], at(0, 0), at(3, 0));
-    const events = Array.from({ length: 1 + Step.framesPerTile }, () => subject.tick(Direction.Right)).flat();
+    const events = hold(subject, Direction.Right, 16);
     expect(events).toEqual([new StarCollected(LevelId.of('test'), at(1, 0))]);
     expect(subject.stars).toEqual([]);
     expect(subject.collected).toEqual([Star.at(at(1, 0))]);
-    expect(subject.hero.step?.direction).toBe(Direction.Right);
+    expect(subject.hero.isWalking).toBe(true);
   });
 
   test('completes the level without picking up the stars', () => {
     const subject = level(['S..', '...', '...', 'DDD'], at(1, 0), at(2, 0));
-    hold(subject, Direction.Right, 1 + Step.framesPerTile);
+    hold(subject, Direction.Right, 16);
     subject.openDoor();
-    const events = Array.from({ length: 80 }, () => subject.tick(Direction.Down)).flat();
+    const events = hold(subject, Direction.Down, 80);
     expect(events).toEqual([new LevelCompleted(LevelId.of('test'))]);
     expect(subject.stars).toEqual([Star.at(at(0, 0))]);
   });
 
   test('is stopped by the door after picking up every orb until the door opens', () => {
     const subject = level(['...', 'DDD'], at(0, 0), at(1, 0));
-    hold(subject, Direction.Right, 1 + Step.framesPerTile);
+    hold(subject, Direction.Right, 16);
     hold(subject, Direction.Down, 40);
     expect(subject.hero.position).toEqual(at(1, 0));
     expect(subject.isComplete).toBe(false);
@@ -206,15 +262,14 @@ describe('the hero in a level', () => {
 
   test('completes the level by stepping into the open doorway, after which nothing moves', () => {
     const subject = level(['...', 'DDD'], at(0, 0), at(1, 0));
-    hold(subject, Direction.Right, 1 + Step.framesPerTile);
+    hold(subject, Direction.Right, 16);
     expect(subject.door.isOpen).toBe(false);
     subject.openDoor();
     expect(subject.door.isOpen).toBe(true);
-    const events = Array.from({ length: 80 }, () => subject.tick(Direction.Down)).flat();
+    const events = hold(subject, Direction.Down, 80);
     expect(events).toEqual([new LevelCompleted(LevelId.of('test'))]);
     expect(subject.isComplete).toBe(true);
     expect(subject.hero.position).toEqual(at(1, 1));
-    expect(subject.hero.step).toBeNull();
   });
 });
 
@@ -222,6 +277,14 @@ describe('the hero beside a signpost', () => {
   test.each([at(1, 0), at(0, 1), at(2, 1), at(1, 2)])('reads it from %j', (start) => {
     const subject = level(['...', '.P.', '...'], start, at(0, 0).equals(start) ? at(2, 2) : at(0, 0));
     expect(subject.read()).toEqual([new SignpostRead(LevelId.of('test'), at(1, 1), hint)]);
+  });
+
+  test('reads it while her feet stand on its tile beside the post', () => {
+    const subject = level(['.P.', '...'], at(0, 0), at(2, 1));
+    hold(subject, Direction.Right, 40);
+    hold(subject, null, 1);
+    expect(subject.hero.position).toEqual(at(1, 0));
+    expect(subject.read()).toEqual([new SignpostRead(LevelId.of('test'), at(1, 0), hint)]);
   });
 
   test('reads the words of whichever signpost she stands beside', () => {
@@ -235,11 +298,12 @@ describe('the hero beside a signpost', () => {
       orbs: [Orb.at(at(2, 1), OrbColor.Violet, everywhere)],
       door: Door.closedAt(where('D')[0]!),
       hero: { position: at(1, 0), facing: Direction.Right },
+      obstacles: check2dObstacles,
       stars: [],
       signposts: [Signpost.at(at(0, 0), left), Signpost.at(at(3, 0), right)],
     });
     expect(subject.read()).toEqual([new SignpostRead(LevelId.of('test'), at(0, 0), left)]);
-    hold(subject, Direction.Right, 1 + Step.framesPerTile);
+    hold(subject, Direction.Right, 16);
     hold(subject, null, 1);
     expect(subject.read()).toEqual([new SignpostRead(LevelId.of('test'), at(3, 0), right)]);
   });
@@ -249,19 +313,18 @@ describe('the hero beside a signpost', () => {
     expect(subject.read()).toEqual([]);
   });
 
-  test('keeps reading while she turns in place and stops once she steps away', () => {
+  test('reads nothing while walking', () => {
     const subject = level(['...', '.P.', '...'], at(1, 0), at(2, 2));
-    subject.read();
-    expect(Array.from({ length: 2 }, () => subject.tick(Direction.Left)).flat()).toEqual([]);
-    expect(subject.hero.step).toBeNull();
-    expect(subject.tick(Direction.Left)).toEqual([new SignpostLeft(LevelId.of('test'))]);
-    expect(Array.from({ length: 40 }, () => subject.tick(Direction.Left)).flat()).toEqual([]);
+    hold(subject, Direction.Right, 3);
+    expect(subject.read()).toEqual([]);
   });
 
-  test('is stopped by it', () => {
-    const subject = level(['.P..'], at(0, 0), at(3, 0));
-    hold(subject, Direction.Right, 40);
-    expect(subject.hero.position).toEqual(at(0, 0));
+  test('keeps reading while she turns in place and stops once she walks off the reading tiles', () => {
+    const subject = level(['...', '.P.', '...'], at(1, 0), at(2, 2));
+    subject.read();
+    expect(hold(subject, Direction.Left, 2)).toEqual([]);
+    expect(subject.hero.facing).toBe(Direction.Left);
+    expect(hold(subject, Direction.Left, 40)).toEqual([new SignpostLeft(LevelId.of('test'))]);
   });
 });
 
@@ -283,6 +346,7 @@ describe('a level', () => {
         orbs: [Orb.at(at(1, 0), OrbColor.Violet, everywhere)],
         door: Door.closedAt(at(0, 1)),
         hero: { position: at(0, 0), facing: Direction.Right },
+        obstacles: check2dObstacles,
         stars: [],
         signposts: [signpostAt(at(2, 0))],
       }),
@@ -303,8 +367,9 @@ describe('a level', () => {
         orbs: [Orb.at(at(1, 0), color, everywhere)],
         door: Door.closedAt(at(0, 1)),
         hero: { position: at(0, 0), facing: Direction.Right },
+        obstacles: check2dObstacles,
       });
-      const events = Array.from({ length: 17 }, () => subject.tick(Direction.Right)).flat();
+      const events = Array.from({ length: 17 }, () => subject.tick(Heading.of(Direction.Right))).flat();
       expect(events).toEqual([new OrbCollected(LevelId.of('color'), at(1, 0), color, everywhere)]);
       expect(subject.orbs).toEqual([]);
     },
@@ -320,6 +385,7 @@ describe('a level', () => {
         orbs: [],
         door: Door.closedAt(where('D')[0]!),
         hero: { position: at(0, 0), facing: Direction.Right },
+        obstacles: check2dObstacles,
       }),
     ).toThrow(RangeError);
   });
@@ -334,6 +400,7 @@ describe('a level', () => {
         orbs: [Orb.at(at(2, 0), OrbColor.Red, leftHalf), Orb.at(at(2, 0), OrbColor.Blue, rightHalf)],
         door: Door.closedAt(where('D')[0]!),
         hero: { position: at(0, 0), facing: Direction.Right },
+        obstacles: check2dObstacles,
       }),
     ).toThrow(RangeError);
   });
@@ -348,6 +415,7 @@ describe('a level', () => {
         orbs: [Orb.at(at(2, 0), OrbColor.Red, leftHalf)],
         door: Door.closedAt(where('D')[0]!),
         hero: { position: at(0, 0), facing: Direction.Right },
+        obstacles: check2dObstacles,
       }),
     ).toThrow(RangeError);
   });
@@ -377,6 +445,7 @@ describe('a level', () => {
         orbs: [Orb.at(at(1, 0), OrbColor.Violet, everywhere)],
         door: Door.closedAt(at(0, 1)),
         hero: { position: at(0, 0), facing: Direction.Right },
+        obstacles: check2dObstacles,
         stars: [Star.at(at(2, 0))],
       }),
     ).toThrow(RangeError);

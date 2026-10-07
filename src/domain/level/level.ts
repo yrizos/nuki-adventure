@@ -10,7 +10,8 @@ import {
   StarCollected,
 } from './level-events';
 import type { LevelId } from './level-id';
-import { Direction, TilePosition } from './position';
+import { type Obstacles, Outline, type PlaceObstacles } from './obstacles';
+import { Direction, type Heading, TilePosition, WorldPosition } from './position';
 import type { Scenery } from './scenery';
 import type { Signpost } from './signpost';
 
@@ -19,6 +20,10 @@ export class Stone {
 
   static at(position: TilePosition): Stone {
     return new Stone(position);
+  }
+
+  get obstacle(): Outline {
+    return Outline.oval(WorldPosition.within(this.position, 16, 22), 22, 20);
   }
 
   equals(other: Stone): boolean {
@@ -35,6 +40,7 @@ export interface LevelDefinition {
   readonly hero: { readonly position: TilePosition; readonly facing: Direction };
   readonly stars?: readonly Star[];
   readonly signposts?: readonly Signpost[];
+  readonly obstacles: PlaceObstacles;
 }
 
 export class Level {
@@ -45,13 +51,26 @@ export class Level {
   private remainingStars: readonly Star[];
   private collectedStars: readonly Star[] = [];
   private reading: Signpost | null = null;
+  private readonly placeObstacles: PlaceObstacles;
+  private obstacles: Obstacles;
+  private obstacleOutlines: readonly Outline[] = [];
 
   readonly id: LevelId;
   readonly scenery: Scenery;
   readonly stones: readonly Stone[];
   readonly signposts: readonly Signpost[];
 
-  private constructor({ id, scenery, stones, orbs, door, hero, stars = [], signposts = [] }: LevelDefinition) {
+  private constructor({
+    id,
+    scenery,
+    stones,
+    orbs,
+    door,
+    hero,
+    stars = [],
+    signposts = [],
+    obstacles,
+  }: LevelDefinition) {
     this.id = id;
     this.scenery = scenery;
     this.stones = stones;
@@ -112,6 +131,8 @@ export class Level {
     });
     this.remainingOrbs = [...orbs];
     this.remainingStars = [...stars];
+    this.placeObstacles = obstacles;
+    this.obstacles = this.placedObstacles();
   }
 
   static create(definition: LevelDefinition): Level {
@@ -152,6 +173,10 @@ export class Level {
     return this.remainingOrbs;
   }
 
+  get outlines(): readonly Outline[] {
+    return this.obstacleOutlines;
+  }
+
   get door(): Door {
     return this.currentDoor;
   }
@@ -164,47 +189,59 @@ export class Level {
   openDoor(): void {
     if (this.remainingOrbs.length > 0) throw new Error('The door opens only once every orb is picked up');
     this.currentDoor = this.currentDoor.opened();
+    this.obstacles = this.placedObstacles();
   }
 
   read(): readonly LevelEvent[] {
-    if (this.completed || this.heroEntity.step) return [];
-    const signpost = this.signposts.find((candidate) => candidate.isBeside(this.heroEntity.position));
+    if (this.completed || this.heroEntity.isWalking) return [];
+    const signpost = this.signposts.find((candidate) => candidate.isReadableFrom(this.heroEntity.position));
     if (!signpost) return [];
     this.reading = signpost;
     return [new SignpostRead(this.id, signpost.position, signpost.text)];
   }
 
-  tick(direction: Direction | null): readonly LevelEvent[] {
+  tick(heading: Heading | null): readonly LevelEvent[] {
     if (this.completed) return [];
-    const arrival = this.heroEntity.advance();
+    const before = this.heroEntity.position;
+    this.heroEntity.steer(heading, this.obstacles);
+    const tile = this.heroEntity.position;
     const events: LevelEvent[] = [];
-    const star = arrival && this.remainingStars.find((candidate) => candidate.position.equals(arrival));
+    if (this.reading && !this.reading.isReadableFrom(tile)) {
+      this.reading = null;
+      events.push(new SignpostLeft(this.id));
+    }
+    if (tile.equals(before)) return events;
+    const star = this.remainingStars.find((candidate) => candidate.position.equals(tile));
     if (star) {
       this.remainingStars = this.remainingStars.filter((candidate) => candidate !== star);
       this.collectedStars = [...this.collectedStars, star];
       events.push(new StarCollected(this.id, star.position));
     }
-    const orb = arrival && this.remainingOrbs.find((candidate) => candidate.position.equals(arrival));
+    const orb = this.remainingOrbs.find((candidate) => candidate.position.equals(tile));
     if (orb) {
       this.remainingOrbs = this.remainingOrbs.filter((candidate) => candidate !== orb);
-      return [...events, new OrbCollected(this.id, orb.position, orb.color, orb.restores)];
+      events.push(new OrbCollected(this.id, orb.position, orb.color, orb.restores));
     }
-    if (arrival && this.currentDoor.covers(arrival)) {
+    if (this.currentDoor.covers(tile)) {
       this.completed = true;
-      return [...events, new LevelCompleted(this.id)];
-    }
-    this.heroEntity.steer(direction, (position) => this.canEnter(position));
-    const leaving =
-      this.heroEntity.step &&
-      !this.reading?.isBeside(this.heroEntity.position.neighbor(this.heroEntity.step.direction));
-    if (this.reading && leaving) {
-      this.reading = null;
-      events.push(new SignpostLeft(this.id));
+      this.heroEntity.steer(null, this.obstacles);
+      events.push(new LevelCompleted(this.id));
     }
     return events;
   }
 
-  // Diagonal steps need both straight neighbors open, so straight steps alone reach every tile the hero can.
+  private placedObstacles(): Obstacles {
+    const door = this.currentDoor;
+    this.obstacleOutlines = [
+      ...this.scenery.obstacles((position) => door.covers(position)),
+      ...this.stones.map((stone) => stone.obstacle),
+      ...this.signposts.map((signpost) => signpost.obstacle),
+      ...(door.isOpen ? [] : [door.obstacle]),
+    ];
+    return this.placeObstacles(this.obstacleOutlines);
+  }
+
+  // Every obstacle stays inside the tile it blocks, so whole open tiles always leave room for her feet to cross between them.
   // The door counts as closed because stepping onto it ends the level.
   private reachableTiles(): readonly TilePosition[] {
     const reached = [this.heroEntity.position];

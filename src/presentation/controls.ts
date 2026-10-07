@@ -1,6 +1,7 @@
-import { Direction } from '../domain/level/position';
+import { create } from 'nipplejs';
+import { Direction, Heading } from '../domain/level/position';
 import { controlSize } from './art/panel';
-import { heldOffset, returnOffset, snapTowardCenter, steer } from './joystick';
+import { heldOffset, litArrows, returnOffset, snapTowardCenter, thumbHeading } from './joystick';
 
 const arrowKeys: Readonly<Record<string, Direction>> = {
   ArrowUp: Direction.Up,
@@ -12,8 +13,8 @@ const buttonKeys: Readonly<Record<string, 'a' | 'b'>> = { z: 'a', ' ': 'a', x: '
 
 export class Controls {
   private readonly heldArrows: Direction[] = [];
-  private joystickDirection: Direction | null = null;
-  private joystickPointer: number | null = null;
+  private joystickHeading: Heading | null = null;
+  private joystickHeld = false;
   private readonly freshPresses = new Set<'a' | 'b'>();
   readonly advance: () => void;
 
@@ -26,7 +27,6 @@ export class Controls {
     const heldKeys = { a: new Set<string>(), b: new Set<string>() };
     const heldPointers = { a: new Set<number>(), b: new Set<number>() };
     const pointerButtons = new Map<number, 'a' | 'b'>();
-    let pointerPosition: { clientX: number; clientY: number } | null = null;
     const reach = (): number => {
       const rim = Number.parseFloat(getComputedStyle(joystick).paddingLeft) || 0;
       return Math.max(0, (joystick.getBoundingClientRect().width - 2 * rim - knob.getBoundingClientRect().width) / 2);
@@ -59,13 +59,16 @@ export class Controls {
       returning.frame++;
     };
     const showDirection = (): void => {
-      joystick.dataset.direction = this.direction()?.name ?? '';
+      const lit = this.joystickHeld
+        ? this.joystickHeading && litArrows(this.joystickHeading)
+        : this.keyboardDirection();
+      joystick.dataset.direction = lit?.name ?? '';
     };
     const updateButton = (button: 'a' | 'b'): void => {
       buttons[button].classList.toggle('pressed', heldKeys[button].size + heldPointers[button].size > 0);
     };
     const updateKeyboardJoystick = (): void => {
-      if (this.joystickPointer !== null) return;
+      if (this.joystickHeld) return;
       const direction = this.keyboardDirection();
       joystick.classList.toggle('active', direction !== null);
       showDirection();
@@ -106,9 +109,8 @@ export class Controls {
     });
     window.addEventListener('blur', () => {
       this.heldArrows.length = 0;
-      this.joystickPointer = null;
-      pointerPosition = null;
-      this.joystickDirection = null;
+      this.joystickHeld = false;
+      this.joystickHeading = null;
       updateKeyboardJoystick();
       for (const button of ['a', 'b'] as const) {
         heldKeys[button].clear();
@@ -150,43 +152,41 @@ export class Controls {
     }
     panel.addEventListener('contextmenu', (event) => event.preventDefault());
 
-    const move = (event: { clientX: number; clientY: number }): void => {
-      const ring = joystick.getBoundingClientRect();
-      const steered = steer(
-        event.clientX - (ring.left + ring.width / 2),
-        event.clientY - (ring.top + ring.height / 2),
-        reach(),
-      );
-      place(steered.offset.x, steered.offset.y);
-      this.joystickDirection = steered.direction;
-      showDirection();
+    let thumb: ReturnType<typeof create> | null = null;
+    // The thumb's reach follows the ring's size, so the joystick is rebuilt whenever the ring resizes.
+    const listen = (): void => {
+      thumb?.destroy();
+      thumb = create({
+        zone: joystick,
+        mode: 'static',
+        position: { left: '50%', top: '50%' },
+        size: 2 * reach(),
+        dataOnly: true,
+      });
+      thumb.on('start', () => {
+        this.joystickHeld = true;
+        joystick.classList.add('active');
+      });
+      thumb.on('move', ({ data }: { data: { vector: { x: number; y: number }; force: number } }) => {
+        if (!this.joystickHeld) return;
+        const { x, y } = data.vector;
+        const radius = reach();
+        place(x * radius, -y * radius);
+        this.joystickHeading = thumbHeading(x, -y, data.force, this.joystickHeading !== null);
+        showDirection();
+      });
+      thumb.on('end', () => {
+        this.joystickHeld = false;
+        this.joystickHeading = null;
+        updateKeyboardJoystick();
+      });
     };
-    const release = (event: PointerEvent): void => {
-      if (event.pointerId !== this.joystickPointer) return;
-      this.joystickPointer = null;
-      pointerPosition = null;
-      this.joystickDirection = null;
-      updateKeyboardJoystick();
-    };
-    joystick.addEventListener('pointerdown', (event) => {
-      if (this.joystickPointer !== null) return;
-      this.joystickPointer = event.pointerId;
-      pointerPosition = event;
-      joystick.setPointerCapture(event.pointerId);
-      joystick.classList.add('active');
-      move(event);
-    });
-    joystick.addEventListener('pointermove', (event) => {
-      if (event.pointerId !== this.joystickPointer) return;
-      pointerPosition = event;
-      move(event);
-    });
-    joystick.addEventListener('pointerup', release);
-    joystick.addEventListener('pointercancel', release);
-    joystick.addEventListener('lostpointercapture', release);
+    listen();
     new ResizeObserver(() => {
-      if (pointerPosition) move(pointerPosition);
-      else updateKeyboardJoystick();
+      this.joystickHeld = false;
+      this.joystickHeading = null;
+      listen();
+      updateKeyboardJoystick();
     }).observe(joystick);
   }
 
@@ -195,8 +195,10 @@ export class Controls {
     return this.freshPresses.delete(button);
   }
 
-  direction(): Direction | null {
-    return this.joystickPointer !== null ? this.joystickDirection : this.keyboardDirection();
+  heading(): Heading | null {
+    if (this.joystickHeld) return this.joystickHeading;
+    const direction = this.keyboardDirection();
+    return direction && Heading.of(direction);
   }
 
   private keyboardDirection(): Direction | null {

@@ -1,18 +1,14 @@
 import type { LevelView } from '../application/level-view';
-import { Direction } from '../domain/level/position';
+import { tileSize } from '../domain/level/position';
 
-export const tileSize = 32;
+export { tileSize };
 
 export const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
 
+// The feet sit at the bottom middle of her sprite.
 export function heroPixels(level: LevelView): { x: number; y: number } {
-  const { position, step } = level.hero;
-  const travelled = step ? Math.round((step.framesTaken / step.duration) * tileSize) : 0;
-  const direction = step?.direction ?? Direction.Down;
-  return {
-    x: position.column * tileSize + (step ? direction.columnStep * travelled : 0),
-    y: position.row * tileSize + (step ? direction.rowStep * travelled : 0),
-  };
+  const { feet } = level.hero;
+  return { x: Math.round(feet.x) - 16, y: Math.round(feet.y) - 28 };
 }
 
 export function cameraPosition(level: LevelView, width: number, height: number): { x: number; y: number } {

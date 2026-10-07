@@ -1,11 +1,11 @@
 import { describe, expect, test, vi } from 'vitest';
 import { Area, Orb, OrbColor } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
-import { Step } from '../domain/level/hero';
 import { Level, Stone } from '../domain/level/level';
 import { LevelId } from '../domain/level/level-id';
-import { Direction, TilePosition } from '../domain/level/position';
+import { Direction, Heading, TilePosition } from '../domain/level/position';
 import { Flower, Ground, LevelSize, Scenery, Tree } from '../domain/level/scenery';
+import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { firstLevel } from '../infrastructure/first-level';
 import { randomShuffle } from '../infrastructure/random-shuffle';
 import type { Art } from './art/art';
@@ -56,6 +56,7 @@ function renderingLevel(
     orbs: [Orb.at(TilePosition.at(0, 0), color, everywhere)],
     door: Door.closedAt(TilePosition.at(0, 11)),
     hero: { position: hero, facing: Direction.Down },
+    obstacles: check2dObstacles,
   });
 }
 
@@ -129,6 +130,7 @@ test('native terrain grids cover all 81 three-terrain corner combinations', () =
             orbs: [Orb.at(TilePosition.at(3, 3), OrbColor.Violet, everywhere)],
             door: Door.closedAt(TilePosition.at(0, 3)),
             hero: { position: TilePosition.at(0, 0), facing: Direction.Down },
+            obstacles: check2dObstacles,
           });
           expect(() => new WorldPainter(level)).not.toThrow();
         }
@@ -354,6 +356,7 @@ test('restoring one area leaves the rest of the map faded', () => {
     ],
     door: Door.closedAt(TilePosition.at(0, 11)),
     hero: { position: TilePosition.at(2, 2), facing: Direction.Down },
+    obstacles: check2dObstacles,
   });
   const painter = new WorldPainter(level);
   const painted = (restored: readonly Area[]): Picture => {
@@ -390,6 +393,7 @@ test('flowers stacked above each other use different variants, each with a groun
     orbs: [Orb.at(TilePosition.at(0, 0), OrbColor.Violet, everywhere)],
     door: Door.closedAt(TilePosition.at(0, 11)),
     hero: { position: TilePosition.at(2, 2), facing: Direction.Down },
+    obstacles: check2dObstacles,
   });
   const picture = new Picture(384, 384);
   const draw = vi.spyOn(picture, 'draw');
@@ -419,7 +423,7 @@ test('the door is drawn open only in the colored world once the orb is collected
   };
   expect(drawn('colored')).toContain(scenery.doorArt.closed);
   expect(drawn('faded')).toContain(scenery.doorArt.closed);
-  for (let frame = 0; frame < 30; frame++) level.tick(Direction.Left);
+  for (let frame = 0; frame < 30; frame++) level.tick(Heading.of(Direction.Left));
   expect(level.orbs).toEqual([]);
   expect(level.door.isOpen).toBe(false);
   expect(drawn('colored')).toContain(scenery.doorArt.open);
@@ -472,7 +476,7 @@ test.each([
   Direction.UpRight,
   Direction.DownLeft,
   Direction.DownRight,
-])('renders consecutive %s steps without overshooting or snapping backward', (direction) => {
+])('renders steady %s walking on whole pixels without snapping backward', (direction) => {
   const start = TilePosition.at(5, 5);
   const ground = Array.from({ length: 12 }, () => Array.from({ length: 12 }, () => Ground.Grass));
   const level = Level.create({
@@ -482,25 +486,18 @@ test.each([
     orbs: [Orb.at(TilePosition.at(0, 0), OrbColor.Violet, everywhere)],
     door: Door.closedAt(TilePosition.at(0, 11)),
     hero: { position: start, facing: direction.facing },
+    obstacles: check2dObstacles,
   });
-  const duration = Step.begin(direction).duration;
-  expect(tileSize).toBe(32);
-  expect(duration).toBe(direction.isDiagonal ? 23 : 16);
+  expect(heroPixels(level)).toEqual({ x: start.column * tileSize, y: start.row * tileSize });
   let previous = heroPixels(level);
-  for (let frame = 0; frame <= duration * 2; frame++) {
-    level.tick(direction);
+  for (let frame = 0; frame < 40; frame++) {
+    level.tick(Heading.of(direction));
     const pixels = heroPixels(level);
-    const travelled = Math.floor(frame / duration) * tileSize + Math.round(((frame % duration) / duration) * tileSize);
-    expect(pixels).toEqual({
-      x: start.column * tileSize + direction.columnStep * travelled,
-      y: start.row * tileSize + direction.rowStep * travelled,
-    });
     expect(Number.isInteger(pixels.x) && Number.isInteger(pixels.y)).toBe(true);
+    expect((pixels.x - previous.x) * direction.columnStep).toBeGreaterThanOrEqual(0);
+    expect((pixels.y - previous.y) * direction.rowStep).toBeGreaterThanOrEqual(0);
     expect(Math.abs(pixels.x - previous.x)).toBeLessThanOrEqual(2);
     expect(Math.abs(pixels.y - previous.y)).toBeLessThanOrEqual(2);
-    if (frame > 0 && !direction.isDiagonal) {
-      expect(Math.abs(pixels.x - previous.x) + Math.abs(pixels.y - previous.y)).toBe(2);
-    }
     previous = pixels;
   }
 });

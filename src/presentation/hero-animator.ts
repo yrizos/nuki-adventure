@@ -7,13 +7,19 @@ const settleTicks = 8;
 const blinkEvery = 180;
 const blinkFrames = 6;
 const breathEvery = 90;
+// Each foot lands once per two walk frames.
+const ticksPerFootfall = 2 * ticksPerWalkFrame;
 
 export class HeroAnimator {
   private walkTicks = 0;
   private settleLeft = 0;
 
+  get footfall(): boolean {
+    return this.walkTicks % ticksPerFootfall === 1;
+  }
+
   advance(hero: HeroState): void {
-    if (hero.step) {
+    if (hero.isWalking) {
       this.walkTicks++;
       this.settleLeft = 0;
       return;
@@ -29,8 +35,8 @@ export class HeroAnimator {
     const art =
       heroArt[facing.rowStep < 0 ? 'up' : facing.rowStep > 0 ? 'down' : facing.columnStep < 0 ? 'left' : 'right'];
     // The raised arms only read as holding when the hero stands still, so a walking hero keeps the walk cycle under the orb.
-    if (holdingOrb && !hero.step) return art.holding!;
-    if (hero.step) return art.walk[this.walkFrame()]!;
+    if (holdingOrb && !hero.isWalking) return art.holding!;
+    if (hero.isWalking) return art.walk[this.walkFrame()]!;
     if (this.settleLeft > 0) return art.settle;
     const inhaling = Math.floor(frame / breathEvery) % 2 === 1;
     const blink = inhaling ? art.inhaleBlink : art.blink;

@@ -52,11 +52,27 @@ The cross layout on the right side of the control panel that holds the action bu
 
 ### Tile
 
-One 32 × 32 pixel square of the grid that map positions, collisions and interactions use.
+One 32 × 32 pixel square of the grid that map positions and interactions use.
+
+### World Position
+
+A point in the game world, measured in game pixels from the top left corner of the level.
 
 ### Hero
 
 The girl of about seven whom the player moves through the game world.
+
+### Feet
+
+The small oval where the hero meets the ground. The feet collide with obstacles, and the tile under their middle decides what the hero picks up, reads or walks into.
+
+### Heading
+
+The exact direction in which the player steers the hero.
+
+### Obstacle
+
+The outline of the part of an object or ground that the hero cannot walk through. It follows where the object meets the ground, so the hero can walk close to its art, and it never reaches beyond the tile it blocks.
 
 ### Collectible
 

@@ -7,6 +7,7 @@ import { GameSession, type PlayableLevel } from './game-session';
 import { connectGameSwitches } from './game-switches';
 import { GameView } from './game-view';
 import { LevelEndWindow } from './level-end';
+import { drawObstacles } from './obstacle-overlay';
 import { Sound } from './sound';
 
 export { messages } from './game-session';
@@ -31,14 +32,19 @@ export function startGame(root: Document, levels: readonly PlayableLevel[]): voi
   levelEnd.whenContinued(() => session.continuePlaying());
 
   const tick = (): void => {
+    controls.advance();
     session.tick();
     const spoken = session.messageText;
     if (announcement.textContent !== spoken) announcement.textContent = spoken;
   };
 
-  const render = (): void => {
-    controls.advance();
-    gameView.paint(session);
+  const showObstacles = import.meta.env.DEV && new URLSearchParams(window.location.search).has('obstacles');
+  const render = (tickProgress: number): void => {
+    gameView.paint(
+      session,
+      tickProgress,
+      showObstacles ? (context) => drawObstacles(context, session.level) : undefined,
+    );
   };
 
   const gameLoop = new GameLoop(tick, render, performance.now());

@@ -1,6 +1,21 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { Direction } from '../domain/level/position';
+import { Direction, Heading } from '../domain/level/position';
 import { Controls } from './controls';
+
+type Handler = (event: { data: { vector: { x: number; y: number }; force: number } }) => void;
+const thumbs: { handlers: Map<string, Handler>; size: number; destroyed: boolean }[] = [];
+vi.mock('nipplejs', () => ({
+  create: (options: { size: number }) => {
+    const thumb = { handlers: new Map<string, Handler>(), size: options.size, destroyed: false };
+    thumbs.push(thumb);
+    return {
+      on: (name: string, handler: Handler) => thumb.handlers.set(name, handler),
+      destroy: () => (thumb.destroyed = true),
+    };
+  },
+}));
+
+const toward = (direction: Direction): Heading => Heading.of(direction);
 
 function controlElement(width = 120, left = 0, top = 0, height = width): HTMLElement {
   const classes = new Set<string>();
@@ -45,10 +60,43 @@ function setup() {
   const pointer = (type: string, clientX = 60, clientY = 60, pointerId = 1, target = joystick): void => {
     target.dispatchEvent(Object.assign(new Event(type), { pointerId, clientX, clientY }));
   };
-  return { keyboard, panel, joystick, knob, buttons, controls, key, pointer, resize: () => resize() };
+  // NippleJS reports the thumb as a fraction of the reach, with up as positive.
+  const thumb = (x: number, y: number): void => {
+    const current = thumbs.at(-1)!;
+    const reach = current.size / 2;
+    const distance = Math.hypot(x, y);
+    const clamped = distance > reach ? reach / distance : 1;
+    const data = { vector: { x: (x * clamped) / reach, y: (-y * clamped) / reach }, force: distance / reach };
+    current.handlers.get('start')!({ data });
+    current.handlers.get('move')!({ data });
+  };
+  const slide = (x: number, y: number): void => {
+    const current = thumbs.at(-1)!;
+    const reach = current.size / 2;
+    const data = { vector: { x: x / reach, y: -y / reach }, force: Math.hypot(x, y) / reach };
+    current.handlers.get('move')!({ data });
+  };
+  const lift = (): void => thumbs.at(-1)!.handlers.get('end')!({ data: { vector: { x: 0, y: 0 }, force: 0 } });
+  return {
+    keyboard,
+    panel,
+    joystick,
+    knob,
+    buttons,
+    controls,
+    key,
+    pointer,
+    thumb,
+    slide,
+    lift,
+    resize: () => resize(),
+  };
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  thumbs.length = 0;
+});
 
 test.each([
   ['ArrowUp', Direction.Up, 'translate(0px, -26px)'],
@@ -58,11 +106,11 @@ test.each([
 ])('%s moves the knob with the hero and recenters on release', (arrow, direction, transform) => {
   const { joystick, knob, controls, key } = setup();
   key('keydown', arrow);
-  expect(controls.direction()).toBe(direction);
+  expect(controls.heading()).toEqual(toward(direction));
   expect(knob.style.transform).toBe(transform);
   expect(joystick.classList.contains('active')).toBe(true);
   key('keyup', arrow);
-  expect(controls.direction()).toBeNull();
+  expect(controls.heading()).toBeNull();
   for (let frame = 0; frame < 4; frame++) controls.advance();
   expect(knob.style.transform).toBe('');
   expect(joystick.classList.contains('active')).toBe(false);
@@ -73,13 +121,13 @@ test('perpendicular held arrows combine and releasing one restores the remaining
   key('keydown', 'ArrowLeft');
   key('keydown', 'ArrowUp');
   key('keydown', 'ArrowLeft');
-  expect(controls.direction()).toBe(Direction.UpLeft);
+  expect(controls.heading()).toEqual(toward(Direction.UpLeft));
   const travel = 18;
   expect(knob.style.transform).toBe(`translate(${-travel}px, ${-travel}px)`);
   key('keyup', 'ArrowRight');
-  expect(controls.direction()).toBe(Direction.UpLeft);
+  expect(controls.heading()).toEqual(toward(Direction.UpLeft));
   key('keyup', 'ArrowUp');
-  expect(controls.direction()).toBe(Direction.Left);
+  expect(controls.heading()).toEqual(toward(Direction.Left));
   expect(knob.style.transform).toBe('translate(-26px, 0px)');
 });
 
@@ -93,31 +141,31 @@ test.each([
     key('keydown', previous);
     key('keydown', latest);
     key('keydown', previous);
-    expect(controls.direction()).toBe(latestDirection);
+    expect(controls.heading()).toEqual(toward(latestDirection));
     key('keyup', latest);
-    expect(controls.direction()).toBe(previousDirection);
+    expect(controls.heading()).toEqual(toward(previousDirection));
     key('keyup', previous);
-    expect(controls.direction()).toBeNull();
+    expect(controls.heading()).toBeNull();
   },
 );
 
-test.each(['pointerup', 'pointercancel'])('touch owns the knob until %s restores keyboard input', (release) => {
-  const { knob, controls, key, pointer } = setup();
-  pointer('pointerdown', 92, 60);
+test('touch owns the knob until it lifts and restores keyboard input', () => {
+  const { knob, controls, key, thumb, lift } = setup();
+  thumb(32, 0);
   key('keydown', 'ArrowUp');
-  expect(controls.direction()).toBe(Direction.Right);
+  expect(controls.heading()).toEqual(toward(Direction.Right));
   expect(knob.style.transform).toBe('translate(26px, 0px)');
-  pointer(release);
-  expect(controls.direction()).toBe(Direction.Up);
+  lift();
+  expect(controls.heading()).toEqual(toward(Direction.Up));
   expect(knob.style.transform).toBe('translate(0px, -26px)');
 });
 
 test('losing focus clears movement and recenters the joystick', () => {
-  const { keyboard, joystick, knob, controls, key, pointer } = setup();
+  const { keyboard, joystick, knob, controls, key, thumb } = setup();
   key('keydown', 'ArrowUp');
-  pointer('pointerdown', 92, 60);
+  thumb(32, 0);
   keyboard.dispatchEvent(new Event('blur'));
-  expect(controls.direction()).toBeNull();
+  expect(controls.heading()).toBeNull();
   for (let frame = 0; frame < 4; frame++) controls.advance();
   expect(knob.style.transform).toBe('');
   expect(joystick.classList.contains('active')).toBe(false);
@@ -148,44 +196,54 @@ test('button touch and keyboard presses have independent ownership', () => {
   expect(buttons.a.classList.contains('pressed')).toBe(false);
 });
 
-test('only the owning pointer can move or release the joystick', () => {
-  const { controls, pointer } = setup();
-  pointer('pointerdown', 92, 60, 1);
-  pointer('pointerdown', 60, 28, 2);
-  pointer('pointermove', 60, 28, 2);
-  pointer('pointercancel', 60, 28, 2);
-  expect(controls.direction()).toBe(Direction.Right);
-  pointer('lostpointercapture', 92, 60, 1);
-  expect(controls.direction()).toBeNull();
-});
-
 test('a held joystick inside the dead zone does not fall back to keyboard movement', () => {
-  const { controls, key, pointer } = setup();
+  const { controls, key, thumb, slide, lift } = setup();
   key('keydown', 'ArrowUp');
-  pointer('pointerdown', 67, 60);
-  expect(controls.direction()).toBeNull();
-  pointer('pointermove', 70, 60);
-  expect(controls.direction()).toBe(Direction.Right);
-  pointer('pointerup');
-  expect(controls.direction()).toBe(Direction.Up);
+  thumb(7, 0);
+  expect(controls.heading()).toBeNull();
+  slide(10, 0);
+  expect(controls.heading()).toEqual(toward(Direction.Right));
+  lift();
+  expect(controls.heading()).toEqual(toward(Direction.Up));
 });
 
-test('fractional geometry and resizing keep the knob inside the ring on whole panel pixels', () => {
-  const { joystick, knob, key, pointer, resize } = setup();
+test('the hero starts walking at thirty percent of the reach and stops only below twenty five', () => {
+  const { controls, thumb, slide } = setup();
+  thumb(26 * 0.29, 0);
+  expect(controls.heading()).toBeNull();
+  slide(26 * 0.31, 0);
+  expect(controls.heading()).not.toBeNull();
+  slide(26 * 0.26, 0);
+  expect(controls.heading()).not.toBeNull();
+  slide(26 * 0.24, 0);
+  expect(controls.heading()).toBeNull();
+  slide(26 * 0.29, 0);
+  expect(controls.heading()).toBeNull();
+});
+
+test.each([0, 17, 44, 90, 133, -29, -151])(
+  'a thumb at %s degrees steers the hero along that exact angle',
+  (degrees) => {
+    const { controls, thumb } = setup();
+    const angle = (degrees * Math.PI) / 180;
+    thumb(20 * Math.cos(angle), 20 * Math.sin(angle));
+    const heading = controls.heading()!;
+    expect(heading.x).toBeCloseTo(Math.cos(angle));
+    expect(heading.y).toBeCloseTo(Math.sin(angle));
+  },
+);
+
+test('a resized ring rebuilds the joystick with the new reach and keeps the knob on whole panel pixels', () => {
+  const { joystick, knob, key, resize } = setup();
   const pixel = 58.333333333333336 / 28;
   joystick.getBoundingClientRect = () => ({ left: 0, top: 0, width: 125, height: 125 }) as DOMRect;
   knob.getBoundingClientRect = () => ({ width: 58.333333333333336 }) as DOMRect;
-  key('keydown', 'ArrowRight');
-  const reach = (125 - 12 - 58.333333333333336) / 2;
-  const snapped = Math.trunc(reach / pixel) * pixel;
-  expect(knob.style.transform).toBe(`translate(${snapped}px, 0px)`);
-  pointer('pointerdown', 200, 62.5);
-  expect(knob.style.transform).toBe(`translate(${snapped}px, 0px)`);
-  joystick.getBoundingClientRect = () => ({ left: 0, top: 0, width: 100, height: 100 }) as DOMRect;
   resize();
-  const coordinates = knob.style.transform.match(/-?[\d.]+/g)!.map(Number);
-  expect(Math.hypot(...coordinates)).toBeLessThanOrEqual((100 - 12 - 58.333333333333336) / 2);
-  for (const coordinate of coordinates) expect(coordinate / pixel).toBeCloseTo(Math.round(coordinate / pixel));
+  const reach = (125 - 12 - 58.333333333333336) / 2;
+  expect(thumbs.at(-1)!.size).toBeCloseTo(2 * reach);
+  expect(thumbs.at(-2)!.destroyed).toBe(true);
+  key('keydown', 'ArrowRight');
+  expect(knob.style.transform).toBe(`translate(${Math.trunc(reach / pixel) * pixel}px, 0px)`);
 });
 
 test.each([
@@ -225,27 +283,6 @@ test('holding a finger on the panel opens no context menu', () => {
 });
 
 test.each([
-  [0, Direction.Right],
-  [29, Direction.Right],
-  [31, Direction.DownRight],
-  [59, Direction.DownRight],
-  [61, Direction.Down],
-  [90, Direction.Down],
-  [-29, Direction.Right],
-  [-31, Direction.UpRight],
-  [151, Direction.Left],
-  [-119, Direction.Up],
-  [-121, Direction.UpLeft],
-  [-149, Direction.UpLeft],
-  [-151, Direction.Left],
-])('a thumb at %s degrees moves %s, with 60 degree straight sectors', (degrees, direction) => {
-  const { controls, pointer } = setup();
-  const angle = (degrees * Math.PI) / 180;
-  pointer('pointerdown', 60 + 25 * Math.cos(angle), 60 + 25 * Math.sin(angle));
-  expect(controls.direction()).toBe(direction);
-});
-
-test.each([
   [['ArrowUp'], 'up'],
   [['ArrowDown', 'ArrowLeft'], 'down-left'],
 ])('holding %s marks the joystick with %s so its arrows light up', (arrows, direction) => {
@@ -254,11 +291,15 @@ test.each([
   expect(joystick.dataset.direction).toBe(direction);
 });
 
-test('touch steering marks the joystick direction and clears it on release', () => {
-  const { joystick, pointer } = setup();
-  pointer('pointerdown', 60, 30);
-  expect(joystick.dataset.direction).toBe('up');
-  pointer('pointerup');
+test.each([
+  [0, -20, 'up'],
+  [20, -20, 'up-right'],
+  [20, -5, 'right'],
+])('a thumb at %s, %s lights the %s arrows and clears them on release', (x, y, lit) => {
+  const { joystick, thumb, lift } = setup();
+  thumb(x, y);
+  expect(joystick.dataset.direction).toBe(lit);
+  lift();
   expect(joystick.dataset.direction).toBe('');
 });
 
@@ -286,9 +327,9 @@ test('pressing again during the return takes the knob straight to the new direct
 });
 
 test('a released touch glides the knob home as well', () => {
-  const { knob, controls, pointer } = setup();
-  pointer('pointerdown', 100, 60);
-  pointer('pointerup');
+  const { knob, controls, thumb, lift } = setup();
+  thumb(40, 0);
+  lift();
   controls.advance();
   expect(knob.style.transform).toBe('translate(12px, 0px)');
   for (let frame = 0; frame < 3; frame++) controls.advance();

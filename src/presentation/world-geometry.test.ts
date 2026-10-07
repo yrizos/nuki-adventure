@@ -1,13 +1,13 @@
 import { expect, test } from 'vitest';
 import type { LevelView } from '../application/level-view';
-import { HeroState } from '../domain/level/hero';
+import { Hero } from '../domain/level/hero';
 import { Direction, TilePosition } from '../domain/level/position';
 import { LevelSize } from '../domain/level/scenery';
 import { cameraPosition } from './world-geometry';
 
 const standingAt = (column: number, row: number, columns = 20, rows = 20): LevelView =>
   ({
-    hero: HeroState.of(TilePosition.at(column, row), Direction.Down, null),
+    hero: new Hero(TilePosition.at(column, row), Direction.Down).state,
     scenery: { size: LevelSize.of(columns, rows) },
   }) as LevelView;
 
