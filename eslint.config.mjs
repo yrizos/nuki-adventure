@@ -3,7 +3,7 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import globals from 'globals';
 
 export default defineConfig([
-  globalIgnores(['dist/**', 'coverage/**']),
+  globalIgnores(['dist/**', 'coverage/**', 'graphify-out/**']),
   {
     files: ['**/*.mjs'],
     extends: [eslint.configs.recommended],

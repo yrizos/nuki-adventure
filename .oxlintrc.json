@@ -4,7 +4,7 @@
   "categories": {
     "correctness": "error"
   },
-  "ignorePatterns": ["dist/**", "coverage/**"],
+  "ignorePatterns": ["dist/**", "coverage/**", "graphify-out/**"],
   "rules": {
     "typescript/consistent-type-imports": [
       "error",

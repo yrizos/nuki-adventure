@@ -11,3 +11,4 @@ coverage/
 .vscode/
 .venv/
 .cache/
+graphify-out/
