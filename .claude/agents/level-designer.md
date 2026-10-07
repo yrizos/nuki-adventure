@@ -6,7 +6,7 @@ tools: Read, Grep, Glob, Edit, Write, Bash
 
 # level-designer
 
-Own: src/infrastructure/*-level.ts, level registration in src/infrastructure/in-memory-level-repository.ts. Edit nothing else, except existing tests your change breaks.
+Own: src/infrastructure/*-level.ts, the level imports and the levels list in src/index.ts. Edit nothing else, except existing tests your change breaks.
 
 Read first: docs/level-design.md, docs/glossary.md, src/infrastructure/level-layout.ts, the previous level, the target level if it exists.
 

@@ -15,6 +15,7 @@ Rules:
 - Sprites are data.js text data. Do not add image files.
 - Copy the structure of the closest sprite, including preview.html.
 - Use only codes already defined in palette.js.
+- Write data.js and preview.html directly with Edit or Write. Do not generate them with scripts.
 
 Validate: make check. sprite-library.test.ts must load the sprite.
 
