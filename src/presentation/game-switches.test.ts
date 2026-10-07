@@ -105,4 +105,31 @@ describe('the menu switch', () => {
     subject.click(subject.menuSwitch);
     expect(subject.openStartScreen).toHaveBeenCalledOnce();
   });
+
+  test('opens the start screen and prevents default on an initial Escape keydown', () => {
+    const subject = page();
+    const event = Object.assign(new Event('keydown', { cancelable: true }), { key: 'Escape', repeat: false });
+    subject.root.dispatchEvent(event);
+    expect(subject.openStartScreen).toHaveBeenCalledOnce();
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  test('does not reopen the start screen on a repeated Escape keydown', () => {
+    const subject = page();
+    subject.root.dispatchEvent(
+      Object.assign(new Event('keydown', { cancelable: true }), { key: 'Escape', repeat: false }),
+    );
+    subject.root.dispatchEvent(
+      Object.assign(new Event('keydown', { cancelable: true }), { key: 'Escape', repeat: true }),
+    );
+    expect(subject.openStartScreen).toHaveBeenCalledOnce();
+  });
+
+  test.each(['Enter', ' ', 'ArrowUp', 'z', 'x'])('does not open the start screen or prevent default for %s', (key) => {
+    const subject = page();
+    const event = Object.assign(new Event('keydown', { cancelable: true }), { key, repeat: false });
+    subject.root.dispatchEvent(event);
+    expect(subject.openStartScreen).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
 });

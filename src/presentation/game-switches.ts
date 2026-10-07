@@ -7,6 +7,11 @@ export function connectGameSwitches(
   openStartScreen: () => void,
 ): void {
   element<HTMLButtonElement>(root, '.menu-switch').addEventListener('click', openStartScreen);
+  root.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    if (!event.repeat) openStartScreen();
+  });
   const soundSwitch = element<HTMLButtonElement>(root, '.sound-switch');
   const showSound = (): void => soundSwitch.setAttribute('aria-pressed', String(sound.on));
   showSound();
