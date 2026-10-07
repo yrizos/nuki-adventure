@@ -11,6 +11,16 @@ const arrowKeys: Readonly<Record<string, Direction>> = {
 };
 const buttonKeys: Readonly<Record<string, 'a' | 'b'>> = { z: 'a', ' ': 'a', x: 'b', Enter: 'b' };
 
+function isInteractiveKeyboardTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    ((target instanceof HTMLElement && target.isContentEditable) ||
+      target.closest(
+        'button, a, input, select, textarea, summary, audio[controls], video[controls], [tabindex], [role="button"], [role="link"], [role="textbox"], [role="checkbox"], [role="radio"], [role="switch"], [role="slider"], [role="spinbutton"], [role="combobox"], [role="listbox"], [role="option"], [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="tab"], [role="treeitem"], [role="searchbox"]',
+      ) !== null)
+  );
+}
+
 export class Controls {
   private readonly heldArrows: Direction[] = [];
   private joystickHeading: Heading | null = null;
@@ -80,6 +90,7 @@ export class Controls {
       place(offset.x, offset.y);
     };
     window.addEventListener('keydown', (event) => {
+      if (isInteractiveKeyboardTarget(event.target)) return;
       const arrow = arrowKeys[event.key];
       const button = buttonKeys[event.key.length === 1 ? event.key.toLowerCase() : event.key];
       if (arrow) {
@@ -95,6 +106,7 @@ export class Controls {
       event.preventDefault();
     });
     window.addEventListener('keyup', (event) => {
+      if (isInteractiveKeyboardTarget(event.target)) return;
       const arrow = arrowKeys[event.key];
       const button = buttonKeys[event.key.length === 1 ? event.key.toLowerCase() : event.key];
       if (arrow) {

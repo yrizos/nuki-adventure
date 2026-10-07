@@ -17,9 +17,48 @@ vi.mock('nipplejs', () => ({
 
 const toward = (direction: Direction): Heading => Heading.of(direction);
 
+class FakeElement extends EventTarget {
+  readonly tagName: string;
+
+  constructor(
+    tag: string,
+    private readonly attributes: Readonly<Record<string, string>> = {},
+    readonly parentElement: FakeElement | null = null,
+  ) {
+    super();
+    this.tagName = tag.toUpperCase();
+  }
+
+  getAttribute(name: string): string | null {
+    return this.attributes[name] ?? null;
+  }
+
+  closest(selectors: string): FakeElement | null {
+    for (const selector of selectors.split(',')) {
+      const match = /^([\w-]+)?(?:\[([\w-]+)(?:=["']?([^"'\]]*)["']?)?\])?$/.exec(selector.trim());
+      if (!match) throw new Error(`Unsupported test selector: ${selector}`);
+      const [, tag, attribute, value] = match;
+      if (tag && this.tagName !== tag.toUpperCase()) continue;
+      if (attribute && this.getAttribute(attribute) === null) continue;
+      if (value !== undefined && this.getAttribute(attribute!) !== value) continue;
+      return this;
+    }
+    return this.parentElement?.closest(selectors) ?? null;
+  }
+}
+
+class FakeHTMLElement extends FakeElement {
+  get isContentEditable(): boolean {
+    const value = this.getAttribute('contenteditable')?.toLowerCase();
+    if (value === '' || value === 'true' || value === 'plaintext-only') return true;
+    if (value === 'false') return false;
+    return this.parentElement instanceof FakeHTMLElement && this.parentElement.isContentEditable;
+  }
+}
+
 function controlElement(width = 120, left = 0, top = 0, height = width): HTMLElement {
   const classes = new Set<string>();
-  return Object.assign(new EventTarget(), {
+  return Object.assign(new FakeHTMLElement('div'), {
     classList: {
       add: (name: string) => classes.add(name),
       remove: (name: string) => classes.delete(name),
@@ -38,6 +77,8 @@ function controlElement(width = 120, left = 0, top = 0, height = width): HTMLEle
 function setup() {
   const keyboard = new EventTarget();
   vi.stubGlobal('window', keyboard);
+  vi.stubGlobal('Element', FakeElement);
+  vi.stubGlobal('HTMLElement', FakeHTMLElement);
   let resize = (): void => {};
   vi.stubGlobal(
     'ResizeObserver',
@@ -54,8 +95,11 @@ function setup() {
   const knob = controlElement(56);
   const buttons = { a: controlElement(56, 272, 32), b: controlElement(56, 208, 96) };
   const controls = new Controls(panel, joystick, knob, buttons);
-  const key = (type: 'keydown' | 'keyup', name: string): void => {
-    keyboard.dispatchEvent(Object.assign(new Event(type, { cancelable: true }), { key: name }));
+  const key = (type: 'keydown' | 'keyup', name: string, target = keyboard, repeat = false): Event => {
+    const event = Object.assign(new Event(type, { cancelable: true }), { key: name, repeat });
+    Object.defineProperty(event, 'target', { value: target });
+    keyboard.dispatchEvent(event);
+    return event;
   };
   const pointer = (type: string, clientX = 60, clientY = 60, pointerId = 1, target = joystick): void => {
     target.dispatchEvent(Object.assign(new Event(type), { pointerId, clientX, clientY }));
@@ -96,6 +140,228 @@ function setup() {
 afterEach(() => {
   vi.unstubAllGlobals();
   thumbs.length = 0;
+});
+
+test.each([' ', 'Enter'])('%s on a native button neither presses game buttons nor prevents activation', (name) => {
+  const { buttons, controls, key } = setup();
+  const target = new FakeHTMLElement('button');
+  const down = key('keydown', name, target);
+  expect(buttons.a.classList.contains('pressed')).toBe(false);
+  expect(buttons.b.classList.contains('pressed')).toBe(false);
+  const up = key('keyup', name, target);
+  expect(buttons.a.classList.contains('pressed')).toBe(false);
+  expect(buttons.b.classList.contains('pressed')).toBe(false);
+  expect(controls.takePress('a')).toBe(false);
+  expect(controls.takePress('b')).toBe(false);
+  expect(down.defaultPrevented).toBe(false);
+  expect(up.defaultPrevented).toBe(false);
+});
+
+test.each(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])(
+  '%s on an interactive target leaves movement and joystick visuals unchanged',
+  (name) => {
+    const { joystick, knob, controls, key } = setup();
+    const direction = joystick.dataset.direction;
+    const transform = knob.style.transform;
+    const event = key('keydown', name, new FakeHTMLElement('button'));
+    expect(controls.heading()).toBeNull();
+    expect(joystick.classList.contains('active')).toBe(false);
+    expect(joystick.dataset.direction).toBe(direction);
+    expect(knob.style.transform).toBe(transform);
+    expect(event.defaultPrevented).toBe(false);
+  },
+);
+
+test.each([
+  ['button', () => new FakeHTMLElement('button')],
+  ['anchor', () => new FakeHTMLElement('a', { href: '/level' })],
+  ['input', () => new FakeHTMLElement('input')],
+  ['select', () => new FakeHTMLElement('select')],
+  ['textarea', () => new FakeHTMLElement('textarea')],
+  ['summary', () => new FakeHTMLElement('summary')],
+  ['button child', () => new FakeHTMLElement('span', {}, new FakeHTMLElement('button'))],
+  ['tabindex zero', () => new FakeHTMLElement('div', { tabindex: '0' })],
+  ['tabindex negative', () => new FakeHTMLElement('div', { tabindex: '-1' })],
+  ['tabindex ancestor', () => new FakeHTMLElement('span', {}, new FakeHTMLElement('div', { tabindex: '0' }))],
+  ...['button', 'link', 'textbox', 'checkbox', 'slider', 'combobox'].map(
+    (role) => [`${role} role`, () => new FakeHTMLElement('div', { role })] as const,
+  ),
+] as const)('%s owns keyboard input instead of the game', (_label, target) => {
+  const { controls, key } = setup();
+  const event = key('keydown', 'ArrowUp', target());
+  expect(controls.heading()).toBeNull();
+  expect(event.defaultPrevented).toBe(false);
+});
+
+test.each([
+  ['empty', () => new FakeHTMLElement('div', { contenteditable: '' })],
+  ['true', () => new FakeHTMLElement('div', { contenteditable: 'true' })],
+  ['plaintext-only', () => new FakeHTMLElement('div', { contenteditable: 'plaintext-only' })],
+  ...['', 'true', 'plaintext-only'].map(
+    (value) =>
+      [
+        `inherited ${value || 'empty'}`,
+        () => new FakeHTMLElement('span', {}, new FakeHTMLElement('div', { contenteditable: value })),
+      ] as const,
+  ),
+  [
+    'invalid inherits true',
+    () =>
+      new FakeHTMLElement(
+        'span',
+        { contenteditable: 'invalid' },
+        new FakeHTMLElement('div', { contenteditable: 'true' }),
+      ),
+  ],
+] as const)('contenteditable %s owns keyboard input', (_label, target) => {
+  const { buttons, joystick, knob, controls, key } = setup();
+  const element = target();
+  const direction = joystick.dataset.direction;
+  const transform = knob.style.transform;
+  const event = key('keydown', 'z', element);
+  expect(buttons.a.classList.contains('pressed')).toBe(false);
+  expect(controls.takePress('a')).toBe(false);
+  expect(event.defaultPrevented).toBe(false);
+  const arrow = key('keydown', 'ArrowUp', element);
+  expect(controls.heading()).toBeNull();
+  expect(joystick.classList.contains('active')).toBe(false);
+  expect(joystick.dataset.direction).toBe(direction);
+  expect(knob.style.transform).toBe(transform);
+  expect(arrow.defaultPrevented).toBe(false);
+});
+
+test.each([
+  ['false', () => new FakeHTMLElement('div', { contenteditable: 'false' })],
+  ['invalid', () => new FakeHTMLElement('div', { contenteditable: 'invalid' })],
+  [
+    'false overrides editable ancestor',
+    () =>
+      new FakeHTMLElement(
+        'span',
+        { contenteditable: 'false' },
+        new FakeHTMLElement('div', { contenteditable: 'true' }),
+      ),
+  ],
+  [
+    'invalid inherits false',
+    () =>
+      new FakeHTMLElement(
+        'span',
+        { contenteditable: 'invalid' },
+        new FakeHTMLElement('div', { contenteditable: 'false' }),
+      ),
+  ],
+] as const)('contenteditable %s remains a gameplay target', (_label, target) => {
+  const { buttons, controls, key } = setup();
+  const element = target();
+  expect(key('keydown', 'z', element).defaultPrevented).toBe(true);
+  expect(buttons.a.classList.contains('pressed')).toBe(true);
+  expect(controls.takePress('a')).toBe(true);
+  key('keyup', 'z', element);
+  expect(buttons.a.classList.contains('pressed')).toBe(false);
+});
+
+test.each([
+  ['ArrowUp', Direction.Up, 'translate(0px, -26px)'],
+  ['ArrowDown', Direction.Down, 'translate(0px, 26px)'],
+  ['ArrowLeft', Direction.Left, 'translate(-26px, 0px)'],
+  ['ArrowRight', Direction.Right, 'translate(26px, 0px)'],
+])('%s on a gameplay element moves and releases the joystick', (name, direction, transform) => {
+  const { joystick, knob, controls, key } = setup();
+  const target = new FakeHTMLElement('canvas');
+  expect(key('keydown', name, target).defaultPrevented).toBe(true);
+  expect(controls.heading()).toEqual(toward(direction));
+  expect(joystick.classList.contains('active')).toBe(true);
+  expect(joystick.dataset.direction).toBe(direction.name);
+  expect(knob.style.transform).toBe(transform);
+  key('keyup', name, target);
+  expect(controls.heading()).toBeNull();
+  expect(joystick.classList.contains('active')).toBe(false);
+  expect(joystick.dataset.direction).toBe('');
+  for (let frame = 0; frame < 4; frame++) controls.advance();
+  expect(knob.style.transform).toBe('');
+});
+
+test.each([
+  ['Z', 'a'],
+  ['z', 'a'],
+  [' ', 'a'],
+  ['X', 'b'],
+  ['x', 'b'],
+  ['Enter', 'b'],
+] as const)('%s on a gameplay element queues one press and holds %s until release', (name, button) => {
+  const { buttons, controls, key } = setup();
+  const target = new FakeHTMLElement('canvas');
+  expect(key('keydown', name, target).defaultPrevented).toBe(true);
+  expect(buttons[button].classList.contains('pressed')).toBe(true);
+  expect(controls.takePress(button)).toBe(true);
+  expect(controls.takePress(button)).toBe(false);
+  expect(key('keydown', name, target, true).defaultPrevented).toBe(true);
+  expect(controls.takePress(button)).toBe(false);
+  expect(buttons[button].classList.contains('pressed')).toBe(true);
+  key('keyup', name, target);
+  expect(buttons[button].classList.contains('pressed')).toBe(false);
+});
+
+test.each([
+  [' ', 'a'],
+  ['Enter', 'b'],
+] as const)('returning to gameplay after UI %s has no stale %s press', (name, button) => {
+  const { buttons, controls, key } = setup();
+  const target = new FakeHTMLElement('button');
+  key('keydown', name, target);
+  key('keyup', name, target);
+  key('keydown', 'ArrowUp', new FakeHTMLElement('canvas'));
+  expect(controls.takePress(button)).toBe(false);
+  expect(buttons[button].classList.contains('pressed')).toBe(false);
+  key('keydown', name, new FakeHTMLElement('canvas'));
+  expect(controls.takePress(button)).toBe(true);
+  expect(controls.takePress(button)).toBe(false);
+});
+
+test.each(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])(
+  'UI keyup for %s preserves game-owned movement and joystick visuals',
+  (name) => {
+    const { joystick, knob, controls, key } = setup();
+    key('keydown', name);
+    const heading = controls.heading();
+    const direction = joystick.dataset.direction;
+    const transform = knob.style.transform;
+    expect(key('keyup', name, new FakeHTMLElement('button')).defaultPrevented).toBe(false);
+    expect(controls.heading()).toEqual(heading);
+    expect(joystick.classList.contains('active')).toBe(true);
+    expect(joystick.dataset.direction).toBe(direction);
+    expect(knob.style.transform).toBe(transform);
+    key('keyup', name);
+    expect(controls.heading()).toBeNull();
+  },
+);
+
+test('UI keyup during joystick touch preserves the game-owned arrow restored on lift', () => {
+  const { controls, key, thumb, lift } = setup();
+  key('keydown', 'ArrowUp');
+  thumb(32, 0);
+  key('keyup', 'ArrowUp', new FakeHTMLElement('button'));
+  expect(controls.heading()).toEqual(toward(Direction.Right));
+  lift();
+  expect(controls.heading()).toEqual(toward(Direction.Up));
+});
+
+test.each([
+  ['z', 'a', 300, 60],
+  ['x', 'b', 236, 124],
+] as const)('UI keyup for %s preserves game-owned %s after its touch releases', (name, button, clientX, clientY) => {
+  const { panel, buttons, controls, key, pointer } = setup();
+  key('keydown', name);
+  pointer('pointerdown', clientX, clientY, 1, panel);
+  expect(controls.takePress(button)).toBe(true);
+  expect(key('keyup', name, new FakeHTMLElement('input')).defaultPrevented).toBe(false);
+  expect(buttons[button].classList.contains('pressed')).toBe(true);
+  expect(controls.takePress(button)).toBe(false);
+  pointer('pointerup', clientX, clientY, 1, panel);
+  expect(buttons[button].classList.contains('pressed')).toBe(true);
+  key('keyup', name);
+  expect(buttons[button].classList.contains('pressed')).toBe(false);
 });
 
 test.each([
