@@ -34,6 +34,10 @@ Use [docs/palette.md](docs/palette.md) as the color source of truth when impleme
 
 Read [docs/visual-style.md](docs/visual-style.md) before implementing, reviewing, or testing game art, rendering, or animation.
 
+## Level Design
+
+Read [docs/level-design.md](docs/level-design.md) before designing, reviewing, or testing levels.
+
 ## Git
 
 ### Before Changing Files

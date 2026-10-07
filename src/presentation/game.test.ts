@@ -237,14 +237,14 @@ describe('the level sequence', () => {
           const level = Level.create({
             id,
             scenery: Scenery.of(
-              LevelSize.of(3, 3),
-              Array.from({ length: 3 }, () => Array<Ground>(3).fill(Ground.Path)),
+              LevelSize.of(3, 5),
+              Array.from({ length: 5 }, () => Array<Ground>(3).fill(Ground.Path)),
               [],
               [],
             ),
             stones: [],
             orbs: [Orb.at(TilePosition.at(1, 1), OrbColor.Violet, everywhere)],
-            door: Door.closedAt(TilePosition.at(0, 2)),
+            door: Door.closedAt(TilePosition.at(0, 4)),
             hero: { position: TilePosition.at(1, 0), facing: Direction.Down },
             obstacles: check2dObstacles,
           });

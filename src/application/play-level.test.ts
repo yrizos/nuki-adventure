@@ -16,18 +16,18 @@ const hint = SignpostText.of('ΔΙΑΒΑΣΕ ΜΕ');
 const right = Heading.of(Direction.Right);
 
 function playing() {
-  const tiles = Array.from({ length: 15 }, (_, index) => TilePosition.at(index % 5, Math.floor(index / 5)));
+  const tiles = Array.from({ length: 25 }, (_, index) => TilePosition.at(index % 5, Math.floor(index / 5)));
   const level = Level.create({
     id: levelId,
     scenery: Scenery.of(
-      LevelSize.of(5, 3),
-      Array.from({ length: 3 }, () => Array<Ground>(5).fill(Ground.Path)),
+      LevelSize.of(5, 5),
+      Array.from({ length: 5 }, () => Array<Ground>(5).fill(Ground.Path)),
       [],
       [],
     ),
     stones: [],
     orbs: [Orb.at(TilePosition.at(4, 0), OrbColor.Violet, Area.of(tiles))],
-    door: Door.closedAt(TilePosition.at(2, 2)),
+    door: Door.closedAt(TilePosition.at(2, 4)),
     hero: { position: TilePosition.at(0, 0), facing: Direction.Right },
     stars: [Star.at(TilePosition.at(1, 0))],
     signposts: [Signpost.at(TilePosition.at(0, 1), hint)],

@@ -71,7 +71,14 @@ describe('a level built from a layout', () => {
   test.each([
     ['no hero', ['Tt...F', '.DDD..', '#.*o~P', 'O....R'], 'The layout of level layout needs exactly one "H"'],
     ['two heroes', ['Tt...F', '.DDD..', '#H*o~P', 'OH...R'], 'The layout of level layout needs exactly one "H"'],
-    ['no door', ['Tt...F', '......', '#H*o~P', 'O....R'], 'The layout of level layout needs a door'],
+    ['no door', ['Tt...F', '......', '#H*o~P', 'O....R'], 'The layout of level layout needs exactly one door'],
+    ['a split door', ['Tt...F', '.DD.D.', '#H*o~P', 'O....R'], 'The layout of level layout needs exactly one door'],
+    ['two doors', ['DDDDDD', '......', '#H*o~P', 'O....R'], 'The layout of level layout needs exactly one door'],
+    [
+      'stars placed by hand and a star count',
+      ['Tt...F', '.DDD..', '#H*o~P', 'O.+..R'],
+      'The layout of level layout places its stars by hand, so it takes no star count',
+    ],
     ['a missing orb', ['Tt...F', '.DDD..', '#H*o~P', '.....R'], 'The layout of level layout needs exactly one "O"'],
     [
       'a missing signpost',
@@ -80,5 +87,18 @@ describe('a level built from a layout', () => {
     ],
   ])('rejects a layout with %s', (_, given, message) => {
     expect(() => levelFromLayout(LevelId.of('layout'), given, keepOrder, contents)).toThrow(message);
+  });
+
+  test('places stars on grass and on paths where the layout marks them', () => {
+    const { starCount: _, ...unscattered } = contents;
+    const placed = levelFromLayout(
+      LevelId.of('layout'),
+      ['Tt...F', '.DDD..', '#H*o~P', 'O.+.=R'],
+      keepOrder,
+      unscattered,
+    );
+    expect(placed.stars.map((star) => star.position)).toEqual([at(2, 3), at(4, 3)]);
+    expect(placed.scenery.groundAt(at(2, 3))).toBe(Ground.Grass);
+    expect(placed.scenery.groundAt(at(4, 3))).toBe(Ground.Path);
   });
 });

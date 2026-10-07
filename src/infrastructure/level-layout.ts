@@ -1,4 +1,4 @@
-import { Area, Orb, type OrbColor } from '../domain/level/collectibles';
+import { Area, Orb, type OrbColor, Star } from '../domain/level/collectibles';
 import type { StarCount } from '../domain/shared/star-count';
 import { Door } from '../domain/level/door';
 import { Level, Stone } from '../domain/level/level';
@@ -13,7 +13,7 @@ interface LayoutContents {
     Record<string, { readonly color: OrbColor; readonly restores: (position: TilePosition) => boolean }>
   >;
   readonly signposts: Readonly<Record<string, string>>;
-  readonly starCount: StarCount;
+  readonly starCount?: StarCount;
 }
 
 export type Shuffle = (positions: readonly TilePosition[]) => readonly TilePosition[];
@@ -31,7 +31,7 @@ export function levelFromLayout(
   const where = (symbol: string): TilePosition[] =>
     cells.filter((cell) => cell.symbol === symbol).map((cell) => cell.at);
   const ground = layout.map((line) =>
-    [...line].map((symbol) => ('#DH'.includes(symbol) ? Ground.Path : symbol === '~' ? Ground.Water : Ground.Grass)),
+    [...line].map((symbol) => ('#DH='.includes(symbol) ? Ground.Path : symbol === '~' ? Ground.Water : Ground.Grass)),
   );
   const scenery = Scenery.of(
     size,
@@ -46,26 +46,29 @@ export function levelFromLayout(
       throw new Error(`The layout of level ${id.value} needs exactly one "${symbol}"`);
     return position;
   };
-  const [door] = where('D');
-  if (!door) throw new Error(`The layout of level ${id.value} needs a door`);
+  const [door, ...doorTiles] = where('D');
+  if (!door || doorTiles.length !== 2 || !doorTiles.every((tile) => Door.closedAt(door).covers(tile)))
+    throw new Error(`The layout of level ${id.value} needs exactly one door`);
+  const stars = cells.filter((cell) => '+='.includes(cell.symbol)).map((cell) => Star.at(cell.at));
+  if (stars.length > 0 && contents.starCount)
+    throw new Error(`The layout of level ${id.value} places its stars by hand, so it takes no star count`);
   const orbs = Object.entries(contents.orbs).map(([symbol, { color, restores }]) =>
     Orb.at(one(symbol), color, Area.of(cells.map((cell) => cell.at).filter(restores))),
   );
   const signposts = Object.entries(contents.signposts).map(([symbol, text]) =>
     Signpost.at(one(symbol), SignpostText.of(text)),
   );
-  return Level.withScatteredStars(
-    {
-      id,
-      scenery,
-      stones: where('o').map(Stone.at),
-      orbs,
-      door: Door.closedAt(door),
-      hero: { position: one('H'), facing: Direction.Up },
-      signposts,
-      obstacles: check2dObstacles,
-    },
-    contents.starCount,
-    shuffle,
-  );
+  const definition = {
+    id,
+    scenery,
+    stones: where('o').map(Stone.at),
+    orbs,
+    door: Door.closedAt(door),
+    hero: { position: one('H'), facing: Direction.Up },
+    signposts,
+    obstacles: check2dObstacles,
+  };
+  return contents.starCount
+    ? Level.withScatteredStars(definition, contents.starCount, shuffle)
+    : Level.create({ ...definition, stars });
 }

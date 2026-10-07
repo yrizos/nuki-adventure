@@ -109,12 +109,25 @@ export class Level {
     }
     orbs.forEach((orb, index) => {
       if (!this.canEnter(orb.position)) throw new RangeError('Every orb must lie where the hero can reach it');
+      if (this.hides(orb.position)) {
+        throw new RangeError(
+          `An orb must stay visible, not behind a tree or the door, at ${orb.position.column}, ${orb.position.row}`,
+        );
+      }
       if (orbs.findIndex((other) => other.position.equals(orb.position)) !== index) {
         throw new RangeError(`An orb needs a tile of its own, at ${orb.position.column}, ${orb.position.row}`);
       }
     });
     if (!this.canEnter(hero.position)) throw new RangeError('The hero must start on open ground');
     const reachable = this.reachableTiles();
+    const directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
+    if (
+      !door.footprint.some((tile) =>
+        directions.some((direction) => reachable.some((other) => other.equals(tile.neighbor(direction)))),
+      )
+    ) {
+      throw new RangeError('The door must open beside a tile the hero can reach');
+    }
     stars.forEach((star, index) => {
       if (!reachable.some((tile) => tile.equals(star.position)))
         throw new RangeError('Every star must lie where the hero can reach it');
@@ -125,6 +138,7 @@ export class Level {
       }
       if (
         orbs.some((orb) => orb.position.equals(star.position)) ||
+        star.position.equals(hero.position) ||
         stars.findIndex((other) => other.equals(star)) !== index
       ) {
         throw new RangeError(`A star needs a tile of its own, at ${star.position.column}, ${star.position.row}`);

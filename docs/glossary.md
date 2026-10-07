@@ -112,7 +112,7 @@ A gold collectible.
 
 ### Star Count
 
-The number of stars a level holds. Each time the level starts, its stars go to random tiles that are reachable and not hidden.
+The number of stars a level holds. A level either places its stars on chosen tiles, or its stars go to random tiles that are reachable and not hidden each time it starts.
 
 ### Orb
 
