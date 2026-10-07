@@ -38,6 +38,20 @@ Read [docs/visual-style.md](docs/visual-style.md) before implementing, reviewing
 
 Read [docs/level-design.md](docs/level-design.md) before designing, reviewing, or testing levels.
 
+## Delegation
+
+Delegate when the requested work edits paths owned by an editing agent in [.claude/agents](.claude/agents). Each editing agent lists its owned paths in its `Own:` line.
+
+- Send every request to review changes to `reviewer`. The primary agent never reviews work itself.
+- Start every bug fix with `test-writer`, whatever the size of the fix. It writes a failing regression test, then the primary agent or owning specialist fixes the code.
+- After adding or changing behavior, send coverage to `test-writer`.
+- Only `test-writer` adds tests. Another agent edits an existing test only when its own change breaks that test.
+- Keep any other work in the primary agent when it changes under 20 lines in a single file.
+- After a substantial change, run `reviewer` last and address its findings. A change is substantial when it touches 3 or more files, or any non-test file under `src/domain` or `src/application`.
+- Split work spanning several specialists by owned path and run independent parts in parallel.
+- Pass a specialist the task, the intended behavior and facts already established. Do not repeat its rules, because its agent file holds them.
+- Specialists return to the primary agent, which integrates the results and reports.
+
 ## Git
 
 ### Before Changing Files
