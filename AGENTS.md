@@ -49,6 +49,10 @@ Read [docs/visual-style.md](docs/visual-style.md) before implementing, reviewing
 
 Read [docs/level-design.md](docs/level-design.md) before designing, reviewing, or testing levels.
 
+## Testing
+
+Read [docs/testing.md](docs/testing.md) before writing, reviewing, or changing tests.
+
 ## Delegation
 
 Delegate when the requested work edits paths owned by an editing agent in [.claude/agents](.claude/agents). Each editing agent lists its owned paths in its `Own:` line.

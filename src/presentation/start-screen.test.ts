@@ -1,10 +1,11 @@
-import { expect, test } from 'vitest';
+import { expect, test, vi } from 'vitest';
 import type { LevelProgressView } from '../application/manage-progress';
 import { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import { LevelId } from '../domain/shared/level-id';
 import { StarCount } from '../domain/shared/star-count';
 import { sprite } from './picture';
-import { focusAfter, levelPickerArt, levelRowText, rowHeight, titleArt } from './start-screen';
+import { FakeDocument, type FakeHTMLElement } from '../test-support/fake-document';
+import { focusAfter, levelPickerArt, levelRowText, rowHeight, StartScreen, titleArt } from './start-screen';
 
 const level = (number: number, isUnlocked: boolean, frames?: number): LevelProgressView => ({
   id: LevelId.of(`level ${number}`),
@@ -56,4 +57,69 @@ test.each([
   ['ArrowUp', 0, 0],
 ])('moves focus with %s from choice %s to %s of four', (key, from, to) => {
   expect(focusAfter(key, from, 4)).toBe(to);
+});
+
+function startScreen(continueLevel = levels[0]!.id) {
+  FakeDocument.stubGlobals();
+  const root = new FakeDocument();
+  const screen = root.createElement('section');
+  screen.className = 'start-screen';
+  const [title, continueButton, newGameButton, picker] = [
+    'start-title',
+    'start-continue',
+    'start-new-game',
+    'level-picker',
+  ].map((name) => {
+    const created = root.createElement(name === 'start-title' ? 'h1' : name === 'level-picker' ? 'ul' : 'button');
+    created.className = name;
+    return created;
+  });
+  screen.append(title!, continueButton!, newGameButton!, picker!);
+  root.body.append(screen);
+  const subject = new StartScreen(root as unknown as Document);
+  const chosen = vi.fn<(level: LevelId) => void>();
+  subject.whenChosen(chosen);
+  subject.show({ continueLevel, levels });
+  const rows = root.querySelectorAll('.level-row') as FakeHTMLElement[];
+  const key = (name: string): Event => {
+    const event = Object.assign(new Event('keydown', { cancelable: true }), { key: name, repeat: false });
+    root.dispatchEvent(event);
+    return event;
+  };
+  return { root, continueButton: continueButton!, newGameButton: newGameButton!, rows, chosen, key };
+}
+
+test.each([
+  ['a level row', (page: ReturnType<typeof startScreen>) => page.rows[1]!, levels[1]!.id],
+  ['continue', (page: ReturnType<typeof startScreen>) => page.continueButton, levels[1]!.id],
+  ['new game', (page: ReturnType<typeof startScreen>) => page.newGameButton, levels[0]!.id],
+] as const)('choosing %s starts its level', (_label, choice, level) => {
+  const page = startScreen(levels[1]!.id);
+  choice(page).click();
+  expect(page.chosen).toHaveBeenCalledExactlyOnceWith(level);
+});
+
+test('a locked row can be neither clicked nor reached with the keyboard', () => {
+  const { rows, root, chosen, key } = startScreen();
+  const locked = rows[2]!;
+  locked.click();
+  for (let press = 0; press < rows.length + 2; press++) key('ArrowDown');
+  expect(root.activeElement).toBe(rows[1]);
+  key('Enter');
+  expect(chosen).toHaveBeenCalledExactlyOnceWith(levels[1]!.id);
+});
+
+test('arrow keys move focus through the choices and a choose key picks the focused one', () => {
+  const { root, continueButton, newGameButton, rows, chosen, key } = startScreen(levels[1]!.id);
+  expect(root.activeElement).toBe(continueButton);
+  expect(key('ArrowDown').defaultPrevented).toBe(true);
+  expect(root.activeElement).toBe(newGameButton);
+  key('ArrowRight');
+  expect(root.activeElement).toBe(rows[0]);
+  key('ArrowUp');
+  expect(root.activeElement).toBe(newGameButton);
+  key('ArrowRight');
+  expect(chosen).not.toHaveBeenCalled();
+  expect(key('z').defaultPrevented).toBe(true);
+  expect(chosen).toHaveBeenCalledExactlyOnceWith(levels[0]!.id);
 });

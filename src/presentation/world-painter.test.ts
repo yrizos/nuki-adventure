@@ -1,3 +1,6 @@
+/// <reference types="node" />
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { crc32, deflateSync } from 'node:zlib';
 import { describe, expect, test, vi } from 'vitest';
 import { levelView } from '../application/level-view';
 import { Area, Orb, OrbColor } from '../domain/level/collectibles';
@@ -91,6 +94,43 @@ function colorAt(picture: Picture, column: number, row: number): string {
 async function checksum(picture: Picture): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', picture.pixels.slice());
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function png(picture: Picture): Buffer {
+  const chunk = (type: string, data: Buffer): Buffer => {
+    const typed = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const framed = Buffer.alloc(typed.length + 8);
+    framed.writeUInt32BE(data.length, 0);
+    typed.copy(framed, 4);
+    framed.writeUInt32BE(crc32(typed), typed.length + 4);
+    return framed;
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(picture.width, 0);
+  header.writeUInt32BE(picture.height, 4);
+  header.set([8, 6, 0, 0, 0], 8);
+  const stride = picture.width * 4;
+  const rows = Buffer.alloc((stride + 1) * picture.height);
+  for (let row = 0; row < picture.height; row++)
+    rows.set(picture.pixels.subarray(row * stride, (row + 1) * stride), row * (stride + 1) + 1);
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(rows)),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+// A hash alone cannot show what changed, so a mismatch leaves the actual frame behind for inspection.
+async function expectChecksum(picture: Picture, expected: string): Promise<void> {
+  const actual = await checksum(picture);
+  if (actual === expected) return;
+  const directory = new URL('../../test-output/', import.meta.url);
+  const name = `${(expect.getState().currentTestName ?? 'frame').replace(/[^a-z0-9]+/gi, '-')}.png`;
+  mkdirSync(directory, { recursive: true });
+  const file = new URL(name, directory);
+  writeFileSync(file, png(picture));
+  expect(actual, `actual frame written to ${decodeURIComponent(file.pathname)}`).toBe(expected);
 }
 
 const exitSignCases = [
@@ -267,17 +307,17 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    expect(await checksum(picture)).toBe('d8589c3bf9973da56403203173343ecdc36e265b44195511494ac5965997bc84');
+    await expectChecksum(picture, 'd8589c3bf9973da56403203173343ecdc36e265b44195511494ac5965997bc84');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     painter.paintRestoring(picture, scene, orb.position, 40, [], [orb.restores]);
-    expect(await checksum(picture)).toBe('0b4d93e9aff64081b33cdcb2607d5c12ddb77d38f8087c7a6f0394f73fb3b986');
+    await expectChecksum(picture, '0b4d93e9aff64081b33cdcb2607d5c12ddb77d38f8087c7a6f0394f73fb3b986');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [orb.restores]);
-    expect(await checksum(picture)).toBe('ed9d419c8166f3361daad5e04e704f7432196dd4b65770dc451b2515c0a7d2b9');
+    await expectChecksum(picture, 'ed9d419c8166f3361daad5e04e704f7432196dd4b65770dc451b2515c0a7d2b9');
   });
 });
 

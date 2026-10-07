@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { Direction, Heading } from '../domain/level/position';
+import { FakeDocument, FakeHTMLElement, stubDisplay } from '../test-support/fake-document';
 import { Controls } from './controls';
 
 type Handler = (event: { data: { vector: { x: number; y: number }; force: number } }) => void;
@@ -17,84 +18,26 @@ vi.mock('nipplejs', () => ({
 
 const toward = (direction: Direction): Heading => Heading.of(direction);
 
-class FakeElement extends EventTarget {
-  readonly tagName: string;
-
-  constructor(
-    tag: string,
-    private readonly attributes: Readonly<Record<string, string>> = {},
-    readonly parentElement: FakeElement | null = null,
-  ) {
-    super();
-    this.tagName = tag.toUpperCase();
-  }
-
-  getAttribute(name: string): string | null {
-    return this.attributes[name] ?? null;
-  }
-
-  closest(selectors: string): FakeElement | null {
-    for (const selector of selectors.split(',')) {
-      const match = /^([\w-]+)?(?:\[([\w-]+)(?:=["']?([^"'\]]*)["']?)?\])?$/.exec(selector.trim());
-      if (!match) throw new Error(`Unsupported test selector: ${selector}`);
-      const [, tag, attribute, value] = match;
-      if (tag && this.tagName !== tag.toUpperCase()) continue;
-      if (attribute && this.getAttribute(attribute) === null) continue;
-      if (value !== undefined && this.getAttribute(attribute!) !== value) continue;
-      return this;
-    }
-    return this.parentElement?.closest(selectors) ?? null;
-  }
-}
-
-class FakeHTMLElement extends FakeElement {
-  get isContentEditable(): boolean {
-    const value = this.getAttribute('contenteditable')?.toLowerCase();
-    if (value === '' || value === 'true' || value === 'plaintext-only') return true;
-    if (value === 'false') return false;
-    return this.parentElement instanceof FakeHTMLElement && this.parentElement.isContentEditable;
-  }
-}
-
-function controlElement(width = 120, left = 0, top = 0, height = width): HTMLElement {
-  const classes = new Set<string>();
-  return Object.assign(new FakeHTMLElement('div'), {
-    classList: {
-      add: (name: string) => classes.add(name),
-      remove: (name: string) => classes.delete(name),
-      contains: (name: string) => classes.has(name),
-      toggle: (name: string, force: boolean) => (force ? classes.add(name) : classes.delete(name)),
-    },
-    style: { transform: '' },
-    dataset: {},
-    offsetWidth: 56,
-    getBoundingClientRect: () => ({ left, top, width, height }),
-    setPointerCapture: vi.fn(),
-    hasPointerCapture: () => true,
-  }) as unknown as HTMLElement;
+function controlElement(width = 120, left = 0, top = 0, height = width): FakeHTMLElement {
+  const element = new FakeHTMLElement('div');
+  element.bounds = { left, top, width, height };
+  return element;
 }
 
 function setup() {
-  const keyboard = new EventTarget();
-  vi.stubGlobal('window', keyboard);
-  vi.stubGlobal('Element', FakeElement);
-  vi.stubGlobal('HTMLElement', FakeHTMLElement);
-  let resize = (): void => {};
-  vi.stubGlobal(
-    'ResizeObserver',
-    class {
-      constructor(callback: () => void) {
-        resize = callback;
-      }
-      observe() {}
-    },
-  );
-  vi.stubGlobal('getComputedStyle', () => ({ paddingLeft: '6px' }));
+  FakeDocument.stubGlobals();
+  const display = stubDisplay(1);
+  const keyboard = display.window;
   const panel = controlElement(360, 0, 0, 184);
   const joystick = controlElement();
+  joystick.style.paddingLeft = '6px';
   const knob = controlElement(56);
   const buttons = { a: controlElement(56, 272, 32), b: controlElement(56, 208, 96) };
-  const controls = new Controls(panel, joystick, knob, buttons);
+  const html = (element: FakeHTMLElement): HTMLElement => element as unknown as HTMLElement;
+  const controls = new Controls(html(panel), html(joystick), html(knob), {
+    a: html(buttons.a),
+    b: html(buttons.b),
+  });
   const key = (type: 'keydown' | 'keyup', name: string, target = keyboard, repeat = false): Event => {
     const event = Object.assign(new Event(type, { cancelable: true }), { key: name, repeat });
     Object.defineProperty(event, 'target', { value: target });
@@ -133,12 +76,11 @@ function setup() {
     thumb,
     slide,
     lift,
-    resize: () => resize(),
+    resize: display.relayout,
   };
 }
 
 afterEach(() => {
-  vi.unstubAllGlobals();
   thumbs.length = 0;
 });
 
@@ -502,8 +444,8 @@ test.each([0, 17, 44, 90, 133, -29, -151])(
 test('a resized ring rebuilds the joystick with the new reach and keeps the knob on whole panel pixels', () => {
   const { joystick, knob, key, resize } = setup();
   const pixel = 58.333333333333336 / 28;
-  joystick.getBoundingClientRect = () => ({ left: 0, top: 0, width: 125, height: 125 }) as DOMRect;
-  knob.getBoundingClientRect = () => ({ width: 58.333333333333336 }) as DOMRect;
+  joystick.bounds = { left: 0, top: 0, width: 125, height: 125 };
+  knob.bounds = { ...knob.bounds, width: 58.333333333333336 };
   resize();
   const reach = (125 - 12 - 58.333333333333336) / 2;
   expect(thumbs.at(-1)!.size).toBeCloseTo(2 * reach);

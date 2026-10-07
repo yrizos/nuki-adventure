@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import { StarCount } from '../domain/shared/star-count';
 import { continueHeight, continueWidth } from './art/panel';
@@ -81,10 +81,6 @@ describe('the level end window', () => {
       button: elements['.continue-button'],
     };
   }
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
 
   test('sizes the continue button from its art before it opens', () => {
     const subject = opened();

@@ -16,6 +16,7 @@ import { GameLoop } from './game-loop';
 import { GameSession, messages } from './game-session';
 import { HeroAnimator } from './hero-animator';
 import { MessageBox } from './message-box';
+import { neutralCode, palette } from './palette';
 import { Picture } from './picture';
 import { cameraPosition, heroPixels } from './world-geometry';
 import { WorldPainter } from './world-painter';
@@ -434,6 +435,24 @@ describe('the level sequence', () => {
     },
   );
 
+  test.each(['before', 'after'] as const)(
+    'continues once when the level-end button is used %s a pending action press',
+    (order) => {
+      const subject = sequence();
+      subject.complete();
+      if (order === 'before') subject.session.continuePlaying();
+      subject.continueWith('a');
+      if (order === 'after') subject.session.continuePlaying();
+      expect(subject.started).toEqual(['one', 'two']);
+      const level = subject.current();
+      expect(level.id.value).toBe('two');
+      expect(level.hero.position).toEqual(TilePosition.at(1, 4));
+      expect(level.orbs).toHaveLength(1);
+      expect(level.isComplete).toBe(false);
+      expect(subject.session.messageText).toBe('');
+    },
+  );
+
   test('starts with the level it is given and moves on from there', () => {
     const subject = sequence('two');
     expect(subject.started).toEqual(['two']);
@@ -542,6 +561,14 @@ describe('the game loop', () => {
   });
 });
 
+function colorAt(picture: Picture, column: number, row: number): string {
+  const offset = (row * picture.width + column) * 4;
+  return `#${[...picture.pixels.subarray(offset, offset + 3)]
+    .map((value) => value.toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase()}`;
+}
+
 async function checksum(picture: Picture): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', picture.pixels.slice());
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -647,6 +674,36 @@ describe('whole frames of the game session', () => {
       expect(actual.pixels).toEqual(expected.pixels);
     },
   );
+
+  test('keeps the first area colored after a second orb interrupts its restoration and finishes spreading', () => {
+    const subject = gameSession([
+      Orb.at(TilePosition.at(1, 0), OrbColor.Red, leftHalf),
+      Orb.at(TilePosition.at(2, 0), OrbColor.Blue, rightHalf),
+    ]);
+    const [first, second] = subject.level.orbs;
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 1);
+    const firstPickupFrame = subject.frames - 1;
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
+    const secondPickupFrame = subject.frames - 1;
+    const size = subject.level.scenery.size;
+    expect(secondPickupFrame - firstPickupFrame).toBeLessThan(restorationLength(size, first!.position));
+    subject.advance(restorationLength(size, second!.position));
+    const picture = new Picture(224, 224);
+    subject.session.paint(picture);
+    const camera = cameraPosition(subject.level, picture.width, picture.height);
+    const colors = new Set(Object.values(palette));
+    const neutrals = new Set(neutralCode.options.map((code) => palette[code]));
+    const tileColors = (tile: TilePosition): string[] =>
+      Array.from({ length: 32 * 32 }, (_, index) =>
+        colorAt(picture, tile.column * 32 + (index % 32) - camera.x, tile.row * 32 + Math.floor(index / 32) - camera.y),
+      );
+    for (const tile of [TilePosition.at(0, 2), TilePosition.at(4, 2)]) {
+      const painted = tileColors(tile);
+      expect(painted.every((color) => colors.has(color))).toBe(true);
+      expect(painted.some((color) => !neutrals.has(color))).toBe(true);
+    }
+    expect(subject.session.messageText).toBe(messages.colorsBack);
+  });
 
   test('closes the colored world without a restoration message when completion interrupts spreading', () => {
     const subject = gameSession(undefined, [], LevelSize.of(22, 6));

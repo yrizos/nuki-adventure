@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { progressLevels, progressSequences } from '../../test-support/progress-sequences';
 import { LevelId } from '../shared/level-id';
 import { StarCount } from '../shared/star-count';
 import { GameProgress } from './game-progress';
@@ -83,3 +84,26 @@ describe('game progress', () => {
     expect(progress.bestPlaythroughs).toEqual([{ level: one, playthrough: playthrough(300, 1) }]);
   });
 });
+
+test.each(progressSequences)(
+  'progress through $label never relocks a level or worsens a best playthrough',
+  ({ steps }) => {
+    const progress = GameProgress.fresh();
+    for (const step of steps) {
+      const unlockedBefore = progressLevels.filter((level) => progress.isUnlocked(level, progressLevels));
+      const bestBefore = progressLevels.map((level) => progress.bestPlaythroughOf(level));
+      step.apply(progress);
+      expect(
+        progressLevels.filter((level) => progress.isUnlocked(level, progressLevels)),
+        step.label,
+      ).toEqual(expect.arrayContaining(unlockedBefore));
+      progressLevels.forEach((level, index) => {
+        const before = bestBefore[index];
+        if (!before) return;
+        const after = progress.bestPlaythroughOf(level);
+        expect(after, step.label).not.toBeNull();
+        expect(before.isBetterThan(after!), step.label).toBe(false);
+      });
+    }
+  },
+);
