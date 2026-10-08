@@ -180,9 +180,9 @@ export class WorldPainter {
     const view = cameraPosition(scene.level, target.width, target.height);
     for (let y = 0; y < target.height; y++) {
       for (let x = 0; x < target.width; x++) {
-        const offset = (y * target.width + x) * 4;
+        const offset = y * target.width + x;
         const source = isRestored(x + view.x, y + view.y, origin, framesSinceStart) ? this.after : this.before;
-        target.pixels.set(source.pixels.subarray(offset, offset + 4), offset);
+        target.packedPixels[offset] = source.packedPixels[offset]!;
       }
     }
   }
@@ -193,7 +193,7 @@ export class WorldPainter {
     ink.fill('Ink');
     for (let y = 0; y < target.height; y++) {
       for (let x = 0; x < target.width; x++) {
-        if (isDarkened(x, y, framesSinceStart)) target.pixels.set(ink.pixels, (y * target.width + x) * 4);
+        if (isDarkened(x, y, framesSinceStart)) target.packedPixels[y * target.width + x] = ink.packedPixels[0]!;
       }
     }
   }
@@ -230,8 +230,8 @@ export class WorldPainter {
         const bottom = share(column, row + 1) * (1 - right) + share(column + 1, row + 1) * right;
         const blend = top * (1 - down) + bottom * down;
         if (ditherThreshold(worldX, worldY) >= blend * ditherSteps) continue;
-        const offset = (y * target.width + x) * 4;
-        target.pixels.set(this.colored.pixels.subarray(offset, offset + 4), offset);
+        const offset = y * target.width + x;
+        target.packedPixels[offset] = this.colored.packedPixels[offset]!;
       }
     }
   }

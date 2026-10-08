@@ -848,6 +848,90 @@ test('every palette step fades to a neutral while neutrals preserve their values
   }
 });
 
+test.each(Object.keys(palette) as PaletteCode[])('repeated fills preserve the exact RGBA bytes of %s', (code) => {
+  const picture = new Picture(3, 2);
+  const bytes = [1, 3, 5].map((start) => Number.parseInt(palette[code].slice(start, start + 2), 16));
+  for (let repeat = 0; repeat < 2; repeat++) {
+    picture.pixels.fill(7);
+    picture.fill(code);
+    expect([...picture.pixels]).toEqual(Array.from({ length: 6 }, () => [...bytes, 255]).flat());
+  }
+});
+
+test.each(['colored', 'faded'] as const)('drawing every palette code preserves its exact %s RGBA bytes', (version) => {
+  const codes = Object.keys(palette) as PaletteCode[];
+  const symbols = codes.map((_, index) => String.fromCharCode(65 + index));
+  const art: Art = {
+    legend: Object.fromEntries(symbols.map((symbol, index) => [symbol, codes[index]!])),
+    rows: [symbols.join('')],
+  };
+  const picture = new Picture(codes.length, 1);
+  picture.draw(art, 0, 0, version);
+  expect([...picture.pixels]).toEqual(
+    codes.flatMap((code) => [
+      ...[1, 3, 5].map((start) =>
+        Number.parseInt(palette[version === 'faded' ? faded(code) : code].slice(start, start + 2), 16),
+      ),
+      255,
+    ]),
+  );
+});
+
+test('byte edits and shading survive transparent and hidden sprite pixels across repeated draws', () => {
+  const picture = new Picture(3, 1);
+  const art: Art = { legend: { g: 'G3' }, rows: ['.gg'] };
+  picture.fill('G2');
+  picture.pixels.set([155, 211, 90, 73]);
+  picture.shade(0, 0, 3, 1);
+  picture.draw(art, 0, 0, 'colored', (x) => x !== 1);
+  expect([...picture.pixels]).toEqual([90, 168, 69, 73, 47, 122, 74, 255, 155, 211, 90, 255]);
+  picture.shade(0, 0, 3, 1);
+  picture.draw(art, 0, 0, 'faded', (x) => x !== 1);
+  expect([...picture.pixels]).toEqual([47, 122, 74, 73, 31, 74, 63, 255, 196, 198, 214, 255]);
+  picture.fill('Paper');
+  picture.draw(art, 0, 0, 'colored');
+  expect([...picture.pixels]).toEqual([245, 242, 233, 255, 155, 211, 90, 255, 155, 211, 90, 255]);
+});
+
+test.each(['colored', 'faded'] as const)('drawing observes public byte edits to a cached %s sprite', (version) => {
+  const art: Art = { legend: { g: 'G2' }, rows: ['gg.'], faded: { legend: { n: 'N4' }, rows: ['nn.'] } };
+  const picture = new Picture(3, 1);
+  picture.fill('Ink');
+  picture.draw(art, 0, 0, version);
+  const original = version === 'colored' ? [90, 168, 69, 255] : [196, 198, 214, 255];
+  expect([...picture.pixels]).toEqual([...original, ...original, 28, 26, 46, 255]);
+  const bytes = sprite(art)[version];
+  bytes.set([240, 96, 79, 255]);
+  bytes[7] = 0;
+  bytes.set([60, 200, 180, 255], 8);
+  picture.fill('Paper');
+  picture.draw(art, 0, 0, version);
+  expect([...picture.pixels]).toEqual([240, 96, 79, 255, 245, 242, 233, 255, 60, 200, 180, 255]);
+});
+
+test('a reused painter matches fresh compositing and restoration after target size changes', () => {
+  const level = renderingLevel();
+  const painter = new WorldPainter(level);
+  const scene = { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null };
+  const origin = TilePosition.at(2, 2);
+  for (const [width, height] of [
+    [224, 225],
+    [225, 224],
+    [257, 263],
+    [224, 225],
+  ]) {
+    const actual = new Picture(width!, height!);
+    const expected = new Picture(width!, height!);
+    const fresh = new WorldPainter(level);
+    painter.paint(actual, scene, [leftHalf]);
+    fresh.paint(expected, scene, [leftHalf]);
+    expect(actual.pixels).toEqual(expected.pixels);
+    painter.paintRestoring(actual, scene, origin, 16, [leftHalf], [everywhere]);
+    fresh.paintRestoring(expected, scene, origin, 16, [leftHalf], [everywhere]);
+    expect(actual.pixels).toEqual(expected.pixels);
+  }
+});
+
 test('corrected faded art preserves dimensions, silhouette, and neutral colors', () => {
   const art: Art = { legend: { g: 'G2' }, rows: ['gg.'], faded: { legend: { n: 'N4' }, rows: ['nn.'] } };
   expect([...sprite(art).faded.slice(0, 4)]).toEqual([196, 198, 214, 255]);

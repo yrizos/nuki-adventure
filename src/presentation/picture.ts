@@ -8,6 +8,7 @@ interface Sprite {
   readonly height: number;
   readonly colored: Uint8ClampedArray;
   readonly faded: Uint8ClampedArray;
+  readonly packed: Readonly<Record<Version, Uint32Array>>;
 }
 
 const sprites = new WeakMap<Art, Sprite>();
@@ -16,6 +17,13 @@ function channels(code: PaletteCode): readonly number[] {
   const hex = palette[code];
   return [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
 }
+
+const packedColors = Object.fromEntries(
+  Object.keys(palette).map((code) => {
+    const bytes = new Uint8ClampedArray([...channels(code as PaletteCode), 255]);
+    return [code, new Uint32Array(bytes.buffer)[0]!];
+  }),
+) as Record<PaletteCode, number>;
 
 const shading = Object.fromEntries(
   Object.entries({
@@ -66,24 +74,34 @@ export function sprite(art: Art): Sprite {
     }
     fadedPixels.set(corrected.colored);
   }
-  const created = { width, height, colored, faded: fadedPixels };
+  const created = {
+    width,
+    height,
+    colored,
+    faded: fadedPixels,
+    packed: {
+      colored: new Uint32Array(colored.buffer),
+      faded: new Uint32Array(fadedPixels.buffer),
+    },
+  };
   sprites.set(art, created);
   return created;
 }
 
 export class Picture {
   readonly pixels: Uint8ClampedArray;
+  readonly packedPixels: Uint32Array;
 
   constructor(
     readonly width: number,
     readonly height: number,
   ) {
     this.pixels = new Uint8ClampedArray(width * height * 4);
+    this.packedPixels = new Uint32Array(this.pixels.buffer);
   }
 
   fill(code: PaletteCode): void {
-    const color = [...channels(code), 255];
-    for (let offset = 0; offset < this.pixels.length; offset += 4) this.pixels.set(color, offset);
+    this.packedPixels.fill(packedColors[code]);
   }
 
   shade(x: number, y: number, width: number, height: number): void {
@@ -105,15 +123,16 @@ export class Picture {
   ): void {
     if (!Number.isInteger(x) || !Number.isInteger(y))
       throw new RangeError('Sprites must be drawn at whole pixel positions');
-    const { width, height, [version]: source } = sprite(art);
+    const { width, height, [version]: source, packed } = sprite(art);
+    const packedSource = packed[version];
     for (let row = 0; row < height; row++) {
       const targetY = y + row;
       if (targetY < 0 || targetY >= this.height) continue;
       for (let column = 0; column < width; column++) {
         const targetX = x + column;
-        const from = (row * width + column) * 4;
-        if (targetX < 0 || targetX >= this.width || source[from + 3] === 0 || !visible(targetX, targetY)) continue;
-        this.pixels.set(source.subarray(from, from + 4), (targetY * this.width + targetX) * 4);
+        const from = row * width + column;
+        if (targetX < 0 || targetX >= this.width || source[from * 4 + 3] === 0 || !visible(targetX, targetY)) continue;
+        this.packedPixels[targetY * this.width + targetX] = packedSource[from]!;
       }
     }
   }
