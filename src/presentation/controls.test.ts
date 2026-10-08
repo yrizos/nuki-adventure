@@ -4,10 +4,14 @@ import { FakeDocument, FakeHTMLElement, stubDisplay } from '../test-support/fake
 import { Controls } from './controls';
 
 type Handler = (event: { data: { vector: { x: number; y: number }; force: number } }) => void;
-const thumbs: { handlers: Map<string, Handler>; size: number; destroyed: boolean }[] = [];
+type Center = { x: number; y: number };
+const thumbs: { handlers: Map<string, Handler>; size: number; destroyed: boolean; center: Center }[] = [];
+// NippleJS fixes a static joystick's center from the zone's bounds when it is created.
 vi.mock('nipplejs', () => ({
-  create: (options: { size: number }) => {
-    const thumb = { handlers: new Map<string, Handler>(), size: options.size, destroyed: false };
+  create: (options: { size: number; zone: HTMLElement }) => {
+    const { left, top, width, height } = options.zone.getBoundingClientRect();
+    const center = { x: left + width / 2, y: top + height / 2 };
+    const thumb = { handlers: new Map<string, Handler>(), size: options.size, destroyed: false, center };
     thumbs.push(thumb);
     return {
       on: (name: string, handler: Handler) => thumb.handlers.set(name, handler),
@@ -452,6 +456,23 @@ test('a resized ring rebuilds the joystick with the new reach and keeps the knob
   expect(thumbs.at(-2)!.destroyed).toBe(true);
   key('keydown', 'ArrowRight');
   expect(knob.style.transform).toBe(`translate(${Math.trunc(reach / pixel) * pixel}px, 0px)`);
+});
+
+test('after a window resize moves the ring, a drag from its new center steers relative to that center', () => {
+  const { keyboard, joystick, controls } = setup();
+  joystick.bounds = { left: 200, top: 300, width: 120, height: 120 };
+  keyboard.dispatchEvent(new Event('resize'));
+  const current = thumbs.at(-1)!;
+  const reach = current.size / 2;
+  const press = { x: 260 + 20, y: 360 };
+  const dx = press.x - current.center.x;
+  const dy = press.y - current.center.y;
+  const distance = Math.hypot(dx, dy);
+  const clamped = Math.min(distance, reach) / distance;
+  const data = { vector: { x: (dx * clamped) / reach, y: (-dy * clamped) / reach }, force: distance / reach };
+  current.handlers.get('start')!({ data });
+  current.handlers.get('move')!({ data });
+  expect(controls.heading()).toEqual(toward(Direction.Right));
 });
 
 test.each([

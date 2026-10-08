@@ -165,7 +165,7 @@ export class Controls {
     panel.addEventListener('contextmenu', (event) => event.preventDefault());
 
     let thumb: ReturnType<typeof create> | null = null;
-    // The thumb's reach follows the ring's size, so the joystick is rebuilt whenever the ring resizes.
+    // The thumb's reach and center follow the ring, so the joystick is rebuilt whenever the ring resizes or moves.
     const listen = (): void => {
       thumb?.destroy();
       thumb = create({
@@ -194,12 +194,15 @@ export class Controls {
       });
     };
     listen();
-    new ResizeObserver(() => {
+    const rebuild = (): void => {
       this.joystickHeld = false;
       this.joystickHeading = null;
       listen();
       updateKeyboardJoystick();
-    }).observe(joystick);
+    };
+    new ResizeObserver(rebuild).observe(joystick);
+    // nipplejs never recenters a dataOnly joystick, and entering fullscreen can move the ring without resizing it.
+    window.addEventListener('resize', rebuild);
   }
 
   // A held button acts once, so reading a press clears it until the button goes down again.
