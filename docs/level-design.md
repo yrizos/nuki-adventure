@@ -22,7 +22,8 @@ The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/dom
 - Every orb has a hint sign on its approach. Every traversable route from the hero start to that orb must enter the hint sign's reading range before the orb can be collected. A shorter recommended route is not enough if another route bypasses the sign.
 - Every exit door has its own reachable, readable sign beside it. Its text gives a general hint about completing the level and opening the door, separate from the orb's location hint.
 - Place the exit sign as close to the fence as possible, on reachable ground immediately inside it and beside either end of the door. For the current layouts, it stands one row below the fence and one column outside the door's width, either left or right. Both sides are valid. Keep the doorway clear and the fence intact; never move the door to match another level's sign coordinates.
-- Sign text matches the level's actual number of orbs. A one-orb level uses singular nouns, verbs and pronouns, and never implies that the player must find additional orbs.
+- Sign text matches the level's actual number of orbs. A one-orb level uses singular nouns, verbs and pronouns, and never implies that the player must find additional orbs. A level with several orbs says how many there are, in the exit sign's general hint.
+- An orb's hint sign names that orb's color and a landmark. The exit sign never names an orb color or location.
 - Signposts refer to recognizable, visible landmarks such as apple trees, a lake, flowers or a group of rocks. They never use compass directions, compass abbreviations or bearings. This includes north, south, east, west and their combinations or equivalents in any language. The player has no compass.
 - Test entry placement, sign-before-orb ordering, exit sign placement beside the door and against the fence, objective-count wording and forbidden compass wording for every authored level. Use movement and actual reading range for route checks, not only marker distances or sign counts.
 
@@ -34,6 +35,7 @@ The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/dom
 
 ### Stars
 
+- A level holds exactly five stars.
 - Every star is reachable and not hidden.
 - No star shares a tile with an orb, the hero start or another star.
 - A layout either places its stars by hand or gives a star count for random placement, never both.
@@ -82,6 +84,8 @@ Orbs and other mandatory objectives never depend on accidental discovery. Beyond
 ### Area Shapes
 
 Each area is a place the player recognizes as a whole, such as a forest, a lake, a garden, a courtyard, ruins or an island. Area boundaries follow the shape of those places, never a convenience such as a straight column split. Collecting an orb improves the player's understanding of the map as well as moving the level forward.
+
+The seam between a restored and a faded area is a gradient about three tiles wide that stays on screen until the next orb is collected. Place an area boundary where that gradient reads as the change from one place to another, such as a shoreline, a tree line or a track, and never rely on the color difference to show a route.
 
 ### Returning to the Door
 

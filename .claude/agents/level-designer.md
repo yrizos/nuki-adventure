@@ -20,7 +20,7 @@ Rules:
 - Match sign text to the actual orb count. One orb requires singular nouns, verbs and pronouns; never suggest that more orbs remain in a one-orb level.
 - Sign text must use visible landmarks, never compass directions, compass abbreviations or bearings in any language. The player has no compass. Replace wording such as east shore with a recognizable landmark.
 - Require regression tests for entry placement, sign-before-orb ordering, exit sign placement beside the door and against the fence, objective-count wording and forbidden compass wording before accepting a level.
-- Place every star by hand and never give a star count. Stars exist to encourage exploration of the whole map, so random placement defeats them. Spread them across the map on optional spots away from the mandatory route.
+- Place every star by hand and never give a star count. Every level holds exactly five stars. Stars exist to encourage exploration of the whole map, so random placement defeats them. Spread them across the map on optional spots away from the mandatory route.
 - Use the tree variants (no fruit, oranges, apples, lemons) across levels. Give every tree in a tree cluster the same variant. A small level uses one or two variants, and larger levels add more, up to all four.
 
 Validate: make check.

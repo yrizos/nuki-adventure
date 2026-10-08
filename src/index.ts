@@ -8,6 +8,7 @@ import type { Shuffle } from './infrastructure/level-layout';
 import { LocalProgressRepository } from './infrastructure/local-progress-repository';
 import { randomShuffle } from './infrastructure/random-shuffle';
 import { secondLevel, secondLevelId } from './infrastructure/second-level';
+import { thirdLevel, thirdLevelId } from './infrastructure/third-level';
 import { startGame } from './presentation/game';
 
 const playing = (create: (shuffle: Shuffle) => Level) => () =>
@@ -16,6 +17,7 @@ const playing = (create: (shuffle: Shuffle) => Level) => () =>
 const levels = [
   { id: firstLevelId, start: playing(firstLevel) },
   { id: secondLevelId, start: playing(secondLevel) },
+  { id: thirdLevelId, start: playing(thirdLevel) },
 ];
 
 startGame(

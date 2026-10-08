@@ -254,10 +254,13 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 
 ### Restoring Color
 
-- Color returns through an ordered 4 × 4 dither dissolve, each pixel switching from faded to full color at its threshold
-- The dissolve spreads outward from the point of restoration, one tile ring per step
-- Only the area of the collected orb changes, and the rest of the map keeps its current state
-- Where a colored area meets a faded one, the seam is a one tile wide band of the same ordered 4 × 4 dither, centered on the area edge
+- Color returns through an ordered 4 × 4 dither dissolve, each pixel switching from faded to color at its threshold
+- The dissolve spreads outward from the center of the orb's tile as a circle, one tile every 4 frames
+- Each pixel that changes first shows its final color one step lighter on its own ramp for 8 frames, so a bright crest travels with the front and steps down to the final color. Ink and the lightest step of a ramp stay as they are
+- Pixels that are the same before and after, such as the hero, stars and areas already in color, never change
+- The area of the collected orb changes, together with the seam band around it, and the rest of the map keeps its current state
+- Where a colored area meets a faded one, the seam is a band of the same ordered 4 × 4 dither about three tiles wide, centered on the area edge and eased at both ends so color feathers in instead of starting at a visible edge
+- The seam itself never animates, and the dissolve passes through it, so the last frame of the dissolve is exactly the settled seam
 - Every frame of the dissolve contains palette colors only
 - The door stays closed until every orb is picked up. During the last restoration it is drawn open where color reaches it, and the hero can step into it once color covers the whole door
 
@@ -288,6 +291,7 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 | Water | 4 | 15 game frames each, all water tiles in sync |
 | Flowers sway | 2 | 30 game frames each, offset per tile |
 | Light motes | 1 | Rise 1 pixel every 4 game frames over 64 pixels and sway 1 pixel every 40 game frames, offset per mote |
+| Restoring color | 16 dither thresholds | The front moves 1 tile every 4 game frames, and each pixel shows its lighter crest for 8 game frames |
 | Leaving a level | 16 dither thresholds | 3 game frames each, 48 in total |
 
 ### Animation Rules

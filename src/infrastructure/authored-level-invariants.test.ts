@@ -5,6 +5,7 @@ import { Direction, Heading, TilePosition, WorldPosition, tileSize } from '../do
 import { check2dObstacles } from './check2d-obstacles';
 import { firstLevel } from './first-level';
 import { secondLevel } from './second-level';
+import { thirdLevel } from './third-level';
 
 const keepOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => positions;
 const frames = 24;
@@ -24,6 +25,7 @@ const farAway = WorldPosition.at(-10 * tileSize, -10 * tileSize);
 const starts = [
   { name: 'first', authored: firstLevel(keepOrder) },
   { name: 'second', authored: secondLevel(keepOrder) },
+  { name: 'third', authored: thirdLevel(keepOrder) },
 ].flatMap(({ name, authored }) => {
   // Nothing here opens the door, so the obstacles never change and placing them once per level keeps the suite fast.
   const obstacles = check2dObstacles(authored.outlines);

@@ -1,73 +1,28 @@
 import { expect, test } from 'vitest';
-import { feet } from '../domain/level/hero';
+import type { Orb } from '../domain/level/collectibles';
 import type { Level } from '../domain/level/level';
-import { OrbCollected, SignpostRead, type LevelEvent } from '../domain/level/level-events';
-import { Direction, Heading, TilePosition, type WorldPosition, tileSize } from '../domain/level/position';
+import { LevelCompleted, OrbCollected, SignpostRead, type LevelEvent } from '../domain/level/level-events';
+import { Direction, TilePosition } from '../domain/level/position';
 import type { Signpost } from '../domain/level/signpost';
-import { check2dObstacles } from './check2d-obstacles';
+import { follow, pathTo } from '../test-support/walk-level';
 import { firstLevel } from './first-level';
 import { secondLevel } from './second-level';
+import { thirdLevel } from './third-level';
 
 const keepOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => positions;
-const directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
 const authoredLevels = [
-  { name: 'first', create: firstLevel, orbHint: /ΜΩΒ/ },
-  { name: 'second', create: secondLevel, orbHint: /ΤΥΡΚΟΥΑΖ/ },
-];
-
-function pathTo(
-  level: Level,
-  destination: (position: TilePosition) => boolean,
-  avoid?: Signpost,
-): readonly WorldPosition[] | undefined {
-  const obstacles = check2dObstacles(level.outlines);
-  const start = level.hero.feet;
-  const key = (position: WorldPosition): string => `${position.x},${position.y}`;
-  const reached = [start];
-  const previous = new Map<string, WorldPosition | null>([[key(start), null]]);
-  if (avoid?.isReadableFrom(start.tile)) return undefined;
-  for (let index = 0; index < reached.length; index++) {
-    const here = reached[index]!;
-    if (destination(here.tile)) {
-      const path = [here];
-      let parent = previous.get(key(here));
-      while (parent) {
-        path.push(parent);
-        parent = previous.get(key(parent));
-      }
-      return path.reverse();
-    }
-    for (const direction of directions) {
-      const next = here.moved(Heading.of(direction), 2);
-      if (
-        next.x < 0 ||
-        next.y < 0 ||
-        next.x >= level.scenery.size.columns * tileSize ||
-        next.y >= level.scenery.size.rows * tileSize ||
-        previous.has(key(next)) ||
-        avoid?.isReadableFrom(next.tile) ||
-        !obstacles.walk(feet.at(here), next).equals(next)
-      ) {
-        continue;
-      }
-      previous.set(key(next), here);
-      reached.push(next);
-    }
-  }
-  return undefined;
-}
-
-function follow(level: Level, path: readonly WorldPosition[]): readonly LevelEvent[] {
-  const events: LevelEvent[] = [];
-  for (const next of path.slice(1)) {
-    for (let attempt = 0; attempt < 3 && !level.hero.feet.equals(next); attempt++) {
-      events.push(...level.tick(Heading.toward(next.x - level.hero.feet.x, next.y - level.hero.feet.y)));
-    }
-    expect(level.hero.feet.equals(next), 'the collision-checked path must be playable through Level.tick').toBe(true);
-  }
-  level.tick(null);
-  return events;
-}
+  { name: 'first', create: firstLevel },
+  { name: 'second', create: secondLevel },
+  { name: 'third', create: thirdLevel },
+].map((authored) => ({ ...authored, orbCount: authored.create(keepOrder).orbs.length }));
+const oneOrbLevels = authoredLevels.filter(({ orbCount }) => orbCount === 1);
+const multiOrbLevels = authoredLevels.filter(({ orbCount }) => orbCount > 1);
+const orbWords = { red: /ΚΟΚΚΙΝ/u, blue: /ΜΠΛΕ/u, violet: /ΜΩΒ/u, teal: /ΤΥΡΚΟΥΑΖ/u };
+const orbCases = authoredLevels.flatMap(({ name, create }) =>
+  create(keepOrder).orbs.map((orb, index) => ({ name, create, index, color: orb.color.name })),
+);
+// The exit sign has to say how many spheres there are, so every orb count that a level can have needs its number here.
+const numberWords = new Map([[2, 'ΔΥΟ']]);
 
 function besideExit(level: Level, signpost: Signpost): boolean {
   const columns = level.door.footprint.map((tile) => tile.column);
@@ -76,7 +31,22 @@ function besideExit(level: Level, signpost: Signpost): boolean {
   );
 }
 
-for (const { name, create, orbHint } of authoredLevels) {
+function hintFor(level: Level, orb: Orb): Signpost | undefined {
+  const others = level.orbs.filter((other) => other !== orb);
+  return level.signposts.find(
+    (signpost) =>
+      orbWords[orb.color.name].test(signpost.text.value) &&
+      !others.some((other) => orbWords[other.color.name].test(signpost.text.value)) &&
+      !besideExit(level, signpost),
+  );
+}
+
+const collects =
+  (orb: Orb) =>
+  (event: LevelEvent): boolean =>
+    event instanceof OrbCollected && event.position.equals(orb.position);
+
+for (const { name, create } of authoredLevels) {
   test(`the ${name} level enters at its bottom playable edge, facing inward and far from the exit`, () => {
     const level = create(keepOrder);
     const bottomPlayableRow = Math.max(
@@ -119,34 +89,6 @@ for (const { name, create, orbHint } of authoredLevels) {
     ).toEqual([]);
   });
 
-  test(`the ${name} level cannot collect its orb without encountering its hint sign`, () => {
-    const level = create(keepOrder);
-    const hint = level.signposts.find((signpost) => orbHint.test(signpost.text.value) && !besideExit(level, signpost));
-    expect(hint, 'the orb needs a location hint separate from the exit hint').toBeDefined();
-    expect(hint!.isReadableFrom(level.hero.feet.tile), 'every route starts within the orb hint reading range').toBe(
-      true,
-    );
-    const initialEvents = level.read();
-    expect(initialEvents.find((event) => event instanceof SignpostRead)?.position).toEqual(hint!.position);
-    expect(initialEvents.some((event) => event instanceof OrbCollected)).toBe(false);
-    const orb = level.orbs[0]!;
-    const ordinaryPath = pathTo(level, (position) => position.equals(orb.position));
-    expect(ordinaryPath, 'the orb must remain reachable').toBeDefined();
-    const events = [...initialEvents, ...follow(level, ordinaryPath!)];
-    const collectionIndex = events.findIndex((event) => event instanceof OrbCollected);
-    expect(collectionIndex, 'the playable route must collect the orb after its hint can be read').toBeGreaterThan(
-      events.findIndex((event) => event instanceof SignpostRead),
-    );
-    const bypass = pathTo(create(keepOrder), (position) => position.equals(orb.position), hint);
-    if (bypass) {
-      expect(bypass.every((position) => !hint!.isReadableFrom(position.tile))).toBe(true);
-      expect(follow(create(keepOrder), bypass).some((event) => event instanceof OrbCollected)).toBe(true);
-    }
-    expect(bypass === undefined, 'an alternate playable path collects the orb outside the hint reading range').toBe(
-      true,
-    );
-  });
-
   test(`the ${name} level exit has its own reachable, readable general completion hint`, () => {
     const level = create(keepOrder);
     const exitSigns = level.signposts.filter((signpost) => besideExit(level, signpost));
@@ -166,6 +108,41 @@ for (const { name, create, orbHint } of authoredLevels) {
     expect(read?.text).toEqual(exitSign!.text);
   });
 }
+
+test.each(orbCases)(
+  'the $name level cannot collect its $color orb without encountering its hint sign',
+  ({ create, index }) => {
+    const level = create(keepOrder);
+    const orb = level.orbs[index]!;
+    const hint = hintFor(level, orb);
+    expect(hint, 'the orb needs a location hint that names only it, separate from the exit hint').toBeDefined();
+    const ordinaryPath = pathTo(level, (position) => position.equals(orb.position));
+    expect(ordinaryPath, 'the orb must remain reachable').toBeDefined();
+    const reading = ordinaryPath!.findIndex((position) => hint!.isReadableFrom(position.tile));
+    expect(reading, 'the playable route must come within the hint reading range').toBeGreaterThanOrEqual(0);
+    expect(
+      follow(level, ordinaryPath!.slice(0, reading + 1)).some(collects(orb)),
+      'the orb must not be collected before the hint can be read',
+    ).toBe(false);
+    expect(level.read().find((event) => event instanceof SignpostRead)?.position).toEqual(hint!.position);
+    expect(
+      follow(level, ordinaryPath!.slice(reading)).some(collects(orb)),
+      'the playable route must collect the orb once its hint has been read',
+    ).toBe(true);
+    const bypass = pathTo(create(keepOrder), (position) => position.equals(orb.position), hint);
+    if (bypass) {
+      expect(bypass.every((position) => !hint!.isReadableFrom(position.tile))).toBe(true);
+      expect(follow(create(keepOrder), bypass).some(collects(orb))).toBe(true);
+    }
+    expect(bypass === undefined, 'an alternate playable path collects the orb outside the hint reading range').toBe(
+      true,
+    );
+  },
+);
+
+test.each(authoredLevels)('the $name level holds exactly five stars', ({ create }) => {
+  expect(create(keepOrder).stars).toHaveLength(5);
+});
 
 test.each(authoredLevels)(
   'the $name level general exit sign is beside either door end and one row inside the fence',
@@ -189,7 +166,7 @@ test.each(authoredLevels)(
   },
 );
 
-test.each(authoredLevels)('the $name level objective hints use singular wording for its one orb', ({ create }) => {
+test.each(oneOrbLevels)('the $name level objective hints use singular wording for its one orb', ({ create }) => {
   const level = create(keepOrder);
   expect(level.orbs).toHaveLength(1);
   const offendingSigns = level.signposts.filter((signpost) => {
@@ -204,14 +181,95 @@ test.each(authoredLevels)('the $name level objective hints use singular wording 
   ).toEqual([]);
 });
 
-test('the second level entry aligns with the previous exit after normalizing map widths', () => {
-  const previous = firstLevel(keepOrder);
-  const next = secondLevel(keepOrder);
-  const previousExitCenter =
-    previous.door.footprint.reduce((sum, tile) => sum + tile.column, 0) / previous.door.footprint.length;
-  const alignedColumn = (previousExitCenter / (previous.scenery.size.columns - 1)) * (next.scenery.size.columns - 1);
+test.each(multiOrbLevels)(
+  'the $name level exit sign says plainly how many spheres there are and mentions the door',
+  ({ create, orbCount }) => {
+    const level = create(keepOrder);
+    const number = numberWords.get(orbCount);
+    expect(number, `a ${orbCount}-orb level needs its count spelled out`).toBeDefined();
+    const exitSign = level.signposts.find((signpost) => besideExit(level, signpost));
+    expect(exitSign, 'the door needs its own sign').toBeDefined();
+    const words =
+      exitSign!.text.value
+        .normalize('NFD')
+        .replace(/\p{M}/gu, '')
+        .match(/\p{L}+/gu) ?? [];
+    expect(words, 'the objective must state the number of spheres').toContain(number);
+    expect(words, 'the objective must speak of the spheres in the plural').toContain('ΣΦΑΙΡΕΣ');
+    expect(
+      words.some((word) => word.startsWith('ΠΥΛ')),
+      'the objective must mention the door',
+    ).toBe(true);
+  },
+);
+
+test.each(multiOrbLevels)('the $name level objective hints never imply a single orb', ({ create }) => {
+  const level = create(keepOrder);
+  const objectiveSigns = level.signposts.filter((signpost) => {
+    const text = signpost.text.value.normalize('NFD').replace(/\p{M}/gu, '');
+    return /ΣΦΑΙΡ/u.test(text) && !level.orbs.some((orb) => orbWords[orb.color.name].test(text));
+  });
+  expect(objectiveSigns.length, 'the level needs an objective hint that is not an orb hint').toBeGreaterThan(0);
+  const offendingSigns = objectiveSigns.filter((signpost) => {
+    const text = signpost.text.value.normalize('NFD').replace(/\p{M}/gu, '');
+    const words = text.match(/\p{L}+/gu) ?? [];
+    return words.some((word) => word === 'ΣΦΑΙΡΑ' || word === 'ΣΦΑΙΡΑΣ') || /ΒΡΕΣ\s+ΤΗΝ?(?:[^\p{L}]|$)/u.test(text);
+  });
   expect(
-    Math.abs(next.hero.position.column - alignedColumn),
-    'the entry may differ from the normalized previous exit by at most one tile',
-  ).toBeLessThanOrEqual(1);
+    offendingSigns.map((signpost) => signpost.text.value),
+    'a multi-orb objective must not speak of one sphere or tell the player to find one',
+  ).toEqual([]);
+});
+
+test.each(authoredLevels.slice(1).map((next, index) => ({ previous: authoredLevels[index]!, next })))(
+  'the $next.name level entry aligns with the $previous.name exit after normalizing map widths',
+  ({ previous, next }) => {
+    const exited = previous.create(keepOrder);
+    const entered = next.create(keepOrder);
+    const exitCenter = exited.door.footprint.reduce((sum, tile) => sum + tile.column, 0) / exited.door.footprint.length;
+    const alignedColumn = (exitCenter / (exited.scenery.size.columns - 1)) * (entered.scenery.size.columns - 1);
+    expect(
+      Math.abs(entered.hero.position.column - alignedColumn),
+      'the entry may differ from the normalized previous exit by at most one tile',
+    ).toBeLessThanOrEqual(1);
+  },
+);
+
+test.each(
+  multiOrbLevels.flatMap(({ name, create, orbCount }) =>
+    [
+      Array.from({ length: orbCount }, (_, index) => index),
+      Array.from({ length: orbCount }, (_, index) => orbCount - 1 - index),
+    ].map((order) => ({
+      name,
+      create,
+      order,
+      label: order.map((index) => create(keepOrder).orbs[index]!.color.name).join(' then '),
+    })),
+  ),
+)('the $name level completes at its door after its orbs are collected $label', ({ create, order }) => {
+  const level = create(keepOrder);
+  const orbs = order.map((index) => level.orbs[index]!);
+  for (const [collected, orb] of orbs.entries()) {
+    const path = pathTo(level, (position) => position.equals(orb.position));
+    expect(path, 'the orb must be reachable from where she stands').toBeDefined();
+    const events = follow(level, path!).filter((event) => event instanceof OrbCollected);
+    expect(
+      events.map((event) => event.position),
+      'walking to an orb must collect only that orb',
+    ).toEqual([orb.position]);
+    expect(level.orbs).toHaveLength(orbs.length - collected - 1);
+    expect(level.door.isOpen).toBe(false);
+    if (collected < orbs.length - 1) {
+      expect(() => level.openDoor(), 'the door must refuse to open while an orb remains').toThrow();
+      expect(level.door.isOpen).toBe(false);
+    }
+    expect(level.isComplete).toBe(false);
+  }
+  level.openDoor();
+  expect(level.door.isOpen, 'the last orb must allow the door to open').toBe(true);
+  const toDoor = pathTo(level, (position) => level.door.covers(position));
+  expect(toDoor, 'the open door must be reachable').toBeDefined();
+  expect(follow(level, toDoor!).some((event) => event instanceof LevelCompleted)).toBe(true);
+  expect(level.isComplete).toBe(true);
 });

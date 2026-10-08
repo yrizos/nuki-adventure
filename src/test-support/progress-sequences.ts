@@ -3,8 +3,9 @@ import { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import { StarCount } from '../domain/shared/star-count';
 import { firstLevelId } from '../infrastructure/first-level';
 import { secondLevelId } from '../infrastructure/second-level';
+import { thirdLevelId } from '../infrastructure/third-level';
 
-export const progressLevels = [firstLevelId, secondLevelId];
+export const progressLevels = [firstLevelId, secondLevelId, thirdLevelId];
 
 const playthrough = (frames: number, collectedStars: number): Playthrough =>
   Playthrough.of(PlayTime.ofFrames(frames), StarCount.of(collectedStars), StarCount.of(3));

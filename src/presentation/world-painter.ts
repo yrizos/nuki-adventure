@@ -4,7 +4,7 @@ import { Direction, TilePosition } from '../domain/level/position';
 import { FlowerVariant, Ground, type Scenery, TreeVariant } from '../domain/level/scenery';
 import type { Art } from './art/art';
 import { ditherSteps, ditherThreshold } from './ordered-dither';
-import { Picture, type Version } from './picture';
+import { lighten, Picture, type Version } from './picture';
 import {
   doorArt,
   fenceArt,
@@ -26,7 +26,7 @@ import {
   waterFrameLength,
 } from './sprite-library';
 import { cameraPosition, clamp, heroPixels, tileSize } from './world-geometry';
-import { isDarkened, isRestored } from './world-transition';
+import { crestLength, isDarkened, restorationAge } from './world-transition';
 
 const orbBob = [0, -1, 0, 1];
 const motes = [
@@ -55,6 +55,21 @@ const sized = (picture: Picture, target: Picture): Picture =>
   picture.width === target.width && picture.height === target.height
     ? picture
     : new Picture(target.width, target.height);
+
+// A 3 x 3 box average makes the ramp interpolated between tile centers exactly three tiles wide across a straight area edge.
+function seamCoverage(colored: Uint8Array, columns: number, rows: number): Float32Array {
+  const at = (column: number, row: number): number =>
+    colored[clamp(row, 0, rows - 1) * columns + clamp(column, 0, columns - 1)]!;
+  return Float32Array.from({ length: columns * rows }, (_, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    let colorShare = 0;
+    for (let above = -1; above <= 1; above++) {
+      for (let beside = -1; beside <= 1; beside++) colorShare += at(column + beside, row + above);
+    }
+    return colorShare / 9;
+  });
+}
 
 // The ground is drawn half a tile off the level grid so that each drawn tile sees four level tiles at its corners, which keeps every transition inside one 16 tile set.
 function groundTiles(scenery: Scenery): GroundTile[] {
@@ -181,8 +196,15 @@ export class WorldPainter {
     for (let y = 0; y < target.height; y++) {
       for (let x = 0; x < target.width; x++) {
         const offset = y * target.width + x;
-        const source = isRestored(x + view.x, y + view.y, origin, framesSinceStart) ? this.after : this.before;
-        target.packedPixels[offset] = source.packedPixels[offset]!;
+        const earlier = this.before.packedPixels[offset]!;
+        const later = this.after.packedPixels[offset]!;
+        if (earlier === later) {
+          target.packedPixels[offset] = later;
+          continue;
+        }
+        const age = restorationAge(x + view.x, y + view.y, origin, framesSinceStart);
+        // Changing pixels first show their final color one ramp step lighter, so the wave ends by stepping down its ramp.
+        target.packedPixels[offset] = age < 0 ? earlier : age < crestLength ? lighten(later) : later;
       }
     }
   }
@@ -201,35 +223,39 @@ export class WorldPainter {
   // Color is split by tile rather than per prop, because a tree or the door can straddle two areas and only one of them may be restored.
   private compose(target: Picture, scene: Scene, restored: readonly Area[]): void {
     const { columns, rows } = scene.level.scenery.size;
-    const colored = Array.from({ length: columns * rows }, (_, index) =>
-      restored.some((area) => area.covers(TilePosition.at(index % columns, Math.floor(index / columns)))),
+    const colored = Uint8Array.from({ length: columns * rows }, (_, index) =>
+      restored.some((area) => area.covers(TilePosition.at(index % columns, Math.floor(index / columns)))) ? 1 : 0,
     );
-    if (colored.every(Boolean)) {
+    const coloredTiles = colored.reduce((sum, tile) => sum + tile, 0);
+    if (coloredTiles === colored.length) {
       this.paintVersion(target, scene, 'colored', scene.level.orbs.length === 0);
       return;
     }
     this.paintVersion(target, scene, 'faded', false);
-    if (!colored.some(Boolean)) return;
+    if (coloredTiles === 0) return;
     this.colored = sized(this.colored, target);
     this.paintVersion(this.colored, scene, 'colored', false);
     const camera = cameraPosition(scene.level, target.width, target.height);
-    const share = (column: number, row: number): number =>
-      colored[clamp(row, 0, rows - 1) * columns + clamp(column, 0, columns - 1)] ? 1 : 0;
-    // Color fades between neighboring tile centers, so the seam is a one tile wide dither band rather than a hard tile edge.
+    const coverage = seamCoverage(colored, columns, rows);
     for (let y = 0; y < target.height; y++) {
       const worldY = y + camera.y;
       const along = (worldY + 0.5) / tileSize - 0.5;
       const row = Math.floor(along);
       const down = along - row;
+      const upper = clamp(row, 0, rows - 1) * columns;
+      const lower = clamp(row + 1, 0, rows - 1) * columns;
       for (let x = 0; x < target.width; x++) {
         const worldX = x + camera.x;
         const across = (worldX + 0.5) / tileSize - 0.5;
         const column = Math.floor(across);
         const right = across - column;
-        const top = share(column, row) * (1 - right) + share(column + 1, row) * right;
-        const bottom = share(column, row + 1) * (1 - right) + share(column + 1, row + 1) * right;
+        const near = clamp(column, 0, columns - 1);
+        const far = clamp(column + 1, 0, columns - 1);
+        const top = coverage[upper + near]! * (1 - right) + coverage[upper + far]! * right;
+        const bottom = coverage[lower + near]! * (1 - right) + coverage[lower + far]! * right;
         const blend = top * (1 - down) + bottom * down;
-        if (ditherThreshold(worldX, worldY) >= blend * ditherSteps) continue;
+        // Smoothstep easing keeps the dither sparse at both ends, so color feathers in instead of starting at a visible edge.
+        if (ditherThreshold(worldX, worldY) >= blend * blend * (3 - 2 * blend) * ditherSteps) continue;
         const offset = y * target.width + x;
         target.packedPixels[offset] = this.colored.packedPixels[offset]!;
       }

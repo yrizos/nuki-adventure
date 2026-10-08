@@ -15,13 +15,14 @@ import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { firstLevel } from '../infrastructure/first-level';
 import { randomShuffle } from '../infrastructure/random-shuffle';
 import { secondLevel } from '../infrastructure/second-level';
+import { thirdLevel } from '../infrastructure/third-level';
 import type { Art } from './art/art';
 import * as library from './sprite-library';
-import { faded, palette, type PaletteCode } from './palette';
-import { Picture, sprite, type Version } from './picture';
+import { faded, lighter, palette, type PaletteCode } from './palette';
+import { lighten, Picture, sprite, type Version } from './picture';
 import { cameraPosition, heroPixels, tileSize } from './world-geometry';
 import { propVariants, WorldPainter } from './world-painter';
-import { closingLength, restorationLength } from './world-transition';
+import { closingLength, crestLength, isRestored, restorationLength } from './world-transition';
 
 const scenery = {
   grassArt: library.grassArt,
@@ -91,6 +92,22 @@ function colorAt(picture: Picture, column: number, row: number): string {
     .toUpperCase()}`;
 }
 
+const paletteCodes = Object.keys(palette) as PaletteCode[];
+
+function packedOf(code: PaletteCode): number {
+  const swatch = new Picture(1, 1);
+  swatch.fill(code);
+  return swatch.packedPixels[0]!;
+}
+
+const codeOfPacked = new Map(paletteCodes.map((code) => [packedOf(code), code]));
+
+function firstArrival(worldX: number, worldY: number, origin: TilePosition): number {
+  let frame = 0;
+  while (!isRestored(worldX, worldY, origin, frame)) frame++;
+  return frame;
+}
+
 async function checksum(picture: Picture): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', picture.pixels.slice());
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -138,6 +155,8 @@ const exitSignCases = [
   { name: 'first, right-side', create: firstLevel, version: 'colored' },
   { name: 'second, left-side', create: secondLevel, version: 'faded' },
   { name: 'second, left-side', create: secondLevel, version: 'colored' },
+  { name: 'third, right-side', create: thirdLevel, version: 'faded' },
+  { name: 'third, right-side', create: thirdLevel, version: 'colored' },
 ] as const;
 
 function isolatedSign(level: Level, signpost: Signpost, version: Version) {
@@ -147,7 +166,7 @@ function isolatedSign(level: Level, signpost: Signpost, version: Version) {
   const actual = new Picture(width, height);
   const expected = new Picture(width, height);
   const scene = { level: view, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null };
-  const restored = version === 'colored' ? [level.orbs[0]!.restores] : [];
+  const restored = version === 'colored' ? level.orbs.map((orb) => orb.restores) : [];
   const withoutSigns = { ...view, signposts: [] };
   new WorldPainter(withoutSigns).paint(expected, { ...scene, level: withoutSigns }, restored);
   const withSign = { ...view, signposts: [signpost] };
@@ -189,7 +208,7 @@ test.each(exitSignCases)(
     new WorldPainter(view).paint(
       expected,
       { level: view, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null },
-      version === 'colored' ? [level.orbs[0]!.restores] : [],
+      version === 'colored' ? level.orbs.map((orb) => orb.restores) : [],
     );
     const fenceDrawing = draw.mock.calls.find(
       ([art, column, row]) => scenery.fenceArt.includes(art) && column === x && row === y - tileSize,
@@ -220,17 +239,20 @@ test.each(exitSignCases)(
   'the $name ordinary orb hint keeps its grid position and contact shadow when $version',
   ({ create, version }) => {
     const level = create((positions) => positions);
-    const signpost = level.signposts.find((sign) => /ΜΩΒ|ΤΥΡΚΟΥΑΖ/.test(sign.text.value))!;
-    expect(level.scenery.fences.some((fence) => fence.position.equals(signpost.position.neighbor(Direction.Up)))).toBe(
-      false,
-    );
-    const { actual, expected, x, y } = isolatedSign(level, signpost, version);
-    const lastOpaqueRow = sprites.signpostArt.rows.findLastIndex((row) => row.includes('k'));
-    const surface = level.scenery.groundAt(signpost.position).equals(Ground.Path) ? 'E2' : 'G1';
-    const shadow = sprites.groundShadow(10, surface);
-    expected.draw(shadow, x + (tileSize - shadow.rows[0]!.length) / 2, y + lastOpaqueRow + 1, version);
-    expected.draw(sprites.signpostArt, x, y, version);
-    expectSignPixels(actual, expected, x, y - tileSize, y + tileSize);
+    const hints = level.signposts.filter((sign) => /ΜΩΒ|ΤΥΡΚΟΥΑΖ|ΚΟΚΚΙΝ|ΜΠΛΕ/.test(sign.text.value));
+    expect(hints, 'the level needs an ordinary hint for each orb').toHaveLength(level.orbs.length);
+    for (const signpost of hints) {
+      expect(
+        level.scenery.fences.some((fence) => fence.position.equals(signpost.position.neighbor(Direction.Up))),
+      ).toBe(false);
+      const { actual, expected, x, y } = isolatedSign(level, signpost, version);
+      const lastOpaqueRow = sprites.signpostArt.rows.findLastIndex((row) => row.includes('k'));
+      const surface = level.scenery.groundAt(signpost.position).equals(Ground.Path) ? 'E2' : 'G1';
+      const shadow = sprites.groundShadow(10, surface);
+      expected.draw(shadow, x + (tileSize - shadow.rows[0]!.length) / 2, y + lastOpaqueRow + 1, version);
+      expected.draw(sprites.signpostArt, x, y, version);
+      expectSignPixels(actual, expected, x, y - tileSize, y + tileSize);
+    }
   },
 );
 
@@ -241,7 +263,7 @@ test.each(exitSignCases)(
     const signpost = level.signposts.find((sign) => /ΠΥΛ/.test(sign.text.value))!;
     const signView = { ...levelView(level), signposts: [signpost] };
     const picture = new Picture(level.scenery.size.columns * tileSize, (level.scenery.size.rows + 2) * tileSize);
-    const restored = version === 'colored' ? [level.orbs[0]!.restores] : [];
+    const restored = version === 'colored' ? level.orbs.map((orb) => orb.restores) : [];
     new WorldPainter(signView).paint(
       picture,
       { level: signView, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null },
@@ -312,7 +334,7 @@ describe('whole frames of the first level', () => {
 
   test('renders the current partially restored fixture unchanged', async () => {
     painter.paintRestoring(picture, scene, orb.position, 40, [], [orb.restores]);
-    await expectChecksum(picture, '0b4d93e9aff64081b33cdcb2607d5c12ddb77d38f8087c7a6f0394f73fb3b986');
+    await expectChecksum(picture, '03bb2cdd5ad7250a1a68d5b4fdb7a5d194951ee5d53602e71e73f20fcdbb536d');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
@@ -327,8 +349,12 @@ test('every piece of art uses only its legend and keeps a rectangular shape', ()
   for (const piece of art) expect(() => sprite(piece)).not.toThrow();
 });
 
-test('the first level has ground art for every place where terrains meet', () => {
-  expect(() => new WorldPainter(firstLevel(randomShuffle))).not.toThrow();
+test.each([
+  { name: 'first', create: firstLevel },
+  { name: 'second', create: secondLevel },
+  { name: 'third', create: thirdLevel },
+])('the $name level has ground art for every place where terrains meet', ({ create }) => {
+  expect(() => new WorldPainter(create(randomShuffle))).not.toThrow();
 });
 
 test('native terrain grids cover all 81 three-terrain corner combinations', () => {
@@ -674,9 +700,9 @@ test('restoration advances outward with palette-only pixels and matches both end
       }
     }
   }
-  painter.paintRestoring(dissolve, scene, origin, 0, [], [everywhere]);
+  painter.paintRestoring(dissolve, scene, origin, 11, [], [everywhere]);
   expect(colorAt(dissolve, 64, 96)).toBe(colorAt(colored, 64, 96));
-  expect(colorAt(dissolve, 32, 64)).toBe(colorAt(neutral, 32, 64));
+  expect(colorAt(dissolve, 0, 32)).toBe(colorAt(neutral, 0, 32));
 });
 
 test('restoring one area leaves the rest of the map faded', () => {
@@ -712,6 +738,301 @@ test('restoring one area leaves the rest of the map faded', () => {
   expect(neutrals).toContain(colorAt(right, 120, 200));
   expect(grass).toContain(colorAt(right, 300, 200));
   expect(painted([leftHalf, rightHalf]).pixels).toEqual(painted([everywhere]).pixels);
+});
+
+// A view of the whole 12 x 12 map plus the two tiles of door height above it, so the camera is clamped to the map.
+const overview = { width: 12 * tileSize, height: 14 * tileSize };
+const seamEdge = 6 * tileSize;
+const seamHalfWidth = 1.5 * tileSize;
+
+function overviewPaints() {
+  const level = renderingLevel();
+  const painter = new WorldPainter(level);
+  const scene = { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null };
+  const paint = (restored: readonly Area[], using = painter): Picture => {
+    const picture = new Picture(overview.width, overview.height);
+    using.paint(picture, scene, restored);
+    return picture;
+  };
+  return { level, painter, scene, paint };
+}
+
+function seamFixture() {
+  const fixture = overviewPaints();
+  const { paint } = fixture;
+  return { ...fixture, faded: paint([]), colored: paint([everywhere]), seam: paint([leftHalf]) };
+}
+
+// A pixel shared by both pictures says nothing about which one the seam shows, so only differing pixels are counted.
+function seamColumns(faded: Picture, colored: Picture, seam: Picture): { faded: number; colored: number }[] {
+  const columns = Array.from({ length: faded.width }, () => ({ faded: 0, colored: 0 }));
+  for (let index = 0; index < faded.packedPixels.length; index++) {
+    const fadedPixel = faded.packedPixels[index]!;
+    const coloredPixel = colored.packedPixels[index]!;
+    if (fadedPixel === coloredPixel) continue;
+    const column = columns[index % faded.width]!;
+    if (seam.packedPixels[index] === coloredPixel) column.colored++;
+    else if (seam.packedPixels[index] === fadedPixel) column.faded++;
+  }
+  return columns;
+}
+
+test('every pixel along a straight restored edge is a pixel of the faded or the colored picture', () => {
+  const { faded, colored, seam } = seamFixture();
+  let foreign = 0;
+  for (let index = 0; index < seam.packedPixels.length; index++) {
+    const pixel = seam.packedPixels[index]!;
+    if (pixel !== faded.packedPixels[index] && pixel !== colored.packedPixels[index]) foreign++;
+  }
+  expect(foreign).toBe(0);
+});
+
+test.each([
+  { side: 'outside', from: seamEdge + 2 * tileSize, to: overview.width, expected: 'faded' },
+  { side: 'inside', from: 0, to: seamEdge - 2 * tileSize, expected: 'colored' },
+] as const)('two tiles or more $side a straight restored edge the picture is entirely $expected', (zone) => {
+  const { faded, colored, seam } = seamFixture();
+  const expected = zone.expected === 'faded' ? faded : colored;
+  let differing = 0;
+  let wrong = 0;
+  for (let y = 0; y < seam.height; y++) {
+    for (let x = zone.from; x < zone.to; x++) {
+      const index = y * seam.width + x;
+      if (faded.packedPixels[index] !== colored.packedPixels[index]) differing++;
+      if (seam.packedPixels[index] !== expected.packedPixels[index]) wrong++;
+    }
+  }
+  expect(differing, 'the zone must hold pixels that tell the faded and colored pictures apart').toBeGreaterThan(
+    (seam.height * (zone.to - zone.from)) / 2,
+  );
+  expect(wrong).toBe(0);
+});
+
+test('the colored share of a straight restored edge only falls from the colored side to the faded side', () => {
+  const { faded, colored, seam } = seamFixture();
+  const columns = seamColumns(faded, colored, seam);
+  const shares = Array.from({ length: overview.width / tileSize }, (_, tileColumn) => {
+    const tileColumns = columns.slice(tileColumn * tileSize, (tileColumn + 1) * tileSize);
+    const coloredPixels = tileColumns.reduce((sum, column) => sum + column.colored, 0);
+    return coloredPixels / (coloredPixels + tileColumns.reduce((sum, column) => sum + column.faded, 0));
+  });
+  expect(shares.every(Number.isFinite), 'every tile column must hold pixels that differ between the pictures').toBe(
+    true,
+  );
+  shares.slice(1).forEach((share, index) => expect(share).toBeLessThanOrEqual(shares[index]!));
+  const edgeColumn = seamEdge / tileSize;
+  for (const tileColumn of [edgeColumn - 1, edgeColumn]) {
+    expect(shares[tileColumn]!, `tile column ${tileColumn} lies inside the band`).toBeGreaterThan(0);
+    expect(shares[tileColumn]!, `tile column ${tileColumn} lies inside the band`).toBeLessThan(1);
+  }
+});
+
+test('a straight restored edge blends over a band about three tiles wide', () => {
+  const { faded, colored, seam } = seamFixture();
+  const columns = seamColumns(faded, colored, seam);
+  const firstFaded = columns.findIndex((column) => column.faded > 0);
+  const lastColored = columns.findLastIndex((column) => column.colored > 0);
+  expect(firstFaded, 'the faded picture shows no farther than 1.5 tiles inside the edge').toBeGreaterThanOrEqual(
+    seamEdge - seamHalfWidth,
+  );
+  expect(lastColored, 'the colored picture shows no farther than 1.5 tiles outside the edge').toBeLessThan(
+    seamEdge + seamHalfWidth,
+  );
+  expect(lastColored - firstFaded + 1).toBeGreaterThanOrEqual(2 * tileSize);
+});
+
+test('the seam follows the restored set, whatever was painted before it', () => {
+  const { level, paint, seam } = seamFixture();
+  const wider = area((position) => position.column < 8);
+  expect(paint([area((position) => position.column < 6)]).pixels, 'the same set on a later paint').toEqual(seam.pixels);
+  const widerSeam = paint([wider]);
+  expect(widerSeam.pixels).not.toEqual(seam.pixels);
+  expect(paint([leftHalf]).pixels, 'the first set again after another set').toEqual(seam.pixels);
+  expect(paint([wider], new WorldPainter(level)).pixels, 'a painter that never painted the first set').toEqual(
+    widerSeam.pixels,
+  );
+});
+
+test('the jagged seam between the two areas of the third level keeps clear tiles pure and mixes both pictures near the seam', () => {
+  const level = thirdLevel((positions) => positions);
+  const red = level.orbs.find((orb) => orb.color === OrbColor.Red)!.restores;
+  const blue = level.orbs.find((orb) => orb.color === OrbColor.Blue)!.restores;
+  const { columns, rows } = level.scenery.size;
+  const side = columns * tileSize;
+  expect(cameraPosition(level, side, side), 'the whole map must fill the picture from its corner').toEqual({
+    x: 0,
+    y: 0,
+  });
+  const painter = new WorldPainter(level);
+  const scene = { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null };
+  const paint = (restored: readonly Area[]): Picture => {
+    const picture = new Picture(side, side);
+    painter.paint(picture, scene, restored);
+    return picture;
+  };
+  const faded = paint([]);
+  const colored = paint([red, blue]);
+  const seam = paint([red]);
+  const clearance = (tile: TilePosition): number =>
+    Math.min(
+      ...(red.covers(tile) ? blue : red).tiles.map((far) =>
+        Math.max(Math.abs(far.column - tile.column), Math.abs(far.row - tile.row)),
+      ),
+    );
+  let foreign = 0;
+  let mixedNearSeam = 0;
+  const checked = { red: 0, blue: 0 };
+  const wrongTiles: string[] = [];
+  for (let index = 0; index < columns * rows; index++) {
+    const tile = TilePosition.at(index % columns, Math.floor(index / columns));
+    const inRed = red.covers(tile);
+    const clear = clearance(tile) >= 3;
+    let shownColored = 0;
+    let shownFaded = 0;
+    let wrong = 0;
+    for (let y = tile.row * tileSize; y < (tile.row + 1) * tileSize; y++) {
+      for (let x = tile.column * tileSize; x < (tile.column + 1) * tileSize; x++) {
+        const offset = y * side + x;
+        const fadedPixel = faded.packedPixels[offset]!;
+        const coloredPixel = colored.packedPixels[offset]!;
+        const shown = seam.packedPixels[offset]!;
+        if (shown !== fadedPixel && shown !== coloredPixel) foreign++;
+        if (fadedPixel === coloredPixel) continue;
+        if (shown === coloredPixel) shownColored++;
+        else if (shown === fadedPixel) shownFaded++;
+        if (clear) {
+          checked[inRed ? 'red' : 'blue']++;
+          if (shown !== (inRed ? coloredPixel : fadedPixel)) wrong++;
+        }
+      }
+    }
+    if (wrong > 0) wrongTiles.push(`${tile.column}, ${tile.row}`);
+    if (!clear && shownColored > 0 && shownFaded > 0) mixedNearSeam++;
+  }
+  expect(foreign, 'every pixel must be a pixel of the faded or the colored picture').toBe(0);
+  expect(checked.red, 'clear red tiles must hold pixels that tell the pictures apart').toBeGreaterThan(0);
+  expect(checked.blue, 'clear blue tiles must hold pixels that tell the pictures apart').toBeGreaterThan(0);
+  expect(wrongTiles, 'tiles two or more tiles clear of the other area must show only their own picture').toEqual([]);
+  expect(mixedNearSeam, 'a tile within the band must show both pictures').toBeGreaterThan(0);
+});
+
+const waveOrigin = TilePosition.at(9, 6);
+const waveFrames = [0, 9, 21, 40, restorationLength(LevelSize.of(12, 12), waveOrigin)];
+
+function halfMapWave() {
+  const { level, painter, scene, paint } = overviewPaints();
+  return {
+    camera: cameraPosition(level, overview.width, overview.height),
+    before: paint([leftHalf]),
+    after: paint([leftHalf, rightHalf]),
+    frame(framesSinceStart: number): Picture {
+      const picture = new Picture(overview.width, overview.height);
+      painter.paintRestoring(picture, scene, waveOrigin, framesSinceStart, [leftHalf], [leftHalf, rightHalf]);
+      return picture;
+    },
+  };
+}
+
+test.each(waveFrames)(
+  'frame %i of a wave over the right half of the map holds only palette colors',
+  (framesSinceStart) => {
+    const wave = halfMapWave().frame(framesSinceStart);
+    expect(wave.packedPixels.filter((pixel) => !codeOfPacked.has(pixel))).toHaveLength(0);
+  },
+);
+
+test.each(waveFrames)(
+  'frame %i of a wave over the right half of the map keeps every unchanged pixel',
+  (framesSinceStart) => {
+    const { before, after, frame } = halfMapWave();
+    const wave = frame(framesSinceStart);
+    let unchanged = 0;
+    let altered = 0;
+    for (let index = 0; index < wave.packedPixels.length; index++) {
+      if (before.packedPixels[index] !== after.packedPixels[index]) continue;
+      unchanged++;
+      if (wave.packedPixels[index] !== after.packedPixels[index]) altered++;
+    }
+    expect(unchanged).toBeGreaterThan(0);
+    expect(altered).toBe(0);
+  },
+);
+
+test.each(waveFrames)(
+  'every changed pixel of frame %i of a wave over the right half of the map shows its before, lightened after or after color',
+  (framesSinceStart) => {
+    const { before, after, frame } = halfMapWave();
+    const wave = frame(framesSinceStart);
+    let changed = 0;
+    let unexpected = 0;
+    for (let index = 0; index < wave.packedPixels.length; index++) {
+      const earlier = before.packedPixels[index]!;
+      const later = after.packedPixels[index]!;
+      if (earlier === later) continue;
+      changed++;
+      const shown = wave.packedPixels[index]!;
+      if (shown !== earlier && shown !== lighten(later) && shown !== later) unexpected++;
+    }
+    expect(changed).toBeGreaterThan(0);
+    expect(unexpected).toBe(0);
+  },
+);
+
+test('a wave over the right half of the map starts as the before picture wherever it has not arrived', () => {
+  const { before, camera, frame } = halfMapWave();
+  const wave = frame(0);
+  let waiting = 0;
+  let altered = 0;
+  for (let y = 0; y < wave.height; y++) {
+    for (let x = 0; x < wave.width; x++) {
+      if (isRestored(x + camera.x, y + camera.y, waveOrigin, 0)) continue;
+      waiting++;
+      const index = y * wave.width + x;
+      if (wave.packedPixels[index] !== before.packedPixels[index]) altered++;
+    }
+  }
+  expect(waiting).toBeGreaterThan(0);
+  expect(altered).toBe(0);
+});
+
+test('a wave over the right half of the map ends as exactly the after picture', () => {
+  const { after, frame } = halfMapWave();
+  expect(frame(restorationLength(LevelSize.of(12, 12), waveOrigin)).pixels).toEqual(after.pixels);
+});
+
+test('a changed pixel is its before color until the wave arrives, then crests lightened and settles on its after color', () => {
+  const { before, after, camera, frame } = halfMapWave();
+  const candidates: number[] = [];
+  for (let index = 0; index < before.packedPixels.length; index++) {
+    const earlier = before.packedPixels[index]!;
+    const later = after.packedPixels[index]!;
+    if (earlier !== later && lighten(later) !== later && lighten(later) !== earlier) candidates.push(index);
+  }
+  const arrivals = candidates
+    .filter((_, position) => position % 251 === 0)
+    .map((index) => {
+      const x = index % before.width;
+      const y = Math.floor(index / before.width);
+      return { index, x, y, arrival: firstArrival(x + camera.x, y + camera.y, waveOrigin) };
+    })
+    .filter(({ arrival }) => arrival >= 1)
+    .sort((left, right) => left.arrival - right.arrival);
+  const samples = Array.from({ length: 6 }, (_, sample) => arrivals[Math.floor((sample * (arrivals.length - 1)) / 5)]!);
+  expect(new Set(samples.map(({ arrival }) => arrival)).size, 'the samples must arrive at different frames').toBe(6);
+  const frames = new Map<number, Picture>();
+  const shownAt = (index: number, framesSinceStart: number): number => {
+    if (!frames.has(framesSinceStart)) frames.set(framesSinceStart, frame(framesSinceStart));
+    return frames.get(framesSinceStart)!.packedPixels[index]!;
+  };
+  for (const { index, x, y, arrival } of samples) {
+    const earlier = before.packedPixels[index]!;
+    const later = after.packedPixels[index]!;
+    const at = (framesSinceStart: number): string => `pixel ${x}, ${y} at frame ${framesSinceStart}`;
+    expect(shownAt(index, arrival - 1), at(arrival - 1)).toBe(earlier);
+    expect(shownAt(index, arrival), at(arrival)).toBe(lighten(later));
+    expect(shownAt(index, arrival + crestLength - 1), at(arrival + crestLength - 1)).toBe(lighten(later));
+    expect(shownAt(index, arrival + crestLength), at(arrival + crestLength)).toBe(later);
+  }
 });
 
 function treeArtDrawn(trees: readonly Tree[]): (tree: Tree) => Art | undefined {
@@ -846,6 +1167,42 @@ test('every palette step fades to a neutral while neutrals preserve their values
     expect(neutrals).toContain(faded(code));
     if (neutrals.includes(code)) expect(faded(code)).toBe(code);
   }
+});
+
+const ramps = [
+  ['neutral', ['N1', 'N2', 'N3', 'N4', 'Paper']],
+  ['green', ['G0', 'G1', 'G2', 'G3', 'G4']],
+  ['earth', ['E0', 'E1', 'E2', 'E3', 'E4']],
+  ['water', ['W0', 'W1', 'W2', 'W3', 'W4']],
+  ['gold', ['Y0', 'Y1', 'Y2', 'Y3']],
+  ['red', ['R0', 'R1', 'R2', 'R3']],
+  ['violet', ['V0', 'V0a', 'V1', 'V2', 'V3']],
+  ['teal', ['T0', 'T1', 'T2', 'T3']],
+  ['pink', ['P0', 'P1', 'P2', 'P3']],
+  ['skin', ['S0', 'S1', 'S2', 'S3']],
+] as const satisfies readonly (readonly [string, readonly PaletteCode[]])[];
+
+test('the ramps hold every palette step but Ink exactly once', () => {
+  expect(ramps.flatMap(([, ramp]) => [...ramp]).toSorted()).toEqual(
+    paletteCodes.filter((code) => code !== 'Ink').toSorted(),
+  );
+});
+
+test.each(ramps)('lighter steps up the %s ramp one step at a time and stays on its top step', (_, ramp) => {
+  ramp.slice(0, -1).forEach((code, index) => expect(lighter(code)).toBe(ramp[index + 1]));
+  expect(lighter(ramp.at(-1)!)).toBe(ramp.at(-1));
+});
+
+test('lighter leaves Ink unchanged', () => {
+  expect(lighter('Ink')).toBe('Ink');
+});
+
+test.each(paletteCodes)('lightening a packed %s pixel gives its lighter step', (code) => {
+  expect(lighten(packedOf(code))).toBe(packedOf(lighter(code)));
+});
+
+test.each([0, 0xff123456])('lightening the packed value %s, which is no palette color, changes nothing', (packed) => {
+  expect(lighten(packed)).toBe(packed);
 });
 
 test.each(Object.keys(palette) as PaletteCode[])('repeated fills preserve the exact RGBA bytes of %s', (code) => {

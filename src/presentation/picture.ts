@@ -1,5 +1,5 @@
 import type { Art } from './art/art';
-import { faded, palette, type PaletteCode } from './palette';
+import { faded, lighter, palette, type PaletteCode } from './palette';
 
 export type Version = 'colored' | 'faded';
 
@@ -24,6 +24,14 @@ const packedColors = Object.fromEntries(
     return [code, new Uint32Array(bytes.buffer)[0]!];
   }),
 ) as Record<PaletteCode, number>;
+
+const lightened = new Map(
+  (Object.keys(palette) as PaletteCode[]).map((code) => [packedColors[code], packedColors[lighter(code)]] as const),
+);
+
+export function lighten(packed: number): number {
+  return lightened.get(packed) ?? packed;
+}
 
 const shading = Object.fromEntries(
   Object.entries({

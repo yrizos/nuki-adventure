@@ -17,10 +17,10 @@ import { GameSession, messages } from './game-session';
 import { HeroAnimator } from './hero-animator';
 import { MessageBox } from './message-box';
 import { neutralCode, palette } from './palette';
-import { Picture } from './picture';
+import { lighten, Picture } from './picture';
 import { cameraPosition, heroPixels } from './world-geometry';
 import { WorldPainter } from './world-painter';
-import { closingLength, restorationLength } from './world-transition';
+import { closingLength, doorOpeningLength, restorationLength } from './world-transition';
 
 const area = (keep: (position: TilePosition) => boolean): Area =>
   Area.of(Array.from({ length: 1600 }, (_, index) => TilePosition.at(index % 40, Math.floor(index / 40))).filter(keep));
@@ -153,9 +153,9 @@ describe('the game session', () => {
     const subject = gameSession();
     const orb = subject.level.orbs[0]!;
     subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
-    const actual = new Picture(224, 320);
-    const expected = new Picture(224, 320);
-    const faded = new Picture(224, 320);
+    const actual = new Picture(224, 448);
+    const expected = new Picture(224, 448);
+    const faded = new Picture(224, 448);
     const scene = {
       level: subject.session.level,
       frame: subject.frames,
@@ -168,7 +168,7 @@ describe('the game session', () => {
     subject.session.paint(actual);
     const camera = cameraPosition(scene.level, actual.width, actual.height);
     const offset =
-      ((orb.position.row * 32 + 4 - camera.y) * actual.width + orb.position.column * 32 + 28 - camera.x) * 4;
+      ((orb.position.row * 32 + 16 - camera.y) * actual.width + orb.position.column * 32 + 20 - camera.x) * 4;
     const pixel = (picture: Picture) => [...picture.pixels.subarray(offset, offset + 4)];
     expect(pixel(expected)).not.toEqual(pixel(faded));
     expect(pixel(actual)).toEqual(pixel(expected));
@@ -259,11 +259,29 @@ describe('the game session', () => {
     expect(subject.sound.orb).toHaveBeenCalledTimes(2);
   });
 
+  test('opens the door only once color has drawn it open from the last orb, however long ago the first was taken', () => {
+    const subject = gameSession([
+      Orb.at(TilePosition.at(1, 0), OrbColor.Red, leftHalf),
+      Orb.at(TilePosition.at(2, 0), OrbColor.Blue, rightHalf),
+    ]);
+    const { door, scenery } = subject.level;
+    const [first, second] = subject.level.orbs;
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 1);
+    subject.advance(restorationLength(scenery.size, first!.position));
+    expect(subject.level.door.isOpen).toBe(false);
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
+    subject.advance(doorOpeningLength(door, scenery.size, second!.position) - 1);
+    expect(subject.level.door.isOpen).toBe(false);
+    subject.advance(1);
+    expect(subject.level.door.isOpen).toBe(true);
+  });
+
   test('keeps the door shut until the spreading color has drawn all of it open', () => {
     const subject = gameSession();
+    const opening = doorOpeningLength(subject.level.door, subject.level.scenery.size, subject.level.orbs[0]!.position);
     subject.walkUntil(Direction.Right, () => subject.sound.orb.mock.calls.length > 0);
     expect(subject.sound.restoring).toHaveBeenCalledOnce();
-    subject.advance(35);
+    subject.advance(opening - 1);
     expect(subject.level.door.isOpen).toBe(false);
     subject.advance(1);
     expect(subject.level.door.isOpen).toBe(true);
@@ -585,12 +603,8 @@ function unexpectedHeroPixels(subject: ReturnType<typeof gameSession>, above: nu
   const faded = new Picture(224, 448);
   const colored = new Picture(224, 448);
   const level = subject.session.level;
-  const scene = {
-    level,
-    frame: subject.frames,
-    hero: subject.normalAnimator.pose(level.hero, subject.frames, false),
-    heldOrb: null,
-  };
+  const pose = subject.normalAnimator.pose(level.hero, subject.frames, false);
+  const scene = { level, frame: subject.frames, hero: pose, heldOrb: null };
   const painter = new WorldPainter(level);
   painter.paint(faded, scene, []);
   painter.paint(colored, scene, [everywhere]);
@@ -600,12 +614,13 @@ function unexpectedHeroPixels(subject: ReturnType<typeof gameSession>, above: nu
   let unexpected = 0;
   for (let row = 0; row < height; row++) {
     for (let column = 0; column < 32; column++) {
-      const offset = ((hero.y - above - camera.y + row) * actual.width + hero.x - camera.x + column) * 4;
-      const matches = (picture: Picture): boolean =>
-        actual.pixels
-          .subarray(offset, offset + 4)
-          .every((channel, index) => channel === picture.pixels[offset + index]);
-      if (!matches(faded) && !matches(colored)) unexpected++;
+      const index = (hero.y - above - camera.y + row) * actual.width + hero.x - camera.x + column;
+      const shown = actual.packedPixels[index]!;
+      const coloredPixel = colored.packedPixels[index]!;
+      const onHero = (pose.rows[row - above]?.[column] ?? '.') !== '.';
+      // Only the ground around the hero changes color, so her own pixels must never be faded or lightened.
+      const allowed = onHero ? [coloredPixel] : [faded.packedPixels[index]!, coloredPixel, lighten(coloredPixel)];
+      if (!allowed.includes(shown)) unexpected++;
     }
   }
   return unexpected;
