@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
 import { expect, test } from 'vitest';
 import { sprite } from './picture';
 import { flowerArt, fruitTreeArt, readSprite, sprites, terrainArt, treeArt, waterFrameLength } from './sprite-library';
@@ -38,11 +41,50 @@ test.each(Object.entries(sprites.stone!.frames))('stone %s rasterizes as a valid
   expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
 });
 
-test('terrain transitions animate on the water clock', () => {
-  expect(Object.keys(terrainArt)).toHaveLength(81);
-  expect(new Set(Object.values(sprites['terrain-transitions']!.animations).map(({ length }) => length))).toEqual(
-    new Set([waterFrameLength]),
-  );
+test('terrain source, parsed and registered sprites preserve the exact original ordered content', () => {
+  const source = readFileSync(new URL('./sprites/terrain-transitions/data.js', import.meta.url), 'utf8');
+  const data: unknown = runInNewContext(`${source}\nglobalThis.sprites['terrain-transitions'];`, {});
+  const baseline = 'c4fc4a6a9f518d8b399be790afdf00bb64aeafa5ad62f691caff308056880063';
+  const hash = (content: unknown): string => createHash('sha256').update(JSON.stringify(content)).digest('hex');
+  const normalize = ({ frames, animations }: ReturnType<typeof readSprite>): unknown => {
+    const names = new Map(Object.entries(frames).map(([name, art]) => [art, name]));
+    return {
+      legend: Object.values(frames)[0]!.legend,
+      frames: Object.fromEntries(Object.entries(frames).map(([name, art]) => [name, art.rows])),
+      faded: Object.fromEntries(
+        Object.entries(frames).flatMap(([name, art]) => (art.faded ? [[name, art.faded]] : [])),
+      ),
+      animations: Object.fromEntries(
+        Object.entries(animations).map(([name, animation]) => [
+          name,
+          { frames: animation.frames.map((art) => names.get(art)), length: animation.length },
+        ]),
+      ),
+    };
+  };
+  expect(hash(data), 'standalone source').toBe(baseline);
+  expect(hash(normalize(readSprite(data))), 'parsed source').toBe(baseline);
+  expect(hash(normalize(sprites['terrain-transitions']!)), 'registered sprite').toBe(baseline);
+});
+
+test('registered terrain exposes four shared 32 by 32 frames per animation on the water clock', () => {
+  const terrain = sprites['terrain-transitions']!;
+  expect(Object.keys(terrain.frames)).toHaveLength(243);
+  expect(Object.keys(terrain.animations)).toHaveLength(81);
+  expect(Object.keys(terrainArt)).toEqual(Object.keys(terrain.animations));
+  expect(waterFrameLength).toBe(15);
+  for (const [name, animation] of Object.entries(terrain.animations)) {
+    expect(animation.length, name).toBe(waterFrameLength);
+    expect(animation.frames, name).toHaveLength(4);
+    expect(terrainArt[name], name).toBe(animation.frames);
+    for (const art of animation.frames) expect(Object.values(terrain.frames), name).toContain(art);
+  }
+  for (const [name, art] of Object.entries(terrain.frames)) {
+    const rendered = sprite(art);
+    expect([rendered.width, rendered.height], name).toEqual([32, 32]);
+    expect(rendered.colored, name).toHaveLength(32 * 32 * 4);
+    expect(rendered.faded, name).toHaveLength(32 * 32 * 4);
+  }
 });
 
 test('flowers provide exactly ten variants in index order with two distinct sway frames each', () => {

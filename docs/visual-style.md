@@ -27,6 +27,7 @@ This document builds on the color palette and the UI layout documents. Color cod
 - Sprites are never scaled, rotated, skewed or filtered at draw time
 - Mirroring is the only transform, used only for art drawn to be symmetric
 - Tiles and world sprites are authored as grids of palette codes in `src/presentation/sprites/<name>/data.js` and reviewed in the `preview.html` beside each one, never as image files
+- Terrain transitions share base grids and water animation frames instead of repeating whole tiles. Vite expands them into static sprite data before the game loads, while standalone previews expand the same source once
 
 ## Grid and Perspective
 
