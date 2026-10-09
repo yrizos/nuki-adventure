@@ -98,44 +98,48 @@ Follow these steps in order for every commit.
 
 ## Commit Messages
 
-### Format
-
-- Use Conventional Commits: `<type>: <subject>`. Omit `<scope>` when unnecessary.
-- Derive the message from the staged diff, not from the task description or conversation.
+Use Conventional Commits in the form `<type>: <subject>`, followed by an optional body. Write the message from the full output of `git diff --cached`, never from the conversation, a single file or a filtered summary.
 
 ### Type
 
-Choose the type based on the primary effect of the change.
+The type names why the change exists across the whole diff. Documentation and tests that ship with a code change never decide it.
 
-- `feat`: adds new user-visible or externally observable behavior.
+- `feat`: adds user-visible behavior.
 - `fix`: corrects incorrect behavior.
-- `refactor`: changes code structure without intentionally changing behavior.
-- `perf`: improves performance without changing intended behavior.
-- `test`: adds or changes tests without changing production behavior.
-- `docs`: changes documentation only.
-- `build`: changes build tooling, dependencies, packaging, or build configuration.
-- `ci`: changes CI/CD configuration or automation.
-- `chore`: maintenance work that does not fit the categories above.
+- `refactor`: restructures code without changing behavior.
+- `perf`: makes code faster without changing behavior.
+- `test`: changes tests, test support or test configuration only.
+- `docs`: changes documentation only, including this file and agent files.
+- `build`: changes dependencies, the Makefile, Git hooks, or compiler, bundler, linter or formatter configuration.
+- `ci`: changes `.github/workflows` only.
+- `chore`: changes nothing above, such as the license or Git attributes.
 - `revert`: reverts an earlier commit.
 
-When a change could fit more than one type, choose the one that best describes why the change exists, not every file it touches. Never use `chore` as a fallback when a more specific type applies.
+### Subject and Body
 
-### Subject
+- Write the subject in imperative mood and lowercase, without a trailing period, in 72 characters or fewer.
+- Name the change itself in the subject. Do not list files, contents or sections.
+- Add a body when the reason is not obvious from the subject. It explains the problem that made the change necessary, never the diff.
+- Mark a breaking change with `!` and a `BREAKING CHANGE:` footer.
+- Never claim that tests passed or that behavior changed unless you verified it.
 
-- Write in imperative mood, lowercase, without a trailing period.
-- Keep it concise and specific, preferably 72 characters or fewer.
+### Good Examples
 
-### Body and Footers
+- `bbd8a53 feat: pick five of fifteen star spots each time a level starts` touches the glossary, the level design guide, the domain, three level layouts and their tests. The new gameplay rule decides the type.
+- `683a269 build: run check hooks only when their inputs change` changes only `.pre-commit-config.yaml`. Git hooks are build tooling.
+- `f875632 ci: filter deployments by app and build input changes` changes only `.github/workflows`.
+- `1d5b694 test: raise the per-test timeout for slow whole-level tests` changes `vite.config.mjs`, but only for the tests. Its body gives the problem: "Whole-level and pixel tests take several seconds each and exceeded the 5 second default when the machine was busy, so the pre-commit hook failed on different tests each run."
+- `5a3b198 fix: rebuild joystick on window resize` names the corrected behavior.
+- `13a8e2c perf: use packed pixel writes for rendering` names the speedup without listing changed files.
 
-- Add a body when the reason for the change is not obvious from the subject.
-- Use the body to explain why the change was necessary, what problem or constraint motivated it, and any important consequences.
-- Do not narrate the diff or list implementation details that are already obvious from the code.
-- Mark breaking changes with `!` and add a `BREAKING CHANGE:` footer describing the impact.
-- Reference issues or pull requests in footers when applicable.
+### Bad Examples
 
-### Accuracy
-
-- Never claim that tests passed, behavior changed, or work was completed unless it was actually verified.
+- `70737b8 docs: add Star Spot to glossary` was written from the first file in a diff that changed level rules across 15 files. It was amended to `bbd8a53`.
+- `76c8c47 chore: add pre-commit configuration with various hooks for linting, testing, and security checks` uses `chore` for Git hooks, which are `build`, and lists contents.
+- `6fc894c chore: update .editorconfig for Makefile and add Makefile for build automation` uses `chore` for the Makefile and joins two changes.
+- `52f3150 fix: delay door access and correct flower rendering` joins two unrelated fixes that belong in separate commits.
+- `e034513 docs: enhance UI layout and visual style documentation with control panel scaling, measurements, and updated element sizes` runs past 72 characters, uses the vague verb "enhance" and lists contents.
+- The body of `8b4cad1` narrates the diff in past tense, starting with "Added package.json with scripts and dependencies".
 
 ## Code Comments
 
