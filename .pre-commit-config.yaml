@@ -64,24 +64,24 @@ repos:
         entry: npm run typecheck
         language: system
         pass_filenames: false
-        always_run: true
+        files: '^(src/.*\.ts$|package(-lock)?\.json$|tsconfig\.json$)'
       - id: unit-tests
         name: Unit tests
         entry: npm test
         language: system
         pass_filenames: false
-        always_run: true
+        files: '^(src/|package(-lock)?\.json$|tsconfig\.json$|vite\.config\.mjs$)'
       - id: dependency-audit
         name: Dependency security audit
         entry: npm run audit
         language: system
         pass_filenames: false
-        always_run: true
+        files: '^(package(-lock)?\.json|\.npmrc)$'
         stages: [pre-push]
       - id: check-push
         name: Tests and browser build
         entry: npm run check:push
         language: system
         pass_filenames: false
-        always_run: true
+        files: '^(src/|index\.html$|package(-lock)?\.json$|tsconfig\.json$|vite\.config\.mjs$)'
         stages: [pre-push]
