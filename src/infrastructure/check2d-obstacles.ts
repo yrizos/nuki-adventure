@@ -15,11 +15,22 @@ function body(system: System, outline: Outline, isStatic: boolean): Body {
 export const check2dObstacles: PlaceObstacles = (outlines): Obstacles => {
   const system = new System();
   for (const outline of outlines) body(system, outline, true);
+  // Building a body costs more than the collision check itself, and every frame of every walk needs one.
+  const walkers = new Map<string, Body>();
   return {
     // check2d's own separation adds every overlap at once, so two obstacles pushing opposite ways cancel out and let her
     // squeeze through. Pushing out of one overlap at a time, and staying put when she cannot settle, keeps her outside.
     walk(feet, to) {
-      const walker = body(system, feet.at(to), false);
+      const outline = feet.at(to);
+      const shape = `${outline.form},${outline.width},${outline.height}`;
+      let walker = walkers.get(shape);
+      if (walker) {
+        walker.setPosition(outline.center.x, outline.center.y, false);
+        system.insert(walker);
+      } else {
+        walker = body(system, outline, false);
+        walkers.set(shape, walker);
+      }
       try {
         for (let attempt = 0; attempt < attempts; attempt++) {
           const pushed = system.checkOne(walker, ({ overlap, overlapV }: Response) => {

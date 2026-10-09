@@ -12,6 +12,7 @@ import { Ground, LevelSize, Scenery } from '../domain/level/scenery';
 import { Signpost, SignpostText } from '../domain/level/signpost';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
+import { pixelDifference } from '../test-support/pictures';
 import { GameLoop } from './game-loop';
 import { GameSession, messages } from './game-session';
 import { HeroAnimator } from './hero-animator';
@@ -356,7 +357,7 @@ describe('the game session', () => {
           [],
         );
         subject.session.paint(actual);
-        expect(actual.pixels).toEqual(expected.pixels);
+        expect(pixelDifference(actual, expected)).toBeUndefined();
       }
       subject.controls.heading.mockReturnValue(null);
       continuePlaying();
@@ -686,7 +687,7 @@ describe('whole frames of the game session', () => {
       congratulations.show(messages.colorsBack, pickupFrame);
       congratulations.paint(expected, subject.frames);
       subject.session.paint(actual);
-      expect(actual.pixels).toEqual(expected.pixels);
+      expect(pixelDifference(actual, expected)).toBeUndefined();
     },
   );
 
@@ -748,7 +749,7 @@ describe('whole frames of the game session', () => {
         elapsed,
       );
       subject.session.paint(actual);
-      expect(actual.pixels).toEqual(expected.pixels);
+      expect(pixelDifference(actual, expected)).toBeUndefined();
       expect(subject.levelEnd.show).not.toHaveBeenCalled();
       expect(subject.progress.complete).toHaveBeenCalledOnce();
     }

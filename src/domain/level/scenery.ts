@@ -1,5 +1,5 @@
 import { Outline, wholeTile } from './obstacles';
-import { Direction, TilePosition, tileSize, WorldPosition } from './position';
+import { Direction, TilePosition, TilePositions, tileSize, WorldPosition } from './position';
 
 export class Ground {
   static readonly Grass = new Ground('grass', true);
@@ -163,6 +163,8 @@ export class Fence {
 }
 
 export class Scenery {
+  private readonly blocked: TilePositions;
+
   private constructor(
     readonly size: LevelSize,
     private readonly ground: readonly (readonly Ground[])[],
@@ -170,7 +172,12 @@ export class Scenery {
     readonly flowers: readonly Flower[],
     readonly fences: readonly Fence[],
     readonly flowerVariants: readonly FlowerVariant[],
-  ) {}
+  ) {
+    this.blocked = TilePositions.of([
+      ...trees.flatMap((tree) => tree.footprint),
+      ...fences.map((fence) => fence.position),
+    ]);
+  }
 
   static of(
     size: LevelSize,
@@ -270,11 +277,6 @@ export class Scenery {
   }
 
   isWalkable(position: TilePosition): boolean {
-    return (
-      this.size.contains(position) &&
-      this.groundAt(position).isWalkable &&
-      !this.trees.some((tree) => tree.covers(position)) &&
-      !this.fences.some((fence) => fence.position.equals(position))
-    );
+    return this.size.contains(position) && this.groundAt(position).isWalkable && !this.blocked.covers(position);
   }
 }

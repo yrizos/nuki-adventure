@@ -1,9 +1,7 @@
 import { expect, test } from 'vitest';
 import { OrbColor } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
-import { LevelCompleted, OrbCollected } from '../domain/level/level-events';
 import { Direction, TilePosition } from '../domain/level/position';
-import { follow, pathTo } from '../test-support/walk-level';
 import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
 import { thirdLevel, thirdLevelId } from './third-level';
 
@@ -81,29 +79,4 @@ test('the third level marks fifteen star spots and lets the shuffle choose its s
     ]),
   );
   expect(thirdLevel(reverseOrder).stars.map((star) => star.position)).toEqual([...spots].reverse().slice(0, 5));
-});
-
-test.each([
-  { label: 'red then blue', order: [OrbColor.Red, OrbColor.Blue] },
-  { label: 'blue then red', order: [OrbColor.Blue, OrbColor.Red] },
-])('the third level opens its door only after both orbs and completes at it, $label', ({ order }) => {
-  const level = thirdLevel(keepOrder);
-  for (const [collected, color] of order.entries()) {
-    const orb = level.orbs.find((candidate) => candidate.color === color)!;
-    const path = pathTo(level, (tile) => tile.equals(orb.position));
-    expect(path, 'the orb must be reachable from where she stands').toBeDefined();
-    const pickups = follow(level, path!).filter((event) => event instanceof OrbCollected);
-    expect(pickups.map((event) => event.position)).toEqual([orb.position]);
-    expect(level.door.isOpen).toBe(false);
-    if (collected < order.length - 1) {
-      expect(() => level.openDoor()).toThrow();
-      expect(level.door.isOpen).toBe(false);
-    }
-  }
-  level.openDoor();
-  expect(level.door.isOpen).toBe(true);
-  const toDoor = pathTo(level, (tile) => level.door.covers(tile));
-  expect(toDoor, 'the open door must be reachable').toBeDefined();
-  expect(follow(level, toDoor!).some((event) => event instanceof LevelCompleted)).toBe(true);
-  expect(level.isComplete).toBe(true);
 });

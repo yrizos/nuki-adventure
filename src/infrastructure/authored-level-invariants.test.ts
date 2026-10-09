@@ -46,6 +46,7 @@ const starts = [
 test.each(starts)(
   'in the $name level from tile $label she stays on open ground inside the level and the door stays closed',
   ({ authored, obstacles, tile }) => {
+    const violations: string[] = [];
     for (const direction of directions) {
       const level = Level.create({
         id: authored.id,
@@ -57,21 +58,22 @@ test.each(starts)(
         signposts: authored.signposts,
         obstacles: () => obstacles,
       });
+      const width = level.scenery.size.columns * tileSize;
+      const height = level.scenery.size.rows * tileSize;
       for (let frame = 0; frame < frames; frame++) {
         level.tick(Heading.of(direction));
         const at = level.hero.feet;
         const where = `${direction.name} frame ${frame} at ${at.x}, ${at.y}`;
-        expect(at.x >= 0 && at.y >= 0, where).toBe(true);
-        expect(at.x < level.scenery.size.columns * tileSize && at.y < level.scenery.size.rows * tileSize, where).toBe(
-          true,
-        );
-        expect(obstacles.walk(feet.at(farAway), at).equals(at), where).toBe(true);
+        if (at.x < 0 || at.y < 0) violations.push(`${where}: below the level origin`);
+        if (at.x >= width || at.y >= height) violations.push(`${where}: beyond the level size`);
+        if (!obstacles.walk(feet.at(farAway), at).equals(at)) violations.push(`${where}: inside an obstacle`);
         if (level.orbs.length > 0) {
-          expect(level.door.isOpen, where).toBe(false);
-          expect(level.door.covers(level.hero.position), where).toBe(false);
-          expect(level.isComplete, where).toBe(false);
+          if (level.door.isOpen) violations.push(`${where}: door open while orbs remain`);
+          if (level.door.covers(level.hero.position)) violations.push(`${where}: on the door while orbs remain`);
+          if (level.isComplete) violations.push(`${where}: complete while orbs remain`);
         }
       }
     }
+    expect(violations).toEqual([]);
   },
 );

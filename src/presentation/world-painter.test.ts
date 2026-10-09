@@ -16,6 +16,7 @@ import { firstLevel } from '../infrastructure/first-level';
 import { randomShuffle } from '../infrastructure/random-shuffle';
 import { secondLevel } from '../infrastructure/second-level';
 import { thirdLevel } from '../infrastructure/third-level';
+import { pixelDifference } from '../test-support/pictures';
 import type { Art } from './art/art';
 import * as library from './sprite-library';
 import { faded, lighter, palette, type PaletteCode } from './palette';
@@ -685,7 +686,7 @@ test('restoration advances outward with palette-only pixels and matches both end
   painter.paint(colored, scene, [everywhere]);
   painter.paint(neutral, scene, []);
   painter.paintRestoring(dissolve, scene, origin, -1, [], [everywhere]);
-  expect(dissolve.pixels).toEqual(neutral.pixels);
+  expect(pixelDifference(dissolve, neutral)).toBeUndefined();
   painter.paintRestoring(
     dissolve,
     scene,
@@ -694,17 +695,23 @@ test('restoration advances outward with palette-only pixels and matches both end
     [],
     [everywhere],
   );
-  expect(dissolve.pixels).toEqual(colored.pixels);
+  expect(pixelDifference(dissolve, colored)).toBeUndefined();
   const colors = new Set(Object.values(palette));
+  const violations: string[] = [];
   for (const frame of [0, 3, 4, 15, 16, 31]) {
     painter.paintRestoring(dissolve, scene, origin, frame, [], [everywhere]);
-    for (let row = 0; row < dissolve.height; row++) {
+    scan: for (let row = 0; row < dissolve.height; row++) {
       for (let column = 0; column < dissolve.width; column++) {
-        expect(colors.has(colorAt(dissolve, column, row))).toBe(true);
-        expect(dissolve.pixels[(row * dissolve.width + column) * 4 + 3]).toBe(255);
+        const color = colorAt(dissolve, column, row);
+        const alpha = dissolve.pixels[(row * dissolve.width + column) * 4 + 3];
+        if (!colors.has(color) || alpha !== 255) {
+          violations.push(`frame ${frame} pixel ${column}, ${row}: ${color} alpha ${alpha}`);
+          break scan;
+        }
       }
     }
   }
+  expect(violations).toEqual([]);
   painter.paintRestoring(dissolve, scene, origin, 11, [], [everywhere]);
   expect(colorAt(dissolve, 64, 96)).toBe(colorAt(colored, 64, 96));
   expect(colorAt(dissolve, 0, 32)).toBe(colorAt(neutral, 0, 32));
@@ -742,7 +749,7 @@ test('restoring one area leaves the rest of the map faded', () => {
   const right = painted([rightHalf]);
   expect(neutrals).toContain(colorAt(right, 120, 200));
   expect(grass).toContain(colorAt(right, 300, 200));
-  expect(painted([leftHalf, rightHalf]).pixels).toEqual(painted([everywhere]).pixels);
+  expect(pixelDifference(painted([leftHalf, rightHalf]), painted([everywhere]))).toBeUndefined();
 });
 
 // A view of the whole 12 x 12 map plus the two tiles of door height above it, so the camera is clamped to the map.
@@ -849,13 +856,17 @@ test('a straight restored edge blends over a band about three tiles wide', () =>
 test('the seam follows the restored set, whatever was painted before it', () => {
   const { level, paint, seam } = seamFixture();
   const wider = area((position) => position.column < 8);
-  expect(paint([area((position) => position.column < 6)]).pixels, 'the same set on a later paint').toEqual(seam.pixels);
+  expect(
+    pixelDifference(paint([area((position) => position.column < 6)]), seam),
+    'the same set on a later paint',
+  ).toBeUndefined();
   const widerSeam = paint([wider]);
-  expect(widerSeam.pixels).not.toEqual(seam.pixels);
-  expect(paint([leftHalf]).pixels, 'the first set again after another set').toEqual(seam.pixels);
-  expect(paint([wider], new WorldPainter(level)).pixels, 'a painter that never painted the first set').toEqual(
-    widerSeam.pixels,
-  );
+  expect(pixelDifference(widerSeam, seam)).toBeDefined();
+  expect(pixelDifference(paint([leftHalf]), seam), 'the first set again after another set').toBeUndefined();
+  expect(
+    pixelDifference(paint([wider], new WorldPainter(level)), widerSeam),
+    'a painter that never painted the first set',
+  ).toBeUndefined();
 });
 
 test('the jagged seam between the two areas of the third level keeps clear tiles pure and mixes both pictures near the seam', () => {
@@ -1002,7 +1013,7 @@ test('a wave over the right half of the map starts as the before picture whereve
 
 test('a wave over the right half of the map ends as exactly the after picture', () => {
   const { after, frame } = halfMapWave();
-  expect(frame(restorationLength(LevelSize.of(12, 12), waveOrigin)).pixels).toEqual(after.pixels);
+  expect(pixelDifference(frame(restorationLength(LevelSize.of(12, 12), waveOrigin)), after)).toBeUndefined();
 });
 
 test('a changed pixel is its before color until the wave arrives, then crests lightened and settles on its after color', () => {
@@ -1159,11 +1170,19 @@ test('closing darkens the colored world to Ink through the ordered dither', () =
   const closing = new Picture(224, 224);
   painter.paint(colored, scene, [everywhere]);
   painter.paintClosing(closing, scene, 0);
-  expect(closing.pixels).toEqual(colored.pixels);
+  expect(pixelDifference(closing, colored)).toBeUndefined();
   painter.paintClosing(closing, scene, closingLength);
-  for (let row = 0; row < closing.height; row++) {
-    for (let column = 0; column < closing.width; column++) expect(colorAt(closing, column, row)).toBe(palette.Ink);
+  const violations: string[] = [];
+  scan: for (let row = 0; row < closing.height; row++) {
+    for (let column = 0; column < closing.width; column++) {
+      const color = colorAt(closing, column, row);
+      if (color !== palette.Ink) {
+        violations.push(`pixel ${column}, ${row}: ${color}`);
+        break scan;
+      }
+    }
   }
+  expect(violations).toEqual([]);
 });
 
 test('every palette step fades to a neutral while neutrals preserve their values', () => {
@@ -1287,10 +1306,10 @@ test('a reused painter matches fresh compositing and restoration after target si
     const fresh = new WorldPainter(level);
     painter.paint(actual, scene, [leftHalf]);
     fresh.paint(expected, scene, [leftHalf]);
-    expect(actual.pixels).toEqual(expected.pixels);
+    expect(pixelDifference(actual, expected)).toBeUndefined();
     painter.paintRestoring(actual, scene, origin, 16, [leftHalf], [everywhere]);
     fresh.paintRestoring(expected, scene, origin, 16, [leftHalf], [everywhere]);
-    expect(actual.pixels).toEqual(expected.pixels);
+    expect(pixelDifference(actual, expected)).toBeUndefined();
   }
 });
 

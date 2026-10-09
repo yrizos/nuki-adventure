@@ -38,8 +38,6 @@ export default defineConfig({
     // Shuffling exposes tests that only pass because an earlier test left state behind.
     sequence: { shuffle: true },
     restoreMocks: true,
-    // Whole-level and pixel tests take several seconds each and exceed Vitest's 5 second default when the machine is busy, as during the pre-commit hook.
-    testTimeout: 30_000,
     unstubGlobals: true,
   },
 });

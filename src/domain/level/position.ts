@@ -64,6 +64,43 @@ export class TilePosition {
   }
 }
 
+// Walkability and reachability ask about every tile of a level, so membership goes through an index instead of a list scan.
+export class TilePositions {
+  private constructor(
+    readonly tiles: readonly TilePosition[],
+    private readonly index: ReadonlySet<string>,
+  ) {}
+
+  static of(tiles: readonly TilePosition[]): TilePositions {
+    return new TilePositions([], new Set()).with(tiles);
+  }
+
+  private static key(tile: TilePosition): string {
+    return `${tile.column},${tile.row}`;
+  }
+
+  covers(tile: TilePosition): boolean {
+    return this.index.has(TilePositions.key(tile));
+  }
+
+  // A tile already held keeps its first place, so the same tiles never count twice.
+  with(tiles: readonly TilePosition[]): TilePositions {
+    const held = [...this.tiles];
+    const index = new Set(this.index);
+    for (const tile of tiles) {
+      const key = TilePositions.key(tile);
+      if (index.has(key)) continue;
+      index.add(key);
+      held.push(tile);
+    }
+    return new TilePositions(held, index);
+  }
+
+  equals(other: TilePositions): boolean {
+    return this.tiles.length === other.tiles.length && this.tiles.every((tile) => other.covers(tile));
+  }
+}
+
 export const tileSize = 32;
 
 export class WorldPosition {

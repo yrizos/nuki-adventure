@@ -12,7 +12,7 @@ import {
 } from './level-events';
 import type { LevelId } from '../shared/level-id';
 import { type Obstacles, Outline, type PlaceObstacles } from './obstacles';
-import { Direction, type Heading, TilePosition, WorldPosition } from './position';
+import { Direction, type Heading, TilePosition, TilePositions, WorldPosition } from './position';
 import type { Scenery } from './scenery';
 import type { Signpost } from './signpost';
 
@@ -280,15 +280,27 @@ export class Level {
   // Every obstacle stays inside the tile it blocks, so whole open tiles always leave room for her feet to cross between them.
   // The door counts as closed because stepping onto it ends the level.
   private reachableTiles(): readonly TilePosition[] {
-    const reached = [this.heroEntity.position];
-    for (let index = 0; index < reached.length; index++) {
-      for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
-        const next = reached[index]!.neighbor(direction);
-        if (this.canEnter(next) && !this.currentDoor.covers(next) && !reached.some((tile) => tile.equals(next)))
-          reached.push(next);
+    // Growing the reached tiles one ring at a time keeps the order of a plain breadth-first search.
+    let reached = TilePositions.of([this.heroEntity.position]);
+    let ring: readonly TilePosition[] = reached.tiles;
+    while (ring.length > 0) {
+      const next: TilePosition[] = [];
+      for (const tile of ring) {
+        for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
+          const neighbor = tile.neighbor(direction);
+          if (
+            !reached.covers(neighbor) &&
+            !next.some((other) => other.equals(neighbor)) &&
+            this.canEnter(neighbor) &&
+            !this.currentDoor.covers(neighbor)
+          )
+            next.push(neighbor);
+        }
       }
+      reached = reached.with(next);
+      ring = next;
     }
-    return reached;
+    return reached.tiles;
   }
 
   private hides(position: TilePosition): boolean {

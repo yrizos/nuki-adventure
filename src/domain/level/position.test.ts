@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { Direction, Heading, TilePosition, WorldPosition } from './position';
+import { Direction, Heading, TilePosition, TilePositions, WorldPosition } from './position';
 
 const at = TilePosition.at;
 const all = [
@@ -73,6 +73,40 @@ describe('a tile position', () => {
     [Direction.DownRight, at(6, 6)],
   ])('has its %s neighbor at %j', (direction, neighbor) => {
     expect(at(5, 5).neighbor(direction)).toEqual(neighbor);
+  });
+});
+
+describe('a set of tile positions', () => {
+  test('covers exactly the held tiles, matched by column and row', () => {
+    const tiles = TilePositions.of([at(1, 2), at(3, 4)]);
+    expect(tiles.covers(at(1, 2))).toBe(true);
+    expect(tiles.covers(at(3, 4))).toBe(true);
+    expect(tiles.covers(at(2, 1))).toBe(false);
+    expect(tiles.covers(at(1, 4))).toBe(false);
+  });
+
+  test('adds tiles after the held ones and leaves the original unchanged', () => {
+    const original = TilePositions.of([at(1, 1)]);
+    const extended = original.with([at(2, 2), at(3, 3)]);
+    expect(extended.tiles).toEqual([at(1, 1), at(2, 2), at(3, 3)]);
+    expect(extended.covers(at(3, 3))).toBe(true);
+    expect(original.tiles).toEqual([at(1, 1)]);
+    expect(original.covers(at(2, 2))).toBe(false);
+  });
+
+  test('keeps only the first occurrence of a repeated tile', () => {
+    expect(TilePositions.of([at(1, 1), at(2, 2), at(1, 1)]).tiles).toEqual([at(1, 1), at(2, 2)]);
+  });
+
+  test('skips added tiles it already holds', () => {
+    expect(TilePositions.of([at(1, 1)]).with([at(1, 1), at(2, 2)]).tiles).toEqual([at(1, 1), at(2, 2)]);
+  });
+
+  test('is equal only when both hold the same tiles, in any order', () => {
+    const tiles = TilePositions.of([at(1, 1), at(2, 2)]);
+    expect(tiles.equals(TilePositions.of([at(2, 2), at(1, 1)]))).toBe(true);
+    expect(tiles.equals(TilePositions.of([at(1, 1)]))).toBe(false);
+    expect(tiles.equals(TilePositions.of([at(1, 1), at(2, 2), at(3, 3)]))).toBe(false);
   });
 });
 
