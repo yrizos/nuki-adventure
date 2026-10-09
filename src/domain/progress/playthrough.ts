@@ -9,10 +9,6 @@ export class PlayTime {
     return new PlayTime(frames);
   }
 
-  isShorterThan(other: PlayTime): boolean {
-    return this.frames < other.frames;
-  }
-
   equals(other: PlayTime): boolean {
     return this.frames === other.frames;
   }
@@ -29,14 +25,6 @@ export class Playthrough {
     if (collectedStars.value > starCount.value)
       throw new RangeError(`A playthrough cannot collect ${collectedStars.value} of ${starCount.value} stars`);
     return new Playthrough(time, collectedStars, starCount);
-  }
-
-  // Stars collected from a level that has since gained or lost stars say nothing about the level as it is now.
-  isBetterThan(other: Playthrough): boolean {
-    if (!this.starCount.equals(other.starCount)) return true;
-    if (this.collectedStars.value !== other.collectedStars.value)
-      return this.collectedStars.value > other.collectedStars.value;
-    return this.time.isShorterThan(other.time);
   }
 
   equals(other: Playthrough): boolean {

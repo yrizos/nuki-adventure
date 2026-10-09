@@ -2,7 +2,7 @@ import type { LevelId } from '../shared/level-id';
 import type { LevelOrder } from './level-order';
 import type { Playthrough } from './playthrough';
 
-export interface BestPlaythrough {
+export interface LastPlaythrough {
   readonly level: LevelId;
   readonly playthrough: Playthrough;
 }
@@ -10,24 +10,24 @@ export interface BestPlaythrough {
 interface SavedProgress {
   readonly continueLevel: LevelId | null;
   readonly unlockedLevels: readonly LevelId[];
-  readonly bestPlaythroughs: readonly BestPlaythrough[];
+  readonly lastPlaythroughs: readonly LastPlaythrough[];
 }
 
 export class GameProgress {
   private constructor(
     private continueAt: LevelId | null,
     private readonly unlocked: LevelId[],
-    private readonly best: Map<string, BestPlaythrough>,
+    private readonly last: Map<string, LastPlaythrough>,
   ) {}
 
   static fresh(): GameProgress {
     return new GameProgress(null, [], new Map());
   }
 
-  static restore({ continueLevel, unlockedLevels, bestPlaythroughs }: SavedProgress): GameProgress {
+  static restore({ continueLevel, unlockedLevels, lastPlaythroughs }: SavedProgress): GameProgress {
     const progress = new GameProgress(continueLevel, [], new Map());
     for (const level of unlockedLevels) progress.unlock(level);
-    for (const { level, playthrough } of bestPlaythroughs) progress.recordBest(level, playthrough);
+    for (const { level, playthrough } of lastPlaythroughs) progress.recordLast(level, playthrough);
     return progress;
   }
 
@@ -39,8 +39,8 @@ export class GameProgress {
     return [...this.unlocked];
   }
 
-  get bestPlaythroughs(): readonly BestPlaythrough[] {
-    return [...this.best.values()];
+  get lastPlaythroughs(): readonly LastPlaythrough[] {
+    return [...this.last.values()];
   }
 
   // The order of levels can change between versions of the game, so the first level comes from the current one.
@@ -52,8 +52,8 @@ export class GameProgress {
     return this.continueAt && order.includes(this.continueAt) ? this.continueAt : order.first;
   }
 
-  bestPlaythroughOf(level: LevelId): Playthrough | null {
-    return this.best.get(level.value)?.playthrough ?? null;
+  lastPlaythroughOf(level: LevelId): Playthrough | null {
+    return this.last.get(level.value)?.playthrough ?? null;
   }
 
   reach(level: LevelId): void {
@@ -62,14 +62,13 @@ export class GameProgress {
   }
 
   complete(level: LevelId, playthrough: Playthrough, order: LevelOrder): void {
-    this.recordBest(level, playthrough);
+    this.recordLast(level, playthrough);
     const next = order.after(level);
     if (next) this.unlock(next);
   }
 
-  private recordBest(level: LevelId, playthrough: Playthrough): void {
-    const best = this.bestPlaythroughOf(level);
-    if (!best || playthrough.isBetterThan(best)) this.best.set(level.value, { level, playthrough });
+  private recordLast(level: LevelId, playthrough: Playthrough): void {
+    this.last.set(level.value, { level, playthrough });
   }
 
   private unlock(level: LevelId): void {

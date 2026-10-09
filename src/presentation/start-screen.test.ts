@@ -11,7 +11,7 @@ const level = (number: number, isUnlocked: boolean, frames?: number): LevelProgr
   id: LevelId.of(`level ${number}`),
   number,
   isUnlocked,
-  bestPlaythrough:
+  lastPlaythrough:
     frames === undefined ? null : Playthrough.of(PlayTime.ofFrames(frames), StarCount.of(3), StarCount.of(5)),
 });
 

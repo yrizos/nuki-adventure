@@ -8,7 +8,7 @@ export interface LevelProgressView {
   readonly id: LevelId;
   readonly number: number;
   readonly isUnlocked: boolean;
-  readonly bestPlaythrough: Playthrough | null;
+  readonly lastPlaythrough: Playthrough | null;
 }
 
 export interface ProgressView {
@@ -34,7 +34,7 @@ export class ManageProgress {
         id,
         number: index + 1,
         isUnlocked: progress.isUnlocked(id, this.order),
-        bestPlaythrough: progress.bestPlaythroughOf(id),
+        lastPlaythrough: progress.lastPlaythroughOf(id),
       })),
     };
   }

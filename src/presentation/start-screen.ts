@@ -35,11 +35,11 @@ export function titleArt(): Art {
 }
 
 function timeText(level: LevelProgressView): string {
-  return level.bestPlaythrough ? playTime(level.bestPlaythrough.time) : noPlaythrough;
+  return level.lastPlaythrough ? playTime(level.lastPlaythrough.time) : noPlaythrough;
 }
 
 function starText(level: LevelProgressView): string {
-  return level.bestPlaythrough ? starsText(level.bestPlaythrough) : noPlaythrough;
+  return level.lastPlaythrough ? starsText(level.lastPlaythrough) : noPlaythrough;
 }
 
 // Every row shares one set of column widths, so numbers, times and stars line up down the list.
@@ -70,7 +70,7 @@ export function levelPickerArt(levels: readonly LevelProgressView[]): Art[] {
 // The rows show pictures and numbers, so screen readers get the same facts in words.
 export function levelRowText(level: LevelProgressView): string {
   if (!level.isUnlocked) return `ΕΠΙΠΕΔΟ ${level.number}. ΚΛΕΙΔΩΜΕΝΟ.`;
-  if (!level.bestPlaythrough) return `ΕΠΙΠΕΔΟ ${level.number}.`;
+  if (!level.lastPlaythrough) return `ΕΠΙΠΕΔΟ ${level.number}.`;
   return `ΕΠΙΠΕΔΟ ${level.number}. ΧΡΟΝΟΣ ${timeText(level)}. ΑΣΤΕΡΙΑ ${starText(level)}.`;
 }
 

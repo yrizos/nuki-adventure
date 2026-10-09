@@ -32,7 +32,7 @@ The screen that covers the whole page when the game opens. It shows the game nam
 
 ### Level Picker
 
-The part of the start screen that lists every level by its number with its best playthrough, and starts any unlocked level.
+The part of the start screen that lists every level by its number with its last playthrough, and starts any unlocked level.
 
 ### Menu Switch
 
@@ -184,7 +184,7 @@ A part of a level that returns to color together during restoration. Each orb re
 
 ### Progress
 
-What the game remembers between visits: the continue level, the unlocked levels and the best playthrough of each level. It never holds the state of a level in progress.
+What the game remembers between visits: the continue level, the unlocked levels and the last playthrough of each level. It never holds the state of a level in progress.
 
 ### Playthrough
 
@@ -194,9 +194,9 @@ One play of a level from its start to the door, made of its play time, the stars
 
 The number of game frames from the start of a level until the hero steps into the door.
 
-### Best Playthrough
+### Last Playthrough
 
-The completed playthrough of a level with the most stars collected, where fewer frames of play time decide between equal stars. A playthrough always replaces one made when the level held a different star count.
+The most recent completed playthrough of a level, whatever its result.
 
 ### Level Order
 

@@ -6,19 +6,30 @@ import { LevelId } from '../domain/shared/level-id';
 import { StarCount } from '../domain/shared/star-count';
 
 export const progressKey = 'nuki-adventure-progress';
-const currentVersion = 1;
+const currentVersion = 2;
 
 const count = z.int().nonnegative();
 const levelId = z.string().min(1);
+const playthroughRecord = z.object({ levelId, frames: count, collectedStars: count, starCount: count });
 
-const savedProgress = z.object({
-  version: z.literal(currentVersion),
+// Version 1 also kept the best playthrough of each level, which is not the last one, so loading ignores it.
+const versionOneSavedProgress = z.object({
+  version: z.literal(1),
   continueLevelId: levelId.nullable(),
   unlockedLevelIds: z.array(levelId),
-  bestPlaythroughs: z.array(z.object({ levelId, frames: count, collectedStars: count, starCount: count })),
 });
 
+const versionTwoSavedProgress = z.object({
+  version: z.literal(2),
+  continueLevelId: levelId.nullable(),
+  unlockedLevelIds: z.array(levelId),
+  lastPlaythroughs: z.array(playthroughRecord),
+});
+
+const savedProgress = z.discriminatedUnion('version', [versionOneSavedProgress, versionTwoSavedProgress]);
+
 type SavedProgress = z.infer<typeof savedProgress>;
+type VersionTwoSavedProgress = z.infer<typeof versionTwoSavedProgress>;
 
 const storedVersion = z.object({ version: z.int() });
 
@@ -64,26 +75,28 @@ export class LocalProgressRepository implements ProgressRepository {
 }
 
 function fromSaved(saved: SavedProgress): GameProgress {
+  const mapPlaythrough = ({ levelId, frames, collectedStars, starCount }: z.infer<typeof playthroughRecord>) => ({
+    level: LevelId.of(levelId),
+    playthrough: Playthrough.of(PlayTime.ofFrames(frames), StarCount.of(collectedStars), StarCount.of(starCount)),
+  });
   return GameProgress.restore({
     continueLevel: saved.continueLevelId === null ? null : LevelId.of(saved.continueLevelId),
     unlockedLevels: saved.unlockedLevelIds.map((id) => LevelId.of(id)),
-    bestPlaythroughs: saved.bestPlaythroughs.map(({ levelId, frames, collectedStars, starCount }) => ({
-      level: LevelId.of(levelId),
-      playthrough: Playthrough.of(PlayTime.ofFrames(frames), StarCount.of(collectedStars), StarCount.of(starCount)),
-    })),
+    lastPlaythroughs: saved.version === 1 ? [] : saved.lastPlaythroughs.map(mapPlaythrough),
   });
 }
 
-function toSaved(progress: GameProgress): SavedProgress {
+function toSaved(progress: GameProgress): VersionTwoSavedProgress {
+  const mapRecord = ({ level, playthrough }: { level: LevelId; playthrough: Playthrough }) => ({
+    levelId: level.value,
+    frames: playthrough.time.frames,
+    collectedStars: playthrough.collectedStars.value,
+    starCount: playthrough.starCount.value,
+  });
   return {
     version: currentVersion,
     continueLevelId: progress.continueLevel?.value ?? null,
     unlockedLevelIds: progress.unlockedLevels.map((level) => level.value),
-    bestPlaythroughs: progress.bestPlaythroughs.map(({ level, playthrough }) => ({
-      levelId: level.value,
-      frames: playthrough.time.frames,
-      collectedStars: playthrough.collectedStars.value,
-      starCount: playthrough.starCount.value,
-    })),
+    lastPlaythroughs: progress.lastPlaythroughs.map(mapRecord),
   };
 }

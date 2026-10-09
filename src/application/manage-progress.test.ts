@@ -27,8 +27,8 @@ test('shows the levels of the game by number, with only the first unlocked at fi
   expect(manage.view()).toEqual({
     continueLevel: one,
     levels: [
-      { id: one, number: 1, isUnlocked: true, bestPlaythrough: null },
-      { id: two, number: 2, isUnlocked: false, bestPlaythrough: null },
+      { id: one, number: 1, isUnlocked: true, lastPlaythrough: null },
+      { id: two, number: 2, isUnlocked: false, lastPlaythrough: null },
     ],
   });
 });
@@ -42,7 +42,7 @@ test('saves reaching a level and completing one', () => {
   const view = manage.view();
   expect(view.continueLevel).toBe(two);
   expect(view.levels.map((level) => level.isUnlocked)).toEqual([true, true]);
-  expect(view.levels[0]!.bestPlaythrough).toEqual(playthrough);
+  expect(view.levels[0]!.lastPlaythrough).toEqual(playthrough);
 });
 
 test('completing a level saves the next level of the configured order as unlocked', () => {

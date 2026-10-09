@@ -22,17 +22,6 @@ describe('a playthrough', () => {
   test('cannot collect more stars than the level holds', () => {
     expect(() => playthrough(10, 6, 5)).toThrow(RangeError);
   });
-
-  test.each([
-    ['more stars, even when slower', playthrough(900, 4), playthrough(100, 3), true],
-    ['fewer stars, even when faster', playthrough(100, 3), playthrough(900, 4), false],
-    ['equal stars in fewer frames', playthrough(100, 3), playthrough(101, 3), true],
-    ['equal stars in the same frames', playthrough(100, 3), playthrough(100, 3), false],
-    ['equal stars in more frames', playthrough(101, 3), playthrough(100, 3), false],
-    ['a different star count, even with fewer stars', playthrough(900, 1, 8), playthrough(100, 5, 5), true],
-  ])('is better with %s', (_, candidate, best, better) => {
-    expect(candidate.isBetterThan(best)).toBe(better);
-  });
 });
 
 describe('game progress', () => {
@@ -65,14 +54,12 @@ describe('game progress', () => {
     expect(progress.continueLevelAmong(order)).toBe(one);
   });
 
-  test('keeps only a better playthrough as the best one', () => {
+  test('keeps the last completed playthrough even when it is worse', () => {
     const progress = GameProgress.fresh();
-    progress.complete(one, playthrough(500, 3), order);
-    progress.complete(one, playthrough(400, 2), order);
-    expect(progress.bestPlaythroughOf(one)).toEqual(playthrough(500, 3));
-    progress.complete(one, playthrough(450, 3), order);
-    expect(progress.bestPlaythroughOf(one)).toEqual(playthrough(450, 3));
-    expect(progress.bestPlaythroughOf(two)).toBeNull();
+    progress.complete(one, playthrough(400, 5), order);
+    progress.complete(one, playthrough(900, 1), order);
+    expect(progress.lastPlaythroughOf(one)).toEqual(playthrough(900, 1));
+    expect(progress.lastPlaythroughOf(two)).toBeNull();
   });
 
   test('completing a level unlocks the next level of the game', () => {
@@ -101,18 +88,18 @@ describe('game progress', () => {
     const progress = GameProgress.restore({
       continueLevel: two,
       unlockedLevels: [two, two],
-      bestPlaythroughs: [{ level: one, playthrough: playthrough(300, 1) }],
+      lastPlaythroughs: [{ level: one, playthrough: playthrough(300, 1) }],
     });
     expect(progress.continueLevel).toBe(two);
     expect(progress.unlockedLevels).toEqual([two]);
-    expect(progress.bestPlaythroughs).toEqual([{ level: one, playthrough: playthrough(300, 1) }]);
+    expect(progress.lastPlaythroughs).toEqual([{ level: one, playthrough: playthrough(300, 1) }]);
   });
 
-  test('restoring best playthroughs unlocks nothing beyond the saved unlocked levels', () => {
+  test('restoring last playthroughs unlocks nothing beyond the saved unlocked levels', () => {
     const progress = GameProgress.restore({
       continueLevel: one,
       unlockedLevels: [],
-      bestPlaythroughs: [
+      lastPlaythroughs: [
         { level: one, playthrough: playthrough(300, 1) },
         { level: two, playthrough: playthrough(300, 1) },
       ],
@@ -124,28 +111,26 @@ describe('game progress', () => {
 });
 
 test.each(progressSequences)(
-  'progress through $label never relocks a level, worsens a best playthrough or moves the continue level on completion',
+  'progress through $label never relocks a level or moves the continue level on completion, and keeps each completion as the last playthrough',
   ({ steps }) => {
     const progress = GameProgress.fresh();
     const violations: string[] = [];
     for (const step of steps) {
       const continueBefore = progress.continueLevel;
       const unlockedBefore = progressLevels.map((level) => progress.isUnlocked(level, progressOrder));
-      const bestBefore = progressLevels.map((level) => progress.bestPlaythroughOf(level));
       step.apply(progress);
       const continueAfter = progress.continueLevel;
       const continueKept =
         continueBefore === null
           ? continueAfter === null
           : continueAfter !== null && continueBefore.equals(continueAfter);
-      if (step.completes && !continueKept) violations.push(`${step.label}: moved the continue level`);
+      if (step.completion && !continueKept) violations.push(`${step.label}: moved the continue level`);
+      const last = step.completion && progress.lastPlaythroughOf(step.completion.level);
+      if (step.completion && !last?.equals(step.completion.playthrough))
+        violations.push(`${step.label}: did not keep the playthrough as the last one`);
       progressLevels.forEach((level, index) => {
         if (unlockedBefore[index] && !progress.isUnlocked(level, progressOrder))
           violations.push(`${step.label}: relocked ${level.value}`);
-        const before = bestBefore[index];
-        const after = progress.bestPlaythroughOf(level);
-        if (before && (!after || before.isBetterThan(after)))
-          violations.push(`${step.label}: worsened the best playthrough of ${level.value}`);
       });
     }
     expect(violations).toEqual([]);

@@ -35,7 +35,7 @@ Invariants are checked exhaustively over enumerated inputs with `test.each`, not
 Each test collects its violations with plain comparisons and asserts once on the list, because an assertion per input dominates the run time.
 
 - In every authored level, the hero starts on each walkable tile of the playable area and moves in each of the eight directions. She never ends inside an obstacle or outside the level. The door stays closed until every orb is collected.
-- Every short sequence of reaching and completing levels keeps unlocked levels unlocked and never worsens a best playthrough. Every resulting progress state survives a save and load.
+- Every short sequence of reaching and completing levels keeps unlocked levels unlocked and sets the last playthrough of each completed level. Every resulting progress state survives a save and load.
 
 ## Rendering
 

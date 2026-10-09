@@ -15,6 +15,13 @@ function storage(initial: string | null = null): Storage {
 }
 
 const saved = {
+  version: 2,
+  continueLevelId: 'second',
+  unlockedLevelIds: ['second'],
+  lastPlaythroughs: [{ levelId: 'first', frames: 600, collectedStars: 2, starCount: 3 }],
+};
+
+const savedByVersionOne = {
   version: 1,
   continueLevelId: 'second',
   unlockedLevelIds: ['second'],
@@ -22,14 +29,14 @@ const saved = {
 };
 
 const isFresh = (progress: GameProgress): boolean =>
-  progress.continueLevel === null && progress.unlockedLevels.length === 0 && progress.bestPlaythroughs.length === 0;
+  progress.continueLevel === null && progress.unlockedLevels.length === 0 && progress.lastPlaythroughs.length === 0;
 
 function expectSameProgress(loaded: GameProgress, expected: GameProgress, label: string): void {
   for (const level of progressLevels) {
     expect(loaded.isUnlocked(level, progressOrder), `${label}: ${level.value} unlocked`).toBe(
       expected.isUnlocked(level, progressOrder),
     );
-    expect(loaded.bestPlaythroughOf(level), `${label}: ${level.value} best`).toEqual(expected.bestPlaythroughOf(level));
+    expect(loaded.lastPlaythroughOf(level), `${label}: ${level.value} last`).toEqual(expected.lastPlaythroughOf(level));
   }
   expect(loaded.continueLevelAmong(progressOrder), label).toEqual(expected.continueLevelAmong(progressOrder));
 }
@@ -43,9 +50,27 @@ describe('loading saved progress', () => {
     const progress = new LocalProgressRepository(storage(JSON.stringify(saved))).load();
     expect(progress.continueLevel).toEqual(LevelId.of('second'));
     expect(progress.unlockedLevels).toEqual([LevelId.of('second')]);
-    expect(progress.bestPlaythroughOf(LevelId.of('first'))).toEqual(
+    expect(progress.lastPlaythroughOf(LevelId.of('first'))).toEqual(
       Playthrough.of(PlayTime.ofFrames(600), StarCount.of(2), StarCount.of(3)),
     );
+  });
+
+  test('reads progress saved by version 1 without its best playthroughs', () => {
+    const progress = new LocalProgressRepository(storage(JSON.stringify(savedByVersionOne))).load();
+    expect(progress.continueLevel).toEqual(LevelId.of('second'));
+    expect(progress.unlockedLevels).toEqual([LevelId.of('second')]);
+    expect(progress.lastPlaythroughs).toEqual([]);
+  });
+
+  test('reads progress saved by version 1 even when its best playthroughs are invalid', () => {
+    const json = JSON.stringify({
+      ...savedByVersionOne,
+      bestPlaythroughs: [{ ...savedByVersionOne.bestPlaythroughs[0], collectedStars: 4 }],
+    });
+    const progress = new LocalProgressRepository(storage(json)).load();
+    expect(progress.continueLevel).toEqual(LevelId.of('second'));
+    expect(progress.unlockedLevels).toEqual([LevelId.of('second')]);
+    expect(progress.lastPlaythroughs).toEqual([]);
   });
 
   test('keeps level ids the game no longer has', () => {
@@ -59,13 +84,13 @@ describe('loading saved progress', () => {
     ['invalid JSON', '{'],
     ['a value that is not an object', '42'],
     ['a missing version', JSON.stringify({ ...saved, version: undefined })],
-    ['an unsupported version', JSON.stringify({ ...saved, version: 2 })],
+    ['an unsupported version', JSON.stringify({ ...saved, version: 3 })],
     ['an empty level id', JSON.stringify({ ...saved, unlockedLevelIds: [''] })],
     ['a blank level id', JSON.stringify({ ...saved, continueLevelId: '  ' })],
-    ['negative frames', JSON.stringify({ ...saved, bestPlaythroughs: [{ ...saved.bestPlaythroughs[0], frames: -1 }] })],
+    ['negative frames', JSON.stringify({ ...saved, lastPlaythroughs: [{ ...saved.lastPlaythroughs[0], frames: -1 }] })],
     [
       'more stars collected than the level holds',
-      JSON.stringify({ ...saved, bestPlaythroughs: [{ ...saved.bestPlaythroughs[0], collectedStars: 4 }] }),
+      JSON.stringify({ ...saved, lastPlaythroughs: [{ ...saved.lastPlaythroughs[0], collectedStars: 4 }] }),
     ],
   ])('gives fresh progress for %s', (_, json) => {
     expect(isFresh(new LocalProgressRepository(storage(json)).load())).toBe(true);
@@ -99,16 +124,23 @@ describe('saving progress', () => {
   });
 
   test('leaves progress saved by a newer version of the game alone', () => {
-    const newer = JSON.stringify({ version: 2, somethingNew: true });
+    const newer = JSON.stringify({ version: 3, somethingNew: true });
     const store = storage(newer);
     new LocalProgressRepository(store).save(GameProgress.fresh());
     expect(store.getItem(progressKey)).toBe(newer);
   });
 
+  test('writes version 2 over progress saved by version 1', () => {
+    const store = storage(JSON.stringify(savedByVersionOne));
+    const repository = new LocalProgressRepository(store);
+    repository.save(repository.load());
+    expect(JSON.parse(store.getItem(progressKey)!)).toEqual({ ...saved, lastPlaythroughs: [] });
+  });
+
   test('overwrites progress that cannot be read', () => {
     const store = storage('{');
     new LocalProgressRepository(store).save(GameProgress.fresh());
-    expect(JSON.parse(store.getItem(progressKey)!)).toMatchObject({ version: 1 });
+    expect(JSON.parse(store.getItem(progressKey)!)).toMatchObject({ version: 2 });
   });
 
   test('carries on when storage cannot be written', () => {
