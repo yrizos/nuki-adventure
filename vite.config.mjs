@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { defineConfig } from 'vite';
 
@@ -5,6 +6,15 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   base: './',
   plugins: [
+    {
+      // check2d publishes a sourceMappingURL comment without shipping the map, so Vite fails to read it on every test run.
+      name: 'strip-check2d-missing-source-map',
+      load(id) {
+        const path = id.split('?')[0];
+        if (!path.endsWith('/node_modules/check2d/esm/index.js')) return;
+        return readFileSync(path, 'utf8').replace(/\n\/\/# sourceMappingURL=index\.js\.map\s*$/, '\n');
+      },
+    },
     {
       name: 'expand-terrain-sprites',
       enforce: 'pre',
