@@ -3,10 +3,10 @@ import { OrbColor } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
 import { Direction, TilePosition } from '../domain/level/position';
 import { SignpostText } from '../domain/level/signpost';
+import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
 import { secondLevel, secondLevelId } from './second-level';
 
 const at = TilePosition.at;
-const keepOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => positions;
 
 test('the second level restores the lakeside garden with one teal orb', () => {
   const level = secondLevel(keepOrder);
@@ -29,6 +29,29 @@ test('the second level restores the lakeside garden with one teal orb', () => {
     at(18, 11),
     at(2, 12),
   ]);
-  expect(level.stars).toHaveLength(5);
-  expect(level.stars.map((star) => star.position)).toEqual([at(2, 3), at(19, 4), at(3, 10), at(2, 17), at(18, 17)]);
+});
+
+test('the second level marks fifteen star spots and lets the shuffle choose its stars', () => {
+  const spots = starSpotsOf(secondLevel);
+  expect(spots).toHaveLength(15);
+  expect(spots).toEqual(
+    expect.arrayContaining([
+      at(2, 3),
+      at(19, 4),
+      at(3, 10),
+      at(2, 17),
+      at(18, 17),
+      at(6, 3),
+      at(4, 7),
+      at(12, 7),
+      at(8, 9),
+      at(19, 10),
+      at(12, 12),
+      at(1, 13),
+      at(19, 13),
+      at(5, 15),
+      at(11, 15),
+    ]),
+  );
+  expect(secondLevel(reverseOrder).stars.map((star) => star.position)).toEqual([...spots].reverse().slice(0, 5));
 });

@@ -611,6 +611,49 @@ describe('stars scattered across a level', () => {
   });
 });
 
+describe('stars chosen among star spots', () => {
+  const open = ['......', '......', '......', '......'];
+  const hero = at(0, 0);
+  const orb = at(5, 3);
+  const free = Array.from({ length: 24 }, (_, index) => at(index % 6, Math.floor(index / 6))).filter(
+    (tile) => !tile.equals(hero) && !tile.equals(orb),
+  );
+  const among = (
+    spots: readonly TilePosition[],
+    shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[] = (positions) => positions,
+  ): Level => {
+    const { scenery, where } = parse(open);
+    return Level.withStarsAmong(
+      {
+        id: LevelId.of('test'),
+        scenery,
+        stones: [],
+        orbs: [Orb.at(orb, OrbColor.Violet, everywhere)],
+        door: Door.closedAt(where('D')[0]!),
+        hero: { position: hero, facing: Direction.Right },
+        obstacles: check2dObstacles,
+        signposts: [],
+      },
+      spots,
+      shuffle,
+    );
+  };
+
+  test.each([14, 16])('rejects %s spots', (count) => {
+    expect(() => among(free.slice(0, count))).toThrow(RangeError);
+  });
+
+  test('rejects an invalid spot even when the shuffle would not pick it', () => {
+    expect(() => among([...free.slice(0, 14), hero])).toThrow(RangeError);
+  });
+
+  test('holds the first five of the shuffled spots', () => {
+    const spots = free.slice(0, 15);
+    const subject = among(spots, (positions) => [...positions].reverse());
+    expect(subject.stars.map((star) => star.position)).toEqual([...spots].reverse().slice(0, 5));
+  });
+});
+
 describe('a door', () => {
   test.each([false, true])('hides exactly the two rows above its footprint when open is %s', (open) => {
     const closed = Door.closedAt(at(2, 2));

@@ -1,4 +1,4 @@
-import { Area, Orb, type OrbColor, Star } from '../domain/level/collectibles';
+import { Area, Orb, type OrbColor } from '../domain/level/collectibles';
 import type { StarCount } from '../domain/shared/star-count';
 import { Door } from '../domain/level/door';
 import { Level, Stone } from '../domain/level/level';
@@ -70,9 +70,9 @@ export function levelFromLayout(
   const [door, ...doorTiles] = where('D');
   if (!door || doorTiles.length !== 2 || !doorTiles.every((tile) => Door.closedAt(door).covers(tile)))
     throw new Error(`The layout of level ${id.value} needs exactly one door`);
-  const stars = cells.filter((cell) => '+='.includes(cell.symbol)).map((cell) => Star.at(cell.at));
-  if (stars.length > 0 && contents.starCount)
-    throw new Error(`The layout of level ${id.value} places its stars by hand, so it takes no star count`);
+  const starSpots = cells.filter((cell) => '+='.includes(cell.symbol)).map((cell) => cell.at);
+  if (starSpots.length > 0 && contents.starCount)
+    throw new Error(`The layout of level ${id.value} marks star spots, so it takes no star count`);
   const orbs = Object.entries(contents.orbs).map(([symbol, { color, restores }]) =>
     Orb.at(one(symbol), color, Area.of(cells.map((cell) => cell.at).filter(restores))),
   );
@@ -89,7 +89,6 @@ export function levelFromLayout(
     signposts,
     obstacles: check2dObstacles,
   };
-  return contents.starCount
-    ? Level.withScatteredStars(definition, contents.starCount, shuffle)
-    : Level.create({ ...definition, stars });
+  if (contents.starCount) return Level.withScatteredStars(definition, contents.starCount, shuffle);
+  return starSpots.length > 0 ? Level.withStarsAmong(definition, starSpots, shuffle) : Level.create(definition);
 }

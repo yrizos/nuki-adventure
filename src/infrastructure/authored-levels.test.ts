@@ -4,12 +4,12 @@ import type { Level } from '../domain/level/level';
 import { LevelCompleted, OrbCollected, SignpostRead, type LevelEvent } from '../domain/level/level-events';
 import { Direction, TilePosition } from '../domain/level/position';
 import type { Signpost } from '../domain/level/signpost';
+import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
 import { follow, pathTo } from '../test-support/walk-level';
 import { firstLevel } from './first-level';
 import { secondLevel } from './second-level';
 import { thirdLevel } from './third-level';
 
-const keepOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => positions;
 const authoredLevels = [
   { name: 'first', create: firstLevel },
   { name: 'second', create: secondLevel },
@@ -142,6 +142,15 @@ test.each(orbCases)(
 
 test.each(authoredLevels)('the $name level holds exactly five stars', ({ create }) => {
   expect(create(keepOrder).stars).toHaveLength(5);
+});
+
+test.each(authoredLevels)('the $name level marks fifteen star spots', ({ create }) => {
+  expect(starSpotsOf(create)).toHaveLength(15);
+});
+
+test.each(authoredLevels)('the $name level holds different stars under a different shuffle', ({ create }) => {
+  const stars = (shuffle: typeof keepOrder) => create(shuffle).stars.map((star) => star.position);
+  expect(stars(reverseOrder)).not.toEqual(stars(keepOrder));
 });
 
 test.each(authoredLevels)(

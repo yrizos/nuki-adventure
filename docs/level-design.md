@@ -35,10 +35,10 @@ The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/dom
 
 ### Stars
 
-- A level holds exactly five stars.
-- Every star is reachable and not hidden.
-- No star shares a tile with an orb, the hero start or another star.
-- A layout either places its stars by hand or gives a star count for random placement, never both.
+- A layout marks exactly fifteen star spots, and five of them hold stars each time the level starts.
+- Every star spot is reachable and not hidden.
+- No star spot shares a tile with an orb, the hero start or another star spot.
+- A layout either marks star spots or gives a star count for random placement, never both.
 
 ### Trees
 
@@ -69,13 +69,13 @@ Every meaningful navigation decision has a recognizable landmark, such as a dist
 
 ### Star Placement
 
-Stars exist to encourage exploration of the whole map, so every star is placed by hand and a level never uses a star count for random placement. Spread them across the map rather than gathering them in one place.
+Stars exist to encourage exploration of the whole map, so every star spot is chosen by hand and a level never uses a star count for random placement. Picking five of fifteen spots each time the level starts makes every run feel different while each star still lands somewhere worth reaching. Spread the spots across the map rather than gathering them in one place, so any five of them still cover it.
 
-They belong on optional dead ends, on side routes, in places worth seeing away from the mandatory route and in places the player can see before knowing how to reach. They never mark the mandatory route, and stars are never required to complete a level.
+Star spots belong on optional dead ends, on side routes, in places worth seeing away from the mandatory route and in places the player can see before knowing how to reach. They never mark the mandatory route, and stars are never required to complete a level.
 
 ### Optional Paths and Dead Ends
 
-An intentional dead end holds a payoff, usually a star but sometimes another discovery. Not every dead end needs a star, because placement should stay authored rather than predictable.
+An intentional dead end holds a payoff, usually a star spot but sometimes another discovery. Not every dead end needs a star, because placement should stay authored rather than predictable.
 
 ### Required Objects
 
@@ -144,7 +144,7 @@ Favor different variants between distinct clusters or places so their silhouette
 
 ### Tree Size
 
-A tree is two tiles wide, and its canopy hides the two tiles above it. Clusters and rows have to leave those tiles free of orbs and stars.
+A tree is two tiles wide, and its canopy hides the two tiles above it. Clusters and rows have to leave those tiles free of orbs and star spots.
 
 ## Playtesting
 

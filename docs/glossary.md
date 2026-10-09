@@ -110,9 +110,13 @@ Describes a tile that a tree canopy or the door is drawn over.
 
 A gold collectible.
 
+### Star Spot
+
+A tile chosen in a level's layout that can hold a star. A level marks fifteen star spots, and five of them hold stars each time the level starts.
+
 ### Star Count
 
-The number of stars a level holds. A level either places its stars on chosen tiles, or its stars go to random tiles that are reachable and not hidden each time it starts.
+The number of stars a level holds. A level either picks its stars from its star spots, or its stars go to random tiles that are reachable and not hidden each time it starts.
 
 ### Orb
 

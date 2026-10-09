@@ -100,9 +100,9 @@ describe('a level built from a layout', () => {
     ['a split door', ['.DD.D.', 'Tt...F', '#H*o~P', 'O....R'], 'The layout of level layout needs exactly one door'],
     ['two doors', ['DDDDDD', '......', '#H*o~P', 'O....R'], 'The layout of level layout needs exactly one door'],
     [
-      'stars placed by hand and a star count',
+      'star spots and a star count',
       ['.DDD..', 'Tt...F', '#H*o~P', 'O.+..R'],
-      'The layout of level layout places its stars by hand, so it takes no star count',
+      'The layout of level layout marks star spots, so it takes no star count',
     ],
     ['a missing orb', ['.DDD..', 'Tt...F', '#H*o~P', '.....R'], 'The layout of level layout needs exactly one "O"'],
     [
@@ -114,17 +114,14 @@ describe('a level built from a layout', () => {
     expect(() => levelFromLayout(LevelId.of('layout'), given, keepOrder, contents)).toThrow(message);
   });
 
-  test('places stars on grass and on paths where the layout marks them', () => {
+  test('offers the star spots it marks on grass and on paths and lets the shuffle choose five', () => {
     const { starCount: _, ...unscattered } = contents;
-    const placed = levelFromLayout(
-      LevelId.of('layout'),
-      ['.DDD..', 'Tt...F', '#H*o~P', 'O.+.=R'],
-      keepOrder,
-      unscattered,
-    );
-    expect(placed.stars.map((star) => star.position)).toEqual([at(2, 3), at(4, 3)]);
-    expect(placed.scenery.groundAt(at(2, 3))).toBe(Ground.Grass);
-    expect(placed.scenery.groundAt(at(4, 3))).toBe(Ground.Path);
+    const marked = [...layout, '++++++', '+++===', '===...'];
+    const reverseOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => [...positions].reverse();
+    const placed = levelFromLayout(LevelId.of('layout'), marked, reverseOrder, unscattered);
+    expect(placed.stars.map((star) => star.position)).toEqual([at(2, 6), at(1, 6), at(0, 6), at(5, 5), at(4, 5)]);
+    expect(placed.scenery.groundAt(at(0, 4))).toBe(Ground.Grass);
+    expect(placed.scenery.groundAt(at(5, 5))).toBe(Ground.Path);
   });
 });
 

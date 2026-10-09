@@ -321,7 +321,12 @@ test.each(exitSignCases)(
 );
 
 describe('whole frames of the first level', () => {
-  const level = firstLevel((positions) => positions);
+  // The frame shows only the lower right of the level, so the stars must come from spots inside it to be drawn at all.
+  const inFrame = (tile: TilePosition): boolean => tile.column >= 10 && tile.row >= 7;
+  const level = firstLevel((positions) => [
+    ...positions.filter(inFrame),
+    ...positions.filter((tile) => !inFrame(tile)),
+  ]);
   const orb = level.orbs[0]!;
   const scene = { level, frame: 0, hero: sprites.heroArt.down.stand, heldOrb: null };
   const painter = new WorldPainter(level);
@@ -329,17 +334,17 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    await expectChecksum(picture, 'd8589c3bf9973da56403203173343ecdc36e265b44195511494ac5965997bc84');
+    await expectChecksum(picture, '6c4aec6c45e08d051d950913e06696035f33c981ba3351b5151f26d04f45d202');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     painter.paintRestoring(picture, scene, orb.position, 40, [], [orb.restores]);
-    await expectChecksum(picture, '03bb2cdd5ad7250a1a68d5b4fdb7a5d194951ee5d53602e71e73f20fcdbb536d');
+    await expectChecksum(picture, 'ce99263c8859785d23d045f61f155ca87ecd906a8d0f8613d356c296fd183d78');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [orb.restores]);
-    await expectChecksum(picture, 'ed9d419c8166f3361daad5e04e704f7432196dd4b65770dc451b2515c0a7d2b9');
+    await expectChecksum(picture, '59a327750c32847037524048a3861eb9bbd45c576076d36f17b12625b00df89d');
   });
 });
 

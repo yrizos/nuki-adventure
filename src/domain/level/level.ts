@@ -1,5 +1,5 @@
 import { type Orb, Star } from './collectibles';
-import type { StarCount } from '../shared/star-count';
+import { StarCount } from '../shared/star-count';
 import type { Door } from './door';
 import { Hero, type HeroState } from './hero';
 import {
@@ -15,6 +15,9 @@ import { type Obstacles, Outline, type PlaceObstacles } from './obstacles';
 import { Direction, type Heading, TilePosition, WorldPosition } from './position';
 import type { Scenery } from './scenery';
 import type { Signpost } from './signpost';
+
+const starSpotCount = StarCount.of(15);
+const starsAmongSpots = StarCount.of(5);
 
 export class Stone {
   private constructor(readonly position: TilePosition) {}
@@ -176,6 +179,18 @@ export class Level {
       throw new RangeError(`The level has room for ${spots.length} visible, reachable stars, not ${starCount.value}`);
     }
     return new Level({ ...definition, stars: shuffle(spots).slice(0, starCount.value).map(Star.at) });
+  }
+
+  static withStarsAmong(
+    definition: Omit<LevelDefinition, 'stars'>,
+    spots: readonly TilePosition[],
+    shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[],
+  ): Level {
+    if (!StarCount.of(spots.length).equals(starSpotCount))
+      throw new RangeError(`A level needs ${starSpotCount.value} star spots, not ${spots.length}`);
+    // Every spot must be able to hold a star, not only the five the shuffle happens to pick.
+    new Level({ ...definition, stars: spots.map(Star.at) });
+    return new Level({ ...definition, stars: shuffle(spots).slice(0, starsAmongSpots.value).map(Star.at) });
   }
 
   get hero(): HeroState {

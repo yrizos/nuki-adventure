@@ -6,10 +6,10 @@ import { FlowerVariant } from '../domain/level/scenery';
 import { Signpost, SignpostText } from '../domain/level/signpost';
 import { fitCanvas } from '../presentation/viewport-layout';
 import { cameraPosition, tileSize } from '../presentation/world-geometry';
+import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
 import { firstLevel, firstLevelId } from './first-level';
 
 const at = TilePosition.at;
-const keepOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => positions;
 
 test('the first level selects only white-coral and blue-violet flowers', () => {
   expect(firstLevel(keepOrder).scenery.flowerVariants).toEqual([FlowerVariant.WhiteCoral, FlowerVariant.BlueViolet]);
@@ -42,13 +42,31 @@ test('the first level hides one violet orb that restores the whole level', () =>
   ]);
   expect(level.scenery.trees).toHaveLength(11);
   expect(level.scenery.flowers).toHaveLength(25);
-  expect(level.stars.map((star) => star.position)).toEqual([at(1, 3), at(10, 3), at(1, 9), at(15, 9), at(15, 13)]);
 });
 
-test('the first level places its stars by hand, whatever the shuffle', () => {
-  const reverseOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => [...positions].reverse();
-  const starPositions = (shuffle: typeof keepOrder) => firstLevel(shuffle).stars.map((star) => star.position);
-  expect(starPositions(reverseOrder)).toEqual(starPositions(keepOrder));
+test('the first level marks fifteen star spots and lets the shuffle choose its stars', () => {
+  const spots = starSpotsOf(firstLevel);
+  expect(spots).toHaveLength(15);
+  expect(spots).toEqual(
+    expect.arrayContaining([
+      at(1, 3),
+      at(10, 3),
+      at(1, 9),
+      at(15, 9),
+      at(15, 13),
+      at(15, 3),
+      at(12, 4),
+      at(5, 6),
+      at(15, 7),
+      at(12, 8),
+      at(5, 10),
+      at(11, 10),
+      at(5, 12),
+      at(1, 13),
+      at(10, 13),
+    ]),
+  );
+  expect(firstLevel(reverseOrder).stars.map((star) => star.position)).toEqual([...spots].reverse().slice(0, 5));
 });
 
 test('the first level starts the hero one or two rows above the bottom fence', () => {

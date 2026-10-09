@@ -4,10 +4,10 @@ import { Door } from '../domain/level/door';
 import { LevelCompleted, OrbCollected } from '../domain/level/level-events';
 import { Direction, TilePosition } from '../domain/level/position';
 import { follow, pathTo } from '../test-support/walk-level';
+import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
 import { thirdLevel, thirdLevelId } from './third-level';
 
 const at = TilePosition.at;
-const keepOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => positions;
 const orbOf = (color: OrbColor) => thirdLevel(keepOrder).orbs.find((orb) => orb.color === color)!;
 
 test('the third level opens at the foot of its orchard and lake with one red and one blue orb', () => {
@@ -58,12 +58,29 @@ test('the third level has a hint for each orb that names its color and an exit s
   expect(exit).toContain('ΔΥΟ ΣΦΑΙΡΕΣ');
 });
 
-test('the third level places its five stars by hand, whatever the shuffle', () => {
-  const reverseOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => [...positions].reverse();
-  const starPositions = (shuffle: typeof keepOrder) => thirdLevel(shuffle).stars.map((star) => star.position);
-  expect(starPositions(keepOrder)).toHaveLength(5);
-  expect(starPositions(keepOrder)).toEqual([at(1, 3), at(22, 3), at(23, 13), at(23, 17), at(1, 21)]);
-  expect(starPositions(reverseOrder)).toEqual(starPositions(keepOrder));
+test('the third level marks fifteen star spots and lets the shuffle choose its stars', () => {
+  const spots = starSpotsOf(thirdLevel);
+  expect(spots).toHaveLength(15);
+  expect(spots).toEqual(
+    expect.arrayContaining([
+      at(1, 3),
+      at(22, 3),
+      at(23, 13),
+      at(23, 17),
+      at(1, 21),
+      at(5, 4),
+      at(18, 4),
+      at(3, 7),
+      at(1, 14),
+      at(23, 8),
+      at(13, 9),
+      at(2, 16),
+      at(7, 19),
+      at(18, 20),
+      at(23, 23),
+    ]),
+  );
+  expect(thirdLevel(reverseOrder).stars.map((star) => star.position)).toEqual([...spots].reverse().slice(0, 5));
 });
 
 test.each([
