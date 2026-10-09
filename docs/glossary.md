@@ -198,9 +198,13 @@ The number of game frames from the start of a level until the hero steps into th
 
 The completed playthrough of a level with the most stars collected, where fewer frames of play time decide between equal stars. A playthrough always replaces one made when the level held a different star count.
 
+### Level Order
+
+The sequence in which the game holds its levels. It names the first level, which is always unlocked, and the level that completing each level unlocks. It holds every level once and never holds no levels.
+
 ### Unlocked Level
 
-A level that the player has reached at least once. The first level is always unlocked, and a level never locks again.
+A level that the player has reached, or whose preceding level the player has completed. The first level is always unlocked, and a level never locks again.
 
 ### Continue Level
 

@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'vitest';
 import { GameProgress } from '../domain/progress/game-progress';
+import { LevelOrder } from '../domain/progress/level-order';
 import { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import { LevelId } from '../domain/shared/level-id';
 import { StarCount } from '../domain/shared/star-count';
 import { LocalProgressRepository, progressKey } from './local-progress-repository';
 import { memoryStorage } from '../test-support/memory-storage';
-import { progressLevels, progressSequences } from '../test-support/progress-sequences';
+import { progressLevels, progressOrder, progressSequences } from '../test-support/progress-sequences';
 
 function storage(initial: string | null = null): Storage {
   const store = memoryStorage();
@@ -25,12 +26,12 @@ const isFresh = (progress: GameProgress): boolean =>
 
 function expectSameProgress(loaded: GameProgress, expected: GameProgress, label: string): void {
   for (const level of progressLevels) {
-    expect(loaded.isUnlocked(level, progressLevels), `${label}: ${level.value} unlocked`).toBe(
-      expected.isUnlocked(level, progressLevels),
+    expect(loaded.isUnlocked(level, progressOrder), `${label}: ${level.value} unlocked`).toBe(
+      expected.isUnlocked(level, progressOrder),
     );
     expect(loaded.bestPlaythroughOf(level), `${label}: ${level.value} best`).toEqual(expected.bestPlaythroughOf(level));
   }
-  expect(loaded.continueLevelAmong(progressLevels), label).toEqual(expected.continueLevelAmong(progressLevels));
+  expect(loaded.continueLevelAmong(progressOrder), label).toEqual(expected.continueLevelAmong(progressOrder));
 }
 
 describe('loading saved progress', () => {
@@ -87,7 +88,11 @@ describe('saving progress', () => {
     const repository = new LocalProgressRepository(store);
     const progress = GameProgress.fresh();
     progress.reach(LevelId.of('second'));
-    progress.complete(LevelId.of('first'), Playthrough.of(PlayTime.ofFrames(600), StarCount.of(2), StarCount.of(3)));
+    progress.complete(
+      LevelId.of('first'),
+      Playthrough.of(PlayTime.ofFrames(600), StarCount.of(2), StarCount.of(3)),
+      LevelOrder.of([LevelId.of('first')]),
+    );
     repository.save(progress);
     expect(JSON.parse(store.getItem(progressKey)!)).toEqual(saved);
     expectSameProgress(repository.load(), progress, 'saved progress');

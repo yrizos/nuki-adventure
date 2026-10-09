@@ -1,4 +1,5 @@
 import type { LevelId } from '../shared/level-id';
+import type { LevelOrder } from './level-order';
 import type { Playthrough } from './playthrough';
 
 export interface BestPlaythrough {
@@ -26,7 +27,7 @@ export class GameProgress {
   static restore({ continueLevel, unlockedLevels, bestPlaythroughs }: SavedProgress): GameProgress {
     const progress = new GameProgress(continueLevel, [], new Map());
     for (const level of unlockedLevels) progress.unlock(level);
-    for (const { level, playthrough } of bestPlaythroughs) progress.complete(level, playthrough);
+    for (const { level, playthrough } of bestPlaythroughs) progress.recordBest(level, playthrough);
     return progress;
   }
 
@@ -43,14 +44,12 @@ export class GameProgress {
   }
 
   // The order of levels can change between versions of the game, so the first level comes from the current one.
-  isUnlocked(level: LevelId, levels: readonly LevelId[]): boolean {
-    return levels[0]?.equals(level) === true || this.unlocked.some((unlocked) => unlocked.equals(level));
+  isUnlocked(level: LevelId, order: LevelOrder): boolean {
+    return order.first.equals(level) || this.unlocked.some((unlocked) => unlocked.equals(level));
   }
 
-  continueLevelAmong(levels: readonly LevelId[]): LevelId {
-    const first = levels[0];
-    if (!first) throw new RangeError('A game needs at least one level');
-    return levels.find((level) => this.continueAt?.equals(level)) ?? first;
+  continueLevelAmong(order: LevelOrder): LevelId {
+    return this.continueAt && order.includes(this.continueAt) ? this.continueAt : order.first;
   }
 
   bestPlaythroughOf(level: LevelId): Playthrough | null {
@@ -62,7 +61,13 @@ export class GameProgress {
     this.unlock(level);
   }
 
-  complete(level: LevelId, playthrough: Playthrough): void {
+  complete(level: LevelId, playthrough: Playthrough, order: LevelOrder): void {
+    this.recordBest(level, playthrough);
+    const next = order.after(level);
+    if (next) this.unlock(next);
+  }
+
+  private recordBest(level: LevelId, playthrough: Playthrough): void {
     const best = this.bestPlaythroughOf(level);
     if (!best || playthrough.isBetterThan(best)) this.best.set(level.value, { level, playthrough });
   }

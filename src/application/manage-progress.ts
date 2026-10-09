@@ -1,4 +1,5 @@
 import type { GameProgress } from '../domain/progress/game-progress';
+import { LevelOrder } from '../domain/progress/level-order';
 import type { Playthrough } from '../domain/progress/playthrough';
 import type { ProgressRepository } from '../domain/progress/progress-repository';
 import type { LevelId } from '../domain/shared/level-id';
@@ -16,19 +17,23 @@ export interface ProgressView {
 }
 
 export class ManageProgress {
+  private readonly order: LevelOrder;
+
   constructor(
     private readonly progress: ProgressRepository,
-    private readonly levels: readonly LevelId[],
-  ) {}
+    levels: readonly LevelId[],
+  ) {
+    this.order = LevelOrder.of(levels);
+  }
 
   view(): ProgressView {
     const progress = this.progress.load();
     return {
-      continueLevel: progress.continueLevelAmong(this.levels),
-      levels: this.levels.map((id, index) => ({
+      continueLevel: progress.continueLevelAmong(this.order),
+      levels: this.order.levels.map((id, index) => ({
         id,
         number: index + 1,
-        isUnlocked: progress.isUnlocked(id, this.levels),
+        isUnlocked: progress.isUnlocked(id, this.order),
         bestPlaythrough: progress.bestPlaythroughOf(id),
       })),
     };
@@ -39,7 +44,7 @@ export class ManageProgress {
   }
 
   complete(level: LevelId, playthrough: Playthrough): void {
-    this.change((progress) => progress.complete(level, playthrough));
+    this.change((progress) => progress.complete(level, playthrough, this.order));
   }
 
   private change(apply: (progress: GameProgress) => void): void {
