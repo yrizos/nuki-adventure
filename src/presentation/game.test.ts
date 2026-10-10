@@ -12,7 +12,13 @@ import { Ground, LevelSize, Scenery } from '../domain/level/scenery';
 import { Signpost, SignpostText } from '../domain/level/signpost';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
+import { LocalProgressRepository } from '../infrastructure/local-progress-repository';
+import { ManageProgress } from '../application/manage-progress';
+import { audioWindow } from '../test-support/audio-context';
+import { FakeDocument, type FakeHTMLElement, stubDisplay } from '../test-support/fake-document';
+import { memoryStorage } from '../test-support/memory-storage';
 import { pixelDifference } from '../test-support/pictures';
+import { startGame } from './game';
 import { GameLoop } from './game-loop';
 import { GameSession, messages } from './game-session';
 import { HeroAnimator } from './hero-animator';
@@ -30,6 +36,9 @@ const leftHalf = area((position) => position.column < 2);
 const rightHalf = area((position) => position.column >= 2);
 
 const hint = 'ΒΡΕΣ ΤΗ ΣΦΑΙΡΑ!';
+
+// The page drives the joystick through the keyboard, so the touch joystick library only needs to accept listeners.
+vi.mock('nipplejs', () => ({ create: () => ({ on: () => {}, destroy: () => {} }) }));
 
 function gameSession(
   orbs: readonly Orb[] = [Orb.at(TilePosition.at(1, 0), OrbColor.Violet, everywhere)],
@@ -68,7 +77,8 @@ function gameSession(
     play = new PlayLevel(new InMemoryLevelRepository([level]));
     return play;
   });
-  const session = new GameSession([{ id: levelId, start: createPlay }], controls, sound, levelEnd, progress, levelId);
+  const report = { completed: vi.fn(), continued: vi.fn() };
+  const session = new GameSession({ id: levelId, start: createPlay }, controls, sound, levelEnd, progress, report);
   const normalAnimator = new HeroAnimator();
   let frames = 0;
   const tick = (): void => {
@@ -102,6 +112,7 @@ function gameSession(
     sound,
     levelEnd,
     progress,
+    report,
     normalAnimator,
     createPlay,
     tick,
@@ -328,178 +339,183 @@ describe('the game session', () => {
       subject.advance(1);
       const playthrough = Playthrough.of(PlayTime.ofFrames(completedAt - 1), StarCount.of(1), StarCount.of(1));
       expect(subject.levelEnd.show).toHaveBeenCalledExactlyOnceWith(playthrough);
+      expect(subject.report.completed).toHaveBeenCalledOnce();
+      expect(subject.report.continued).not.toHaveBeenCalled();
       expect(subject.progress.complete).toHaveBeenCalledExactlyOnceWith(subject.level.id, playthrough);
       const picture = new Picture(224, 224);
       subject.session.paint(picture);
       expect(new Set(picture.pixels.filter((_, index) => index % 4 === 3))).toEqual(new Set([255]));
       continuePlaying();
       expect(subject.levelEnd.hide).toHaveBeenCalledOnce();
-      expect(subject.createPlay).toHaveBeenCalledTimes(2);
-      expect(subject.level.hero.position).toEqual(TilePosition.at(0, 5));
-      expect(subject.session.messageText).toBe('');
-      expect(subject.level.orbs).toHaveLength(1);
-      expect(subject.level.stars).toHaveLength(1);
-      expect(subject.level.door.isOpen).toBe(false);
-      expect(subject.level.isComplete).toBe(false);
-      const freshAnimator = new HeroAnimator();
-      for (const walking of [false, true]) {
-        if (walking) {
-          subject.controls.heading.mockReturnValue(Heading.of(Direction.Right));
-          subject.tick();
-          freshAnimator.advance(subject.session.level.hero);
-        }
-        const actual = new Picture(224, 224);
-        const expected = new Picture(224, 224);
-        const level = subject.session.level;
-        new WorldPainter(level).paint(
-          expected,
-          { level, frame: subject.frames, hero: freshAnimator.pose(level.hero, subject.frames, false), heldOrb: null },
-          [],
-        );
-        subject.session.paint(actual);
-        expect(pixelDifference(actual, expected)).toBeUndefined();
-      }
-      subject.controls.heading.mockReturnValue(null);
+      expect(subject.report.continued).toHaveBeenCalledOnce();
+      expect(subject.createPlay).toHaveBeenCalledOnce();
       continuePlaying();
       expect(subject.levelEnd.hide).toHaveBeenCalledOnce();
-      expect(subject.createPlay).toHaveBeenCalledTimes(2);
+      expect(subject.report.continued).toHaveBeenCalledOnce();
+      expect(subject.report.completed).toHaveBeenCalledOnce();
+      expect(subject.createPlay).toHaveBeenCalledOnce();
       expect(subject.progress.complete).toHaveBeenCalledOnce();
     },
   );
 });
 
-describe('the level sequence', () => {
-  function sequence(first = 'one') {
-    const pressed = new Set<'a' | 'b'>();
-    let heading: Heading | null = null;
-    const controls = { takePress: (button: 'a' | 'b') => pressed.delete(button), heading: () => heading };
-    const sound = { star: vi.fn(), orb: vi.fn(), door: vi.fn(), footstep: vi.fn(), restoring: vi.fn() };
-    const levelEnd = { show: vi.fn(), hide: vi.fn() };
-    const progress = { reach: vi.fn<(level: LevelId) => void>(), complete: vi.fn() };
-    const started: string[] = [];
-    const plays: { id: LevelId; play: PlayLevel }[] = [];
-    const playable = (name: string) => {
-      const id = LevelId.of(name);
-      return {
-        id,
-        start: () => {
-          started.push(name);
-          const level = Level.create({
-            id,
-            scenery: Scenery.of(
-              LevelSize.of(3, 5),
-              Array.from({ length: 5 }, () => Array<Ground>(3).fill(Ground.Path)),
-              [],
-              [],
-            ),
-            stones: [],
-            orbs: [Orb.at(TilePosition.at(1, 3), OrbColor.Violet, everywhere)],
-            door: Door.closedAt(TilePosition.at(0, 0)),
-            hero: { position: TilePosition.at(1, 4), facing: Direction.Up },
-            obstacles: check2dObstacles,
-          });
-          const play = new PlayLevel(new InMemoryLevelRepository([level]));
-          plays.push({ id, play });
-          return play;
-        },
-      };
-    };
-    const levels = [playable('one'), playable('two')];
-    const session = new GameSession(levels, controls, sound, levelEnd, progress, LevelId.of(first));
-    const complete = (): void => {
-      heading = Heading.of(Direction.Up);
-      for (let frame = 0; frame < 120 && levelEnd.show.mock.calls.length === plays.length - 1; frame++) session.tick();
-      heading = null;
-      for (let frame = 0; frame <= closingLength && levelEnd.show.mock.calls.length < plays.length; frame++)
-        session.tick();
-      expect(levelEnd.show).toHaveBeenCalledTimes(plays.length);
-    };
-    const continueWith = (button: 'a' | 'b'): void => {
-      pressed.add(button);
-      session.tick();
-    };
-    const current = (): LevelView => {
-      const { id, play } = plays.at(-1)!;
-      return play.view(id);
-    };
-    return { session, started, plays, progress, complete, continueWith, current };
+function gamePage({ secondUnlocked = false } = {}) {
+  FakeDocument.stubGlobals();
+  audioWindow();
+  const display = stubDisplay(1);
+  Object.defineProperty(display.window, 'location', { value: { search: '' } });
+  const frameCallbacks: ((now: number) => void)[] = [];
+  vi.stubGlobal('requestAnimationFrame', (callback: (now: number) => void) => frameCallbacks.push(callback));
+  vi.spyOn(performance, 'now').mockReturnValue(0);
+  const root = new FakeDocument();
+  const elements = new Map<string, FakeHTMLElement>();
+  for (const name of [
+    'screen',
+    'game-view',
+    'level-end',
+    'level-end-card',
+    'level-end-summary',
+    'continue-button',
+    'menu-switch',
+    'full-screen-switch',
+    'sound-switch',
+    'start-screen',
+    'start-title',
+    'start-continue',
+    'start-new-game',
+    'level-picker',
+    'announcement',
+    'control-panel',
+    'joystick',
+    'knob',
+    'button-a',
+    'button-b',
+  ]) {
+    const created = root.createElement('div');
+    created.className = name;
+    elements.set(name, created);
+    root.body.append(created);
   }
-
-  test('starts with the first level', () => {
-    const subject = sequence();
-    expect(subject.started).toEqual(['one']);
-  });
-
-  test.each(['level-end button', 'a', 'b'] as const)(
-    'advances once and wraps after the last level with %s',
-    (button) => {
-      const subject = sequence();
-      const continuePlaying = (): void => {
-        if (button === 'level-end button') subject.session.continuePlaying();
-        else subject.continueWith(button);
-      };
-      continuePlaying();
-      expect(subject.started).toEqual(['one']);
-      subject.complete();
-      continuePlaying();
-      continuePlaying();
-      expect(subject.started).toEqual(['one', 'two']);
-      expect(subject.current().isComplete).toBe(false);
-      subject.complete();
-      continuePlaying();
-      continuePlaying();
-      expect(subject.started).toEqual(['one', 'two', 'one']);
-      expect(subject.progress.reach.mock.calls.map(([id]) => id.value)).toEqual(['one', 'two', 'one']);
-      expect(subject.progress.complete).toHaveBeenCalledTimes(2);
-    },
+  const view = elements.get('game-view')!;
+  // The smallest view the game allows keeps painting every frame of whole playthroughs fast.
+  view.bounds = { left: 0, top: 0, width: 224, height: 224 };
+  view.append(root.createElement('canvas'));
+  elements.get('level-end')!.hidden = true;
+  elements.get('start-screen')!.hidden = true;
+  const started: string[] = [];
+  const playable = (name: string) => {
+    const id = LevelId.of(name);
+    return {
+      id,
+      start: () => {
+        started.push(name);
+        return new PlayLevel(
+          new InMemoryLevelRepository([
+            Level.create({
+              id,
+              scenery: Scenery.of(
+                LevelSize.of(3, 5),
+                Array.from({ length: 5 }, () => Array<Ground>(3).fill(Ground.Path)),
+                [],
+                [],
+              ),
+              stones: [],
+              orbs: [Orb.at(TilePosition.at(1, 3), OrbColor.Violet, everywhere)],
+              door: Door.closedAt(TilePosition.at(0, 0)),
+              hero: { position: TilePosition.at(1, 4), facing: Direction.Up },
+              obstacles: check2dObstacles,
+            }),
+          ]),
+        );
+      },
+    };
+  };
+  const levels = [playable('one'), playable('two')];
+  const progress = new ManageProgress(
+    new LocalProgressRepository(memoryStorage()),
+    levels.map(({ id }) => id),
   );
-
-  test.each(['before', 'after'] as const)(
-    'continues once when the level-end button is used %s a pending action press',
-    (order) => {
-      const subject = sequence();
-      subject.complete();
-      if (order === 'before') subject.session.continuePlaying();
-      subject.continueWith('a');
-      if (order === 'after') subject.session.continuePlaying();
-      expect(subject.started).toEqual(['one', 'two']);
-      const level = subject.current();
-      expect(level.id.value).toBe('two');
-      expect(level.hero.position).toEqual(TilePosition.at(1, 4));
-      expect(level.orbs).toHaveLength(1);
-      expect(level.isComplete).toBe(false);
-      expect(subject.session.messageText).toBe('');
+  if (secondUnlocked)
+    progress.complete(levels[0]!.id, Playthrough.of(PlayTime.ofFrames(60), StarCount.of(0), StarCount.of(0)));
+  startGame(root as unknown as Document, levels, progress);
+  let now = 0;
+  const frame = (): void => {
+    now += 1000 / 60 + 0.001;
+    frameCallbacks.at(-1)!(now);
+  };
+  const key = (type: 'keydown' | 'keyup', name: string): void => {
+    const event = Object.assign(new Event(type, { cancelable: true }), { key: name, repeat: false });
+    Object.defineProperty(event, 'target', { value: display.window });
+    display.window.dispatchEvent(event);
+  };
+  const announcement = elements.get('announcement')!;
+  return {
+    started,
+    frame,
+    announcement,
+    startScreen: elements.get('start-screen')!,
+    levelEnd: elements.get('level-end')!,
+    choose: (number: number): void => (root.querySelectorAll('.level-row')[number - 1] as FakeHTMLElement).click(),
+    openMenu: (): void => (elements.get('menu-switch') as FakeHTMLElement).click(),
+    continuePlaying: (): void => (elements.get('continue-button') as FakeHTMLElement).click(),
+    walkUpUntil(done: () => boolean): void {
+      key('keydown', 'ArrowUp');
+      for (let count = 0; count < 400 && !done(); count++) frame();
+      key('keyup', 'ArrowUp');
+      expect(done()).toBe(true);
     },
-  );
+    completeLevel(): void {
+      this.walkUpUntil(() => !elements.get('level-end')!.hidden);
+    },
+  };
+}
 
-  test('starts with the level it is given and moves on from there', () => {
-    const subject = sequence('two');
-    expect(subject.started).toEqual(['two']);
-    subject.complete();
-    subject.continueWith('a');
-    expect(subject.started).toEqual(['two', 'one']);
+describe('the game page', () => {
+  test('starts the level chosen on the start screen', () => {
+    const page = gamePage();
+    expect(page.startScreen.hidden).toBe(false);
+    page.frame();
+    expect(page.started).toEqual([]);
+    page.choose(1);
+    expect(page.startScreen.hidden).toBe(true);
+    expect(page.started).toEqual(['one']);
   });
 
-  test('saves every level it reaches as the continue level', () => {
-    const subject = sequence();
-    subject.complete();
-    subject.continueWith('a');
-    expect(subject.progress.reach.mock.calls.map(([id]) => id.value)).toEqual(['one', 'two']);
+  test('returns to the start screen from the menu switch', () => {
+    const page = gamePage();
+    page.choose(1);
+    page.walkUpUntil(() => page.announcement.textContent === messages.colorsBack);
+    page.openMenu();
+    expect(page.startScreen.hidden).toBe(false);
+    expect(page.announcement.textContent).toBe('');
+    page.frame();
+    expect(page.announcement.textContent).toBe('');
+    expect(page.started).toEqual(['one']);
   });
 
-  test('starts every level afresh', () => {
-    const subject = sequence();
-    subject.complete();
-    subject.continueWith('a');
-    subject.complete();
-    subject.continueWith('a');
-    const level = subject.current();
-    expect(subject.plays[2]!.play).not.toBe(subject.plays[0]!.play);
-    expect(level.hero.position).toEqual(TilePosition.at(1, 4));
-    expect(level.orbs).toHaveLength(1);
-    expect(level.door.isOpen).toBe(false);
-    expect(level.isComplete).toBe(false);
-    expect(subject.session.messageText).toBe('');
+  test('shows the start screen with the level end window hidden after continuing from the last level', () => {
+    const page = gamePage({ secondUnlocked: true });
+    page.choose(2);
+    page.completeLevel();
+    page.continuePlaying();
+    expect(page.levelEnd.hidden).toBe(true);
+    expect(page.startScreen.hidden).toBe(false);
+    page.frame();
+    expect(page.started).toEqual(['two']);
+  });
+
+  test('announces the message of the level being played', () => {
+    const page = gamePage();
+    page.choose(1);
+    page.frame();
+    expect(page.announcement.textContent).toBe('');
+    page.walkUpUntil(() => page.announcement.textContent === messages.colorsBack);
+    page.completeLevel();
+    page.continuePlaying();
+    page.frame();
+    expect(page.started).toEqual(['one', 'two']);
+    expect(page.announcement.textContent).toBe('');
+    page.walkUpUntil(() => page.announcement.textContent === messages.colorsBack);
   });
 });
 

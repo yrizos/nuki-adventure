@@ -75,7 +75,7 @@ Landscape orientation is not supported.
 - A star drawing sits beside the collected stars out of all stars in the level
 - The numbers are Paper, in the message box font
 - A ΣΥΝΕΧΕΙΑ button at the bottom wears the A button colors, with a lip, and sinks into its lip while pressed
-- Tapping ΣΥΝΕΧΕΙΑ or pressing A or B closes the window and starts the next level
+- Tapping ΣΥΝΕΧΕΙΑ or pressing A or B closes the window and starts the next level, or opens the start screen after the last level
 - The window takes keyboard focus on ΣΥΝΕΧΕΙΑ, and screen readers hear the title, the time and the stars in words
 
 ## Start Screen

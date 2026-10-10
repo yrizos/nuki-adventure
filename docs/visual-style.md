@@ -268,7 +268,7 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 
 - Stepping into the open doorway completes the level
 - The colored world then darkens to Ink through the same ordered 4 × 4 dither, each pixel switching at its threshold
-- Once the screen is fully Ink, the level end window opens, and ΣΥΝΕΧΕΙΑ starts the next level from its faded state, returning to the first level after the last one
+- Once the screen is fully Ink, the level end window opens, and ΣΥΝΕΧΕΙΑ starts the next level from its faded state, or opens the start screen after the last level
 
 ## Motion and Animation
 

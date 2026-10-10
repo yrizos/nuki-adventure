@@ -24,7 +24,7 @@ The button beside the sound switch that shows the page full screen or returns it
 
 ### Level End Window
 
-The window that opens after the hero completes a level. It shows the time the level took and the stars collected out of all stars, and its ΣΥΝΕΧΕΙΑ button starts the next level.
+The window that opens after the hero completes a level. It shows the time the level took and the stars collected out of all stars, and its ΣΥΝΕΧΕΙΑ button starts the next level, or opens the start screen after the last level.
 
 ### Start Screen
 

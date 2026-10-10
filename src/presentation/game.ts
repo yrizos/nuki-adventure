@@ -4,6 +4,7 @@ import { artUrl } from './canvas-art';
 import { Controls } from './controls';
 import { element } from './dom';
 import { GameLoop } from './game-loop';
+import { GameNavigator } from './game-navigator';
 import { GameSession, type PlayableLevel } from './game-session';
 import { connectGameSwitches } from './game-switches';
 import { GameView } from './game-view';
@@ -34,36 +35,38 @@ export function startGame(
   const sound = new Sound(window);
   const levelEnd = new LevelEndWindow(root);
   const startScreen = new StartScreen(root);
-  let session: GameSession | null = null;
-  const openStartScreen = (): void => {
-    session = null;
-    levelEnd.hide();
-    announcement.textContent = '';
-    startScreen.show(progress.view());
-  };
+  const navigator = new GameNavigator(
+    levels,
+    (level, report) => new GameSession(level, controls, sound, levelEnd, progress, report),
+    () => {
+      levelEnd.hide();
+      announcement.textContent = '';
+      startScreen.show(progress.view());
+    },
+  );
   startScreen.whenChosen((level) => {
     startScreen.hide();
     // A press that chose the level must not also act inside it.
     controls.takePress('a');
     controls.takePress('b');
-    session = new GameSession(levels, controls, sound, levelEnd, progress, level);
+    navigator.play(level);
   });
-  connectGameSwitches(root, sound, openStartScreen);
-  levelEnd.whenContinued(() => session?.continuePlaying());
-  openStartScreen();
+  connectGameSwitches(root, sound, () => navigator.openStartScreen());
+  levelEnd.whenContinued(() => navigator.session?.continuePlaying());
+  navigator.openStartScreen();
 
   const tick = (): void => {
     controls.advance();
-    if (!session) return;
-    session.tick();
-    const spoken = session.messageText;
+    navigator.session?.tick();
+    // Continuing can replace the session during its own tick, so the message comes from whichever level is now open.
+    const spoken = navigator.session?.messageText ?? '';
     if (announcement.textContent !== spoken) announcement.textContent = spoken;
   };
 
   const showObstacles = import.meta.env.DEV && new URLSearchParams(window.location.search).has('obstacles');
   const render = (tickProgress: number): void => {
-    if (!session) return;
-    const playing = session;
+    const playing = navigator.session;
+    if (!playing) return;
     gameView.paint(
       playing,
       tickProgress,

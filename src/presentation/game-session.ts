@@ -27,6 +27,11 @@ export interface PlayableLevel {
   readonly start: () => PlayLevel;
 }
 
+export interface SessionReport {
+  readonly completed: () => void;
+  readonly continued: () => void;
+}
+
 interface LevelRun {
   readonly id: LevelId;
   readonly play: PlayLevel;
@@ -41,22 +46,17 @@ interface LevelRun {
 export class GameSession {
   private frame = 0;
   private phase: Phase = playing;
-  private levelIndex = 0;
-  private run: LevelRun;
+  private readonly run: LevelRun;
 
   constructor(
-    private readonly levels: readonly PlayableLevel[],
+    level: PlayableLevel,
     private readonly controls: Pick<Controls, 'takePress' | 'heading'>,
     private readonly sound: Pick<Sound, 'star' | 'orb' | 'door' | 'footstep' | 'restoring'>,
     private readonly levelEnd: Pick<LevelEndWindow, 'show' | 'hide'>,
     private readonly progress: Pick<ManageProgress, 'reach' | 'complete'>,
-    first: LevelId,
+    private readonly report: SessionReport,
   ) {
-    this.levelIndex = Math.max(
-      0,
-      levels.findIndex(({ id }) => id.equals(first)),
-    );
-    this.run = this.begin();
+    this.run = this.begin(level);
   }
 
   get level(): LevelView {
@@ -154,18 +154,19 @@ export class GameSession {
     if (next === previous) return;
     if (previous.name === 'restoring' && (next.name === 'playing' || next.name === 'restoring'))
       this.run.restored = [...this.run.restored, previous.restores];
-    if (previous.name === 'closing' && next.name === 'ended') this.levelEnd.show(previous.playthrough);
-    if (previous.name === 'ended' && next.name === 'playing') {
-      this.levelEnd.hide();
-      this.levelIndex = (this.levelIndex + 1) % this.levels.length;
-      this.run = this.begin();
-    }
     this.phase = next;
     if (next.name === 'restoring') this.sound.restoring();
+    if (previous.name === 'closing' && next.name === 'ended') {
+      this.levelEnd.show(previous.playthrough);
+      this.report.completed();
+    }
+    if (previous.name === 'ended' && next.name === 'playing') {
+      this.levelEnd.hide();
+      this.report.continued();
+    }
   }
 
-  private begin(): LevelRun {
-    const { id, start } = this.levels[this.levelIndex]!;
+  private begin({ id, start }: PlayableLevel): LevelRun {
     const play = start();
     this.progress.reach(id);
     return {

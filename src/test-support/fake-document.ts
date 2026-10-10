@@ -57,7 +57,10 @@ export class FakeElement extends EventTarget {
 
   matches(selectors: string): boolean {
     return selectors.split(',').some((selector) => {
-      const match = selectorPattern.exec(selector.trim());
+      const ancestors = selector.trim().split(/\s+/);
+      const own = ancestors.pop()!;
+      if (ancestors.length > 0 && !this.parentElement?.closest(ancestors.join(' '))) return false;
+      const match = selectorPattern.exec(own);
       if (!match) throw new Error(`Unsupported test selector: ${selector}`);
       const [, tag, className, attribute, value] = match;
       if (tag && this.tagName !== tag.toUpperCase()) return false;
@@ -115,6 +118,7 @@ export class FakeStyle {
 export class FakeHTMLElement extends FakeElement {
   hidden = false;
   disabled = false;
+  textContent = '';
   type = '';
   bounds = { left: 0, top: 0, width: 0, height: 0 };
   readonly style = new FakeStyle();
