@@ -15,11 +15,15 @@ const arrowUp = ['...xx...', '..xxxx..', '.xxxxxx.', 'xxxxxxxx'];
 const switchSize = 19;
 const continueText = 'ΣΥΝΕΧΕΙΑ';
 const newGameText = 'ΝΕΟ ΠΑΙΧΝΙΔΙ';
+const pickLevelText = 'ΕΠΙΛΟΓΗ ΕΠΙΠΕΔΟΥ';
+const backText = 'ΠΙΣΩ';
 const textButtonPadding = 12;
 const textButtonFaceHeight = 23;
 const textButtonWidth = (text: string): number => textWidth(text) + 2 * textButtonPadding;
 export const continueWidth = textButtonWidth(continueText);
 export const newGameWidth = textButtonWidth(newGameText);
+export const pickLevelWidth = textButtonWidth(pickLevelText);
+export const backWidth = textButtonWidth(backText);
 export const continueHeight = textButtonFaceHeight + lipHeight;
 const speakerOn = [
   '...x.....x.',
@@ -266,5 +270,9 @@ export const panelArt: Readonly<Record<string, Art>> = {
   'continue-pressed': textButton(continueText, buttonAPressed, true),
   'new-game': textButton(newGameText, buttonA, false),
   'new-game-pressed': textButton(newGameText, buttonAPressed, true),
+  'pick-level': textButton(pickLevelText, buttonA, false),
+  'pick-level-pressed': textButton(pickLevelText, buttonAPressed, true),
+  back: textButton(backText, buttonA, false),
+  'back-pressed': textButton(backText, buttonAPressed, true),
   menu: switchArt(menu),
 };

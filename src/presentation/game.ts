@@ -9,6 +9,7 @@ import { GameSession, type PlayableLevel } from './game-session';
 import { connectGameSwitches } from './game-switches';
 import { GameView } from './game-view';
 import { LevelEndWindow } from './level-end';
+import { LevelPicker } from './level-picker';
 import { drawObstacles } from './obstacle-overlay';
 import { Sound } from './sound';
 import { StartScreen } from './start-screen';
@@ -35,22 +36,35 @@ export function startGame(
   const sound = new Sound(window);
   const levelEnd = new LevelEndWindow(root);
   const startScreen = new StartScreen(root);
+  const levelPicker = new LevelPicker(root);
   const navigator = new GameNavigator(
     levels,
+    progress,
     (level, report) => new GameSession(level, controls, sound, levelEnd, progress, report),
-    () => {
-      levelEnd.hide();
-      announcement.textContent = '';
-      startScreen.show(progress.view());
+    {
+      showStartScreen: () => {
+        levelEnd.hide();
+        levelPicker.hide();
+        announcement.textContent = '';
+        startScreen.show();
+      },
+      showLevelPicker: () => {
+        startScreen.hide();
+        levelPicker.show(progress.view().levels);
+      },
+      showLevel: () => {
+        startScreen.hide();
+        levelPicker.hide();
+        // A press that chose the level must not also act inside it.
+        controls.takePress('a');
+        controls.takePress('b');
+      },
     },
   );
-  startScreen.whenChosen((level) => {
-    startScreen.hide();
-    // A press that chose the level must not also act inside it.
-    controls.takePress('a');
-    controls.takePress('b');
-    navigator.play(level);
-  });
+  startScreen.whenNewGame(() => navigator.play(levels[0]!.id));
+  startScreen.whenPickingLevel(() => navigator.openLevelPicker());
+  levelPicker.whenChosen((level) => navigator.play(level));
+  levelPicker.whenBack(() => navigator.openStartScreen());
   connectGameSwitches(root, sound, () => navigator.openStartScreen());
   levelEnd.whenContinued(() => navigator.session?.continuePlaying());
   navigator.openStartScreen();

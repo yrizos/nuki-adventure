@@ -1,21 +1,9 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, vi } from 'vitest';
-import type { LevelProgressView } from '../application/manage-progress';
-import { Playthrough, PlayTime } from '../domain/progress/playthrough';
-import { LevelId } from '../domain/shared/level-id';
-import { StarCount } from '../domain/shared/star-count';
+import { FakeDocument } from '../test-support/fake-document';
+import { backWidth, newGameWidth, pickLevelWidth } from './art/panel';
 import { sprite } from './picture';
-import { FakeDocument, type FakeHTMLElement } from '../test-support/fake-document';
-import { focusAfter, levelPickerArt, levelRowText, rowHeight, StartScreen, titleArt } from './start-screen';
-
-const level = (number: number, isUnlocked: boolean, frames?: number): LevelProgressView => ({
-  id: LevelId.of(`level ${number}`),
-  number,
-  isUnlocked,
-  lastPlaythrough:
-    frames === undefined ? null : Playthrough.of(PlayTime.ofFrames(frames), StarCount.of(3), StarCount.of(5)),
-});
-
-const levels = [level(1, true, 60 * 83), level(2, true), level(3, false)];
+import { StartScreen, titleArt } from './start-screen';
 
 test('draws the game name from palette codes, inside the narrowest column', () => {
   const art = titleArt();
@@ -23,103 +11,91 @@ test('draws the game name from palette codes, inside the narrowest column', () =
   expect(art.rows[0]!.length).toBeLessThanOrEqual(180 - 16);
 });
 
-test('draws every row of the level picker at one width, inside the narrowest column', () => {
-  const rows = levelPickerArt([...levels, level(12, true, 60 * 60 * 120)]);
-  for (const row of rows) {
-    expect(() => sprite(row)).not.toThrow();
-    expect(row.rows).toHaveLength(rowHeight);
-    expect(row.rows[0]!.length).toBe(rows[0]!.rows[0]!.length);
-  }
-  expect(rows[0]!.rows[0]!.length).toBeLessThanOrEqual(180 - 16);
+test.each([
+  ['ΝΕΟ ΠΑΙΧΝΙΔΙ', newGameWidth],
+  ['ΕΠΙΛΟΓΗ ΕΠΙΠΕΔΟΥ', pickLevelWidth],
+  ['ΠΙΣΩ', backWidth],
+])('draws the %s button inside the narrowest column', (_label, width) => {
+  expect(width).toBeLessThanOrEqual(180 - 16);
 });
 
-test('draws a locked level as its number alone', () => {
-  const [, unplayed, locked] = levelPickerArt(levels);
-  expect(locked!.rows.join('')).toMatch(/q/);
-  expect(locked!.rows.join('')).not.toMatch(/[tabcp]/);
-  expect(unplayed!.rows.join('')).toMatch(/t/);
-});
-
-test('reads every row out for screen readers', () => {
-  expect(levels.map(levelRowText)).toEqual([
-    'ΕΠΙΠΕΔΟ 1. ΧΡΟΝΟΣ 1:23. ΑΣΤΕΡΙΑ 3/5.',
-    'ΕΠΙΠΕΔΟ 2.',
-    'ΕΠΙΠΕΔΟ 3. ΚΛΕΙΔΩΜΕΝΟ.',
+test('the page offers exactly ΝΕΟ ΠΑΙΧΝΙΔΙ and ΕΠΙΛΟΓΗ ΕΠΙΠΕΔΟΥ on the start screen', () => {
+  const page = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const section = /<section class="start-screen"[\s\S]*?<\/section>/.exec(page)![0];
+  expect([...section.matchAll(/<button[^>]*>([^<]*)<\/button>/g)].map(([, label]) => label)).toEqual([
+    'ΝΕΟ ΠΑΙΧΝΙΔΙ',
+    'ΕΠΙΛΟΓΗ ΕΠΙΠΕΔΟΥ',
   ]);
 });
 
-test.each([
-  ['ArrowDown', 0, 1],
-  ['ArrowRight', 0, 1],
-  ['ArrowDown', 3, 3],
-  ['ArrowUp', 2, 1],
-  ['ArrowLeft', 2, 1],
-  ['ArrowUp', 0, 0],
-])('moves focus with %s from choice %s to %s of four', (key, from, to) => {
-  expect(focusAfter(key, from, 4)).toBe(to);
-});
-
-function startScreen(continueLevel = levels[0]!.id) {
+function startScreen() {
   FakeDocument.stubGlobals();
   const root = new FakeDocument();
   const screen = root.createElement('section');
   screen.className = 'start-screen';
-  const [title, continueButton, newGameButton, picker] = [
-    'start-title',
-    'start-continue',
-    'start-new-game',
-    'level-picker',
-  ].map((name) => {
-    const created = root.createElement(name === 'start-title' ? 'h1' : name === 'level-picker' ? 'ul' : 'button');
+  screen.hidden = true;
+  const [title, newGameButton, pickLevelButton] = ['start-title', 'start-new-game', 'start-pick-level'].map((name) => {
+    const created = root.createElement(name === 'start-title' ? 'h1' : 'button');
     created.className = name;
     return created;
   });
-  screen.append(title!, continueButton!, newGameButton!, picker!);
+  screen.append(title!, newGameButton!, pickLevelButton!);
   root.body.append(screen);
   const subject = new StartScreen(root as unknown as Document);
-  const chosen = vi.fn<(level: LevelId) => void>();
-  subject.whenChosen(chosen);
-  subject.show({ continueLevel, levels });
-  const rows = root.querySelectorAll('.level-row') as FakeHTMLElement[];
+  const newGame = vi.fn();
+  const pickingLevel = vi.fn();
+  subject.whenNewGame(newGame);
+  subject.whenPickingLevel(pickingLevel);
+  subject.show();
   const key = (name: string): Event => {
     const event = Object.assign(new Event('keydown', { cancelable: true }), { key: name, repeat: false });
     root.dispatchEvent(event);
     return event;
   };
-  return { root, continueButton: continueButton!, newGameButton: newGameButton!, rows, chosen, key };
+  return {
+    root,
+    screen,
+    newGameButton: newGameButton!,
+    pickLevelButton: pickLevelButton!,
+    newGame,
+    pickingLevel,
+    key,
+  };
 }
 
-test.each([
-  ['a level row', (page: ReturnType<typeof startScreen>) => page.rows[1]!, levels[1]!.id],
-  ['continue', (page: ReturnType<typeof startScreen>) => page.continueButton, levels[1]!.id],
-  ['new game', (page: ReturnType<typeof startScreen>) => page.newGameButton, levels[0]!.id],
-] as const)('choosing %s starts its level', (_label, choice, level) => {
-  const page = startScreen(levels[1]!.id);
-  choice(page).click();
-  expect(page.chosen).toHaveBeenCalledExactlyOnceWith(level);
-});
-
-test('a locked row can be neither clicked nor reached with the keyboard', () => {
-  const { rows, root, chosen, key } = startScreen();
-  const locked = rows[2]!;
-  locked.click();
-  for (let press = 0; press < rows.length + 2; press++) key('ArrowDown');
-  expect(root.activeElement).toBe(rows[1]);
-  key('Enter');
-  expect(chosen).toHaveBeenCalledExactlyOnceWith(levels[1]!.id);
-});
-
-test('arrow keys move focus through the choices and a choose key picks the focused one', () => {
-  const { root, continueButton, newGameButton, rows, chosen, key } = startScreen(levels[1]!.id);
-  expect(root.activeElement).toBe(continueButton);
-  expect(key('ArrowDown').defaultPrevented).toBe(true);
+test('shows the start screen with focus on ΝΕΟ ΠΑΙΧΝΙΔΙ', () => {
+  const { root, screen, newGameButton } = startScreen();
+  expect(screen.hidden).toBe(false);
   expect(root.activeElement).toBe(newGameButton);
-  key('ArrowRight');
-  expect(root.activeElement).toBe(rows[0]);
+});
+
+test.each([
+  ['ΝΕΟ ΠΑΙΧΝΙΔΙ', 'newGameButton', 'newGame', 'pickingLevel'],
+  ['ΕΠΙΛΟΓΗ ΕΠΙΠΕΔΟΥ', 'pickLevelButton', 'pickingLevel', 'newGame'],
+] as const)('clicking %s fires only its listener', (_label, button, fired, silent) => {
+  const page = startScreen();
+  page[button].click();
+  expect(page[fired]).toHaveBeenCalledOnce();
+  expect(page[silent]).not.toHaveBeenCalled();
+});
+
+test('a choose key on ΝΕΟ ΠΑΙΧΝΙΔΙ starts a new game', () => {
+  const { newGame, pickingLevel, key } = startScreen();
+  expect(key('Enter').defaultPrevented).toBe(true);
+  expect(newGame).toHaveBeenCalledOnce();
+  expect(pickingLevel).not.toHaveBeenCalled();
+});
+
+test('arrow keys move focus between the two buttons and a choose key picks the focused one', () => {
+  const { root, newGameButton, pickLevelButton, newGame, pickingLevel, key } = startScreen();
+  expect(key('ArrowDown').defaultPrevented).toBe(true);
+  expect(root.activeElement).toBe(pickLevelButton);
+  key('ArrowDown');
+  expect(root.activeElement).toBe(pickLevelButton);
   key('ArrowUp');
   expect(root.activeElement).toBe(newGameButton);
   key('ArrowRight');
-  expect(chosen).not.toHaveBeenCalled();
   expect(key('z').defaultPrevented).toBe(true);
-  expect(chosen).toHaveBeenCalledExactlyOnceWith(levels[0]!.id);
+  expect(pickingLevel).toHaveBeenCalledOnce();
+  expect(newGame).not.toHaveBeenCalled();
 });

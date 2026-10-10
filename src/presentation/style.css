@@ -180,7 +180,7 @@ body {
 .full-screen-switch::before,
 .menu-switch::before,
 .continue-button::before,
-.start-button::before {
+.menu-button::before {
   content: '';
   position: absolute;
   inset: min(0px, (100% - 48px) / 2);
@@ -189,7 +189,8 @@ body {
 /* Panel pixels are whole device pixels, so the panel art stays as crisp as the game view at every width. */
 .game-view,
 .control-panel,
-.start-screen {
+.start-screen,
+.level-picker-screen {
   --pixel: max(var(--device-pixel), round(down, 100cqi / 180, var(--device-pixel)));
 }
 
@@ -214,7 +215,7 @@ body {
 .full-screen-switch,
 .menu-switch,
 .start-title,
-.start-button,
+.menu-button,
 .level-row,
 .level-end-card,
 .continue-button,
@@ -352,8 +353,9 @@ body {
   --art: var(--art-button-b-pressed);
 }
 
-/* The start screen covers the control panel too, because nothing on the panel acts until a level starts. */
-.start-screen {
+/* The menus cover the control panel too, because nothing on the panel acts until a level starts. */
+.start-screen,
+.level-picker-screen {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -370,7 +372,8 @@ body {
   image-rendering: pixelated;
 }
 
-.start-screen[hidden] {
+.start-screen[hidden],
+.level-picker-screen[hidden] {
   display: none;
 }
 
@@ -382,13 +385,13 @@ body {
 }
 
 .start-title,
-.start-button,
+.menu-button,
 .level-row {
   width: calc(var(--art-width) * var(--pixel));
   height: calc(var(--art-height) * var(--pixel));
 }
 
-.start-button,
+.menu-button,
 .level-row {
   position: relative;
   flex: none;
@@ -402,16 +405,24 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-.start-button[hidden] {
+.menu-button[hidden] {
   display: none;
 }
 
-.start-continue {
-  --art: var(--art-continue);
+.start-pick-level {
+  --art: var(--art-pick-level);
 }
 
-.start-continue:active {
-  --art: var(--art-continue-pressed);
+.start-pick-level:active {
+  --art: var(--art-pick-level-pressed);
+}
+
+.level-picker-back {
+  --art: var(--art-back);
+}
+
+.level-picker-back:active {
+  --art: var(--art-back-pressed);
 }
 
 .start-new-game {
@@ -437,7 +448,7 @@ body {
   cursor: default;
 }
 
-.start-button:focus-visible,
+.menu-button:focus-visible,
 .level-row:focus-visible {
   outline: var(--pixel) solid var(--paper);
   outline-offset: var(--pixel);

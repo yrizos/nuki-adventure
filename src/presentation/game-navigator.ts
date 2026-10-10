@@ -1,9 +1,17 @@
+import type { ManageProgress } from '../application/manage-progress';
 import { LevelOrder } from '../domain/progress/level-order';
 import type { LevelId } from '../domain/shared/level-id';
 import type { GameSession, PlayableLevel, SessionReport } from './game-session';
 
+export interface Screens {
+  readonly showStartScreen: () => void;
+  readonly showLevelPicker: () => void;
+  readonly showLevel: () => void;
+}
+
 type Screen =
-  { readonly name: 'start-screen' } | { readonly name: 'playing' | 'level-end'; readonly session: GameSession };
+  | { readonly name: 'start-screen' | 'level-picker' }
+  | { readonly name: 'playing' | 'level-end'; readonly session: GameSession };
 
 export class GameNavigator {
   private screen: Screen = { name: 'start-screen' };
@@ -11,8 +19,9 @@ export class GameNavigator {
 
   constructor(
     private readonly levels: readonly PlayableLevel[],
+    private readonly progress: Pick<ManageProgress, 'view'>,
     private readonly startSession: (level: PlayableLevel, report: SessionReport) => GameSession,
-    private readonly showStartScreen: () => void,
+    private readonly screens: Screens,
   ) {
     this.order = LevelOrder.of(levels.map(({ id }) => id));
   }
@@ -22,16 +31,25 @@ export class GameNavigator {
   }
 
   get session(): GameSession | null {
-    return this.screen.name === 'start-screen' ? null : this.screen.session;
+    return 'session' in this.screen ? this.screen.session : null;
   }
 
   openStartScreen(): void {
     this.screen = { name: 'start-screen' };
-    this.showStartScreen();
+    this.screens.showStartScreen();
   }
 
+  openLevelPicker(): void {
+    this.screen = { name: 'level-picker' };
+    this.screens.showLevelPicker();
+  }
+
+  // A disabled row is the only thing keeping a locked level out of reach on the page, so the choice is checked here too.
   play(id: LevelId): void {
-    const level = this.levels.find((candidate) => candidate.id.equals(id)) ?? this.levels[0]!;
+    const level = this.levels.find((candidate) => candidate.id.equals(id));
+    const unlocked = this.progress.view().levels.some((candidate) => candidate.id.equals(id) && candidate.isUnlocked);
+    if (!level || !unlocked) return;
+    this.screens.showLevel();
     const session = this.startSession(level, {
       completed: () => {
         this.screen = { name: 'level-end', session };

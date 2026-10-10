@@ -1,14 +1,19 @@
 import { describe, expect, test, vi } from 'vitest';
 import type { LevelView } from '../application/level-view';
+import { ManageProgress } from '../application/manage-progress';
 import { PlayLevel } from '../application/play-level';
 import { Area, Orb, OrbColor } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
+import { Playthrough, PlayTime } from '../domain/progress/playthrough';
+import { StarCount } from '../domain/shared/star-count';
 import { Level } from '../domain/level/level';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
 import { Ground, LevelSize, Scenery } from '../domain/level/scenery';
 import { LevelId } from '../domain/shared/level-id';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
+import { LocalProgressRepository } from '../infrastructure/local-progress-repository';
+import { memoryStorage } from '../test-support/memory-storage';
 import { pixelDifference } from '../test-support/pictures';
 import { GameNavigator } from './game-navigator';
 import { GameSession } from './game-session';
@@ -19,14 +24,22 @@ import { closingLength } from './world-transition';
 
 const everywhere = Area.of(Array.from({ length: 15 }, (_, index) => TilePosition.at(index % 3, Math.floor(index / 3))));
 
-function navigator(first = 'one') {
+function navigator(first: string | null = 'one', { secondUnlocked = first === 'two' } = {}) {
   const pressed = new Set<'a' | 'b'>();
   let heading: Heading | null = null;
   const controls = { takePress: (button: 'a' | 'b') => pressed.delete(button), heading: () => heading };
   const sound = { star: vi.fn(), orb: vi.fn(), door: vi.fn(), footstep: vi.fn(), restoring: vi.fn() };
   const levelEnd = { show: vi.fn(), hide: vi.fn() };
-  const progress = { reach: vi.fn<(level: LevelId) => void>(), complete: vi.fn<(level: LevelId) => void>() };
-  const showStartScreen = vi.fn();
+  const progress = new ManageProgress(new LocalProgressRepository(memoryStorage()), [
+    LevelId.of('one'),
+    LevelId.of('two'),
+  ]);
+  if (secondUnlocked)
+    progress.complete(LevelId.of('one'), Playthrough.of(PlayTime.ofFrames(60), StarCount.of(0), StarCount.of(0)));
+  vi.spyOn(progress, 'reach');
+  vi.spyOn(progress, 'complete');
+  const screens = { showStartScreen: vi.fn(), showLevelPicker: vi.fn(), showLevel: vi.fn() };
+  const { showStartScreen } = screens;
   const started: string[] = [];
   const plays: { id: LevelId; play: PlayLevel }[] = [];
   const playable = (name: string) => {
@@ -57,10 +70,11 @@ function navigator(first = 'one') {
   };
   const subject = new GameNavigator(
     [playable('one'), playable('two')],
+    progress,
     (level, report) => new GameSession(level, controls, sound, levelEnd, progress, report),
-    showStartScreen,
+    screens,
   );
-  subject.play(LevelId.of(first));
+  if (first) subject.play(LevelId.of(first));
   const session = (): GameSession => {
     expect(subject.session).not.toBeNull();
     return subject.session!;
@@ -88,7 +102,7 @@ function navigator(first = 'one') {
   const steer = (direction: Direction | null): void => {
     heading = direction && Heading.of(direction);
   };
-  return { navigator: subject, started, progress, showStartScreen, complete, continueWith, current, steer };
+  return { navigator: subject, started, progress, screens, showStartScreen, complete, continueWith, current, steer };
 }
 
 describe('the game navigator', () => {
@@ -96,7 +110,34 @@ describe('the game navigator', () => {
     const subject = navigator(first);
     expect(subject.started).toEqual([first]);
     expect(subject.navigator.state).toBe('playing');
-    expect(subject.progress.reach.mock.calls.map(([id]) => id.value)).toEqual([first]);
+    expect(subject.progress.reach).toHaveBeenCalledOnce();
+    expect(vi.mocked(subject.progress.reach).mock.calls[0]![0].value).toBe(first);
+  });
+
+  test('shows the level when it plays an unlocked level', () => {
+    const subject = navigator();
+    expect(subject.screens.showLevel).toHaveBeenCalledOnce();
+  });
+
+  test('opens the level picker', () => {
+    const subject = navigator(null);
+    subject.navigator.openLevelPicker();
+    expect(subject.screens.showLevelPicker).toHaveBeenCalledOnce();
+    expect(subject.navigator.state).toBe('level-picker');
+    expect(subject.navigator.session).toBeNull();
+  });
+
+  test.each([
+    ['a locked level', 'two'],
+    ['an unknown level', 'three'],
+  ])('refuses to play %s', (_label, id) => {
+    const subject = navigator(null);
+    subject.navigator.openLevelPicker();
+    subject.navigator.play(LevelId.of(id));
+    expect(subject.navigator.state).toBe('level-picker');
+    expect(subject.navigator.session).toBeNull();
+    expect(subject.started).toEqual([]);
+    expect(subject.screens.showLevel).not.toHaveBeenCalled();
   });
 
   test('enters the level end when the level end window opens', () => {
@@ -202,7 +243,7 @@ describe('the game navigator', () => {
     subject.continueWith('a');
     subject.complete();
     subject.continueWith('a');
-    expect(subject.progress.complete.mock.calls.map(([id]) => id.value)).toEqual(['one', 'two']);
-    expect(subject.progress.reach.mock.calls.map(([id]) => id.value)).toEqual(['one', 'two']);
+    expect(vi.mocked(subject.progress.complete).mock.calls.map(([id]) => id.value)).toEqual(['one', 'two']);
+    expect(vi.mocked(subject.progress.reach).mock.calls.map(([id]) => id.value)).toEqual(['one', 'two']);
   });
 });

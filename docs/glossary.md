@@ -28,11 +28,11 @@ The window that opens after the hero completes a level. It shows the time the le
 
 ### Start Screen
 
-The screen that covers the whole page when the game opens. It shows the game name, starts the continue level or the first level, and holds the level picker.
+The screen that covers the whole page when the game opens. It shows the game name, starts the first level and opens the level picker.
 
 ### Level Picker
 
-The part of the start screen that lists every level by its number with its last playthrough, and starts any unlocked level.
+The screen that lists every level by its number with its last playthrough, starts any unlocked level and returns to the start screen.
 
 ### Menu Switch
 
@@ -208,4 +208,4 @@ A level that the player has reached, or whose preceding level the player has com
 
 ### Continue Level
 
-The level that the player reached most recently, which the start screen starts when the player continues.
+The level that the player reached most recently.
