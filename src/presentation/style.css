@@ -368,8 +368,7 @@ body {
   padding: calc(env(safe-area-inset-top) + 24 * var(--pixel)) calc(8 * var(--pixel))
     calc(env(safe-area-inset-bottom) + 16 * var(--pixel));
   overflow-y: auto;
-  background: var(--v0) var(--art-panel-grip) 0 0 / calc(8 * var(--pixel)) calc(16 * var(--pixel)) repeat;
-  image-rendering: pixelated;
+  background: var(--ink);
 }
 
 .start-screen[hidden],

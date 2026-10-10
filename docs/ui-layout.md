@@ -81,8 +81,8 @@ Landscape orientation is not supported.
 ## Start Screen
 
 - The start screen covers the whole page, including the control panel, whenever the game opens and whenever the menu switch is pressed
-- It is pixel art on the panel pixel grid, in V0 with the control panel grip texture
-- The game name, Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ ΤΗΣ ΝΟΥΚΙ, sits at the top in Y2, in the message box font, over two centered lines
+- It is pixel art on the panel pixel grid, on a plain Ink background with no scenery
+- The game name, Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ ΤΗΣ ΝΟΥΚΙ, sits at the top in the message box font, over two centered lines, in the colors set in the palette
 - Below it sit two buttons in the A button colors with a lip, each sinking into its lip while pressed: ΝΕΟ ΠΑΙΧΝΙΔΙ starts the first level and ΕΠΙΛΟΓΗ ΕΠΙΠΕΔΟΥ opens the level picker
 - Starting the first level from ΝΕΟ ΠΑΙΧΝΙΔΙ keeps every unlocked level and every last playthrough
 - Arrow keys move keyboard focus between the buttons, and A or B chooses the focused one

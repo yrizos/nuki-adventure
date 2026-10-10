@@ -170,14 +170,14 @@ UI colors map onto Material 3 color roles.
 | On surface | Level end window clock | Paper face, N4 shading, Ink outline, marks and hands |
 | On surface | Level end window star | Matches the star in the game world |
 | Primary | ΣΥΝΕΧΕΙΑ button | Matches the A button, including its pressed state |
-| Surface container | Start screen background | V0, with the control panel grip dots in V0a |
-| On surface | Start screen game name | Y2 |
-| Primary | Start screen ΣΥΝΕΧΕΙΑ and ΝΕΟ ΠΑΙΧΝΙΔΙ buttons | Match the A button, including its pressed state |
+| Surface | Start screen and level picker background | Ink, with no texture |
+| On surface | Start screen game name | Paper, with ΠΟΛΥΧΡΩΜΗ letters cycling through the orb cores V2, T2 and R2, and ΝΟΥΚΙ in Y2 |
+| Primary | Start screen and level picker buttons | Match the A button, including its pressed state |
 | Surface container | Level picker row fill | V0 |
 | Outline | Level picker row edge | Ink outline, then a V1 inner edge |
 | On surface | Level picker numbers, times and stars | Paper, with the level end window clock and star |
 | On surface variant | Locked level number | N4 |
-| Outline | Focused start screen button or row | Paper |
+| Outline | Focused start screen or level picker button or row | Paper |
 
 ### Pressed State
 
@@ -204,8 +204,13 @@ Text targets the Web Content Accessibility Guidelines (WCAG) minimum of 4.5:1, a
 | P2 on V0, joystick knob | 4.9:1 |
 | V2 on Ink, joystick arrows | 5.8:1 |
 | P3 on Ink, lit joystick arrows | 11.3:1 |
-| Paper on V0, level picker text and focus outline | 11.3:1 |
-| Y2 on V0, start screen game name | 8.3:1 |
+| Paper on V0, level picker text | 11.3:1 |
+| Paper on Ink, start screen game name and focus outline | 15.2:1 |
+| Y2 on Ink, ΝΟΥΚΙ in the start screen game name | 11.1:1 |
+| T2 on Ink, start screen game name | 8.2:1 |
+| V2 on Ink, start screen game name | 5.8:1 |
+| R2 on Ink, start screen game name and menu buttons | 5.2:1 |
+| R1 on Ink, pressed menu buttons | 3.1:1 |
 | N4 on V0, locked level number | 7.5:1 |
 | Paper on V0, message text | 11.3:1 |
 | Paper on V0, sound and full screen switch symbols | 11.3:1 |

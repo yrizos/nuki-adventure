@@ -1,20 +1,28 @@
 import { PixelGrid, type Art } from './art/art';
-import { glyphHeight, textWidth, writeText } from './art/font';
+import { glyphHeight, glyphWidth, letterGap, textWidth, writeText } from './art/font';
 import { continueHeight, newGameWidth, pickLevelWidth } from './art/panel';
 import { artUrl } from './canvas-art';
 import { element } from './dom';
 import { takeMenuKeys } from './menu-keys';
 
-const gameName = ['Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ', 'ΤΗΣ ΝΟΥΚΙ'];
+// ΠΟΛΥΧΡΩΜΗ means colorful, so its letters take the orb colors in turn, and the hero's name takes the gold of the stars.
+const gameName = [
+  { text: 'Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ', colors: 'pp' + 'vtr'.repeat(3) + 'p'.repeat(11) },
+  { text: 'ΤΗΣ ΝΟΥΚΙ', colors: 'pppp' + 'yyyyy' },
+];
+const gameNameLegend = { p: 'Paper', v: 'V2', t: 'T2', r: 'R2', y: 'Y2' } as const;
 const lineHeight = 16;
 
 export function titleArt(): Art {
-  const width = Math.max(...gameName.map(textWidth));
+  const width = Math.max(...gameName.map(({ text }) => textWidth(text)));
   const grid = new PixelGrid(width, (gameName.length - 1) * lineHeight + glyphHeight);
-  gameName.forEach((line, index) =>
-    writeText(grid, line, Math.floor((width - textWidth(line)) / 2), index * lineHeight, 'a'),
-  );
-  return grid.build({ a: 'Y2' });
+  gameName.forEach(({ text, colors }, line) => {
+    const left = Math.floor((width - textWidth(text)) / 2);
+    [...text].forEach((character, index) =>
+      writeText(grid, character, left + index * (glyphWidth + letterGap), line * lineHeight, colors[index]!),
+    );
+  });
+  return grid.build(gameNameLegend);
 }
 
 export class StartScreen {

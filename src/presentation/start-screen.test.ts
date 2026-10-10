@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, vi } from 'vitest';
 import { FakeDocument } from '../test-support/fake-document';
+import { glyphs, glyphWidth, letterGap } from './art/font';
 import { backWidth, newGameWidth, pickLevelWidth } from './art/panel';
 import { sprite } from './picture';
 import { StartScreen, titleArt } from './start-screen';
@@ -9,6 +10,48 @@ test('draws the game name from palette codes, inside the narrowest column', () =
   const art = titleArt();
   expect(() => sprite(art)).not.toThrow();
   expect(art.rows[0]!.length).toBeLessThanOrEqual(180 - 16);
+});
+
+const orbCycle = ['V2', 'T2', 'R2'];
+const titleLines: (readonly [string, string])[][] = [
+  [
+    ...[...'Η '].map((letter) => [letter, 'Paper'] as const),
+    ...[...'ΠΟΛΥΧΡΩΜΗ'].map((letter, index) => [letter, orbCycle[index % 3]!] as const),
+    ...[...' ΠΕΡΙΠΕΤΕΙΑ'].map((letter) => [letter, 'Paper'] as const),
+  ],
+  [
+    ...[...'ΤΗΣ '].map((letter) => [letter, 'Paper'] as const),
+    ...[...'ΝΟΥΚΙ'].map((letter) => [letter, 'Y2'] as const),
+  ],
+];
+
+test('colors each letter of the game name with its palette code', () => {
+  const art = titleArt();
+  const width = art.rows[0]!.length;
+  const violations: string[] = [];
+  titleLines.forEach((line, lineIndex) => {
+    const left = Math.floor((width - (line.length * (glyphWidth + letterGap) - letterGap)) / 2);
+    line.forEach(([letter, expected], index) => {
+      glyphs[letter]!.forEach((pixels, y) =>
+        [...pixels].forEach((pixel, x) => {
+          if (pixel !== '#') return;
+          const symbol = art.rows[lineIndex * 16 + y]![left + index * (glyphWidth + letterGap) + x]!;
+          const actual = art.legend[symbol];
+          if (actual !== expected) violations.push(`line ${lineIndex + 1} letter ${index} ${letter}: ${actual}`);
+        }),
+      );
+    });
+  });
+  expect([...new Set(violations)]).toEqual([]);
+});
+
+test('draws the game name only in Paper, V2, T2, R2 and Y2', () => {
+  const art = titleArt();
+  const allowed = new Set(['Paper', 'V2', 'T2', 'R2', 'Y2']);
+  const used = new Set(
+    art.rows.flatMap((row) => [...row].filter((symbol) => symbol !== '.')).map((s) => art.legend[s]),
+  );
+  expect([...used].filter((code) => !allowed.has(code!))).toEqual([]);
 });
 
 test.each([
