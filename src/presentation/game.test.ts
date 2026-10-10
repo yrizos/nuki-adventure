@@ -18,6 +18,8 @@ import { audioWindow } from '../test-support/audio-context';
 import { FakeDocument, type FakeElement, type FakeHTMLElement, stubDisplay } from '../test-support/fake-document';
 import { memoryStorage } from '../test-support/memory-storage';
 import { pixelDifference } from '../test-support/pictures';
+import type { Art } from './art/art';
+import { artUrl } from './canvas-art';
 import { startGame } from './game';
 import { GameLoop } from './game-loop';
 import { GameSession, messages } from './game-session';
@@ -25,6 +27,7 @@ import { HeroAnimator } from './hero-animator';
 import { MessageBox } from './message-box';
 import { neutralCode, palette } from './palette';
 import { lighten, Picture } from './picture';
+import { heroArt } from './sprite-library';
 import { cameraPosition, heroPixels } from './world-geometry';
 import { WorldPainter } from './world-painter';
 import { closingLength, doorOpeningLength, restorationLength } from './world-transition';
@@ -381,6 +384,7 @@ function gamePage({ secondUnlocked = false } = {}) {
     'sound-switch',
     'start-screen',
     'start-title',
+    'start-hero',
     'level-picker-screen',
     'announcement',
     'control-panel',
@@ -461,10 +465,12 @@ function gamePage({ secondUnlocked = false } = {}) {
   };
   const announcement = elements.get('announcement')!;
   return {
+    root,
     started,
     frame,
     announcement,
     startScreen: elements.get('start-screen')!,
+    startHero: elements.get('start-hero')!,
     levelPicker: elements.get('level-picker-screen')!,
     levelEnd: elements.get('level-end')!,
     newGame: (): void => (elements.get('start-new-game') as FakeHTMLElement).click(),
@@ -502,6 +508,28 @@ describe('the game page', () => {
     page.newGame();
     expect(page.startScreen.hidden).toBe(true);
     expect(page.started).toEqual(['one']);
+  });
+
+  test('Nuki blinks on the start screen 180 frames after it opens', () => {
+    const page = gamePage();
+    const url = (art: Art): string => `url(${artUrl(page.root as unknown as Document, art)})`;
+    for (let frame = 0; frame < 179; frame++) page.frame();
+    expect(page.startHero.style.getPropertyValue('--art')).toBe(url(heroArt.down.breathe));
+    page.frame();
+    expect(page.startHero.style.getPropertyValue('--art')).toBe(url(heroArt.down.blink!));
+  });
+
+  test('Nuki stands on the start screen as soon as it opens, before any frame', () => {
+    const page = gamePage();
+    const shown = (): string => page.startHero.style.getPropertyValue('--art');
+    const stand = `url(${artUrl(page.root as unknown as Document, heroArt.down.stand)})`;
+    const onLoad = shown();
+    // 181 frames land inside the first blink whether the opening frame counts as frame 0 or not.
+    for (let frame = 0; frame < 181; frame++) page.frame();
+    expect(shown()).toBe(`url(${artUrl(page.root as unknown as Document, heroArt.down.blink!)})`);
+    page.pickLevel();
+    page.back();
+    expect([onLoad, shown()]).toEqual([stand, stand]);
   });
 
   test('shows the level picker instead of the start screen from ΕΠΙΛΟΓΗ ΕΠΙΠΕΔΟΥ', () => {

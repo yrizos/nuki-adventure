@@ -1,5 +1,5 @@
 import type { HeroState } from '../domain/level/hero';
-import type { Art } from './art/art';
+import type { Art, HeroArt } from './art/art';
 import { heroArt, heroWalkFrameLength } from './sprite-library';
 
 const ticksPerWalkFrame = heroWalkFrameLength;
@@ -9,6 +9,12 @@ const blinkFrames = 6;
 const breathEvery = 90;
 // Each foot lands once per two walk frames.
 const ticksPerFootfall = 2 * ticksPerWalkFrame;
+
+export function idleHeroPose(facing: keyof HeroArt, frame: number): Art {
+  const art = heroArt[facing];
+  if (art.blink && frame >= blinkEvery && frame % blinkEvery < blinkFrames) return art.blink;
+  return Math.floor(frame / breathEvery) % 2 === 1 ? art.breathe : art.stand;
+}
 
 export class HeroAnimator {
   private walkTicks = 0;
@@ -32,16 +38,14 @@ export class HeroAnimator {
 
   pose(hero: HeroState, frame: number, holdingOrb: boolean): Art {
     const facing = hero.facing;
-    const art =
-      heroArt[facing.rowStep < 0 ? 'up' : facing.rowStep > 0 ? 'down' : facing.columnStep < 0 ? 'left' : 'right'];
+    const facingKey: keyof HeroArt =
+      facing.rowStep < 0 ? 'up' : facing.rowStep > 0 ? 'down' : facing.columnStep < 0 ? 'left' : 'right';
+    const art = heroArt[facingKey];
     // The raised arms only read as holding when the hero stands still, so a walking hero keeps the walk cycle under the orb.
     if (holdingOrb && !hero.isWalking) return art.holding!;
     if (hero.isWalking) return art.walk[this.walkFrame()]!;
     if (this.settleLeft > 0) return art.settle;
-    const inhaling = Math.floor(frame / breathEvery) % 2 === 1;
-    const blink = inhaling ? art.inhaleBlink : art.blink;
-    if (blink && frame >= blinkEvery && frame % blinkEvery < blinkFrames) return blink;
-    return inhaling ? art.breathe : art.stand;
+    return idleHeroPose(facingKey, frame);
   }
 
   private walkFrame(): number {

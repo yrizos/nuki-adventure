@@ -3,6 +3,7 @@ import { glyphHeight, glyphWidth, letterGap, textWidth, writeText } from './art/
 import { continueHeight, newGameWidth, pickLevelWidth } from './art/panel';
 import { artUrl } from './canvas-art';
 import { element } from './dom';
+import { idleHeroPose } from './hero-animator';
 import { takeMenuKeys } from './menu-keys';
 
 // ΠΟΛΥΧΡΩΜΗ means colorful, so its letters take the orb colors in turn, and the hero's name takes the gold of the stars.
@@ -29,11 +30,15 @@ export class StartScreen {
   private readonly screen: HTMLElement;
   private readonly newGameButton: HTMLButtonElement;
   private readonly pickLevelButton: HTMLButtonElement;
+  private readonly hero: HTMLElement;
+  private readonly heroUrls = new Map<Art, string>();
+  private heroPose: Art | null = null;
 
-  constructor(root: Document) {
+  constructor(private readonly root: Document) {
     this.screen = element(root, '.start-screen');
     this.newGameButton = element(root, '.start-new-game');
     this.pickLevelButton = element(root, '.start-pick-level');
+    this.hero = element(root, '.start-hero');
     const title = element<HTMLElement>(root, '.start-title');
     const art = titleArt();
     title.style.setProperty('--art', `url(${artUrl(root, art)})`);
@@ -55,6 +60,20 @@ export class StartScreen {
 
   whenPickingLevel(listener: () => void): void {
     this.pickLevelButton.addEventListener('click', listener);
+  }
+
+  animate(framesOpen: number): void {
+    const pose = idleHeroPose('down', framesOpen);
+    if (pose === this.heroPose) return;
+    this.heroPose = pose;
+    let url = this.heroUrls.get(pose);
+    if (!url) {
+      url = `url(${artUrl(this.root, pose)})`;
+      this.heroUrls.set(pose, url);
+    }
+    this.hero.style.setProperty('--art', url);
+    this.hero.style.setProperty('--art-width', String(pose.rows[0]!.length));
+    this.hero.style.setProperty('--art-height', String(pose.rows.length));
   }
 
   show(): void {

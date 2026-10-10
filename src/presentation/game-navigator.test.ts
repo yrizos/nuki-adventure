@@ -38,7 +38,12 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
     progress.complete(LevelId.of('one'), Playthrough.of(PlayTime.ofFrames(60), StarCount.of(0), StarCount.of(0)));
   vi.spyOn(progress, 'reach');
   vi.spyOn(progress, 'complete');
-  const screens = { showStartScreen: vi.fn(), showLevelPicker: vi.fn(), showLevel: vi.fn() };
+  const screens = {
+    showStartScreen: vi.fn(),
+    animateStartScreen: vi.fn(),
+    showLevelPicker: vi.fn(),
+    showLevel: vi.fn(),
+  };
   const { showStartScreen } = screens;
   const started: string[] = [];
   const plays: { id: LevelId; play: PlayLevel }[] = [];
@@ -235,6 +240,35 @@ describe('the game navigator', () => {
       session.paint(actual);
       expect(pixelDifference(actual, expected)).toBeUndefined();
     }
+  });
+
+  test('draws frame 0 when the start screen opens, counts frames from there and restarts when it reopens', () => {
+    const subject = navigator(null);
+    const shown: string[] = [];
+    subject.screens.showStartScreen.mockImplementation(() => shown.push('open'));
+    subject.screens.animateStartScreen.mockImplementation((frame: number) => shown.push(String(frame)));
+    subject.navigator.openStartScreen();
+    for (let frame = 0; frame < 3; frame++) subject.navigator.tick();
+    subject.navigator.openLevelPicker();
+    subject.navigator.openStartScreen();
+    subject.navigator.tick();
+    expect(shown).toEqual(['open', '0', '1', '2', '3', 'open', '0', '1']);
+  });
+
+  test('animates nothing on the level picker', () => {
+    const subject = navigator(null);
+    subject.navigator.openLevelPicker();
+    subject.navigator.tick();
+    expect(subject.screens.animateStartScreen).not.toHaveBeenCalled();
+  });
+
+  test('ticks the level session while playing, without animating the start screen', () => {
+    const subject = navigator();
+    const before = subject.current().hero.feet;
+    subject.steer(Direction.Up);
+    subject.navigator.tick();
+    expect(subject.current().hero.feet).not.toEqual(before);
+    expect(subject.screens.animateStartScreen).not.toHaveBeenCalled();
   });
 
   test('saves each completion once', () => {

@@ -104,7 +104,6 @@ function heroDirection(facing: keyof HeroArt): HeroDirectionArt {
     settle: frame('hero', `${facing}-settle`),
     breathe: frame('hero', `${facing}-breathe`),
     blink: frames[`${facing}-blink`] ?? null,
-    inhaleBlink: frames[`${facing}-inhale-blink`] ?? null,
     walk: animation('hero', `${facing}-walk`).frames,
     holding: frame('hero', `${facing}-holding`),
   };

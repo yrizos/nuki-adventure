@@ -166,8 +166,13 @@ export class FakeCanvasElement extends FakeHTMLElement {
     return this.context;
   }
 
+  // Tests tell drawn art apart by its url, so the url follows the drawn pixels.
   toDataURL(): string {
-    return 'data:,';
+    const shown = this.context.shown;
+    if (!shown) return 'data:,';
+    let hash = 0;
+    for (const value of shown.data) hash = (Math.imul(hash, 31) + value) | 0;
+    return `data:fake,${shown.width}x${shown.height}:${hash}`;
   }
 }
 

@@ -215,6 +215,7 @@ body {
 .full-screen-switch,
 .menu-switch,
 .start-title,
+.start-hero,
 .menu-button,
 .level-row,
 .level-end-card,
@@ -376,6 +377,12 @@ body {
   display: none;
 }
 
+/* The empty space above pushes Nuki to the bottom, so the title and buttons stay the focal point. */
+.start-hero {
+  flex: none;
+  margin-top: auto;
+}
+
 .start-title {
   flex: none;
   margin: 0 0 calc(12 * var(--pixel));
@@ -384,6 +391,7 @@ body {
 }
 
 .start-title,
+.start-hero,
 .menu-button,
 .level-row {
   width: calc(var(--art-width) * var(--pixel));

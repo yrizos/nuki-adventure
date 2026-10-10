@@ -4,7 +4,7 @@ import type { Obstacles } from '../domain/level/obstacles';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
 import type { Art } from './art/art';
 import { heroArt } from './sprite-library';
-import { HeroAnimator } from './hero-animator';
+import { HeroAnimator, idleHeroPose } from './hero-animator';
 
 const openGround: Obstacles = { walk: (_, to) => to };
 const down = Heading.of(Direction.Down);
@@ -83,3 +83,26 @@ test('a foot lands on the first walking tick and every sixteen ticks after', () 
   }
   expect(landed).toEqual([0, 16, 32]);
 });
+
+test.each(['down', 'left', 'right', 'up'] as const)(
+  'idle facing %s breathes from frame 90 and blinks for six frames every 180, except facing up',
+  (facing) => {
+    const art = heroArt[facing];
+    const blink = facing === 'up' ? art.stand : art.blink;
+    const frames = [89, 90, 91, 179, 180, 181, 184, 185, 186, 359, 360, 361];
+    expect(frames.map((frame) => idleHeroPose(facing, frame))).toEqual([
+      art.stand,
+      art.breathe,
+      art.breathe,
+      art.breathe,
+      blink,
+      blink,
+      blink,
+      blink,
+      art.stand,
+      art.breathe,
+      blink,
+      blink,
+    ]);
+  },
+);

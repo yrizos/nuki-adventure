@@ -48,6 +48,7 @@ export function startGame(
         announcement.textContent = '';
         startScreen.show();
       },
+      animateStartScreen: (framesOpen) => startScreen.animate(framesOpen),
       showLevelPicker: () => {
         startScreen.hide();
         levelPicker.show(progress.view().levels);
@@ -71,7 +72,7 @@ export function startGame(
 
   const tick = (): void => {
     controls.advance();
-    navigator.session?.tick();
+    navigator.tick();
     // Continuing can replace the session during its own tick, so the message comes from whichever level is now open.
     const spoken = navigator.session?.messageText ?? '';
     if (announcement.textContent !== spoken) announcement.textContent = spoken;

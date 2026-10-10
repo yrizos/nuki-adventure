@@ -4,6 +4,8 @@ import { FakeDocument } from '../test-support/fake-document';
 import { glyphs, glyphWidth, letterGap } from './art/font';
 import { backWidth, newGameWidth, pickLevelWidth } from './art/panel';
 import { sprite } from './picture';
+import { artUrl } from './canvas-art';
+import { heroArt } from './sprite-library';
 import { StartScreen, titleArt } from './start-screen';
 
 test('draws the game name from palette codes, inside the narrowest column', () => {
@@ -77,12 +79,17 @@ function startScreen() {
   const screen = root.createElement('section');
   screen.className = 'start-screen';
   screen.hidden = true;
-  const [title, newGameButton, pickLevelButton] = ['start-title', 'start-new-game', 'start-pick-level'].map((name) => {
-    const created = root.createElement(name === 'start-title' ? 'h1' : 'button');
+  const [title, newGameButton, pickLevelButton, hero] = [
+    'start-title',
+    'start-new-game',
+    'start-pick-level',
+    'start-hero',
+  ].map((name) => {
+    const created = root.createElement(name === 'start-title' ? 'h1' : name === 'start-hero' ? 'div' : 'button');
     created.className = name;
     return created;
   });
-  screen.append(title!, newGameButton!, pickLevelButton!);
+  screen.append(title!, newGameButton!, pickLevelButton!, hero!);
   root.body.append(screen);
   const subject = new StartScreen(root as unknown as Document);
   const newGame = vi.fn();
@@ -98,6 +105,8 @@ function startScreen() {
   return {
     root,
     screen,
+    subject,
+    hero: hero!,
     newGameButton: newGameButton!,
     pickLevelButton: pickLevelButton!,
     newGame,
@@ -141,4 +150,17 @@ test('arrow keys move focus between the two buttons and a choose key picks the f
   expect(key('z').defaultPrevented).toBe(true);
   expect(pickingLevel).toHaveBeenCalledOnce();
   expect(newGame).not.toHaveBeenCalled();
+});
+
+test.each([
+  ['standing', 0, heroArt.down.stand],
+  ['blinking', 180, heroArt.down.blink!],
+] as const)('shows Nuki facing the player %s at frame %i, at her art size', (_pose, frame, art) => {
+  const { root, subject, hero } = startScreen();
+  subject.animate(frame);
+  expect(['--art', '--art-width', '--art-height'].map((name) => hero.style.getPropertyValue(name))).toEqual([
+    `url(${artUrl(root as unknown as Document, art)})`,
+    String(art.rows[0]!.length),
+    String(art.rows.length),
+  ]);
 });
