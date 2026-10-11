@@ -7,12 +7,12 @@ import {
   appearing,
   arrivalLength,
   closingLevel,
-  gateOpeningLength,
-  openingGate,
+  gateSwingLength,
   restoringKey,
   type Phase,
   phaseAfterFrame,
   playing,
+  swingingGate,
 } from './game-phase';
 import { closingLength } from './world-transition';
 
@@ -23,8 +23,8 @@ const after = (phase: Phase, frame: number): Phase => phaseAfterFrame(phase, { f
 
 describe('the game phase', () => {
   test('swings the gate for sixteen frames, the press frame included, and then plays on', () => {
-    const opening = openingGate(100);
-    expect(gateOpeningLength).toBe(16);
+    const opening = swingingGate(100);
+    expect(gateSwingLength).toBe(16);
     for (let frame = 100; frame <= 114; frame++) expect(after(opening, frame)).toBe(opening);
     expect(after(opening, 115)).toBe(playing);
   });

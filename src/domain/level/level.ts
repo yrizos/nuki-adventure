@@ -1,12 +1,14 @@
 import { type Key, Star } from './collectibles';
 import { StarCount } from '../shared/star-count';
 import type { Door } from './door';
-import { Hero, type HeroState } from './hero';
+import { feet, Hero, type HeroState } from './hero';
 import {
   LevelCompleted,
   type LevelEvent,
   KeyCollected,
   StarCollected,
+  SwingGateClosed,
+  SwingGateClosingStarted,
   SwingGateOpened,
   SwingGateOpeningStarted,
 } from './level-events';
@@ -108,7 +110,7 @@ export class Level {
       }
     });
     if (!this.canEnter(hero.position)) throw new RangeError('The hero must start on open ground');
-    if (gate && !this.reachableTiles(false).some((tile) => tile.equals(gate.approach))) {
+    if (gate && !this.reachableTiles(false).some((tile) => gate.operableFrom(tile))) {
       throw new RangeError('The gate must be operable from where the hero can reach before it opens');
     }
     // What lies behind a gate still counts, because the hero can always open the gate and walk through.
@@ -214,16 +216,22 @@ export class Level {
   get canOperateGate(): boolean {
     const gate = this.currentGate;
     return (
-      gate?.state === 'closed' &&
+      (gate?.state === 'closed' || gate?.state === 'open') &&
       !this.completed &&
-      this.hero.position.equals(gate.approach) &&
-      this.hero.facing.equals(Direction.Up)
+      gate.operableFrom(this.hero.position) &&
+      gate.clearOf(feet.at(this.hero.feet))
     );
   }
 
   operateGate(): readonly LevelEvent[] {
     const gate = this.currentGate;
     if (!gate || !this.canOperateGate) return [];
+    if (gate.isOpen) {
+      this.currentGate = gate.requestClose();
+      // A closing leaf blocks the passage at once, so she cannot slip in while it swings back.
+      this.obstacles = this.placedObstacles();
+      return [new SwingGateClosingStarted(this.id, gate.position)];
+    }
     this.currentGate = gate.requestOpen();
     return [new SwingGateOpeningStarted(this.id, gate.position)];
   }
@@ -231,10 +239,16 @@ export class Level {
   // The crossing stays shut until the swing has been seen to finish.
   finishGate(): readonly LevelEvent[] {
     const gate = this.currentGate;
-    if (gate?.state !== 'opening') return [];
-    this.currentGate = gate.finishOpening();
-    this.obstacles = this.placedObstacles();
-    return [new SwingGateOpened(this.id, gate.position)];
+    if (gate?.state === 'opening') {
+      this.currentGate = gate.finishOpening();
+      this.obstacles = this.placedObstacles();
+      return [new SwingGateOpened(this.id, gate.position)];
+    }
+    if (gate?.state === 'closing') {
+      this.currentGate = gate.finishClosing();
+      return [new SwingGateClosed(this.id, gate.position)];
+    }
+    return [];
   }
 
   get isComplete(): boolean {

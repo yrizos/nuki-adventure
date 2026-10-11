@@ -24,7 +24,7 @@ import { pixelDifference } from '../test-support/pictures';
 import type { Art } from './art/art';
 import { artUrl } from './canvas-art';
 import { aButtonWobble, startGame, wobbleEvery } from './game';
-import { arrivalLength, gateOpeningLength } from './game-phase';
+import { arrivalLength, gateSwingLength } from './game-phase';
 import { Sound } from './sound';
 import { GameLoop } from './game-loop';
 import { GameSession, humVolume, messages } from './game-session';
@@ -368,8 +368,12 @@ describe('a swing gate in the game session', () => {
     expect(gameSession().session.usesA).toBe(false);
   });
 
-  test('starts opening with its sound when A is pressed from below while facing it', () => {
+  test('starts opening with its sound when A is pressed from below, whichever way the hero faces', () => {
     const subject = gatedSession();
+    subject.hold(Direction.Left);
+    subject.tick();
+    subject.hold(null);
+    expect(subject.session.level.hero.facing).toEqual(Direction.Left);
     expect(subject.session.level.canOperateGate).toBe(true);
     subject.press('a');
     expect(subject.sound.gate).toHaveBeenCalledOnce();
@@ -382,7 +386,7 @@ describe('a swing gate in the game session', () => {
     const start = subject.session.level.hero.feet;
     subject.hold(Direction.Up);
     subject.press('a');
-    subject.tick(gateOpeningLength - 2);
+    subject.tick(gateSwingLength - 2);
     expect(subject.session.level.gate?.state).toBe('opening');
     subject.tick();
     expect(subject.session.level.gate?.state).toBe('open');
@@ -393,31 +397,44 @@ describe('a swing gate in the game session', () => {
     expect(subject.session.level.hero.position.row).toBeLessThan(3);
   });
 
-  test('answers no further press once it starts opening', () => {
+  test('answers no further press while it swings', () => {
     const subject = gatedSession();
     subject.press('a');
     subject.press('a');
-    subject.tick(gateOpeningLength);
-    subject.press('a');
+    subject.tick(gateSwingLength - 1);
     expect(subject.sound.gate).toHaveBeenCalledOnce();
     expect(subject.session.level.gate?.state).toBe('open');
   });
 
-  test('never opens for B, for walking into it, from beside it or while the hero faces away', () => {
+  test('closes with its sound when A is pressed again from the far side', () => {
+    const subject = gatedSession();
+    subject.press('a');
+    subject.tick(gateSwingLength);
+    subject.hold(Direction.Up);
+    subject.tick(40);
+    subject.hold(null);
+    subject.tick();
+    expect(subject.session.level.hero.position.row).toBe(2);
+    expect(subject.session.promptsA).toBe(false);
+    subject.press('a');
+    expect(subject.sound.gate).toHaveBeenCalledTimes(2);
+    expect(subject.session.level.gate?.state).toBe('closing');
+    subject.tick(gateSwingLength - 1);
+    expect(subject.session.level.gate?.state).toBe('closed');
+  });
+
+  test('never opens for B, for walking into it or from two tiles away', () => {
     const subject = gatedSession();
     subject.press('b');
     subject.hold(Direction.Up);
     subject.tick(30);
+    subject.hold(null);
+    subject.tick();
     subject.hold(Direction.Down);
-    subject.tick();
-    subject.hold(null);
-    subject.tick();
-    subject.press('a');
-    subject.hold(Direction.Left);
     subject.tick(20);
-    subject.hold(Direction.Up);
-    subject.tick();
     subject.hold(null);
+    subject.tick();
+    expect(subject.session.level.hero.position.row).toBe(5);
     subject.press('a');
     expect(subject.sound.gate).not.toHaveBeenCalled();
     expect(subject.session.level.gate?.state).toBe('closed');
@@ -430,7 +447,7 @@ describe('a swing gate in the game session', () => {
     expect(subject.session.promptsA).toBe(true);
     subject.press('a');
     expect(subject.session.promptsA).toBe(false);
-    subject.tick(gateOpeningLength);
+    subject.tick(gateSwingLength);
     expect(subject.session.promptsA).toBe(false);
     expect(gameSession().session.promptsA).toBe(false);
   });
@@ -504,17 +521,10 @@ describe('the second level in the game session', () => {
     pressed.add('a');
     session.tick();
     expect(sound.gate).toHaveBeenCalledOnce();
-    for (let frame = 1; frame < gateOpeningLength; frame++) session.tick();
+    for (let frame = 1; frame < gateSwingLength; frame++) session.tick();
     expect(session.level.gate?.state).toBe('open');
     walkTo((tile) => tile.equals(TilePosition.at(2, 8)));
     expect(sound.key).toHaveBeenCalledOnce();
-    walkTo((tile) => tile.equals(gate.approach));
-    heading = Heading.of(Direction.Up);
-    session.tick();
-    heading = null;
-    pressed.add('a');
-    session.tick();
-    expect(sound.gate).toHaveBeenCalledOnce();
     for (let frame = 0; frame < 600 && !session.level.door.isOpen; frame++) session.tick();
     expect(session.level.door.isOpen).toBe(true);
     walkTo((tile) => session.level.door.covers(tile));

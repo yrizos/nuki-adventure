@@ -32,6 +32,14 @@ export class Outline {
     return new Outline(this.form, center, this.width, this.height);
   }
 
+  // Bounding boxes are compared, so an oval counts as touching a little early, which errs on the side of keeping clear.
+  overlaps(other: Outline): boolean {
+    return (
+      Math.abs(this.center.x - other.center.x) < (this.width + other.width) / 2 &&
+      Math.abs(this.center.y - other.center.y) < (this.height + other.height) / 2
+    );
+  }
+
   equals(other: Outline): boolean {
     return (
       this.form === other.form &&

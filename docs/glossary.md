@@ -108,7 +108,7 @@ The exit of a level. It opens once the hero has picked up every key in the level
 
 ### Swing Gate
 
-A single wooden leaf hinged in a fence. The hero opens it by pressing A while she stands on the tile in front of it and faces it. It swings open once and stays open for the rest of the level run. Unlike the door, it never completes the level, and unlike a fence, it can be passed once open.
+A single wooden leaf hinged in a fence. The hero opens it by pressing A while she stands on any of the three tiles directly south or directly north of it, facing any direction. Pressing A again from one of those tiles closes it. Unlike the door, it never completes the level, and unlike a fence, it can be passed once open.
 
 ### Reachable
 

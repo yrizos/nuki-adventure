@@ -51,10 +51,10 @@ The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/dom
 - A level MAY hold one swing gate, marked `G` in its layout. Level 2 does.
 - The gate stands on path ground between two fences, one directly west and one directly east.
 - The gate tile, the tile south of it and the tile north of it are open ground with no stone.
-- The tile south of the gate is reachable with the gate closed. The hero opens the gate only by pressing A on that tile while facing up, never by walking into it.
+- The tile south of the gate is reachable with the gate closed. The hero opens and closes the gate only by pressing A on one of the three tiles directly south or directly north of it, facing any direction, never by walking into it.
 - Keys, star spots and the door are checked as [reachable](glossary.md#reachable) with the gate open. Tiles beyond the closed gate are not unreachable ground.
 - With the gate closed, no movement reaches the far side through the fences, woodland or a diagonal.
-- The gate opens once and never closes during the level run. It blocks its whole tile until its swing ends.
+- The gate blocks its whole tile until it finishes opening, and again from the moment it starts closing.
 
 ### Magical Arrival
 

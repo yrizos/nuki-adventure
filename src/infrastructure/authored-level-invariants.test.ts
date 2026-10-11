@@ -58,14 +58,12 @@ const passes = [
   if (!gate) return [{ name, authored, gate, region: undefined, beyond: undefined }];
   const open = (tile: TilePosition): boolean =>
     authored.scenery.isWalkable(tile) && !authored.stones.some((stone) => stone.position.equals(tile));
+  const near = regionAround(authored, authored.hero.position, (tile) => open(tile) && !gate.covers(tile));
+  const far = regionAround(authored, gate.position.neighbor(Direction.Up), (tile) => open(tile) && !gate.covers(tile));
+  // She can close the gate behind her from either side, so a closed gate must hold from both.
   return [
-    {
-      name: `${name} (gate closed)`,
-      authored,
-      gate,
-      region: regionAround(authored, authored.hero.position, (tile) => open(tile) && !gate.covers(tile)),
-      beyond: regionAround(authored, gate.position.neighbor(Direction.Up), (tile) => open(tile) && !gate.covers(tile)),
-    },
+    { name: `${name} (gate closed)`, authored, gate, region: near, beyond: far },
+    { name: `${name} (gate closed behind her)`, authored, gate, region: far, beyond: near },
     {
       name: `${name} (gate open)`,
       authored,

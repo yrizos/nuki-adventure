@@ -8,6 +8,8 @@ import {
   type LevelEvent,
   KeyCollected,
   StarCollected,
+  SwingGateClosed,
+  SwingGateClosingStarted,
   SwingGateOpened,
   SwingGateOpeningStarted,
 } from './level-events';
@@ -638,13 +640,14 @@ describe('a swing gate', () => {
     expect(pathTo(opened(subject), (tile) => tile.equals(at(0, 0)))).toBeDefined();
   });
 
-  test('opens only from its approach while the hero faces it', () => {
+  test('opens from any tile beside it, whichever way the hero faces', () => {
     expect(gated().canOperateGate).toBe(true);
-    expect(gated(at(2, 4)).canOperateGate).toBe(false);
+    expect(gated(at(2, 4)).canOperateGate).toBe(true);
+    expect(gated(at(4, 4), Direction.Left).canOperateGate).toBe(true);
+    expect(gated(at(3, 4), Direction.Down).canOperateGate).toBe(true);
     expect(gated(at(3, 5)).canOperateGate).toBe(false);
-    expect(gated(at(3, 4), Direction.Down).canOperateGate).toBe(false);
-    expect(gated(at(3, 4), Direction.Left).operateGate()).toEqual([]);
-    expect(gated(at(3, 4), Direction.Left).gate?.state).toBe('closed');
+    expect(gated(at(1, 4)).operateGate()).toEqual([]);
+    expect(gated(at(1, 4)).gate?.state).toBe('closed');
   });
 
   test('starts opening once and stays shut while it swings', () => {
@@ -664,7 +667,7 @@ describe('a swing gate', () => {
     expect(subject.hero.position).toEqual(at(3, 4));
   });
 
-  test('lets the hero through both ways once it finishes opening, and only once', () => {
+  test('lets the hero through both ways once it finishes opening', () => {
     const subject = gated();
     expect(subject.finishGate()).toEqual([]);
     subject.operateGate();
@@ -672,7 +675,6 @@ describe('a swing gate', () => {
     expect(subject.finishGate()).toEqual([new SwingGateOpened(LevelId.of('test'), at(3, 3))]);
     expect(subject.outlines).not.toEqual(before);
     expect(subject.finishGate()).toEqual([]);
-    expect(subject.operateGate()).toEqual([]);
     follow(
       subject,
       pathTo(subject, (tile) => tile.equals(at(3, 2)))!,
@@ -681,6 +683,54 @@ describe('a swing gate', () => {
       subject,
       pathTo(subject, (tile) => tile.equals(at(3, 5)))!,
     );
+    expect(subject.gate?.state).toBe('open');
+  });
+
+  test('closes again from the far side and shuts the passage as soon as it starts swinging', () => {
+    const subject = opened(gated());
+    follow(
+      subject,
+      pathTo(subject, (tile) => tile.equals(at(4, 2)))!,
+    );
+    expect(subject.canOperateGate).toBe(false);
+    for (let tick = 0; tick < 6; tick++) subject.tick(Heading.of(Direction.Up));
+    expect(subject.hero.position).toEqual(at(4, 2));
+    expect(subject.canOperateGate).toBe(true);
+    const open = subject.outlines;
+    expect(subject.operateGate()).toEqual([new SwingGateClosingStarted(LevelId.of('test'), at(3, 3))]);
+    expect(subject.gate?.state).toBe('closing');
+    expect(subject.outlines).not.toEqual(open);
+    expect(subject.canOperateGate).toBe(false);
+    expect(subject.operateGate()).toEqual([]);
+    expect(subject.finishGate()).toEqual([new SwingGateClosed(LevelId.of('test'), at(3, 3))]);
+    expect(subject.gate?.state).toBe('closed');
+    expect(pathTo(subject, (tile) => tile.equals(at(3, 5)))).toBeUndefined();
+    expect(subject.operateGate()).toEqual([new SwingGateOpeningStarted(LevelId.of('test'), at(3, 3))]);
+  });
+
+  test('cannot be closed while her feet reach into its passage from a tile beside it', () => {
+    const subject = opened(gated());
+    for (let tick = 0; tick < 13; tick++) subject.tick(Heading.of(Direction.Up));
+    expect(subject.hero.position).toEqual(at(3, 4));
+    expect(subject.canOperateGate).toBe(false);
+    subject.tick(Heading.of(Direction.Down));
+    expect(subject.canOperateGate).toBe(true);
+  });
+
+  test('may start on the far side, where she can still reach a tile beside it', () => {
+    const farSide = ['..DDD..', '.......', '.......', 'WWFGFWW', '.......', '.......'];
+    expect(gated(at(3, 1), Direction.Down, at(0, 5), farSide).canOperateGate).toBe(false);
+    expect(() => gated(at(3, 1), Direction.Down, at(0, 5), farSide)).not.toThrow();
+  });
+
+  test('cannot be closed while the hero stands in its passage', () => {
+    const subject = opened(gated());
+    follow(
+      subject,
+      pathTo(subject, (tile) => tile.equals(at(3, 3)))!,
+    );
+    expect(subject.canOperateGate).toBe(false);
+    expect(subject.operateGate()).toEqual([]);
     expect(subject.gate?.state).toBe('open');
   });
 
@@ -701,7 +751,8 @@ describe('a swing gate', () => {
   });
 
   test('must be operable from where the hero starts', () => {
-    expect(() => gated(at(3, 2))).toThrow('The gate must be operable');
+    const pocket = ['..DDD..', '.......', '.......', 'WWFGFWW', 'WW.....', '.W.....'];
+    expect(() => gated(at(0, 5), Direction.Up, at(0, 0), pocket)).toThrow('The gate must be operable');
   });
 
   test('does not excuse a key that stays out of reach with the gate open', () => {

@@ -2,7 +2,13 @@ import type { LevelView } from '../application/level-view';
 import type { ManageProgress } from '../application/manage-progress';
 import type { PlayLevel } from '../application/play-level';
 import type { Area } from '../domain/level/collectibles';
-import { LevelCompleted, KeyCollected, StarCollected, SwingGateOpeningStarted } from '../domain/level/level-events';
+import {
+  LevelCompleted,
+  KeyCollected,
+  StarCollected,
+  SwingGateClosingStarted,
+  SwingGateOpeningStarted,
+} from '../domain/level/level-events';
 import { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import type { LevelId } from '../domain/shared/level-id';
 import { StarCount } from '../domain/shared/star-count';
@@ -11,11 +17,11 @@ import {
   appearing,
   arrivalLength,
   closingLevel,
-  openingGate,
   restoringKey,
   type Phase,
   phaseAfterFrame,
   playing,
+  swingingGate,
 } from './game-phase';
 import { HeroAnimator, pushingPose } from './hero-animator';
 import { MessageBox } from './message-box';
@@ -84,7 +90,8 @@ export class GameSession {
   }
 
   get promptsA(): boolean {
-    return this.phase.name === 'playing' && this.level.canOperateGate;
+    // The prompt only invites her to open the gate, so it does not nag her to close it once she walks through.
+    return this.phase.name === 'playing' && this.level.canOperateGate && this.level.gate?.state === 'closed';
   }
 
   get usesA(): boolean {
@@ -103,10 +110,12 @@ export class GameSession {
     if (
       pressedA &&
       this.phase.name === 'playing' &&
-      play.operateGate(id).some((event) => event instanceof SwingGateOpeningStarted)
+      play
+        .operateGate(id)
+        .some((event) => event instanceof SwingGateOpeningStarted || event instanceof SwingGateClosingStarted)
     ) {
       this.sound.gate();
-      this.transitionTo(openingGate(this.frame));
+      this.transitionTo(swingingGate(this.frame));
     } else if (this.phase.name === 'playing' || this.phase.name === 'restoring') {
       const events = play.advance(id, this.controls.heading());
       for (const event of events) {
@@ -143,8 +152,8 @@ export class GameSession {
         restorationLength: (origin) => restorationLength(play.view(id).scenery.size, origin),
       }),
     );
-    // She stands still pushing while the gate swings, so her last stride must not keep her walking or stepping.
-    if (this.phase.name !== 'opening-gate') {
+    // She stands still while the gate swings, so her last stride must not keep her walking or stepping.
+    if (this.phase.name !== 'swinging-gate') {
       this.run.animator.advance(this.run.play.view(this.run.id).hero);
       if (this.run.animator.footfall) this.sound.footstep();
     }
@@ -159,12 +168,15 @@ export class GameSession {
     const scene = {
       level,
       frame: this.frame,
+      // The push art faces north, so it fits only a gate swinging open away from her while she stands south of it.
       hero:
-        this.phase.name === 'opening-gate'
+        this.phase.name === 'swinging-gate' &&
+        level.gate?.state === 'opening' &&
+        level.hero.position.row > level.gate.position.row
           ? pushingPose(this.frame - this.phase.since)
           : this.run.animator.pose(level.hero, this.frame),
       ...(this.phase.name === 'appearing' ? { arrival: this.frame - this.phase.since } : {}),
-      ...(this.phase.name === 'opening-gate' ? { gateAge: this.frame - this.phase.since } : {}),
+      ...(this.phase.name === 'swinging-gate' ? { gateAge: this.frame - this.phase.since } : {}),
     };
     if (this.phase.name === 'restoring') {
       this.run.painter.paintRestoring(picture, scene, this.phase.origin, this.frame - this.phase.since, restored, [
@@ -184,7 +196,7 @@ export class GameSession {
     if (previous.name === 'restoring' && (next.name === 'playing' || next.name === 'restoring'))
       this.run.restored = [...this.run.restored, previous.restores];
     this.phase = next;
-    if (previous.name === 'opening-gate') this.run.play.finishGate(this.run.id);
+    if (previous.name === 'swinging-gate') this.run.play.finishGate(this.run.id);
     if (next.name === 'restoring') this.sound.restoring();
     if (previous.name === 'closing' && next.name === 'ended') this.report.completed();
   }

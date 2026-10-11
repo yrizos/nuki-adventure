@@ -419,12 +419,11 @@ export class WorldPainter {
     const { gate } = level;
     if (gate) {
       const { column, row } = gate.position;
+      const swung = Math.min(Math.floor((scene.gateAge ?? 0) / framesPerGateFrame), gateArt.opening.length - 1);
       const art =
         gate.state === 'open'
           ? gateArt.open
-          : gateArt.opening[
-              Math.min(Math.floor((scene.gateAge ?? 0) / framesPerGateFrame), gateArt.opening.length - 1)
-            ]!;
+          : gateArt.opening[gate.state === 'closing' ? gateArt.opening.length - 1 - swung : swung]!;
       const base = (row + 1) * tileSize;
       objects.push({
         base,

@@ -35,4 +35,25 @@ export class SwingGateOpened {
   ) {}
 }
 
-export type LevelEvent = KeyCollected | StarCollected | LevelCompleted | SwingGateOpeningStarted | SwingGateOpened;
+export class SwingGateClosingStarted {
+  constructor(
+    readonly levelId: LevelId,
+    readonly position: TilePosition,
+  ) {}
+}
+
+export class SwingGateClosed {
+  constructor(
+    readonly levelId: LevelId,
+    readonly position: TilePosition,
+  ) {}
+}
+
+export type LevelEvent =
+  | KeyCollected
+  | StarCollected
+  | LevelCompleted
+  | SwingGateOpeningStarted
+  | SwingGateOpened
+  | SwingGateClosingStarted
+  | SwingGateClosed;
