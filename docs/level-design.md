@@ -17,16 +17,6 @@ The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/dom
 - The hero never starts near the exit door. With the current top-edge exits, the hero starts on the bottom playable edge, facing into the level.
 - After the first level, the start represents entry from the previous level's exit. Align its column with the previous door's center, scaled to the new map's width, within one tile. Do not move the start beside the new exit for convenience.
 
-### Signposts
-
-- Every key has a hint sign on its approach. Every traversable route from the hero start to that key must enter the hint sign's reading range before the key can be collected. A shorter recommended route is not enough if another route bypasses the sign.
-- Every exit door has its own reachable, readable sign beside it. Its text gives a general hint about completing the level and opening the door, separate from the key's location hint.
-- Place the exit sign as close to the fence as possible, on reachable ground immediately inside it and beside either end of the door. For the current layouts, it stands one row below the fence and one column outside the door's width, either left or right. Both sides are valid. Keep the doorway clear and the fence intact; never move the door to match another level's sign coordinates.
-- Sign text matches the level's actual number of keys. A one-key level uses singular nouns, verbs and pronouns, and never implies that the player must find additional keys. A level with several keys says how many there are, in the exit sign's general hint.
-- Every key looks the same, so a key's hint sign names the landmark where it lies. The exit sign never names a key location.
-- Signposts refer to recognizable, visible landmarks such as apple trees, a lake, flowers or a group of rocks. They never use compass directions, compass abbreviations or bearings. This includes north, south, east, west and their combinations or equivalents in any language. The player has no compass.
-- Test entry placement, sign-before-key ordering, exit sign placement beside the door and against the fence, objective-count wording and forbidden compass wording for every authored level. Use movement and actual reading range for route checks, not only marker distances or sign counts.
-
 ### Keys
 
 - A level has at least one key.
@@ -61,11 +51,11 @@ Define the purpose of a level before building it, such as introducing a mechanic
 
 ### Introducing Mechanics
 
-A mechanic appears in four stages across levels: introduce, practice, vary and combine. It first appears where the player can understand it without solving another new mechanic at the same time. Signposts can support this, but the level teaches through play wherever possible.
+A mechanic appears in four stages across levels: introduce, practice, vary and combine. It first appears where the player can understand it without solving another new mechanic at the same time. The level teaches through play wherever possible.
 
 ### Landmarks
 
-Every meaningful navigation decision has a recognizable landmark, such as a distinctive group of trees, a shoreline shape, a structure, a signpost, an unusual path shape or the door. Landmarks belong where the player chooses a direction rather than spread as decoration, so important junctions never look interchangeable.
+Every meaningful navigation decision has a recognizable landmark, such as a distinctive group of trees, a shoreline shape, a structure, an unusual path shape or the door. Landmarks belong where the player chooses a direction rather than spread as decoration, so important junctions never look interchangeable.
 
 ### Star Placement
 
@@ -156,7 +146,6 @@ No numerical limits apply yet. For each level, playtests should eventually captu
 - route taken
 - wrong turns
 - repeated traversal
-- signposts read
 - periods without progress
 - whether help was needed
 

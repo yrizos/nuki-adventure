@@ -22,10 +22,6 @@ The button in the top right corner of the game view that turns the music and sou
 
 The button beside the sound switch that shows the page full screen or returns it to normal. It appears only where the browser supports full screen.
 
-### Level End Window
-
-The window that opens after the hero completes a level. It shows the time the level took and the stars collected out of all stars, and its ΣΥΝΕΧΕΙΑ button starts the next level, or opens the start screen after the last level.
-
 ### Start Screen
 
 The screen that covers the whole page when the game opens. It shows the game name, starts the first level and opens the level picker.
@@ -121,10 +117,6 @@ The number of stars a level holds. A level either picks its stars from its star 
 ### Key
 
 A golden collectible that floats, buzzes and hums when the hero is near. Every key looks the same, and each restores color to its own area of the level.
-
-### Signpost
-
-A wooden board in the game world that the player interacts with. Each signpost shows its own message when read.
 
 ### Stone
 

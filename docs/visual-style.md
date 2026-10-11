@@ -138,7 +138,7 @@ This document builds on the color palette and the UI layout documents. Color cod
 
 ### Interactive Elements
 
-- The hero, stars, keys, signposts, stones and floor triggers have a closed one pixel Ink outline
+- The hero, stars, keys, stones and floor triggers have a closed one pixel Ink outline
 - Lines between parts of the same sprite, such as hair and face, use the darkest step the palette assigns to that part
 
 ### Scenery
@@ -174,7 +174,6 @@ This document builds on the color palette and the UI layout documents. Color cod
 | --- | --- | --- |
 | Hero | 32 × 32 | 1 tile |
 | Stars and keys | 24 × 24 | 1 tile |
-| Signposts | 32 × 32 | 1 tile |
 | Stones and small props | 32 × 32 | 1 tile |
 | Trees | 64 × 64 | 2 × 1 tiles at the base |
 | Small buildings | 96 × 96 | 3 × 2 tiles at the base |
@@ -268,7 +267,7 @@ At the start, only the hero, stars and keys are in color. Every scenery tile and
 
 - Stepping into the open doorway completes the level
 - The colored world then darkens to Ink through the same ordered 4 × 4 dither, each pixel switching at its threshold
-- Once the screen is fully Ink, the level end window opens, and ΣΥΝΕΧΕΙΑ starts the next level from its faded state, or opens the start screen after the last level
+- Once the screen is fully Ink, the next level starts at once from its faded state, or the start screen opens after the last level
 
 ## Motion and Animation
 

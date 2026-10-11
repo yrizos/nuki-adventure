@@ -65,19 +65,6 @@ Landscape orientation is not supported.
 - A Paper symbol of three stacked bars sits at its center
 - It leaves the level in progress at once and opens the start screen, and the level starts afresh when chosen again
 
-### Level End Window
-
-- Once the screen has darkened to Ink after the door, a window opens centered in the game view, starting below the switches
-- It uses the message box frame and is only as wide as its contents need
-- ΜΠΡΑΒΟ! sits at the top in Y2, between two Y3 sparkles
-- Below it, the window shows pictures and numbers instead of words
-- A clock drawing sits beside the time from the start of the level to the door, as minutes and seconds
-- A star drawing sits beside the collected stars out of all stars in the level
-- The numbers are Paper, in the message box font
-- A ΣΥΝΕΧΕΙΑ button at the bottom wears the A button colors, with a lip, and sinks into its lip while pressed
-- Tapping ΣΥΝΕΧΕΙΑ or pressing A or B closes the window and starts the next level, or opens the start screen after the last level
-- The window takes keyboard focus on ΣΥΝΕΧΕΙΑ, and screen readers hear the title, the time and the stars in words
-
 ## Start Screen
 
 - The start screen covers the whole page, including the control panel, whenever the game opens and whenever the menu switch is pressed
@@ -97,7 +84,9 @@ Landscape orientation is not supported.
 - It lists every level of the game in order, one card per level, above a ΠΙΣΩ button in the A button colors that returns to the start screen
 - Each card is a window in the message box frame, and every card has the same size whatever its statistics, so the cards line up
 - The top of a card shows the level number in Paper at twice the font size
-- The bottom of a completed level's card shows the clock drawing beside the last play time and the star drawing beside the last stars out of all stars
+- The bottom of a completed level's card shows a clock drawing beside the last play time, as minutes and seconds, and a star drawing beside the last stars out of all stars
+- The numbers are Paper, in the message box font
+- Time and stars appear only on level cards
 - An unlocked level that has no completed playthrough shows its number only, with no time, stars, dash or label
 - A locked level's card is drawn through the faded world's neutral palette mapping, shows its number only and cannot be focused or chosen
 - Tapping an unlocked card starts that level, and a locked level never starts, whatever chose it

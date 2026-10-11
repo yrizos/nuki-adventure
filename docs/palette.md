@@ -4,7 +4,7 @@
 
 - Each ramp shifts hue as it changes brightness, with shadows leaning toward blue or teal and highlights toward yellow
 - Flowers use soft light steps
-- Ink is the single outline color for everything the player interacts with: the hero, stars, keys, signposts, stones and floor triggers
+- Ink is the single outline color for everything the player interacts with: the hero, stars, keys, stones and floor triggers
 - Pure black is used only for the desktop background outside the game column; pure white is not used
 - A new hue is added as a full ramp of four steps, never as a single color
 
@@ -118,7 +118,6 @@ Steps run from darkest to lightest.
 | Water | W1 body, W0 deep edges, W2 ripples, W4 foam |
 | Paths | E3 base, E4 highlights, E2 edges |
 | Flowers | R3, V3, W3 or Paper petals, Y3 centers, G1 stems |
-| Signposts | E1 board, E2 highlight, E0 shadow |
 | Stars | Y2 body, Y1 shading, Y3 sparkle |
 | Stones | N3 base, N2 shading, N4 highlight |
 | Floor triggers | N2 plate, N1 inset, Y3 inset when activated |
@@ -160,19 +159,14 @@ UI colors map onto Material 3 color roles.
 | Surface container | Sound, full screen and menu switch fill | V0 |
 | Outline | Sound, full screen and menu switch edge | Ink outline, then a V1 inner edge |
 | On surface | Sound switch speaker, full screen switch corners and menu switch bars | Paper |
-| Surface container | Level end window fill | V0 |
-| Outline | Level end window edge | Ink outline, then a V1 inner edge |
-| On surface | Level end window title | Y2, with Y3 sparkles |
-| On surface | Level end window numbers | Paper |
-| On surface | Level end window clock | Paper face, N4 shading, Ink outline, marks and hands |
-| On surface | Level end window star | Matches the star in the game world |
-| Primary | ΣΥΝΕΧΕΙΑ button | Matches the A button, including its pressed state |
 | Surface | Start screen and level picker background | Ink, with no texture |
 | On surface | Start screen game name | Paper, with ΠΟΛΥΧΡΩΜΗ letters cycling through V2, T2 and R2, and ΝΟΥΚΙ in Y2 |
 | Primary | Start screen and level picker buttons | Match the A button, including its pressed state |
 | Surface container | Level card fill | V0 |
 | Outline | Level card edge | Ink outline, then a V1 inner edge |
-| On surface | Level card numbers, times and stars | Paper, with the level end window clock and star |
+| On surface | Level card numbers, times and stars | Paper |
+| On surface | Level card clock | Paper face, N4 shading, Ink outline, marks and hands |
+| On surface | Level card star | Matches the star in the game world |
 | Surface variant | Locked level card | The whole card through the faded world's neutral mapping |
 | Outline | Focused start screen or level picker button or card | Paper |
 
@@ -211,8 +205,6 @@ Text targets the Web Content Accessibility Guidelines (WCAG) minimum of 4.5:1, a
 | Paper on N1, locked level card number | 10.7:1 |
 | Paper on V0, message text | 11.3:1 |
 | Paper on V0, sound and full screen switch symbols | 11.3:1 |
-| Paper on V0, level end window numbers | 11.3:1 |
-| Y2 on V0, level end window title | 8.3:1 |
 
 ### Collectibles
 

@@ -25,7 +25,7 @@
 - Include only objects requiring consistency together; keep aggregates small.
 - Reference other aggregates by identity only.
 - Change only one aggregate per application-service operation.
-- `Level` creates/owns `Hero` from supplied starting position/facing. External reads use immutable `HeroState`; movement only through `Level.tick()` and `Level.read()`.
+- `Level` creates/owns `Hero` from supplied starting position/facing. External reads use immutable `HeroState`; movement only through `Level.tick()`.
 
 ## Entities
 

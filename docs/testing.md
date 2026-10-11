@@ -11,7 +11,7 @@ Unit tests must catch every behavior regression on a local machine within second
 
 ## What Each Layer Tests
 
-- Domain: business rules and invariants. Aggregates are tested through their public API (`Level.tick()`, `Level.read()`, `GameProgress`). Value objects are tested for their own validation, equality and behavior.
+- Domain: business rules and invariants. Aggregates are tested through their public API (`Level.tick()`, `GameProgress`). Value objects are tested for their own validation, equality and behavior.
 - Application: orchestration only. Services run against in-memory repositories and real aggregates.
 - Infrastructure: adapters at their boundary. Storage round trips, malformed and unavailable storage, layout parsing and the content of every authored level.
 - Presentation: session flow with explicit frame advancement, rendering through pixels, and controls and screens through a fake document.
@@ -20,7 +20,7 @@ Unit tests must catch every behavior regression on a local machine within second
 
 - Domain objects are always real. They are never mocked.
 - Browser APIs are replaced by one shared set of fakes in `src/test-support`: a fake document, a stub `AudioContext` and in-memory storage.
-- `vi.fn` is used only for presentation ports such as sound, controls and level end.
+- `vi.fn` is used only for presentation ports such as sound and controls.
 - Tests reuse sibling fixtures before adding new ones.
 
 ## Determinism
