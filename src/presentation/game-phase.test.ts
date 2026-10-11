@@ -48,12 +48,12 @@ describe('the game phase', () => {
     expect(after(closing, 200 + closingLength)).toEqual({ name: 'ended' });
   });
 
-  test('lets the hero appear for twelve frames before play begins', () => {
+  test('lets the hero appear for 48 frames before play begins', () => {
     const arriving = appearing(50);
-    expect(arrivalLength).toBe(12);
+    expect(arrivalLength).toBe(48);
     expect(arriving).toEqual({ name: 'appearing', since: 50 });
-    expect(after(arriving, 60)).toBe(arriving);
-    expect(after(arriving, 61)).toBe(playing);
+    expect(after(arriving, 96)).toBe(arriving);
+    expect(after(arriving, 97)).toBe(playing);
   });
 
   test('stays playing whatever the frame', () => {

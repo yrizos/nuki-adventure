@@ -307,18 +307,18 @@ At the start, only the hero, stars and keys are in color. Every scenery tile and
 
 ### Magical Arrival
 
-The hero materializes at her start over 12 game frames. She cannot move until it ends.
+The hero materializes at her start over 48 game frames. She cannot move until it ends.
 
 | Frames | Animation |
 | --- | --- |
-| 0 to 2 | Three Paper light motes converge on the hero's start. The hero is invisible |
-| 3 to 8 | The hero appears from her feet upward through the ordered 4 × 4 dither, each revealed pixel in its normal color |
-| 9 to 11 | The hero is fully visible. The motes rise and disappear |
-| 12 onward | Normal idle and movement |
+| 0 to 15 | Eight Paper light motes, each with a two-position trail, spiral inward from about 20 pixels around the hero's body. The hero and her shadow are invisible |
+| 16 to 39 | The hero appears from her feet upward through the ordered 4 × 4 dither, with a line of Paper pixels on the rising edge over her opaque pixels. Her shadow appears at frame 16. The motes circle her |
+| 40 to 47 | The hero is fully visible. The motes rise, spread and disappear |
+| 48 onward | Normal idle and movement |
 
 - The arrival uses the existing hero frames in her start facing, the existing light mote and the ordered 4 × 4 dither. It has no art of its own
 - The reveal masks only the hero. The rest of the scene is drawn as usual
-- Motes stay within about one hero-sized area around the start and move in whole pixels
+- Motes stay within about 20 pixels of the hero's body and move in whole pixels
 - The hero and motes keep the ordinary depth order
 - Transparency fades, scaling, rotation and blur are not used
 - Nothing marks the end of the arrival, and no pause follows it

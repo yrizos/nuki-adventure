@@ -18,7 +18,7 @@ test('the first level is an orchard clearing with one key that restores the whol
   const level = firstLevel(keepOrder);
   expect(level.id).toBe(firstLevelId);
   expect(level.scenery.size).toEqual({ columns: 25, rows: 25 });
-  expect(level.hero.position).toEqual(at(12, 22));
+  expect(level.hero.position).toEqual(at(12, 21));
   expect(level.hero.facing).toBe(Direction.Up);
   expect(level.door.equals(Door.closedAt(at(6, 1)))).toBe(true);
   expect(level.keys.map((key) => key.position)).toEqual([at(19, 4)]);
@@ -58,22 +58,27 @@ test('the first level holds a small pond in its southwestern orchard', () => {
   ]);
 });
 
-test('the first level marks fifteen star spots and lets the shuffle choose its stars', () => {
+test('the first level marks twenty star spots and lets the shuffle choose its stars', () => {
   const spots = starSpotsOf(firstLevel);
   expect(spots).toEqual([
     at(12, 1),
+    at(10, 2),
     at(17, 2),
     at(2, 4),
     at(23, 6),
     at(1, 8),
     at(14, 8),
+    at(4, 9),
+    at(22, 10),
     at(18, 12),
     at(22, 13),
     at(9, 14),
     at(1, 15),
+    at(16, 16),
     at(22, 18),
     at(7, 19),
     at(2, 21),
+    at(18, 21),
     at(10, 22),
     at(21, 22),
   ]);
@@ -99,6 +104,25 @@ test('the first level leaves no open ground cut off from where the hero starts',
   }
   expect(tiles.filter((tile) => open(tile) && !reached.has(`${tile.column},${tile.row}`))).toEqual([]);
   expect(reached.size).toBe(386);
+});
+
+test('the first level lets the hero materialize with every surrounding tile free', () => {
+  const level = firstLevel(keepOrder);
+  const spots = starSpotsOf(firstLevel);
+  const start = level.hero.position;
+  const blocked = [-1, 0, 1]
+    .flatMap((rows) => [-1, 0, 1].map((columns) => at(start.column + columns, start.row + rows)))
+    .filter(
+      (tile) =>
+        !level.scenery.isWalkable(tile) ||
+        level.stones.some((stone) => stone.position.equals(tile)) ||
+        level.scenery.flowers.some((flower) => flower.position.equals(tile)) ||
+        level.keys.some((key) => key.position.equals(tile)) ||
+        spots.some((spot) => spot.equals(tile)) ||
+        level.scenery.trees.some((tree) => tree.hides(tile)) ||
+        level.scenery.hides(tile),
+    );
+  expect(blocked).toEqual([]);
 });
 
 test('the first level places its key in an exploration area at least six tiles from the exit', () => {

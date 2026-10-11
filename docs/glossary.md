@@ -100,7 +100,7 @@ A connected set of impassable woodland tiles that encloses a playable area. Each
 
 ### Magical Arrival
 
-The 12-frame presentation in which the hero materializes at her start before movement begins.
+The 48-frame presentation in which the hero materializes at her start before movement begins.
 
 ### Door
 
@@ -120,7 +120,7 @@ A gold collectible.
 
 ### Star Spot
 
-A tile chosen in a level's layout that can hold a star. A level marks fifteen star spots, and five of them hold stars each time the level starts.
+A tile chosen in a level's layout that can hold a star. A level marks at least fifteen star spots, and five of them hold stars each time the level starts.
 
 ### Star Count
 

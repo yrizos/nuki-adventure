@@ -91,7 +91,7 @@ export class Sound {
   }
 
   arrival(): void {
-    this.notes([1568, 2093], 0.08, 'triangle', 0.1);
+    this.notes([784, 1047, 1319, 1568, 2093], 0.14, 'triangle', 0.1);
   }
 
   door(): void {

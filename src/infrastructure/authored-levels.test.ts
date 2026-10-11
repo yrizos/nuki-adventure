@@ -34,8 +34,8 @@ test.each(authoredLevels)('the $name level holds exactly five stars', ({ create 
   expect(create(keepOrder).stars).toHaveLength(5);
 });
 
-test.each(authoredLevels)('the $name level marks fifteen star spots', ({ create }) => {
-  expect(starSpotsOf(create)).toHaveLength(15);
+test.each(authoredLevels)('the $name level marks at least fifteen star spots', ({ create }) => {
+  expect(starSpotsOf(create).length).toBeGreaterThanOrEqual(15);
 });
 
 test.each(authoredLevels)('the $name level holds different stars under a different shuffle', ({ create }) => {

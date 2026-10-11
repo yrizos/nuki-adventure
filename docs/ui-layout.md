@@ -36,7 +36,7 @@ Landscape orientation is not supported.
 
 - The game view shows the level as soon as it starts, with no loading screen or overlay
 - The control panel stays visible
-- WHEN a level opens with the [magical arrival](visual-style.md#magical-arrival), movement starts after its 12 frames with no button press
+- WHEN a level opens with the [magical arrival](visual-style.md#magical-arrival), movement starts after its 48 frames with no button press
 - The menu switch works throughout the arrival
 
 ### Message Box

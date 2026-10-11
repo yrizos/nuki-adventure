@@ -20,6 +20,7 @@ import { pixelDifference } from '../test-support/pictures';
 import type { Art } from './art/art';
 import { artUrl } from './canvas-art';
 import { startGame } from './game';
+import { arrivalLength } from './game-phase';
 import { Sound } from './sound';
 import { GameLoop } from './game-loop';
 import { GameSession, humVolume, messages } from './game-session';
@@ -320,11 +321,11 @@ describe('the magical arrival', () => {
     expect(gameSession().sound.arrival).not.toHaveBeenCalled();
   });
 
-  test('holds the hero still through frame 11 and lets a held direction move her on frame 12', () => {
+  test('holds the hero still through the arrival and lets a held direction move her on the next frame', () => {
     const subject = arriving();
     const start = subject.level.hero.feet;
     subject.controls.heading.mockReturnValue(Heading.of(Direction.Right));
-    subject.advance(12);
+    subject.advance(arrivalLength);
     expect(subject.level.hero.feet).toEqual(start);
     expect(subject.sound.footstep).not.toHaveBeenCalled();
     subject.advance(1);
@@ -334,20 +335,24 @@ describe('the magical arrival', () => {
   test('collects nothing beside the start until play begins', () => {
     const subject = arriving([Star.at(TilePosition.at(0, 4))]);
     subject.controls.heading.mockReturnValue(Heading.of(Direction.Up));
-    subject.advance(12);
+    subject.advance(arrivalLength);
     expect(subject.level.stars).toHaveLength(1);
     expect(subject.sound.star).not.toHaveBeenCalled();
     subject.walkUntil(Direction.Up, () => subject.level.stars.length === 0);
   });
 
-  test('keeps its twelve frames out of the play time', () => {
+  test('keeps its frames out of the play time', () => {
     const subject = arriving();
-    subject.advance(12);
+    subject.advance(arrivalLength);
     for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
     for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
     const completedAt = subject.frames;
     subject.advance(closingLength);
-    const playthrough = Playthrough.of(PlayTime.ofFrames(completedAt - 1 - 12), StarCount.of(1), StarCount.of(1));
+    const playthrough = Playthrough.of(
+      PlayTime.ofFrames(completedAt - 1 - arrivalLength),
+      StarCount.of(1),
+      StarCount.of(1),
+    );
     expect(subject.progress.complete).toHaveBeenCalledExactlyOnceWith(subject.level.id, playthrough);
   });
 });

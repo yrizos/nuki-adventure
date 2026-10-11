@@ -570,8 +570,11 @@ describe('stars chosen among star spots', () => {
     );
   };
 
-  test.each([14, 16])('rejects %s spots', (count) => {
+  test.each([0, 14])('rejects %s spots', (count) => {
     expect(() => among(free.slice(0, count))).toThrow(RangeError);
+  });
+  test.each([15, 20])('accepts %s spots', (count) => {
+    expect(among(free.slice(0, count)).stars).toHaveLength(5);
   });
 
   test('rejects an invalid spot even when the shuffle would not pick it', () => {

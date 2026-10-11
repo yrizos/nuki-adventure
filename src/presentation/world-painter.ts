@@ -2,10 +2,10 @@ import type { LevelView } from '../application/level-view';
 import type { Area } from '../domain/level/collectibles';
 import { Direction, TilePosition } from '../domain/level/position';
 import { FlowerVariant, Ground, type Scenery, TreeVariant } from '../domain/level/scenery';
-import { arrivalMotes, revealed } from './arrival';
+import { arrivalMotes, revealed, risingEdge, shadowShown } from './arrival';
 import type { Art } from './art/art';
 import { ditherSteps, ditherThreshold } from './ordered-dither';
-import { lighten, Picture, type Version } from './picture';
+import { lighten, Picture, sprite, type Version } from './picture';
 import {
   doorArt,
   fenceArt,
@@ -449,9 +449,12 @@ export class WorldPainter {
     }
     const hero = heroPixels(level);
     const standingOn = level.hero.position;
+    const heroShadow = shadow(14, standingOn, hero.x + 9, hero.y + tileSize);
     objects.push({
       base: hero.y + tileSize,
-      shadow: shadow(14, standingOn, hero.x + 9, hero.y + tileSize),
+      shadow: () => {
+        if (scene.arrival === undefined || shadowShown(scene.arrival)) heroShadow();
+      },
       paint: () => {
         const age = scene.arrival;
         if (age === undefined) {
@@ -461,6 +464,14 @@ export class WorldPainter {
         const left = hero.x - camera.x;
         const top = hero.y - camera.y;
         draw(scene.hero, hero.x, hero.y, 'colored', (x, y) => revealed(age, x - left, y - top));
+        const edge = risingEdge(age);
+        if (edge !== undefined) {
+          const { width, colored } = sprite(scene.hero);
+          for (let column = 0; column < width; column++) {
+            if (colored[(edge * width + column) * 4 + 3] !== 0)
+              draw(lightMote, hero.x + column, hero.y + edge, 'colored');
+          }
+        }
         for (const mote of arrivalMotes(age)) draw(lightMote, hero.x + mote.x, hero.y + mote.y, 'colored');
       },
     });

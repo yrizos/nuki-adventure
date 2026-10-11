@@ -12,7 +12,7 @@ export type Phase =
 
 export const playing: Phase = { name: 'playing' };
 
-export const arrivalLength = 12;
+export const arrivalLength = 48;
 
 export function appearing(frame: number): Phase {
   return { name: 'appearing', since: frame };

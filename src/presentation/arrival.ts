@@ -1,32 +1,51 @@
+import { arrivalLength } from './game-phase';
 import { ditherThreshold } from './ordered-dither';
 
-const moteStarts = [
-  [4, 2],
-  [28, -2],
-  [16, -8],
-] as const;
-const moteEnds = [
-  [8, 8],
-  [24, 6],
-  [16, 2],
-] as const;
+export const gatherLength = 16;
+const revealEnd = 40;
+const moteCount = 8;
+const centerX = 16;
+const centerY = 17;
+// A full turn takes 32 frames, so the trail points stay a few pixels apart instead of scattering.
+const turnPerFrame = (2 * Math.PI) / 32;
+const orbitRadius = 11;
 
-// Each row needs four more steps than the row below it, so the dither feathers the rising edge across about two rows.
+// Six steps per frame against four per row moves the edge one and a half rows each frame, so the reveal starts at age 16 and is complete at age 39.
+const revealSteps = (age: number): number => 6 * (age - gatherLength + 1);
+
 export function revealed(age: number, spriteX: number, spriteY: number): boolean {
-  return 4 * (31 - spriteY) + 2 * ditherThreshold(spriteX, spriteY) < 24 * (age - 2);
+  return 4 * (31 - spriteY) + ditherThreshold(spriteX, spriteY) < revealSteps(age);
 }
 
+// The line sits where about half of the dithered row is shown, so solid pixels are below it and scattered ones above.
+export function risingEdge(age: number): number | undefined {
+  if (age < gatherLength || age >= revealEnd) return undefined;
+  const row = Math.min(31, 31 - Math.floor((revealSteps(age) - 8) / 4));
+  return row >= 0 ? row : undefined;
+}
+
+export function shadowShown(age: number): boolean {
+  return age >= gatherLength;
+}
+
+function motePosition(index: number, age: number): { x: number; y: number } {
+  // The motes stop turning once the reveal ends, so they rise straight up from where they last circled.
+  const angle = (index * 2 * Math.PI) / moteCount + turnPerFrame * Math.min(age, revealEnd - 1);
+  const radius = age < gatherLength ? 20 - ((20 - orbitRadius) * age) / (gatherLength - 1) : orbitRadius;
+  let dx = Math.cos(angle) * radius;
+  let dy = Math.sin(angle) * radius;
+  if (age >= revealEnd) {
+    const risen = age - revealEnd + 1;
+    dx *= 1 + risen / 4;
+    dy -= 3 * risen;
+  }
+  return { x: centerX + Math.round(dx), y: centerY + Math.round(dy) };
+}
+
+// Each mote also shows where it was one and two frames ago, which reads as a short trail.
 export function arrivalMotes(age: number): readonly { readonly x: number; readonly y: number }[] {
-  if (age >= 12) return [];
-  return moteEnds.map(([endX, endY], index) => {
-    if (age <= 2) {
-      const [startX, startY] = moteStarts[index]!;
-      return {
-        x: Math.round(startX + ((endX - startX) * age) / 2),
-        y: Math.round(startY + ((endY - startY) * age) / 2),
-      };
-    }
-    if (age <= 8) return { x: endX + ((age + index) % 2), y: endY };
-    return { x: endX, y: endY - 3 * (age - 8) };
-  });
+  if (age >= arrivalLength) return [];
+  return Array.from({ length: moteCount }, (_, index) =>
+    [age, age - 1, age - 2].filter((at) => at >= 0).map((at) => motePosition(index, at)),
+  ).flat();
 }

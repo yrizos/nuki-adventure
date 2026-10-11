@@ -8,7 +8,7 @@ import { type Obstacles, Outline, type PlaceObstacles } from './obstacles';
 import { Direction, type Heading, TilePosition, TilePositions, WorldPosition } from './position';
 import type { Scenery } from './scenery';
 
-const starSpotCount = StarCount.of(15);
+const minimumStarSpots = StarCount.of(15);
 const starsAmongSpots = StarCount.of(5);
 
 export class Stone {
@@ -153,8 +153,8 @@ export class Level {
     spots: readonly TilePosition[],
     shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[],
   ): Level {
-    if (!StarCount.of(spots.length).equals(starSpotCount))
-      throw new RangeError(`A level needs ${starSpotCount.value} star spots, not ${spots.length}`);
+    if (spots.length < minimumStarSpots.value)
+      throw new RangeError(`A level needs at least ${minimumStarSpots.value} star spots, not ${spots.length}`);
     // Every spot must be able to hold a star, not only the five the shuffle happens to pick.
     new Level({ ...definition, stars: spots.map(Star.at) });
     return new Level({ ...definition, stars: shuffle(spots).slice(0, starsAmongSpots.value).map(Star.at) });

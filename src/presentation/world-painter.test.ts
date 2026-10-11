@@ -21,7 +21,7 @@ import * as library from './sprite-library';
 import { faded, lighter, palette, type PaletteCode } from './palette';
 import { lighten, Picture, sprite } from './picture';
 import { cameraPosition, heroPixels, tileSize } from './world-geometry';
-import { arrivalMotes } from './arrival';
+import { arrivalMotes, risingEdge } from './arrival';
 import { keyOffset, propVariants, WorldPainter } from './world-painter';
 import { closingLength, crestLength, isRestored, restorationLength } from './world-transition';
 
@@ -163,18 +163,18 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    await expectChecksum(picture, 'e9fc3c17caf27c06d16cfa040f0778de421dd4fde6c65d715dec72f2053214ee');
+    await expectChecksum(picture, '935f69e4ec29e520c1ee566ffac371fa8f45ae48fa2e6e9d766f3485daf8e118');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     // The key lies outside the frame, so the wave starts from her start to stop partway across the frame.
     painter.paintRestoring(picture, scene, level.hero.position, 20, [], [key.restores]);
-    await expectChecksum(picture, '9a8444b92d69069875199ad5e9e1d45cc8c1613aaafe021747057795e5dce564');
+    await expectChecksum(picture, '2d36ba691fba45d6503a6f05703e195faef7fc2108051b5d5e48171312b6a9e8');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [key.restores]);
-    await expectChecksum(picture, '76e67f6de1a31d10c89618df57774130a81d6d50a33156fbcef7671f834208e2');
+    await expectChecksum(picture, 'c0be47159a6fc5fbd4613eaa2c81f2482df70919cee5eb210fc653b5b736d943');
   });
 });
 
@@ -1272,39 +1272,55 @@ function arrivalDraws(age: number) {
         (alpha) => alpha !== 0,
       ).length,
   );
-  const motes = draw.mock.calls
+  const moteDraws = draw.mock.calls
     .filter(([art]) => art === sprites.lightMote)
     .map(([, x, y]) => ({ x: x - (hero.x - camera.x), y: y - (hero.y - camera.y) }));
-  return { rowsShown, opaque, motes };
+  const edgeCount = risingEdge(age) === undefined ? 0 : opaque[risingEdge(age)!]!;
+  const shadowDrawn = draw.mock.calls.some(
+    ([art, x, y]) => art.rows.length === 5 && x === hero.x + 9 - camera.x && y === hero.y + tileSize - camera.y,
+  );
+  return { rowsShown, opaque, edge: moteDraws.slice(0, edgeCount), motes: moteDraws.slice(edgeCount), shadowDrawn };
 }
 
 const sum = (values: readonly number[]): number => values.reduce((total, value) => total + value, 0);
 
-test.each([0, 1, 2])('an arriving hero shows no pixels at age %i', (age) => {
-  expect(sum(arrivalDraws(age).rowsShown)).toBe(0);
+test.each([0, 8, 15])('an arriving hero shows no pixels and no shadow at age %i', (age) => {
+  const { rowsShown, shadowDrawn } = arrivalDraws(age);
+  expect(sum(rowsShown)).toBe(0);
+  expect(shadowDrawn).toBe(false);
 });
 
-test('an arriving hero is revealed from the feet upward and shows the full sprite from age 9', () => {
+test('an arriving hero is revealed from the feet upward with her shadow from age 16 and in full from age 38', () => {
   let previous = { shown: 0, highest: 32 };
-  for (let age = 3; age <= 8; age++) {
-    const { rowsShown, opaque } = arrivalDraws(age);
+  for (let age = 16; age <= 37; age++) {
+    const { rowsShown, opaque, shadowDrawn } = arrivalDraws(age);
     const shown = sum(rowsShown);
     const highest = rowsShown.findIndex((count) => count > 0);
+    expect(shadowDrawn).toBe(true);
     expect(shown).toBeGreaterThan(previous.shown);
     expect(shown).toBeLessThan(sum(opaque));
-    expect(highest).toBeLessThan(previous.highest);
-    if (age >= 4) expect(rowsShown[31]).toBe(opaque[31]);
+    expect(highest).toBeLessThanOrEqual(previous.highest);
     previous = { shown, highest };
   }
-  for (const age of [9, 10, 11]) {
-    const { rowsShown, opaque } = arrivalDraws(age);
-    expect(rowsShown).toEqual(opaque);
+  for (const age of [38, 39, 40, 47]) expect(arrivalDraws(age).rowsShown).toEqual(arrivalDraws(age).opaque);
+});
+
+test.each([16, 24, 32, 37])('the rising edge at age %i is a Paper line over her opaque pixels only', (age) => {
+  const { edge, opaque } = arrivalDraws(age);
+  const row = risingEdge(age)!;
+  expect(edge.length).toBe(opaque[row]);
+  for (const point of edge) {
+    expect(point.y).toBe(row);
+    expect(sprite(sprites.heroArt.down.stand).colored[(row * 32 + point.x) * 4 + 3]).not.toBe(0);
   }
 });
 
-test.each([0, 1, 2, 5, 9, 11, 12])('arrival motes at age %i are drawn at their offsets from the hero', (age) => {
-  expect(arrivalDraws(age).motes).toEqual(arrivalMotes(age));
-});
+test.each([0, 1, 2, 15, 16, 30, 39, 40, 47, 48])(
+  'arrival motes at age %i are drawn at their offsets from the hero',
+  (age) => {
+    expect(arrivalDraws(age).motes).toEqual(arrivalMotes(age));
+  },
+);
 
 test('a hero without an arrival is drawn without a mask or motes', () => {
   const level = renderingLevel();

@@ -26,7 +26,7 @@ The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/dom
 
 ### Stars
 
-- A layout marks exactly fifteen star spots, and five of them hold stars each time the level starts.
+- A layout marks at least fifteen star spots, and five of them hold stars each time the level starts.
 - Every star spot is reachable and not hidden.
 - No star spot shares a tile with a key, the hero start or another star spot.
 - A layout either marks star spots or gives a star count for random placement, never both.
@@ -45,7 +45,8 @@ The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/dom
 ### Magical Arrival
 
 - A level MAY open with the [magical arrival](visual-style.md#magical-arrival). Level 1 does.
-- The arrival needs no input and ends after 12 frames.
+- The arrival needs no input and ends after 48 frames.
+- All eight tiles around the start are open ground with no tree, woodland, stone, flower, key or star spot, and no tree or woodland canopy covers them, so the hero never materializes touching a boundary.
 
 ### Areas
 
@@ -72,7 +73,7 @@ Every meaningful navigation decision has a recognizable landmark, such as a dist
 
 ### Star Placement
 
-Stars exist to encourage exploration of the whole map, so every star spot is chosen by hand and a level never uses a star count for random placement. Picking five of fifteen spots each time the level starts makes every run feel different while each star still lands somewhere worth reaching. Spread the spots across the map rather than gathering them in one place, so any five of them still cover it.
+Stars exist to encourage exploration of the whole map, so every star spot is chosen by hand and a level never uses a star count for random placement. Picking five of at least fifteen spots each time the level starts makes every run feel different while each star still lands somewhere worth reaching. Spread the spots across the map rather than gathering them in one place, so any five of them still cover it.
 
 Star spots belong on optional dead ends, on side routes, in places worth seeing away from the mandatory route and in places the player can see before knowing how to reach. They never mark the mandatory route, and stars are never required to complete a level.
 
