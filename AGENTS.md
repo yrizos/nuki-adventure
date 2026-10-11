@@ -5,16 +5,15 @@ Scope: every task. Precedence: artifact-specific rules override general writing 
 ## Development Commands
 
 - Commands: [Makefile](Makefile) targets only, never npm scripts directly.
-- Before execution: read target/prerequisites; select task-relevant checks.
-
-- Focused tests: `make test-file FILE=<path>`. Full unit suite: `make test`.
-- Combined checks: `make check`. Tests and browser build: `make check-push`.
+- While editing: run affected checks only, `make test-file FILE=<path>`.
+- After all edits: run `make check` once.
 - Markdown edits: follow [.markdownlint.json](.markdownlint.json), then run `make markdown`.
+- `make test` (full unit suite) and `make check-push` (unit tests and browser build) run only when the user requests them or before a push.
 
 ## Check Failures
 
 - Fix failures, including hooks: run configured auto-fixes or `make fix`, inspect edits, fix remaining issues, rerun. Preserve unrelated work. Report a blocker only after exhausting in-scope fixes.
-- During implementation, run affected checks only. The primary agent coordinates final project validation.
+- During implementation, run affected checks only. The primary agent runs final validation.
 - Do not run the full suite for a handoff or repeat successful checks on unchanged inputs. After further edits, rerun affected checks.
 - Bug fixes: write regression test, verify failure for the reported defect, fix, verify pass. The implementing agent may author the test.
 
@@ -108,11 +107,8 @@ Use existing [.claude/agents](.claude/agents) definitions:
 
 - Before edits: inspect `git status --short` and relevant staged/unstaged diffs. Never discard, overwrite, revert or include unrelated user work.
 - Require explicit instruction for branches, commits, tags, rebases, merges or pushes. Require explicit approval for destructive commands, amendments, history rewrites or force-pushes.
-- Stage explicit paths only; never `git add .` or `git add -A`. Keep each commit to one logical change; split multiple concerns.
 - Never commit secrets, credentials, machine-local configuration, logs, dependencies or generated artifacts unless explicitly tracked by the repository.
-
-- Never create unsigned commits or bypass Git hooks.
-- WHEN explicitly instructed to commit: load [Commit messages](docs/commit-messages.md) and follow its staging, message, hook, signing and verification requirements.
+- WHEN explicitly instructed to commit: load [Commit messages](docs/commit-messages.md) and follow its procedure.
 
 ## Code Comments
 
@@ -122,16 +118,8 @@ Use existing [.claude/agents](.claude/agents) definitions:
 
 ## Writing
 
-- Use US English; no US idioms/colloquialisms.
-- Forbid em dashes, horizontal rules, hashtags, invented facts, filler and repetition.
-- Use Markdown headings; never bold/bullets as section dividers or bold for emphasis.
-- Match response length to required information. Preserve wording unless a change is necessary.
-- Load detailed prose rules through routing; skip for routine messages/handoffs.
-
-### Markdown Artifacts
-
-- All repository Markdown documents are agent-authored and agent-consumed only. Optimize total token consumption, deterministic interpretation and selective retrieval. Preserve complete requirements. Human readability has no independent value.
-- Apply [Writing](docs/writing.md) to every Markdown document created or edited.
+- Chat replies: US English; no idioms or colloquialisms; no em dashes, horizontal rules, hashtags, invented facts, filler or repetition; match response length to required information.
+- Every Markdown document created or edited, substantial prose, commit bodies and pull request descriptions: follow [Writing](docs/writing.md).
 
 ## Architecture
 

@@ -16,7 +16,7 @@ Start at affected symbols; follow imports along the actual rendering path. Load 
 - Color/fading: affected [palette](../../docs/palette.md), [Faded World](../../docs/visual-style.md#faded-world) and contrast rules.
 - Performance: affected module and actual dependencies. Artistic requirements only when visual output requirements are affected.
 
-For sprite structure, use `make sprite-inspect`: `MODE=frames` for names/dimensions, `MODE=animation` for mappings and `MODE=palette` for palette usage. Inspect only relevant sprites. Read raw source only for directly relevant implementation details, never complete files for metadata.
+For sprite structure, use `make sprite-inspect` with the modes in [Context Loading](../../AGENTS.md#context-loading). Inspect only relevant sprites. Read raw source only for directly relevant implementation details.
 
 Use [Test Discovery](../../AGENTS.md#test-discovery) for rendering tests and required fixtures. Never read complete large test files for discovery.
 
@@ -24,4 +24,4 @@ Run `make test-file FILE=<affected-rendering-test>` and other affected checks. P
 
 Stop: sprite data, domain or user interface control changes required.
 
-Include required work outside ownership in root handoff fields.
+Return changed paths, required work outside ownership and blockers per [Handoffs](../../AGENTS.md#handoffs).

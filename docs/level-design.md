@@ -19,25 +19,25 @@ The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/dom
 
 ### Signposts
 
-- Every orb has a hint sign on its approach. Every traversable route from the hero start to that orb must enter the hint sign's reading range before the orb can be collected. A shorter recommended route is not enough if another route bypasses the sign.
-- Every exit door has its own reachable, readable sign beside it. Its text gives a general hint about completing the level and opening the door, separate from the orb's location hint.
+- Every key has a hint sign on its approach. Every traversable route from the hero start to that key must enter the hint sign's reading range before the key can be collected. A shorter recommended route is not enough if another route bypasses the sign.
+- Every exit door has its own reachable, readable sign beside it. Its text gives a general hint about completing the level and opening the door, separate from the key's location hint.
 - Place the exit sign as close to the fence as possible, on reachable ground immediately inside it and beside either end of the door. For the current layouts, it stands one row below the fence and one column outside the door's width, either left or right. Both sides are valid. Keep the doorway clear and the fence intact; never move the door to match another level's sign coordinates.
-- Sign text matches the level's actual number of orbs. A one-orb level uses singular nouns, verbs and pronouns, and never implies that the player must find additional orbs. A level with several orbs says how many there are, in the exit sign's general hint.
-- An orb's hint sign names that orb's color and a landmark. The exit sign never names an orb color or location.
+- Sign text matches the level's actual number of keys. A one-key level uses singular nouns, verbs and pronouns, and never implies that the player must find additional keys. A level with several keys says how many there are, in the exit sign's general hint.
+- Every key looks the same, so a key's hint sign names the landmark where it lies. The exit sign never names a key location.
 - Signposts refer to recognizable, visible landmarks such as apple trees, a lake, flowers or a group of rocks. They never use compass directions, compass abbreviations or bearings. This includes north, south, east, west and their combinations or equivalents in any language. The player has no compass.
-- Test entry placement, sign-before-orb ordering, exit sign placement beside the door and against the fence, objective-count wording and forbidden compass wording for every authored level. Use movement and actual reading range for route checks, not only marker distances or sign counts.
+- Test entry placement, sign-before-key ordering, exit sign placement beside the door and against the fence, objective-count wording and forbidden compass wording for every authored level. Use movement and actual reading range for route checks, not only marker distances or sign counts.
 
-### Orbs
+### Keys
 
-- A level has at least one orb.
-- Every orb is reachable and has a tile of its own.
-- No orb is hidden by a tree canopy or the door.
+- A level has at least one key.
+- Every key is reachable and has a tile of its own.
+- No key is hidden by a tree canopy or the door.
 
 ### Stars
 
 - A layout marks exactly fifteen star spots, and five of them hold stars each time the level starts.
 - Every star spot is reachable and not hidden.
-- No star spot shares a tile with an orb, the hero start or another star spot.
+- No star spot shares a tile with a key, the hero start or another star spot.
 - A layout either marks star spots or gives a star count for random placement, never both.
 
 ### Trees
@@ -47,7 +47,7 @@ The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/dom
 ### Areas
 
 - Every area holds at least one tile.
-- The areas of a level's orbs together cover every tile.
+- The areas of a level's keys together cover every tile.
 
 ### Viewport
 
@@ -79,17 +79,17 @@ An intentional dead end holds a payoff, usually a star spot but sometimes anothe
 
 ### Required Objects
 
-Orbs and other mandatory objectives never depend on accidental discovery. Beyond the checked rules, they never look like scenery and never rely on color alone to show their meaning.
+Keys and other mandatory objectives never depend on accidental discovery. Beyond the checked rules, they never look like scenery and never rely on color alone to show their meaning.
 
 ### Area Shapes
 
-Each area is a place the player recognizes as a whole, such as a forest, a lake, a garden, a courtyard, ruins or an island. Area boundaries follow the shape of those places, never a convenience such as a straight column split. Collecting an orb improves the player's understanding of the map as well as moving the level forward.
+Each area is a place the player recognizes as a whole, such as a forest, a lake, a garden, a courtyard, ruins or an island. Area boundaries follow the shape of those places, never a convenience such as a straight column split. Collecting a key improves the player's understanding of the map as well as moving the level forward.
 
-The seam between a restored and a faded area is a gradient about three tiles wide that stays on screen until the next orb is collected. Place an area boundary where that gradient reads as the change from one place to another, such as a shoreline, a tree line or a track, and never rely on the color difference to show a route.
+The seam between a restored and a faded area is a gradient about three tiles wide that stays on screen until the next key is collected. Place an area boundary where that gradient reads as the change from one place to another, such as a shoreline, a tree line or a track, and never rely on the color difference to show a route.
 
 ### Returning to the Door
 
-The player knows where the door is before collecting the last orb. The return can involve backtracking, as long as the space has changed through restored color, a newly understood route, a recognized landmark, a shortcut or a connection found earlier. Long mandatory returns through unchanged space are avoided.
+The player knows where the door is before collecting the last key. The return can involve backtracking, as long as the space has changed through restored color, a newly understood route, a recognized landmark, a shortcut or a connection found earlier. Long mandatory returns through unchanged space are avoided.
 
 ### Difficulty
 
@@ -144,14 +144,14 @@ Favor different variants between distinct clusters or places so their silhouette
 
 ### Tree Size
 
-A tree is two tiles wide, and its canopy hides the two tiles above it. Clusters and rows have to leave those tiles free of orbs and star spots.
+A tree is two tiles wide, and its canopy hides the two tiles above it. Clusters and rows have to leave those tiles free of keys and star spots.
 
 ## Playtesting
 
 No numerical limits apply yet. For each level, playtests should eventually capture:
 
 - completion time
-- time to each orb
+- time to each key
 - stars collected
 - route taken
 - wrong turns

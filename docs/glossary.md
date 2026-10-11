@@ -88,7 +88,7 @@ The outline of the part of an object or ground that the hero cannot walk through
 
 ### Collectible
 
-A star or an orb that the hero picks up.
+A star or a key that the hero picks up.
 
 ### Level
 
@@ -96,7 +96,7 @@ One enclosed part of the game world that the hero plays through.
 
 ### Door
 
-The exit of a level. It opens once the hero has picked up every orb in the level and color has returned to the whole door, and stepping into it completes the level.
+The exit of a level. It opens once the hero has picked up every key in the level and color has returned to the whole door, and stepping into it completes the level.
 
 ### Reachable
 
@@ -118,9 +118,9 @@ A tile chosen in a level's layout that can hold a star. A level marks fifteen st
 
 The number of stars a level holds. A level either picks its stars from its star spots, or its stars go to random tiles that are reachable and not hidden each time it starts.
 
-### Orb
+### Key
 
-A collectible in red, blue, violet or teal. Each orb carries its own symbol or shape and restores color to its own area of the level.
+A golden collectible that floats, buzzes and hums when the hero is near. Every key looks the same, and each restores color to its own area of the level.
 
 ### Signpost
 
@@ -166,7 +166,7 @@ The single row of pixels in the surface's shading step directly beneath the base
 
 ### Faded World
 
-The state of the game world at the start, in which only the hero, stars and orbs are in color.
+The state of the game world at the start, in which only the hero, stars and keys are in color.
 
 ### Faded Version
 
@@ -178,7 +178,7 @@ The return of color to the faded world, which spreads outward from a point.
 
 ### Area
 
-A part of a level that returns to color together during restoration. Each orb restores one area, and the areas of a level's orbs together cover every tile.
+A part of a level that returns to color together during restoration. Each key restores one area, and the areas of a level's keys together cover every tile.
 
 ## Saved Progress
 

@@ -15,4 +15,4 @@ Own: src/**/*.test.ts, src/test-support/**. Edit nothing else.
 
 Stop: defect unreproducible, behavior ambiguous, or production change required.
 
-For regressions, include the result and relevant failing assertion in the root handoff fields.
+For regressions, return the test result and relevant failing assertion per [Handoffs](../../AGENTS.md#handoffs).

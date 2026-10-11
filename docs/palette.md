@@ -4,7 +4,7 @@
 
 - Each ramp shifts hue as it changes brightness, with shadows leaning toward blue or teal and highlights toward yellow
 - Flowers use soft light steps
-- Ink is the single outline color for everything the player interacts with: the hero, stars, orbs, signposts, stones and floor triggers
+- Ink is the single outline color for everything the player interacts with: the hero, stars, keys, signposts, stones and floor triggers
 - Pure black is used only for the desktop background outside the game column; pure white is not used
 - A new hue is added as a full ramp of four steps, never as a single color
 
@@ -126,14 +126,11 @@ Steps run from darkest to lightest.
 | Door | E1 frame, E2 frame highlights, E0 frame shading and grain, E2 planks, E0 plank lines and handles, E0 doorway when open |
 | Light motes | Paper |
 
-### Orbs
+### Keys
 
-| Orb | Shading | Core | Shine |
+| Element | Shading | Core | Shine |
 | --- | --- | --- | --- |
-| Red | R1 | R2 | R3 |
-| Blue | W1 | W2 | W3 |
-| Violet | V1 | V2 | V3 |
-| Teal | T1 | T2 | T3 |
+| Key | Y1 | Y2 | Y3 |
 
 ## Future Elements
 
@@ -171,7 +168,7 @@ UI colors map onto Material 3 color roles.
 | On surface | Level end window star | Matches the star in the game world |
 | Primary | ΣΥΝΕΧΕΙΑ button | Matches the A button, including its pressed state |
 | Surface | Start screen and level picker background | Ink, with no texture |
-| On surface | Start screen game name | Paper, with ΠΟΛΥΧΡΩΜΗ letters cycling through the orb cores V2, T2 and R2, and ΝΟΥΚΙ in Y2 |
+| On surface | Start screen game name | Paper, with ΠΟΛΥΧΡΩΜΗ letters cycling through V2, T2 and R2, and ΝΟΥΚΙ in Y2 |
 | Primary | Start screen and level picker buttons | Match the A button, including its pressed state |
 | Surface container | Level card fill | V0 |
 | Outline | Level card edge | Ink outline, then a V1 inner edge |
@@ -220,6 +217,6 @@ Text targets the Web Content Accessibility Guidelines (WCAG) minimum of 4.5:1, a
 ### Collectibles
 
 - Stars reach only 1.3:1 brightness contrast against paths and 1.9:1 against grass, so the Ink outline on stars is required
-- Orb cores reach between 1.0:1 and 1.4:1 against grass and stand out by hue alone, so orbs need the Ink outline as well
+- Keys share the star ramp, so the Ink outline on keys is required for the same reason
 - Ink outlines reach 5.8:1 against grass and 8.4:1 against paths
-- Each orb carries a distinct symbol or shape alongside its color
+- Keys and stars share colors, so they differ by silhouette alone

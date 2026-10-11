@@ -76,7 +76,7 @@ This document builds on the color palette and the UI layout documents. Color cod
 ### Hierarchy
 
 - The hero has the widest value range on screen, from Ink to her lightest highlight
-- Stars and orbs have the second widest range
+- Stars and keys have the second widest range
 - Props span at most three steps of their ramp
 - Ground tiles use one base step plus the steps directly above and below it, with those two steps covering at most 20 percent of the tile together
 - The darkest and lightest steps of any ramp never appear in ground tiles except along transitions and shorelines, or where the palette assigns them, such as E4 path highlights
@@ -138,7 +138,7 @@ This document builds on the color palette and the UI layout documents. Color cod
 
 ### Interactive Elements
 
-- The hero, stars, orbs, signposts, stones and floor triggers have a closed one pixel Ink outline
+- The hero, stars, keys, signposts, stones and floor triggers have a closed one pixel Ink outline
 - Lines between parts of the same sprite, such as hair and face, use the darkest step the palette assigns to that part
 
 ### Scenery
@@ -173,7 +173,7 @@ This document builds on the color palette and the UI layout documents. Color cod
 | Element | Sprite size | Footprint |
 | --- | --- | --- |
 | Hero | 32 × 32 | 1 tile |
-| Stars and orbs | 24 × 24 | 1 tile |
+| Stars and keys | 24 × 24 | 1 tile |
 | Signposts | 32 × 32 | 1 tile |
 | Stones and small props | 32 × 32 | 1 tile |
 | Trees | 64 × 64 | 2 × 1 tiles at the base |
@@ -197,10 +197,10 @@ A new element uses the smallest size in this table that fits its shape.
 - Hands are S2 clusters shaded in S1, two pixels wide while she stands or walks
 - Shoes are E1, two pixels tall while she stands or walks
 
-### Stars and Orbs
+### Stars and Keys
 
-- Stars and orbs sit centered in their tile with a four pixel empty margin
-- Each orb has its own symbol or shape
+- Stars and keys sit centered in their tile with a four pixel empty margin
+- Every key uses one shared sprite: a golden key with a round bow, a shaft and teeth
 
 ### Scenery Props
 
@@ -231,7 +231,7 @@ A new element uses the smallest size in this table that fits its shape.
 
 ## Faded World
 
-At the start, only the hero, stars and orbs are in color. Every scenery tile and prop has a faded version that maps each palette step to a neutral.
+At the start, only the hero, stars and keys are in color. Every scenery tile and prop has a faded version that maps each palette step to a neutral.
 
 ### Mapping
 
@@ -255,14 +255,14 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 ### Restoring Color
 
 - Color returns through an ordered 4 × 4 dither dissolve, each pixel switching from faded to color at its threshold
-- The dissolve spreads outward from the center of the orb's tile as a circle, one tile every 4 frames
+- The dissolve spreads outward from the center of the key's tile as a circle, one tile every 4 frames
 - Each pixel that changes first shows its final color one step lighter on its own ramp for 8 frames, so a bright crest travels with the front and steps down to the final color. Ink and the lightest step of a ramp stay as they are
 - Pixels that are the same before and after, such as the hero, stars and areas already in color, never change
-- The area of the collected orb changes, together with the seam band around it, and the rest of the map keeps its current state
+- The area of the collected key changes, together with the seam band around it, and the rest of the map keeps its current state
 - Where a colored area meets a faded one, the seam is a band of the same ordered 4 × 4 dither about three tiles wide, centered on the area edge and eased at both ends so color feathers in instead of starting at a visible edge
 - The seam itself never animates, and the dissolve passes through it, so the last frame of the dissolve is exactly the settled seam
 - Every frame of the dissolve contains palette colors only
-- The door stays closed until every orb is picked up. During the last restoration it is drawn open where color reaches it, and the hero can step into it once color covers the whole door
+- The door stays closed until every key is picked up. During the last restoration it is drawn open where color reaches it, and the hero can step into it once color covers the whole door
 
 ### Leaving a Level
 
@@ -286,7 +286,8 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 | Hero walk | 4 per direction | 8 game frames each, one cycle per two cardinal tiles, continuing across tiles and diagonal steps |
 | Hero idle | 2 | Blink of 6 frames every 3 seconds, except facing up |
 | Hero push | 2 per direction | 8 game frames each |
-| Star and orb bob | 4 | 1 pixel up and down, 10 game frames each |
+| Star bob | 4 | 1 pixel up and down, 10 game frames each |
+| Key float | Sine, rounded to whole pixels | 2 pixels up and down over 150 game frames, with 1 pixel of sideways sway over 60 game frames. The shadow stays still |
 | Star sparkle | 4 | 6 game frames each, every 2 seconds |
 | Water | 4 | 15 game frames each, all water tiles in sync |
 | Flowers sway | 2 | 30 game frames each, offset per tile |
@@ -317,7 +318,7 @@ At the start, only the hero, stars and orbs are in color. Every scenery tile and
 
 - A push starts with one frame of the hero leaning in before the object moves
 - An object arriving on a floor trigger shows one frame pressed one pixel down
-- Orbs are collected by walking onto them, like stars, without a pause, raised-arm pose or held-orb animation. Color restoration starts immediately, movement continues normally and a congratulations message appears
+- Keys are collected by walking onto them, like stars, without a pause, raised-arm pose or held-key animation. Color restoration starts immediately, movement continues normally and a congratulations message appears
 
 ### Effects
 
