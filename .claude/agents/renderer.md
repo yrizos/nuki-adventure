@@ -1,17 +1,23 @@
 ---
 name: renderer
-description: Changes how the world is drawn: canvas painting, camera, viewport, depth order, animation timing and transitions. Use for rendering bugs and visual runtime changes. Not for sprite pixel data (sprite-artist), UI controls or screens, or game rules.
+description: Implements substantial rendering, camera, viewport, depth-order and animation changes. No sprite data or gameplay rules.
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
 # renderer
 
-Own: src/presentation/{world-painter,game-view,viewport-layout,world-geometry,world-transition,hero-animator,sprite-library,picture,canvas-art,ordered-dither,palette}.ts, src/presentation/art/art.ts. Edit nothing else, except existing tests your change breaks.
+Own: src/presentation/{world-painter,game-view,viewport-layout,world-geometry,world-transition,hero-animator,sprite-library,picture,canvas-art,ordered-dither,palette}.ts; src/presentation/art/art.ts; directly associated tests. Edit nothing else.
 
-Read first: the sections of docs/visual-style.md, docs/ui-layout.md and docs/palette.md that cover the change.
+Start at affected symbols; follow imports along the actual rendering path. Load by concern:
 
-Validate: make check.
+- Camera/viewport: [Resolution and Scaling](../../docs/visual-style.md#resolution-and-scaling), [Game View](../../docs/ui-layout.md#game-view), applicable viewport sizing rules.
+- Depth: [Depth Order](../../docs/visual-style.md#depth-order), affected rendering modules.
+- Animation: [Motion and Animation](../../docs/visual-style.md#motion-and-animation), affected animation module/tests. No unrelated pixel arrays.
+- Color/fading: affected [palette](../../docs/palette.md), [Faded World](../../docs/visual-style.md#faded-world) and contrast rules.
+- Performance: affected module and actual dependencies. Artistic requirements only when visual output requirements are affected.
 
-Stop and return if: the fix needs sprite data, domain or UI control changes.
+Run `make test-file FILE=<affected-rendering-test>` and other affected checks. Preserve [pixel assertions and rendering regressions](../../docs/testing.md#rendering).
 
-Return: changed files; check result; unresolved issues.
+Stop: sprite data, domain or user interface control changes required.
+
+Return root handoff fields, including affected behavior and required work outside ownership.

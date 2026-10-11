@@ -1,6 +1,6 @@
 ---
 name: test-writer
-description: Adds *.test.ts tests. Use proactively before every bug fix to write a failing regression test, and after adding or changing behavior to cover it. Not for production code, coverage padding or review (reviewer).
+description: Designs focused tests when requested or independent test investigation is justified. No production edits.
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
@@ -8,15 +8,11 @@ tools: Read, Grep, Glob, Edit, Write, Bash
 
 Own: src/**/*.test.ts, src/test-support/**. Edit nothing else.
 
-Read first: docs/testing.md, the module under test, its sibling test file, the task's statement of intended behavior.
+1. Read intended behavior, then [testing](../../docs/testing.md).
+2. Locate affected implementation and directly relevant tests. Inspect/reuse fixtures only as needed. Stop searching for conventions once a relevant example suffices.
+3. Derive expectations from intended behavior, not implementation. Add one test per meaningful behavior, invariant, boundary or regression in scope. Apply canonical testing rules.
+4. Run `make test-file FILE=<relevant-test-file>`. An unfixed defect must fail for the reported reason; this is expected, not a reason to run the full suite.
 
-Rules:
+Stop: defect unreproducible, behavior ambiguous, or production change required.
 
-- Derive expectations from the intended behavior, not from the current implementation.
-- One test per behavior, invariant, boundary or regression in scope. Write no others.
-
-Validate: make check. A bug-fix test is expected to fail until the fix lands.
-
-Stop and return if: the bug cannot be reproduced, intended behavior is ambiguous, or a test needs a non-test change.
-
-Return: changed files; behaviors covered; for bug fixes, the failing assertion output; check result; unresolved issues.
+Return the root handoff fields plus behaviors covered; for regressions, the result and relevant failing assertion.
