@@ -10,6 +10,10 @@ import { StarCount } from '../domain/shared/star-count';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
 import { Ground, LevelSize, Scenery } from '../domain/level/scenery';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
+import { levelFromLayout } from '../infrastructure/level-layout';
+import { secondLevel, secondLevelId } from '../infrastructure/second-level';
+import { keepOrder } from '../test-support/star-spots';
+import { pathTo } from '../test-support/walk-level';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
 import { LocalProgressRepository } from '../infrastructure/local-progress-repository';
 import { ManageProgress } from '../application/manage-progress';
@@ -19,8 +23,8 @@ import { memoryStorage } from '../test-support/memory-storage';
 import { pixelDifference } from '../test-support/pictures';
 import type { Art } from './art/art';
 import { artUrl } from './canvas-art';
-import { startGame } from './game';
-import { arrivalLength } from './game-phase';
+import { aButtonWobble, startGame, wobbleEvery } from './game';
+import { arrivalLength, gateOpeningLength } from './game-phase';
 import { Sound } from './sound';
 import { GameLoop } from './game-loop';
 import { GameSession, humVolume, messages } from './game-session';
@@ -62,6 +66,7 @@ function gameSession(
     footstep: vi.fn(),
     restoring: vi.fn(),
     arrival: vi.fn(),
+    gate: vi.fn(),
   };
   const progress = { reach: vi.fn<(level: LevelId) => void>(), complete: vi.fn() };
   let play: PlayLevel;
@@ -309,6 +314,213 @@ describe('the game session', () => {
     subject.advance(10);
     expect(subject.report.completed).toHaveBeenCalledOnce();
     expect(subject.createPlay).toHaveBeenCalledOnce();
+  });
+});
+
+function gatedSession(arrives = false) {
+  const id = LevelId.of('gated');
+  const pressed = new Set<'a' | 'b'>();
+  const controls = {
+    takePress: vi.fn((button: 'a' | 'b') => pressed.delete(button)),
+    heading: vi.fn<() => Heading | null>(() => null),
+  };
+  const sound = {
+    star: vi.fn(),
+    key: vi.fn(),
+    hum: vi.fn(),
+    door: vi.fn(),
+    footstep: vi.fn(),
+    restoring: vi.fn(),
+    arrival: vi.fn(),
+    gate: vi.fn(),
+  };
+  const level = levelFromLayout(id, ['.DDD.', '..K..', '.....', 'WFGFW', '..H..', '.....'], keepOrder, {
+    keys: { K: { restores: () => true } },
+  });
+  const session = new GameSession(
+    { id, start: () => new PlayLevel(new InMemoryLevelRepository([level])), arrives },
+    controls,
+    sound,
+    { reach: vi.fn(), complete: vi.fn() },
+    { completed: vi.fn() },
+  );
+  const tick = (count = 1): void => {
+    for (let frame = 0; frame < count; frame++) session.tick();
+  };
+  return {
+    session,
+    controls,
+    sound,
+    tick,
+    press(button: 'a' | 'b'): void {
+      pressed.add(button);
+      tick();
+    },
+    hold(direction: Direction | null): void {
+      controls.heading.mockReturnValue(direction && Heading.of(direction));
+    },
+  };
+}
+
+describe('a swing gate in the game session', () => {
+  test('enables A only in a level with a gate', () => {
+    expect(gatedSession().session.usesA).toBe(true);
+    expect(gameSession().session.usesA).toBe(false);
+  });
+
+  test('starts opening with its sound when A is pressed from below while facing it', () => {
+    const subject = gatedSession();
+    expect(subject.session.level.canOperateGate).toBe(true);
+    subject.press('a');
+    expect(subject.sound.gate).toHaveBeenCalledOnce();
+    expect(subject.session.level.gate?.state).toBe('opening');
+    expect(subject.session.level.canOperateGate).toBe(false);
+  });
+
+  test('holds the hero for sixteen frames and lets her through on the frame after the swing ends', () => {
+    const subject = gatedSession();
+    const start = subject.session.level.hero.feet;
+    subject.hold(Direction.Up);
+    subject.press('a');
+    subject.tick(gateOpeningLength - 2);
+    expect(subject.session.level.gate?.state).toBe('opening');
+    subject.tick();
+    expect(subject.session.level.gate?.state).toBe('open');
+    expect(subject.session.level.hero.feet).toEqual(start);
+    subject.tick();
+    expect(subject.session.level.hero.feet.y).toBeLessThan(start.y);
+    subject.tick(40);
+    expect(subject.session.level.hero.position.row).toBeLessThan(3);
+  });
+
+  test('answers no further press once it starts opening', () => {
+    const subject = gatedSession();
+    subject.press('a');
+    subject.press('a');
+    subject.tick(gateOpeningLength);
+    subject.press('a');
+    expect(subject.sound.gate).toHaveBeenCalledOnce();
+    expect(subject.session.level.gate?.state).toBe('open');
+  });
+
+  test('never opens for B, for walking into it, from beside it or while the hero faces away', () => {
+    const subject = gatedSession();
+    subject.press('b');
+    subject.hold(Direction.Up);
+    subject.tick(30);
+    subject.hold(Direction.Down);
+    subject.tick();
+    subject.hold(null);
+    subject.tick();
+    subject.press('a');
+    subject.hold(Direction.Left);
+    subject.tick(20);
+    subject.hold(Direction.Up);
+    subject.tick();
+    subject.hold(null);
+    subject.press('a');
+    expect(subject.sound.gate).not.toHaveBeenCalled();
+    expect(subject.session.level.gate?.state).toBe('closed');
+  });
+
+  test('asks the A button to wobble only while the hero can open the gate', () => {
+    const subject = gatedSession(true);
+    expect(subject.session.promptsA).toBe(false);
+    subject.tick(arrivalLength);
+    expect(subject.session.promptsA).toBe(true);
+    subject.press('a');
+    expect(subject.session.promptsA).toBe(false);
+    subject.tick(gateOpeningLength);
+    expect(subject.session.promptsA).toBe(false);
+    expect(gameSession().session.promptsA).toBe(false);
+  });
+
+  test('wobbles the A button smoothly within one panel pixel in bursts that start still and rest between', () => {
+    const offsets = Array.from({ length: wobbleEvery }, (_, age) => aButtonWobble(age));
+    expect(offsets[0]).toBe(0);
+    expect(offsets.every((offset) => Math.abs(offset) <= 1)).toBe(true);
+    expect(offsets.slice(1).some((offset, index) => Math.abs(offset - offsets[index]!) > 0.5)).toBe(false);
+    expect(offsets.slice(24).every((offset) => offset === 0)).toBe(true);
+    expect(aButtonWobble(wobbleEvery + 3)).toBe(offsets[3]);
+  });
+
+  test('ignores A during the magical arrival', () => {
+    const subject = gatedSession(true);
+    subject.press('a');
+    subject.tick(arrivalLength - 1);
+    expect(subject.session.level.gate?.state).toBe('closed');
+    subject.press('a');
+    expect(subject.session.level.gate?.state).toBe('opening');
+  });
+});
+
+describe('the second level in the game session', () => {
+  test('is played from the arrival through the gate, to the key and out of the door into the next level', () => {
+    const pressed = new Set<'a' | 'b'>();
+    let heading: Heading | null = null;
+    const controls = { takePress: (button: 'a' | 'b') => pressed.delete(button), heading: () => heading };
+    const sound = {
+      star: vi.fn(),
+      key: vi.fn(),
+      hum: vi.fn(),
+      door: vi.fn(),
+      footstep: vi.fn(),
+      restoring: vi.fn(),
+      arrival: vi.fn(),
+      gate: vi.fn(),
+    };
+    const report = { completed: vi.fn() };
+    const session = new GameSession(
+      {
+        id: secondLevelId,
+        start: () => new PlayLevel(new InMemoryLevelRepository([secondLevel(keepOrder)])),
+        arrives: true,
+      },
+      controls,
+      sound,
+      { reach: vi.fn(), complete: vi.fn() },
+      report,
+    );
+    const walkTo = (arrived: (tile: TilePosition) => boolean): void => {
+      const path = pathTo(session.level, arrived);
+      expect(path, 'the destination must be reachable').toBeDefined();
+      for (const next of path!.slice(1)) {
+        for (let attempt = 0; attempt < 3 && !session.level.hero.feet.equals(next); attempt++) {
+          const { feet } = session.level.hero;
+          heading = Heading.toward(next.x - feet.x, next.y - feet.y);
+          session.tick();
+        }
+        expect(session.level.hero.feet.equals(next)).toBe(true);
+      }
+      heading = null;
+      session.tick();
+    };
+    for (let frame = 0; frame < arrivalLength; frame++) session.tick();
+    const gate = session.level.gate!;
+    walkTo((tile) => tile.equals(gate.approach));
+    heading = Heading.of(Direction.Up);
+    session.tick();
+    heading = null;
+    pressed.add('a');
+    session.tick();
+    expect(sound.gate).toHaveBeenCalledOnce();
+    for (let frame = 1; frame < gateOpeningLength; frame++) session.tick();
+    expect(session.level.gate?.state).toBe('open');
+    walkTo((tile) => tile.equals(TilePosition.at(2, 8)));
+    expect(sound.key).toHaveBeenCalledOnce();
+    walkTo((tile) => tile.equals(gate.approach));
+    heading = Heading.of(Direction.Up);
+    session.tick();
+    heading = null;
+    pressed.add('a');
+    session.tick();
+    expect(sound.gate).toHaveBeenCalledOnce();
+    for (let frame = 0; frame < 600 && !session.level.door.isOpen; frame++) session.tick();
+    expect(session.level.door.isOpen).toBe(true);
+    walkTo((tile) => session.level.door.covers(tile));
+    expect(sound.door).toHaveBeenCalledOnce();
+    for (let frame = 0; frame <= closingLength; frame++) session.tick();
+    expect(report.completed).toHaveBeenCalledOnce();
   });
 });
 

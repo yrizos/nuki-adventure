@@ -94,6 +94,16 @@ export class Sound {
     this.notes([784, 1047, 1319, 1568, 2093], 0.14, 'triangle', 0.1);
   }
 
+  // Two quiet high notes nudge the player toward the A button without competing with the key hum.
+  hint(): void {
+    this.notes([1568, 2093], 0.05, 'triangle', 0.04);
+  }
+
+  // A low creak then a knock reads as wood swinging on its hinge and coming to rest.
+  gate(): void {
+    this.notes([147, 131, 110, 82], 0.06, 'triangle', 0.18);
+  }
+
   door(): void {
     this.notes([784, 659, 523, 392], 0.15, 'square', 0.1);
   }

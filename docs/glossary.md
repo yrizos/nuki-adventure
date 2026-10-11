@@ -106,9 +106,13 @@ The 48-frame presentation in which the hero materializes at her start before mov
 
 The exit of a level. It opens once the hero has picked up every key in the level and color has returned to the whole door, and stepping into it completes the level.
 
+### Swing Gate
+
+A single wooden leaf hinged in a fence. The hero opens it by pressing A while she stands on the tile in front of it and faces it. It swings open once and stays open for the rest of the level run. Unlike the door, it never completes the level, and unlike a fence, it can be passed once open.
+
 ### Reachable
 
-Describes a tile the hero can walk to from her start tile without stepping into the door.
+Describes a tile the hero can walk to from her start tile without stepping into the door. In a level with a swing gate, a tile beyond the closed gate counts as reachable, because she can always open the gate and walk through.
 
 ### Hidden
 

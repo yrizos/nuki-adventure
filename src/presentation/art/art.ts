@@ -18,7 +18,7 @@ export interface HeroDirectionArt {
 
 export interface HeroArt {
   readonly down: HeroDirectionArt;
-  readonly up: HeroDirectionArt;
+  readonly up: HeroDirectionArt & { readonly push: readonly Art[] };
   readonly left: HeroDirectionArt;
   readonly right: HeroDirectionArt;
 }

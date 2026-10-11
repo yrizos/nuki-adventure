@@ -1,7 +1,8 @@
 import { expect, test } from 'vitest';
 import { feet } from '../domain/level/hero';
 import { Level } from '../domain/level/level';
-import { Direction, Heading, TilePosition, WorldPosition, tileSize } from '../domain/level/position';
+import { Direction, Heading, TilePosition, TilePositions, WorldPosition, tileSize } from '../domain/level/position';
+import { SwingGate } from '../domain/level/swing-gate';
 import { check2dObstacles } from './check2d-obstacles';
 import { firstLevel } from './first-level';
 import { secondLevel } from './second-level';
@@ -22,13 +23,73 @@ const directions = [
 // Starting a walk from far away makes an unsettled overlap come back as that far position instead of her own.
 const farAway = WorldPosition.at(-10 * tileSize, -10 * tileSize);
 
-const starts = [
+// Grid connectivity is only the selection of starts. The sweep below checks each one against the real collision.
+function regionAround(level: Level, start: TilePosition, enterable: (tile: TilePosition) => boolean): TilePositions {
+  const reached = [start];
+  for (let index = 0; index < reached.length; index++) {
+    for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
+      const neighbor = reached[index]!.neighbor(direction);
+      if (
+        level.scenery.size.contains(neighbor) &&
+        enterable(neighbor) &&
+        !reached.some((tile) => tile.equals(neighbor))
+      )
+        reached.push(neighbor);
+    }
+  }
+  return TilePositions.of(reached);
+}
+
+interface Pass {
+  readonly name: string;
+  readonly authored: Level;
+  readonly gate: SwingGate | undefined;
+  readonly region: TilePositions | undefined;
+  readonly beyond: TilePositions | undefined;
+}
+
+// A gated level is swept twice: with the gate shut from every tile it encloses, and with it open from every tile.
+const passes = [
   { name: 'first', authored: firstLevel(keepOrder) },
   { name: 'second', authored: secondLevel(keepOrder) },
   { name: 'third', authored: thirdLevel(keepOrder) },
-].flatMap(({ name, authored }) => {
-  // Nothing here opens the door, so the obstacles never change and placing them once per level keeps the suite fast.
-  const obstacles = check2dObstacles(authored.outlines);
+].flatMap(({ name, authored }): Pass[] => {
+  const gate = authored.gate;
+  if (!gate) return [{ name, authored, gate, region: undefined, beyond: undefined }];
+  const open = (tile: TilePosition): boolean =>
+    authored.scenery.isWalkable(tile) && !authored.stones.some((stone) => stone.position.equals(tile));
+  return [
+    {
+      name: `${name} (gate closed)`,
+      authored,
+      gate,
+      region: regionAround(authored, authored.hero.position, (tile) => open(tile) && !gate.covers(tile)),
+      beyond: regionAround(authored, gate.position.neighbor(Direction.Up), (tile) => open(tile) && !gate.covers(tile)),
+    },
+    {
+      name: `${name} (gate open)`,
+      authored,
+      gate: SwingGate.closedAt(gate.position).requestOpen().finishOpening(),
+      region: undefined,
+      beyond: undefined,
+    },
+  ];
+});
+
+const starts = passes.flatMap(({ name, authored, gate, region, beyond }) => {
+  // Nothing here opens the door or moves the gate, so the obstacles never change and placing them once per pass keeps the suite fast.
+  const obstacles = check2dObstacles(
+    Level.create({
+      id: authored.id,
+      scenery: authored.scenery,
+      stones: authored.stones,
+      keys: authored.keys,
+      door: authored.door,
+      hero: { position: authored.hero.position, facing: Direction.Up },
+      ...(gate ? { gate } : {}),
+      obstacles: check2dObstacles,
+    }).outlines,
+  );
   return Array.from({ length: authored.scenery.size.rows }, (_, row) =>
     Array.from({ length: authored.scenery.size.columns }, (_, column) => TilePosition.at(column, row)),
   )
@@ -37,14 +98,15 @@ const starts = [
       (tile) =>
         tile.row > authored.door.left.row &&
         authored.scenery.isWalkable(tile) &&
-        !authored.stones.some((stone) => stone.position.equals(tile)),
+        !authored.stones.some((stone) => stone.position.equals(tile)) &&
+        (!region || region.covers(tile)),
     )
-    .map((tile) => ({ name, authored, obstacles, tile, label: `${tile.column}, ${tile.row}` }));
+    .map((tile) => ({ name, authored, gate, beyond, obstacles, tile, label: `${tile.column}, ${tile.row}` }));
 });
 
 test.each(starts)(
   'in the $name level from tile $label she stays on open ground inside the level and the door stays closed',
-  ({ authored, obstacles, tile }) => {
+  ({ authored, gate, beyond, obstacles, tile }) => {
     const violations: string[] = [];
     for (const direction of directions) {
       const level = Level.create({
@@ -54,6 +116,7 @@ test.each(starts)(
         keys: authored.keys,
         door: authored.door,
         hero: { position: tile, facing: Direction.Up },
+        ...(gate ? { gate } : {}),
         obstacles: () => obstacles,
       });
       const width = level.scenery.size.columns * tileSize;
@@ -65,6 +128,7 @@ test.each(starts)(
         if (at.x < 0 || at.y < 0) violations.push(`${where}: below the level origin`);
         if (at.x >= width || at.y >= height) violations.push(`${where}: beyond the level size`);
         if (!obstacles.walk(feet.at(farAway), at).equals(at)) violations.push(`${where}: inside an obstacle`);
+        if (beyond?.covers(level.hero.position)) violations.push(`${where}: past the closed gate`);
         if (level.keys.length > 0) {
           if (level.door.isOpen) violations.push(`${where}: door open while keys remain`);
           if (level.door.covers(level.hero.position)) violations.push(`${where}: on the door while keys remain`);

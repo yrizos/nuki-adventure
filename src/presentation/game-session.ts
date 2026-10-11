@@ -2,7 +2,7 @@ import type { LevelView } from '../application/level-view';
 import type { ManageProgress } from '../application/manage-progress';
 import type { PlayLevel } from '../application/play-level';
 import type { Area } from '../domain/level/collectibles';
-import { LevelCompleted, KeyCollected, StarCollected } from '../domain/level/level-events';
+import { LevelCompleted, KeyCollected, StarCollected, SwingGateOpeningStarted } from '../domain/level/level-events';
 import { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import type { LevelId } from '../domain/shared/level-id';
 import { StarCount } from '../domain/shared/star-count';
@@ -11,12 +11,13 @@ import {
   appearing,
   arrivalLength,
   closingLevel,
+  openingGate,
   restoringKey,
   type Phase,
   phaseAfterFrame,
   playing,
 } from './game-phase';
-import { HeroAnimator } from './hero-animator';
+import { HeroAnimator, pushingPose } from './hero-animator';
 import { MessageBox } from './message-box';
 import type { Picture } from './picture';
 import type { Sound } from './sound';
@@ -66,7 +67,10 @@ export class GameSession {
   constructor(
     level: PlayableLevel,
     private readonly controls: Pick<Controls, 'takePress' | 'heading'>,
-    private readonly sound: Pick<Sound, 'star' | 'key' | 'hum' | 'door' | 'footstep' | 'restoring' | 'arrival'>,
+    private readonly sound: Pick<
+      Sound,
+      'star' | 'key' | 'hum' | 'door' | 'footstep' | 'restoring' | 'arrival' | 'gate'
+    >,
     private readonly progress: Pick<ManageProgress, 'reach' | 'complete'>,
     private readonly report: SessionReport,
   ) {
@@ -79,16 +83,31 @@ export class GameSession {
     return this.run.play.view(this.run.id);
   }
 
+  get promptsA(): boolean {
+    return this.phase.name === 'playing' && this.level.canOperateGate;
+  }
+
+  get usesA(): boolean {
+    return this.level.gate !== undefined;
+  }
+
   get messageText(): string {
     return this.run.messageBox.text ?? '';
   }
 
   tick(): void {
-    // Nothing in a level answers A or B, so presses are dropped instead of waiting for a later screen.
-    this.controls.takePress('a');
+    // Presses nothing answers are dropped instead of waiting for a later screen.
+    const pressedA = this.controls.takePress('a');
     this.controls.takePress('b');
     const { messageBox, id, play } = this.run;
-    if (this.phase.name === 'playing' || this.phase.name === 'restoring') {
+    if (
+      pressedA &&
+      this.phase.name === 'playing' &&
+      play.operateGate(id).some((event) => event instanceof SwingGateOpeningStarted)
+    ) {
+      this.sound.gate();
+      this.transitionTo(openingGate(this.frame));
+    } else if (this.phase.name === 'playing' || this.phase.name === 'restoring') {
       const events = play.advance(id, this.controls.heading());
       for (const event of events) {
         if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
@@ -124,8 +143,11 @@ export class GameSession {
         restorationLength: (origin) => restorationLength(play.view(id).scenery.size, origin),
       }),
     );
-    this.run.animator.advance(this.run.play.view(this.run.id).hero);
-    if (this.run.animator.footfall) this.sound.footstep();
+    // She stands still pushing while the gate swings, so her last stride must not keep her walking or stepping.
+    if (this.phase.name !== 'opening-gate') {
+      this.run.animator.advance(this.run.play.view(this.run.id).hero);
+      if (this.run.animator.footfall) this.sound.footstep();
+    }
     this.sound.hum(this.phase.name === 'playing' ? humVolume(play.view(id)) : 0);
     this.frame++;
   }
@@ -137,8 +159,12 @@ export class GameSession {
     const scene = {
       level,
       frame: this.frame,
-      hero: this.run.animator.pose(level.hero, this.frame),
+      hero:
+        this.phase.name === 'opening-gate'
+          ? pushingPose(this.frame - this.phase.since)
+          : this.run.animator.pose(level.hero, this.frame),
       ...(this.phase.name === 'appearing' ? { arrival: this.frame - this.phase.since } : {}),
+      ...(this.phase.name === 'opening-gate' ? { gateAge: this.frame - this.phase.since } : {}),
     };
     if (this.phase.name === 'restoring') {
       this.run.painter.paintRestoring(picture, scene, this.phase.origin, this.frame - this.phase.since, restored, [
@@ -158,6 +184,7 @@ export class GameSession {
     if (previous.name === 'restoring' && (next.name === 'playing' || next.name === 'restoring'))
       this.run.restored = [...this.run.restored, previous.restores];
     this.phase = next;
+    if (previous.name === 'opening-gate') this.run.play.finishGate(this.run.id);
     if (next.name === 'restoring') this.sound.restoring();
     if (previous.name === 'closing' && next.name === 'ended') this.report.completed();
   }

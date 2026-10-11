@@ -195,3 +195,16 @@ test('the key is one 24 by 24 frame', () => {
   expect(keyArt).toBe(sprites.key!.frames.key);
   expect([sprite(keyArt).width, sprite(keyArt).height]).toEqual([24, 24]);
 });
+
+test('the fence gate frames share one 32 by 64 size and park open apart from the last swing frame', () => {
+  const gate = Object.entries(sprites.fence!.frames).filter(([name]) => name.startsWith('gate-'));
+  expect(gate.map(([name]) => name)).toEqual([...Array.from({ length: 8 }, (_, step) => `gate-${step}`), 'gate-open']);
+  for (const [, art] of gate) expect([sprite(art).width, sprite(art).height]).toEqual([32, 64]);
+  expect(sprites.fence!.frames['gate-open']!.rows).not.toEqual(sprites.fence!.frames['gate-7']!.rows);
+});
+
+test('the hero push frames are 32 by 32', () => {
+  for (const art of sprites.hero!.animations['up-push']!.frames) {
+    expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
+  }
+});

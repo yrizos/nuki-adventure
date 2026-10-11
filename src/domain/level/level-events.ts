@@ -21,4 +21,18 @@ export class LevelCompleted {
   constructor(readonly levelId: LevelId) {}
 }
 
-export type LevelEvent = KeyCollected | StarCollected | LevelCompleted;
+export class SwingGateOpeningStarted {
+  constructor(
+    readonly levelId: LevelId,
+    readonly position: TilePosition,
+  ) {}
+}
+
+export class SwingGateOpened {
+  constructor(
+    readonly levelId: LevelId,
+    readonly position: TilePosition,
+  ) {}
+}
+
+export type LevelEvent = KeyCollected | StarCollected | LevelCompleted | SwingGateOpeningStarted | SwingGateOpened;

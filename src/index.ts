@@ -16,7 +16,7 @@ const playing = (create: (shuffle: Shuffle) => Level) => () =>
 
 const levels = [
   { id: firstLevelId, start: playing(firstLevel), arrives: true },
-  { id: secondLevelId, start: playing(secondLevel) },
+  { id: secondLevelId, start: playing(secondLevel), arrives: true },
   { id: thirdLevelId, start: playing(thirdLevel) },
 ];
 

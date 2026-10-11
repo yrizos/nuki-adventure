@@ -110,7 +110,7 @@ function heroDirection(facing: keyof HeroArt): HeroDirectionArt {
 
 export const heroArt: HeroArt = {
   down: heroDirection('down'),
-  up: heroDirection('up'),
+  up: { ...heroDirection('up'), push: animation('hero', 'up-push').frames },
   left: heroDirection('left'),
   right: heroDirection('right'),
 };
@@ -139,6 +139,10 @@ export const flowerFrameLength = frameLength('flowers');
 export const stoneVariants = variants('stone');
 // A fence piece is chosen by a four bit mask of its joined neighbors, so the pieces are looked up by number rather than by file order.
 export const fenceArt = Array.from({ length: 16 }, (_, piece) => frame('fence', `piece-${piece}`));
+export const gateArt = {
+  opening: animation('fence', 'opening').frames,
+  open: frame('fence', 'gate-open'),
+} as const;
 export const doorArt = { closed: frame('door', 'closed'), open: frame('door', 'open') } as const;
 
 export const keyArt = frame('key', 'key');

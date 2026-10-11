@@ -6,6 +6,7 @@ import { closingLength } from './world-transition';
 export type Phase =
   | { readonly name: 'appearing'; readonly since: number }
   | { readonly name: 'playing' }
+  | { readonly name: 'opening-gate'; readonly since: number }
   | { readonly name: 'restoring'; readonly since: number; readonly origin: TilePosition; readonly restores: Area }
   | { readonly name: 'closing'; readonly since: number }
   | { readonly name: 'ended' };
@@ -16,6 +17,12 @@ export const arrivalLength = 48;
 
 export function appearing(frame: number): Phase {
   return { name: 'appearing', since: frame };
+}
+
+export const gateOpeningLength = 16;
+
+export function openingGate(frame: number): Phase {
+  return { name: 'opening-gate', since: frame };
 }
 
 export function restoringKey(key: KeyCollected, frame: number): Phase {
@@ -38,6 +45,8 @@ export function phaseAfterFrame(phase: Phase, { frame, restorationLength }: Fram
       return frame - phase.since >= arrivalLength - 1 ? playing : phase;
     case 'playing':
       return phase;
+    case 'opening-gate':
+      return frame - phase.since >= gateOpeningLength - 1 ? playing : phase;
     case 'restoring':
       return frame - phase.since >= restorationLength(phase.origin) ? playing : phase;
     case 'closing':

@@ -14,6 +14,7 @@ import {
   Tree,
   TreeVariant,
 } from '../domain/level/scenery';
+import { SwingGate } from '../domain/level/swing-gate';
 import { check2dObstacles } from './check2d-obstacles';
 
 interface LayoutContents {
@@ -44,7 +45,7 @@ export function levelFromLayout(
   const where = (symbol: string): TilePosition[] =>
     cells.filter((cell) => cell.symbol === symbol).map((cell) => cell.at);
   const ground = layout.map((line) =>
-    [...line].map((symbol) => ('#DH='.includes(symbol) ? Ground.Path : symbol === '~' ? Ground.Water : Ground.Grass)),
+    [...line].map((symbol) => ('#DHG='.includes(symbol) ? Ground.Path : symbol === '~' ? Ground.Water : Ground.Grass)),
   );
   const scenery = Scenery.of(
     size,
@@ -67,6 +68,11 @@ export function levelFromLayout(
   const [door, ...doorTiles] = where('D');
   if (!door || doorTiles.length !== 2 || !doorTiles.every((tile) => Door.closedAt(door).covers(tile)))
     throw new Error(`The layout of level ${id.value} needs exactly one door`);
+  const [gate, ...otherGates] = where('G');
+  if (otherGates.length > 0) throw new Error(`The layout of level ${id.value} holds at most one gate`);
+  const fenced = (tile: TilePosition): boolean => where('F').some((fence) => fence.equals(tile));
+  if (gate && !(fenced(gate.neighbor(Direction.Left)) && fenced(gate.neighbor(Direction.Right))))
+    throw new Error(`The gate of level ${id.value} must hang between two fences`);
   const starSpots = cells.filter((cell) => '+='.includes(cell.symbol)).map((cell) => cell.at);
   if (starSpots.length > 0 && contents.starCount)
     throw new Error(`The layout of level ${id.value} marks star spots, so it takes no star count`);
@@ -80,6 +86,7 @@ export function levelFromLayout(
     keys,
     door: Door.closedAt(door),
     hero: { position: one('H'), facing: Direction.Up },
+    ...(gate ? { gate: SwingGate.closedAt(gate) } : {}),
     obstacles: check2dObstacles,
   };
   if (contents.starCount) return Level.withScatteredStars(definition, contents.starCount, shuffle);

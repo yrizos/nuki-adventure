@@ -6,6 +6,7 @@ import { LevelId } from '../domain/shared/level-id';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Fence, Flower, FlowerVariant, Ground, LevelSize, Scenery, Tree, TreeVariant } from '../domain/level/scenery';
 import { levelFromLayout } from './level-layout';
+import { SwingGate } from '../domain/level/swing-gate';
 
 const at = TilePosition.at;
 const keepOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => positions;
@@ -116,6 +117,28 @@ describe('a level built from a layout', () => {
     expect(placed.stars.map((star) => star.position)).toEqual([at(2, 6), at(1, 6), at(0, 6), at(5, 5), at(4, 5)]);
     expect(placed.scenery.groundAt(at(0, 4))).toBe(Ground.Grass);
     expect(placed.scenery.groundAt(at(5, 5))).toBe(Ground.Path);
+  });
+});
+
+describe('a gate in a layout', () => {
+  const gated = (rows: readonly string[]) =>
+    levelFromLayout(LevelId.of('gated'), rows, keepOrder, { keys: { K: { restores: () => true } } });
+
+  test('hangs a closed gate on path ground between two fences', () => {
+    const level = gated(['.DDD.', '.K...', 'WFGFW', '..H..']);
+    expect(level.gate?.equals(SwingGate.closedAt(at(2, 2)))).toBe(true);
+    expect(level.scenery.groundAt(at(2, 2))).toBe(Ground.Path);
+  });
+
+  test('leaves a layout without a gate symbol ungated', () => {
+    expect(gated(['.DDD.', '.K...', '.....', '..H..']).gate).toBeUndefined();
+  });
+
+  test.each([
+    ['two gates', ['.DDD.', '.K...', 'FGFGF', '..H..'], 'at most one gate'],
+    ['a gate without a fence on one side', ['.DDD.', '.K...', 'W.GFW', '..H..'], 'between two fences'],
+  ])('rejects %s', (_, rows, message) => {
+    expect(() => gated(rows)).toThrow(message);
   });
 });
 

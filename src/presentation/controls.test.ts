@@ -239,9 +239,13 @@ test('a disabled action button ignores its keys', () => {
 });
 
 test.each([
+  ['A', 'a'],
+  ['a', 'a'],
   ['Z', 'a'],
   ['z', 'a'],
   [' ', 'a'],
+  ['B', 'b'],
+  ['b', 'b'],
   ['X', 'b'],
   ['x', 'b'],
   ['Enter', 'b'],

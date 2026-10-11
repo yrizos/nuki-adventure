@@ -3,11 +3,20 @@ import { Area, Key, Star } from './collectibles';
 import { StarCount } from '../shared/star-count';
 import { Door } from './door';
 import { Level, Stone } from './level';
-import { LevelCompleted, type LevelEvent, KeyCollected, StarCollected } from './level-events';
+import {
+  LevelCompleted,
+  type LevelEvent,
+  KeyCollected,
+  StarCollected,
+  SwingGateOpened,
+  SwingGateOpeningStarted,
+} from './level-events';
 import { LevelId } from '../shared/level-id';
 import { Direction, Heading, TilePosition } from './position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree, TreeVariant } from './scenery';
+import { SwingGate } from './swing-gate';
 import { check2dObstacles } from '../../infrastructure/check2d-obstacles';
+import { follow, pathTo } from '../../test-support/walk-level';
 
 const at = TilePosition.at;
 const area = (keep: (position: TilePosition) => boolean): Area =>
@@ -597,5 +606,132 @@ describe('a door', () => {
         expect(subject.hides(at(column, row))).toBe(row < 2 && column >= 2 && column <= 4);
       }
     }
+  });
+});
+
+describe('a swing gate', () => {
+  const fenced = ['..DDD..', '.......', '.......', 'WWFGFWW', '.......', '.......'];
+
+  function gated(start = at(3, 4), facing = Direction.Up, key = at(0, 0), given: readonly string[] = fenced): Level {
+    const { scenery, where } = parse(given);
+    return Level.create({
+      id: LevelId.of('test'),
+      scenery,
+      stones: [],
+      keys: [Key.at(key, everywhere)],
+      door: Door.closedAt(where('D')[0]!),
+      hero: { position: start, facing },
+      gate: SwingGate.closedAt(where('G')[0]!),
+      obstacles: check2dObstacles,
+    });
+  }
+
+  function opened(subject: Level): Level {
+    subject.operateGate();
+    subject.finishGate();
+    return subject;
+  }
+
+  test('lets a key lie behind it, out of reach until it opens', () => {
+    const subject = gated();
+    expect(pathTo(subject, (tile) => tile.equals(at(0, 0)))).toBeUndefined();
+    expect(pathTo(opened(subject), (tile) => tile.equals(at(0, 0)))).toBeDefined();
+  });
+
+  test('opens only from its approach while the hero faces it', () => {
+    expect(gated().canOperateGate).toBe(true);
+    expect(gated(at(2, 4)).canOperateGate).toBe(false);
+    expect(gated(at(3, 5)).canOperateGate).toBe(false);
+    expect(gated(at(3, 4), Direction.Down).canOperateGate).toBe(false);
+    expect(gated(at(3, 4), Direction.Left).operateGate()).toEqual([]);
+    expect(gated(at(3, 4), Direction.Left).gate?.state).toBe('closed');
+  });
+
+  test('starts opening once and stays shut while it swings', () => {
+    const subject = gated();
+    expect(subject.operateGate()).toEqual([new SwingGateOpeningStarted(LevelId.of('test'), at(3, 3))]);
+    expect(subject.gate?.state).toBe('opening');
+    expect(subject.canOperateGate).toBe(false);
+    expect(subject.operateGate()).toEqual([]);
+    for (let tick = 0; tick < 40; tick++) subject.tick(Heading.of(Direction.Up));
+    expect(subject.hero.position).toEqual(at(3, 4));
+  });
+
+  test('never opens when the hero walks into it', () => {
+    const subject = gated();
+    for (let tick = 0; tick < 40; tick++) subject.tick(Heading.of(Direction.Up));
+    expect(subject.gate?.state).toBe('closed');
+    expect(subject.hero.position).toEqual(at(3, 4));
+  });
+
+  test('lets the hero through both ways once it finishes opening, and only once', () => {
+    const subject = gated();
+    expect(subject.finishGate()).toEqual([]);
+    subject.operateGate();
+    const before = subject.outlines;
+    expect(subject.finishGate()).toEqual([new SwingGateOpened(LevelId.of('test'), at(3, 3))]);
+    expect(subject.outlines).not.toEqual(before);
+    expect(subject.finishGate()).toEqual([]);
+    expect(subject.operateGate()).toEqual([]);
+    follow(
+      subject,
+      pathTo(subject, (tile) => tile.equals(at(3, 2)))!,
+    );
+    follow(
+      subject,
+      pathTo(subject, (tile) => tile.equals(at(3, 5)))!,
+    );
+    expect(subject.gate?.state).toBe('open');
+  });
+
+  test('stays open when the key is collected and the door opens', () => {
+    const subject = opened(gated());
+    const events = follow(
+      subject,
+      pathTo(subject, (tile) => tile.equals(at(0, 0)))!,
+    );
+    expect(events.some((event) => event instanceof KeyCollected)).toBe(true);
+    subject.openDoor();
+    expect(subject.gate?.state).toBe('open');
+  });
+
+  test('a new level starts with the gate closed again', () => {
+    opened(gated());
+    expect(gated().gate?.state).toBe('closed');
+  });
+
+  test('must be operable from where the hero starts', () => {
+    expect(() => gated(at(3, 2))).toThrow('The gate must be operable');
+  });
+
+  test('does not excuse a key that stays out of reach with the gate open', () => {
+    const walledOff = ['..DDDW.', '.....W.', '.....W.', 'WWFGFWW', '.......', '.......'];
+    expect(() => gated(at(3, 4), Direction.Up, at(6, 0), walledOff)).toThrow('Every key must lie');
+  });
+
+  test('needs open ground on both sides of it', () => {
+    const blocked = ['..DDD..', '.......', '...W...', 'WWFGFWW', '.......', '.......'];
+    expect(() => gated(at(3, 4), Direction.Up, at(0, 0), blocked)).toThrow('The gate needs open ground');
+  });
+
+  test('keeps stars off the gate tile and the tile its leaf swings over', () => {
+    const { scenery, where } = parse(fenced);
+    const definition = {
+      id: LevelId.of('test'),
+      scenery,
+      stones: [],
+      keys: [Key.at(at(0, 0), everywhere)],
+      door: Door.closedAt(where('D')[0]!),
+      hero: { position: at(3, 4), facing: Direction.Up },
+      gate: SwingGate.closedAt(where('G')[0]!),
+      obstacles: check2dObstacles,
+    };
+    for (const spot of [at(3, 3), at(3, 2)])
+      expect(() => Level.create({ ...definition, stars: [Star.at(spot)] })).toThrow('A star must stay visible');
+    const scattered = Level.withScatteredStars(definition, StarCount.of(1), (positions) => {
+      expect(positions.some((tile) => tile.equals(at(3, 3)) || tile.equals(at(3, 2)))).toBe(false);
+      return positions;
+    });
+    expect(scattered.stars).toHaveLength(1);
   });
 });

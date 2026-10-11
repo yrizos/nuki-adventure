@@ -16,6 +16,11 @@ export function idleHeroPose(facing: keyof HeroArt, frame: number): Art {
   return Math.floor(frame / breathEvery) % 2 === 1 ? art.breathe : art.stand;
 }
 
+export function pushingPose(age: number): Art {
+  const frames = heroArt.up.push;
+  return frames[Math.min(Math.floor(age / ticksPerWalkFrame), frames.length - 1)]!;
+}
+
 export class HeroAnimator {
   private walkTicks = 0;
   private settleLeft = 0;

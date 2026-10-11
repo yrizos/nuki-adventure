@@ -12,6 +12,7 @@ import {
   flowerArt,
   flowerFrameLength,
   fruitTreeArt,
+  gateArt,
   grassArt,
   groundShadow,
   lightMote,
@@ -47,6 +48,7 @@ const motes = [
   [71, 26],
 ] as const;
 const framesPerMoteRise = 4;
+const framesPerGateFrame = 2;
 
 interface GroundTile {
   readonly x: number;
@@ -59,6 +61,7 @@ export interface Scene {
   readonly frame: number;
   readonly hero: Art;
   readonly arrival?: number;
+  readonly gateAge?: number;
 }
 
 interface WoodlandTree {
@@ -213,7 +216,9 @@ export class WorldPainter {
       level.scenery.flowerVariants.length,
     ).map((choice) => FlowerVariant.All.indexOf(level.scenery.flowerVariants[choice]!));
     const joins = (position: TilePosition): boolean =>
-      level.door.covers(position) || level.scenery.fences.some((fence) => fence.position.equals(position));
+      level.door.covers(position) ||
+      (level.gate?.covers(position) ?? false) ||
+      level.scenery.fences.some((fence) => fence.position.equals(position));
     this.fencePieces = level.scenery.fences.map(({ position }) =>
       [Direction.Up, Direction.Down, Direction.Left, Direction.Right].reduce(
         (piece, direction) => (piece << 1) | (joins(position.neighbor(direction)) ? 1 : 0),
@@ -411,6 +416,22 @@ export class WorldPainter {
         paint: () => draw(fenceArt[this.fencePieces[index]!]!, column * tileSize, row * tileSize),
       });
     });
+    const { gate } = level;
+    if (gate) {
+      const { column, row } = gate.position;
+      const art =
+        gate.state === 'open'
+          ? gateArt.open
+          : gateArt.opening[
+              Math.min(Math.floor((scene.gateAge ?? 0) / framesPerGateFrame), gateArt.opening.length - 1)
+            ]!;
+      const base = (row + 1) * tileSize;
+      objects.push({
+        base,
+        shadow: () => undefined,
+        paint: () => draw(art, column * tileSize, base - art.rows.length),
+      });
+    }
     const { door } = level;
     const doorBase = (door.left.row + 1) * tileSize;
     const doorFrame = doorLit ? doorArt.open : doorArt.closed;

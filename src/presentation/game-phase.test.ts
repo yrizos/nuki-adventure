@@ -7,6 +7,8 @@ import {
   appearing,
   arrivalLength,
   closingLevel,
+  gateOpeningLength,
+  openingGate,
   restoringKey,
   type Phase,
   phaseAfterFrame,
@@ -20,6 +22,13 @@ const key = new KeyCollected(LevelId.of('phase'), origin, restores);
 const after = (phase: Phase, frame: number): Phase => phaseAfterFrame(phase, { frame, restorationLength: () => 40 });
 
 describe('the game phase', () => {
+  test('swings the gate for sixteen frames, the press frame included, and then plays on', () => {
+    const opening = openingGate(100);
+    expect(gateOpeningLength).toBe(16);
+    for (let frame = 100; frame <= 114; frame++) expect(after(opening, frame)).toBe(opening);
+    expect(after(opening, 115)).toBe(playing);
+  });
+
   test('starts restoring the collected key area on the pickup frame', () => {
     const restoring = restoringKey(key, 100);
     expect(restoring).toEqual({ name: 'restoring', since: 100, origin, restores });

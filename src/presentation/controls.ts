@@ -9,7 +9,7 @@ const arrowKeys: Readonly<Record<string, Direction>> = {
   ArrowLeft: Direction.Left,
   ArrowRight: Direction.Right,
 };
-const buttonKeys: Readonly<Record<string, 'a' | 'b'>> = { z: 'a', ' ': 'a', x: 'b', Enter: 'b' };
+const buttonKeys: Readonly<Record<string, 'a' | 'b'>> = { a: 'a', z: 'a', ' ': 'a', b: 'b', x: 'b', Enter: 'b' };
 
 function isInteractiveKeyboardTarget(target: EventTarget | null): boolean {
   return (

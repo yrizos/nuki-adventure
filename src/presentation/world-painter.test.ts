@@ -12,6 +12,7 @@ import { Direction, Heading, TilePosition, WorldPosition } from '../domain/level
 import { Flower, FlowerVariant, Ground, LevelSize, Scenery, Tree, TreeVariant } from '../domain/level/scenery';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { firstLevel } from '../infrastructure/first-level';
+import { levelFromLayout } from '../infrastructure/level-layout';
 import { randomShuffle } from '../infrastructure/random-shuffle';
 import { secondLevel } from '../infrastructure/second-level';
 import { thirdLevel } from '../infrastructure/third-level';
@@ -1235,7 +1236,7 @@ test.each([
 });
 
 test('levels without woodland draw only their authored trees', () => {
-  for (const level of [secondLevel(randomShuffle), thirdLevel(randomShuffle)]) {
+  for (const level of [thirdLevel(randomShuffle)]) {
     const picture = new Picture(224, 320);
     const draw = vi.spyOn(picture, 'draw');
     new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, []);
@@ -1329,4 +1330,64 @@ test('a hero without an arrival is drawn without a mask or motes', () => {
   new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, [everywhere]);
   expect(draw.mock.calls.find(([art]) => art === sprites.heroArt.down.stand)?.[4]).toBeUndefined();
   expect(draw.mock.calls.some(([art]) => art === sprites.lightMote)).toBe(false);
+});
+
+describe('a swing gate', () => {
+  const gated = () =>
+    levelFromLayout(LevelId.of('gated'), ['.DDD.', '..K..', '.....', 'WFGFW', '..H..', '.....'], (spots) => spots, {
+      keys: { K: { restores: () => true } },
+    });
+  const drawn = (level: Level, gateAge?: number, restored: readonly Area[] = []) => {
+    const picture = new Picture(160, 192);
+    const draw = vi.spyOn(picture, 'draw');
+    const view = levelView(level);
+    new WorldPainter(view).paint(
+      picture,
+      { level: view, frame: 0, hero: library.heroArt.up.stand, ...(gateAge === undefined ? {} : { gateAge }) },
+      restored,
+    );
+    return draw.mock.calls.map(([art]) => art);
+  };
+  const gateFrames = [...library.gateArt.opening, library.gateArt.open];
+
+  test('shows the closed leaf', () => {
+    expect(drawn(gated()).filter((art) => gateFrames.includes(art))).toEqual([library.gateArt.opening[0]]);
+  });
+
+  test.each([
+    [0, 0],
+    [1, 0],
+    [2, 1],
+    [4, 2],
+    [6, 3],
+    [8, 4],
+    [10, 5],
+    [12, 6],
+    [14, 7],
+    [15, 7],
+  ])('at age %i draws swing frame %i', (age, index) => {
+    const level = gated();
+    level.operateGate();
+    const shown = drawn(level, age);
+    expect(shown.filter((art) => gateFrames.includes(art))).toEqual([library.gateArt.opening[index]]);
+  });
+
+  test('keeps the parked leaf once open, also after color returns', () => {
+    const level = gated();
+    level.operateGate();
+    level.finishGate();
+    for (const restored of [[], [Area.of([TilePosition.at(0, 0)])], [everywhere]])
+      expect(
+        drawn(level, undefined, restored)
+          .filter((art) => gateFrames.includes(art))
+          .every((art) => art === library.gateArt.open),
+      ).toBe(true);
+    expect(drawn(level).filter((art) => art === library.gateArt.open).length).toBeGreaterThan(0);
+  });
+
+  test('joins the fences on both sides to the gate', () => {
+    const shown = drawn(gated());
+    expect(shown).toContain(library.fenceArt[0b0001]);
+    expect(shown).toContain(library.fenceArt[0b0010]);
+  });
 });

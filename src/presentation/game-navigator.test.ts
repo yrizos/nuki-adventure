@@ -36,6 +36,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
     footstep: vi.fn(),
     restoring: vi.fn(),
     arrival: vi.fn(),
+    gate: vi.fn(),
   };
   const progress = new ManageProgress(new LocalProgressRepository(memoryStorage()), [
     LevelId.of('one'),
@@ -124,9 +125,9 @@ describe('the game navigator', () => {
     expect(vi.mocked(subject.progress.reach).mock.calls[0]![0].value).toBe(first);
   });
 
-  test('shows the level when it plays an unlocked level', () => {
+  test('shows the level when it plays an unlocked level, with A disabled where the level has no gate', () => {
     const subject = navigator();
-    expect(subject.screens.showLevel).toHaveBeenCalledOnce();
+    expect(subject.screens.showLevel).toHaveBeenCalledExactlyOnceWith(false);
   });
 
   test('opens the level picker', () => {

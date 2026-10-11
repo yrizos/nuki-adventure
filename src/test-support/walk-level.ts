@@ -8,7 +8,7 @@ import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 const directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
 
 export function pathTo(
-  level: Level,
+  level: Pick<Level, 'outlines' | 'hero' | 'scenery'>,
   destination: (position: TilePosition) => boolean,
 ): readonly WorldPosition[] | undefined {
   const obstacles = check2dObstacles(level.outlines);

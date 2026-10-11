@@ -4,7 +4,7 @@ import type { Obstacles } from '../domain/level/obstacles';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
 import type { Art } from './art/art';
 import { heroArt } from './sprite-library';
-import { HeroAnimator, idleHeroPose } from './hero-animator';
+import { HeroAnimator, idleHeroPose, pushingPose } from './hero-animator';
 
 const openGround: Obstacles = { walk: (_, to) => to };
 const down = Heading.of(Direction.Down);
@@ -96,3 +96,9 @@ test.each(['down', 'left', 'right', 'up'] as const)(
     ]);
   },
 );
+
+test('pushes through both pushing frames across the sixteen frames of a gate swing and holds the last', () => {
+  const shown = Array.from({ length: 18 }, (_, age) => pushingPose(age));
+  expect(shown.slice(0, 8).every((art) => art === heroArt.up.push[0])).toBe(true);
+  expect(shown.slice(8).every((art) => art === heroArt.up.push[1])).toBe(true);
+});

@@ -36,6 +36,8 @@ Each test collects its violations with plain comparisons and asserts once on the
 
 - In every authored level, the hero starts on each walkable tile of the playable area and moves in each of the eight directions. She never ends inside an obstacle or outside the level. The door stays closed until every key is collected.
 - In every authored level bounded by woodland, every woodland tile is impassable and every open tile is reachable from the start.
+- In every authored level with a swing gate, the sweep runs twice: with the gate closed from every tile on the hero's side, where she never enters a tile beyond the gate, and with the gate open from every tile.
+- A swing gate only moves forward from closed to opening to open. Repeated operations change nothing and emit no event, and nothing closes it. It blocks its whole tile through the last of its sixteen frames and lets the hero through on the next frame.
 - The magical arrival advances only through explicit frames. Through its last frame the hero does not move, collect anything or complete the level, and its frames add no play time. A held direction moves her on the first playable frame.
 - Every short sequence of reaching and completing levels keeps unlocked levels unlocked and sets the last playthrough of each completed level. Every resulting progress state survives a save and load.
 

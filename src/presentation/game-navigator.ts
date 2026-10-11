@@ -7,7 +7,7 @@ export interface Screens {
   readonly showStartScreen: () => void;
   readonly animateStartScreen: (framesOpen: number) => void;
   readonly showLevelPicker: () => void;
-  readonly showLevel: () => void;
+  readonly showLevel: (usesA: boolean) => void;
 }
 
 type Screen =
@@ -60,7 +60,6 @@ export class GameNavigator {
     const level = this.levels.find((candidate) => candidate.id.equals(id));
     const unlocked = this.progress.view().levels.some((candidate) => candidate.id.equals(id) && candidate.isUnlocked);
     if (!level || !unlocked) return;
-    this.screens.showLevel();
     const session = this.startSession(level, {
       completed: () => {
         const next = this.order.after(level.id);
@@ -68,6 +67,7 @@ export class GameNavigator {
         else this.openStartScreen();
       },
     });
+    this.screens.showLevel(session.usesA);
     this.screen = { name: 'playing', session };
   }
 }

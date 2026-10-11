@@ -15,6 +15,17 @@ import { StartScreen } from './start-screen';
 
 export { messages } from './game-session';
 
+const wobbleSwing = 12;
+const wobbleBurst = 24;
+export const wobbleEvery = 60;
+
+// A sine swing inside a sine envelope eases in and out, and the rests between bursts keep it a hint instead of a buzz.
+export function aButtonWobble(age: number): number {
+  const frame = age % wobbleEvery;
+  if (frame >= wobbleBurst) return 0;
+  return Math.sin((2 * Math.PI * frame) / wobbleSwing) * Math.sin((Math.PI * frame) / wobbleBurst);
+}
+
 export function startGame(
   root: Document,
   levels: readonly PlayableLevel[],
@@ -62,11 +73,12 @@ export function startGame(
         setActionButtonsEnabled(true);
         levelPicker.show(progress.view().levels);
       },
-      showLevel: () => {
+      showLevel: (usesA) => {
         startScreen.hide();
         levelPicker.hide();
-        // No level uses A or B, so they stay disabled while playing.
-        setActionButtonsEnabled(false);
+        // Only a gate answers A and nothing in a level answers B, so a button stays disabled where pressing it does nothing.
+        actionButtons.a.disabled = !usesA;
+        actionButtons.b.disabled = true;
         // A press that chose the level must not also act inside it.
         controls.takePress('a');
         controls.takePress('b');
@@ -83,9 +95,14 @@ export function startGame(
   });
   navigator.openStartScreen();
 
+  // Counting from when the prompt starts makes every burst, and its chime, begin at once instead of mid-cycle.
+  let promptAge: number | null = null;
   const tick = (): void => {
     controls.advance();
     navigator.tick();
+    promptAge = navigator.session?.promptsA ? (promptAge ?? -1) + 1 : null;
+    if (promptAge !== null && promptAge % wobbleEvery === 0) sound.hint();
+    actionButtons.a.style.setProperty('--wobble', String(promptAge === null ? 0 : aButtonWobble(promptAge)));
     // Completing a level replaces the session during its own tick, so the message comes from whichever level is now open.
     const spoken = navigator.session?.messageText ?? '';
     if (announcement.textContent !== spoken) announcement.textContent = spoken;

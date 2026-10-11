@@ -214,6 +214,16 @@ A new element uses the smallest size in this table that fits its shape.
 - Paper light motes rise through the open doorway
 - The door has one ground shadow across its width
 
+### Swing Gate
+
+- The swing gate is one wooden leaf in the fence wood colors E0, E1 and E2, hinged on the post at its west side
+- Its frames are 32 × 64 pixels, drawn with their bottom on the gate tile so the swung leaf can rise into the tile north of it. The hinge sits on the same pixel in every frame
+- Eight authored frames show the leaf rotating north around the hinge, each held for two game frames, so the swing lasts sixteen game frames. A ninth frame shows the leaf parked at about 90 degrees along the west side of the passage, and it stays until the level ends
+- The swing is drawn only through authored frames. The leaf never slides, shrinks, fades out or is rotated or scaled at runtime, and it never swings back
+- The gate is depth sorted at the base of its tile and drawn faded or colored like the fences beside it. Restoring color never changes its frame
+- The open leaf blocks only a thin strip along the west edge of the gate tile and the tile north of it, matching where it is drawn
+- While the gate swings, the hero shows her pushing frames facing up
+
 ### Woodland
 
 - Woodland reuses the plain tree art and its variants. It has no art of its own
