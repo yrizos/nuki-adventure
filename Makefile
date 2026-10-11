@@ -1,10 +1,11 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help tools dependencies install dev build test test-file test-watch typecheck lint format fix markdown audit check check-push hooks
+.PHONY: sprite-inspect help tools dependencies install dev build test test-file test-watch typecheck lint format fix markdown audit check check-push hooks
 
 help:
 	@printf '%-20s %s\n' \
 		'make help' 'List available targets' \
+		'make sprite-inspect MODE=list' 'Inspect sprites (summary, frames, frame, animations, animation, palette)' \
 		'make tools' 'Check Node.js and npm versions' \
 		'make dependencies' 'Check and install dependencies' \
 		'make install' 'Check dependencies and install Git hooks' \
@@ -84,3 +85,8 @@ check-push: dependencies
 hooks:
 	@command -v pre-commit >/dev/null || { printf 'pre-commit is required.\n'; exit 1; }
 	pre-commit install
+
+export MODE SPRITE FRAME ANIMATION FILTER LIMIT OFFSET FADED
+
+sprite-inspect:
+	@node scripts/sprite-inspect.mjs
