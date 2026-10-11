@@ -116,9 +116,9 @@ export class Sound {
     this.notes([784, 659, 523, 392], 0.15, 'square', 0.1);
   }
 
-  // iOS browsers have no vibrate method, so the call is skipped there.
+  // iOS browsers have no vibrate method, so the call is skipped there. The sound switch leaves vibration on, so muted players still feel the game.
   private buzz(pattern: number | number[]): void {
-    if (this.enabled) this.root.navigator.vibrate?.(pattern);
+    this.root.navigator.vibrate?.(pattern);
   }
 
   private music(start: number): void {
