@@ -120,7 +120,7 @@ A gold collectible.
 
 ### Star Spot
 
-A tile chosen in a level's layout that can hold a star. A level marks at least fifteen star spots, and five of them hold stars each time the level starts.
+A tile chosen in a level's layout that can hold a star. A level marks twenty star spots, and five of them hold stars each time the level starts.
 
 ### Star Count
 
