@@ -168,7 +168,6 @@ UI colors map onto Material 3 color roles.
 | On surface | Level card clock | Paper face, N4 shading, Ink outline, marks and hands |
 | On surface | Level card star | Matches the star in the game world |
 | Surface variant | Locked level card | The whole card through the faded world's neutral mapping |
-| Outline | Focused start screen or level picker button or card | Paper |
 
 ### Pressed State
 
@@ -196,7 +195,7 @@ Text targets the Web Content Accessibility Guidelines (WCAG) minimum of 4.5:1, a
 | V2 on Ink, joystick arrows | 5.8:1 |
 | P3 on Ink, lit joystick arrows | 11.3:1 |
 | Paper on V0, level card text | 11.3:1 |
-| Paper on Ink, start screen game name and focus outline | 15.2:1 |
+| Paper on Ink, start screen game name | 15.2:1 |
 | Y2 on Ink, ΝΟΥΚΙ in the start screen game name | 11.1:1 |
 | T2 on Ink, start screen game name | 8.2:1 |
 | V2 on Ink, start screen game name | 5.8:1 |

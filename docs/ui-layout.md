@@ -98,7 +98,7 @@ Landscape orientation is not supported.
 - A locked level's card is drawn through the faded world's neutral palette mapping, shows its number only and cannot be focused or chosen
 - Tapping an unlocked card starts that level, and a locked level never starts, whatever chose it
 - Arrow keys move keyboard focus between the cards and ΠΙΣΩ, and A or B chooses the focused one
-- The focused button or card shows a one pixel Paper outline
+- No button or card ever shows an outline, focused or not
 - The cards are spaced so each touch area stays above the Material minimum touch target
 - Screen readers hear each card as the level number, then the last time and stars in words, or that it is locked
 - The level picker scrolls when its contents do not fit

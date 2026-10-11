@@ -406,8 +406,6 @@ body {
   cursor: default;
 }
 
-.menu-button:focus-visible,
-.level-row:focus-visible {
-  outline: var(--pixel) solid var(--paper);
-  outline-offset: var(--pixel);
+button {
+  outline: none;
 }
