@@ -83,6 +83,7 @@ Landscape orientation is not supported.
 - The start screen covers the whole page, including the control panel, whenever the game opens and whenever the menu switch is pressed
 - It is pixel art on the panel pixel grid, on a plain Ink background with no scenery
 - The game name, Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ ΤΗΣ ΝΟΥΚΙ, sits at the top in the message box font, over two centered lines, in the colors set in the palette
+- Each time the start screen opens, the game name appears through the ordered 4 × 4 dither, one threshold every 2 game frames, and then stays still. The buttons work from the first frame
 - Below it sit two buttons in the A button colors with a lip, each sinking into its lip while pressed: ΝΕΟ ΠΑΙΧΝΙΔΙ starts the first level and ΕΠΙΛΟΓΗ ΕΠΙΠΕΔΟΥ opens the level picker
 - Starting the first level from ΝΕΟ ΠΑΙΧΝΙΔΙ keeps every unlocked level and every last playthrough
 - Nuki stands at the bottom of the screen facing the player, at one panel pixel per hero pixel, breathing and blinking as she does when idle in a level

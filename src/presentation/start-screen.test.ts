@@ -5,6 +5,7 @@ import { glyphs, glyphWidth, letterGap } from './art/font';
 import { backWidth, newGameWidth, pickLevelWidth } from './art/panel';
 import { sprite } from './picture';
 import { artUrl } from './canvas-art';
+import { ditherThreshold } from './ordered-dither';
 import { heroArt } from './sprite-library';
 import { StartScreen, titleArt } from './start-screen';
 
@@ -107,6 +108,7 @@ function startScreen() {
     screen,
     subject,
     hero: hero!,
+    title: title!,
     newGameButton: newGameButton!,
     pickLevelButton: pickLevelButton!,
     newGame,
@@ -163,4 +165,52 @@ test.each([
     String(art.rows[0]!.length),
     String(art.rows.length),
   ]);
+});
+
+function titleUrl(root: FakeDocument, keep: (x: number, y: number) => boolean): string {
+  const art = titleArt();
+  const rows = art.rows.map((row, y) => [...row].map((symbol, x) => (keep(x, y) ? symbol : '.')).join(''));
+  return `url(${artUrl(root as unknown as Document, { legend: art.legend, rows })})`;
+}
+
+test('reveals the title through the ordered dither, one threshold every 2 frames', () => {
+  const { root, subject, title } = startScreen();
+  const expected = Array.from({ length: 17 }, (_, shown) => titleUrl(root, (x, y) => ditherThreshold(x, y) < shown));
+  const violations: number[] = [];
+  for (const frame of [...Array.from({ length: 41 }, (_, frame) => frame), 1000]) {
+    subject.animate(frame);
+    if (title.style.getPropertyValue('--art') !== expected[Math.min(16, Math.floor(frame / 2))]) violations.push(frame);
+  }
+  expect(violations).toEqual([]);
+});
+
+test('shows no title at frame 0 and the whole title from frame 32 on', () => {
+  const { root, subject, title } = startScreen();
+  const shownAt = (frame: number) => {
+    subject.animate(frame);
+    return title.style.getPropertyValue('--art');
+  };
+  const whole = `url(${artUrl(root as unknown as Document, titleArt())})`;
+  expect([shownAt(0), shownAt(32), shownAt(33), shownAt(600)]).toEqual([
+    titleUrl(root, () => false),
+    whole,
+    whole,
+    whole,
+  ]);
+});
+
+test('reopening the start screen replays the title reveal from empty', () => {
+  const { root, subject, title } = startScreen();
+  for (let frame = 0; frame <= 40; frame += 1) subject.animate(frame);
+  subject.animate(0);
+  expect(title.style.getPropertyValue('--art')).toBe(titleUrl(root, () => false));
+});
+
+test('the buttons work at frame 0 of the title reveal', () => {
+  const { subject, newGameButton, newGame, pickingLevel, key } = startScreen();
+  subject.animate(0);
+  newGameButton.click();
+  key('ArrowDown');
+  key('Enter');
+  expect([newGame.mock.calls.length, pickingLevel.mock.calls.length]).toEqual([1, 1]);
 });

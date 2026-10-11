@@ -5,6 +5,7 @@ import { artUrl } from './canvas-art';
 import { element } from './dom';
 import { idleHeroPose } from './hero-animator';
 import { takeMenuKeys } from './menu-keys';
+import { ditherSteps, ditherThreshold } from './ordered-dither';
 
 // ΠΟΛΥΧΡΩΜΗ means colorful, so its letters take the orb colors in turn, and the hero's name takes the gold of the stars.
 const gameName = [
@@ -13,6 +14,7 @@ const gameName = [
 ];
 const gameNameLegend = { p: 'Paper', v: 'V2', t: 'T2', r: 'R2', y: 'Y2' } as const;
 const lineHeight = 16;
+const framesPerTitleThreshold = 2;
 
 export function titleArt(): Art {
   const width = Math.max(...gameName.map(({ text }) => textWidth(text)));
@@ -31,6 +33,9 @@ export class StartScreen {
   private readonly newGameButton: HTMLButtonElement;
   private readonly pickLevelButton: HTMLButtonElement;
   private readonly hero: HTMLElement;
+  private readonly title: HTMLElement;
+  private readonly titleUrls: string[];
+  private titleShown = -1;
   private readonly heroUrls = new Map<Art, string>();
   private heroPose: Art | null = null;
 
@@ -39,11 +44,17 @@ export class StartScreen {
     this.newGameButton = element(root, '.start-new-game');
     this.pickLevelButton = element(root, '.start-pick-level');
     this.hero = element(root, '.start-hero');
-    const title = element<HTMLElement>(root, '.start-title');
+    this.title = element(root, '.start-title');
     const art = titleArt();
-    title.style.setProperty('--art', `url(${artUrl(root, art)})`);
-    title.style.setProperty('--art-width', String(art.rows[0]!.length));
-    title.style.setProperty('--art-height', String(art.rows.length));
+    // Each reveal step is drawn once here, so replaying the reveal on every visit builds no new images.
+    this.titleUrls = Array.from({ length: ditherSteps + 1 }, (_, shown) => {
+      const rows = art.rows.map((row, y) =>
+        [...row].map((symbol, x) => (ditherThreshold(x, y) < shown ? symbol : '.')).join(''),
+      );
+      return `url(${artUrl(root, { legend: art.legend, rows })})`;
+    });
+    this.title.style.setProperty('--art-width', String(art.rows[0]!.length));
+    this.title.style.setProperty('--art-height', String(art.rows.length));
     for (const [button, width] of [
       [this.newGameButton, newGameWidth],
       [this.pickLevelButton, pickLevelWidth],
@@ -63,6 +74,11 @@ export class StartScreen {
   }
 
   animate(framesOpen: number): void {
+    const shown = Math.min(ditherSteps, Math.floor(framesOpen / framesPerTitleThreshold));
+    if (shown !== this.titleShown) {
+      this.titleShown = shown;
+      this.title.style.setProperty('--art', this.titleUrls[shown]!);
+    }
     const pose = idleHeroPose('down', framesOpen);
     if (pose === this.heroPose) return;
     this.heroPose = pose;
