@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: help tools dependencies install dev build test test-watch typecheck lint format fix markdown audit check check-push hooks
+.PHONY: help tools dependencies install dev build test test-file test-watch typecheck lint format fix markdown audit check check-push hooks
 
 help:
 	@printf '%-20s %s\n' \
@@ -11,6 +11,7 @@ help:
 		'make dev' 'Start the development server' \
 		'make build' 'Typecheck and build the browser application' \
 		'make test' 'Run unit tests' \
+		'make test-file FILE=path' 'Run a specific test file' \
 		'make test-watch' 'Run unit tests in watch mode' \
 		'make typecheck' 'Check TypeScript types' \
 		'make lint' 'Check code lint rules' \
@@ -42,6 +43,12 @@ build: dependencies
 
 test: dependencies
 	npm test
+
+test-file: dependencies
+	@test -n "$(FILE)" || { echo "Usage: make test-file FILE=src/path/file.test.ts"; exit 2; }
+	@test -f "$(FILE)" || { echo "Test file not found: $(FILE)"; exit 2; }
+	@case "$(FILE)" in src/*.test.ts) ;; *) echo "Expected a test file under src/ ending in .test.ts"; exit 2;; esac
+	npm test -- "$(FILE)"
 
 test-watch: dependencies
 	npm run test:watch
