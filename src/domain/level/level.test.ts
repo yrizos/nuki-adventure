@@ -34,6 +34,8 @@ function parse(given: readonly string[]): { scenery: Scenery; where: (symbol: st
       where('T').map((base) => Tree.at(base, TreeVariant.NoFruit)),
       where('*').map(Flower.at),
       where('F').map(Fence.at),
+      undefined,
+      where('W'),
     ),
     where,
   };
@@ -150,6 +152,7 @@ describe('the hero in a level', () => {
     ['a tree', '.Tt.', 55, 64],
     ['a fence', '.F..', 44, 44],
     ['water', '.~..', 32, 32],
+    ['woodland', '.W..', 32, 32],
   ])('walks up to the base of %s without passing it', (_, line, nearest, farthest) => {
     const subject = level(['DDD.', line], at(0, 1), at(0, 1));
     hold(subject, Direction.Right, 40);
@@ -169,6 +172,19 @@ describe('the hero in a level', () => {
     hold(subject, Direction.DownRight, 40);
     expect(subject.hero.position.row).toBe(1);
     expect(subject.hero.feet.x).toBeGreaterThan(16 + 40);
+  });
+
+  test('slides along woodland when pushed diagonally into it', () => {
+    const subject = level(['DDD..', '.....', 'WWWWW'], at(0, 1), at(4, 0));
+    hold(subject, Direction.DownRight, 40);
+    expect(subject.hero.position.row).toBe(1);
+    expect(subject.hero.feet.x).toBeGreaterThan(16 + 40);
+  });
+
+  test('cannot cross where two woodland tiles meet at a corner', () => {
+    const subject = level(['DDD.', '..W.', '.W..', '....'], at(1, 1), at(3, 0));
+    hold(subject, Direction.DownRight, 40);
+    expect(subject.hero.position).toEqual(at(1, 1));
   });
 
   test('slides along a fence when pushed diagonally into it', () => {
@@ -406,6 +422,18 @@ describe('a level', () => {
 
   test('rejects a star on the hero start', () => {
     expect(() => level(['S..'], at(0, 0), at(2, 0))).toThrow(RangeError);
+  });
+
+  test('rejects a star behind woodland', () => {
+    expect(() => level(['.S..', '.W..', '....'], at(0, 0), at(3, 0))).toThrow(RangeError);
+  });
+
+  test('rejects a key behind woodland', () => {
+    expect(() => level(['...', '..W', '...'], at(0, 0), at(2, 0))).toThrow(RangeError);
+  });
+
+  test('rejects a key that woodland cuts off from the hero', () => {
+    expect(() => level(['.W..', '.W..'], at(0, 0), at(3, 1))).toThrow(RangeError);
   });
 
   test('rejects a key behind a tree', () => {

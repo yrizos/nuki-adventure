@@ -90,6 +90,10 @@ export class Sound {
     this.notes([523, 587, 659, 784, 880, 1047, 1175, 1319], 0.12, 'triangle', 0.15);
   }
 
+  arrival(): void {
+    this.notes([1568, 2093], 0.08, 'triangle', 0.1);
+  }
+
   door(): void {
     this.notes([784, 659, 523, 392], 0.15, 'square', 0.1);
   }

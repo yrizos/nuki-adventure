@@ -172,11 +172,12 @@ export class Scenery {
     readonly flowers: readonly Flower[],
     readonly fences: readonly Fence[],
     readonly flowerVariants: readonly FlowerVariant[],
+    readonly woodland: TilePositions,
   ) {
     this.blocked = TilePositions.of([
       ...trees.flatMap((tree) => tree.footprint),
       ...fences.map((fence) => fence.position),
-    ]);
+    ]).with(woodland.tiles);
   }
 
   static of(
@@ -186,6 +187,7 @@ export class Scenery {
     flowers: readonly Flower[],
     fences: readonly Fence[] = [],
     flowerVariants: readonly FlowerVariant[] = FlowerVariant.All,
+    woodland: readonly TilePosition[] = [],
   ): Scenery {
     if (flowerVariants.length === 0 || new Set(flowerVariants).size !== flowerVariants.length) {
       throw new RangeError('Scenery needs a nonempty selection of distinct flower variants');
@@ -235,6 +237,18 @@ export class Scenery {
         throw new RangeError(`Fences overlap at ${position.column}, ${position.row}`);
       }
     });
+    const woods = TilePositions.of(woodland);
+    for (const tile of woods.tiles) {
+      if (
+        !size.contains(tile) ||
+        !groundAt(tile).equals(Ground.Grass) ||
+        footprints.some((other) => other.equals(tile)) ||
+        flowers.some((flower) => flower.position.equals(tile)) ||
+        fences.some((fence) => fence.position.equals(tile))
+      ) {
+        throw new RangeError(`Woodland must cover open grass inside the level, at ${tile.column}, ${tile.row}`);
+      }
+    }
     return new Scenery(
       size,
       ground.map((row) => [...row]),
@@ -242,6 +256,7 @@ export class Scenery {
       [...flowers],
       [...fences],
       [...flowerVariants],
+      woods,
     );
   }
 
@@ -254,11 +269,11 @@ export class Scenery {
     const { columns, rows } = this.size;
     const width = columns * tileSize;
     const height = rows * tileSize;
-    const water: Outline[] = [];
+    const solid: Outline[] = [];
     for (let row = 0; row < rows; row++) {
       for (let column = 0; column < columns; column++) {
         const tile = TilePosition.at(column, row);
-        if (!this.groundAt(tile).isWalkable) water.push(wholeTile(tile));
+        if (!this.groundAt(tile).isWalkable || this.woodland.covers(tile)) solid.push(wholeTile(tile));
       }
     }
     const joins = (fence: Fence) => (direction: Direction) => {
@@ -270,10 +285,15 @@ export class Scenery {
       Outline.box(WorldPosition.at(width + tileSize / 2, height / 2), tileSize, height + 2 * tileSize),
       Outline.box(WorldPosition.at(width / 2, -tileSize / 2), width + 2 * tileSize, tileSize),
       Outline.box(WorldPosition.at(width / 2, height + tileSize / 2), width + 2 * tileSize, tileSize),
-      ...water,
+      ...solid,
       ...this.trees.map((tree) => tree.obstacle),
       ...this.fences.flatMap((fence) => fence.obstacles(joins(fence))),
     ];
+  }
+
+  // A woodland canopy rises one tile above the woodland, like the canopy of a single tree.
+  hides(position: TilePosition): boolean {
+    return this.woodland.covers(position.neighbor(Direction.Down));
   }
 
   isWalkable(position: TilePosition): boolean {

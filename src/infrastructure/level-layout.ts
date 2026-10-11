@@ -56,6 +56,7 @@ export function levelFromLayout(
     where('*').map(Flower.at),
     where('F').map(Fence.at),
     contents.flowerVariants,
+    where('W'),
   );
   const one = (symbol: string): TilePosition => {
     const [position, ...others] = where(symbol);

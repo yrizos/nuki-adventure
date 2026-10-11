@@ -28,7 +28,15 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
   const pressed = new Set<'a' | 'b'>();
   let heading: Heading | null = null;
   const controls = { takePress: (button: 'a' | 'b') => pressed.delete(button), heading: () => heading };
-  const sound = { star: vi.fn(), key: vi.fn(), hum: vi.fn(), door: vi.fn(), footstep: vi.fn(), restoring: vi.fn() };
+  const sound = {
+    star: vi.fn(),
+    key: vi.fn(),
+    hum: vi.fn(),
+    door: vi.fn(),
+    footstep: vi.fn(),
+    restoring: vi.fn(),
+    arrival: vi.fn(),
+  };
   const progress = new ManageProgress(new LocalProgressRepository(memoryStorage()), [
     LevelId.of('one'),
     LevelId.of('two'),

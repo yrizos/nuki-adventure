@@ -3,7 +3,15 @@ import { Area } from '../domain/level/collectibles';
 import { KeyCollected } from '../domain/level/level-events';
 import { LevelId } from '../domain/shared/level-id';
 import { TilePosition } from '../domain/level/position';
-import { closingLevel, restoringKey, type Phase, phaseAfterFrame, playing } from './game-phase';
+import {
+  appearing,
+  arrivalLength,
+  closingLevel,
+  restoringKey,
+  type Phase,
+  phaseAfterFrame,
+  playing,
+} from './game-phase';
 import { closingLength } from './world-transition';
 
 const origin = TilePosition.at(3, 4);
@@ -38,6 +46,14 @@ describe('the game phase', () => {
     expect(closing).toEqual({ name: 'closing', since: 200 });
     expect(after(closing, 200 + closingLength - 1)).toBe(closing);
     expect(after(closing, 200 + closingLength)).toEqual({ name: 'ended' });
+  });
+
+  test('lets the hero appear for twelve frames before play begins', () => {
+    const arriving = appearing(50);
+    expect(arrivalLength).toBe(12);
+    expect(arriving).toEqual({ name: 'appearing', since: 50 });
+    expect(after(arriving, 60)).toBe(arriving);
+    expect(after(arriving, 61)).toBe(playing);
   });
 
   test('stays playing whatever the frame', () => {

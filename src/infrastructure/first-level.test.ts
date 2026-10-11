@@ -1,70 +1,104 @@
 import { expect, test } from 'vitest';
 import { Door } from '../domain/level/door';
 import { Direction, TilePosition } from '../domain/level/position';
-import { FlowerVariant } from '../domain/level/scenery';
+import { FlowerVariant, Ground } from '../domain/level/scenery';
 import { fitCanvas } from '../presentation/viewport-layout';
 import { cameraPosition, tileSize } from '../presentation/world-geometry';
 import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
 import { firstLevel, firstLevelId } from './first-level';
 
 const at = TilePosition.at;
+const tiles = Array.from({ length: 25 * 25 }, (_, index) => at(index % 25, Math.floor(index / 25)));
 
 test('the first level selects only white-coral and blue-violet flowers', () => {
   expect(firstLevel(keepOrder).scenery.flowerVariants).toEqual([FlowerVariant.WhiteCoral, FlowerVariant.BlueViolet]);
 });
 
-test('the first level hides one key that restores the whole level', () => {
+test('the first level is an orchard clearing with one key that restores the whole level', () => {
   const level = firstLevel(keepOrder);
   expect(level.id).toBe(firstLevelId);
-  expect(level.scenery.size).toEqual({ columns: 17, rows: 15 });
-  expect(level.hero.position).toEqual(at(14, 13));
+  expect(level.scenery.size).toEqual({ columns: 25, rows: 25 });
+  expect(level.hero.position).toEqual(at(12, 22));
   expect(level.hero.facing).toBe(Direction.Up);
-  expect(level.door.equals(Door.closedAt(at(5, 2)))).toBe(true);
-  expect(level.keys.map((key) => key.position)).toEqual([at(1, 4)]);
-  expect(level.keys[0]!.restores.tiles).toHaveLength(17 * 15);
+  expect(level.door.equals(Door.closedAt(at(6, 1)))).toBe(true);
+  expect(level.keys.map((key) => key.position)).toEqual([at(19, 4)]);
+  expect(level.keys[0]!.restores.tiles).toHaveLength(25 * 25);
   expect(level.stones.map((stone) => stone.position)).toEqual([
-    at(10, 6),
-    at(11, 6),
-    at(9, 7),
-    at(13, 7),
-    at(14, 7),
-    at(6, 10),
-    at(7, 10),
+    at(16, 5),
+    at(7, 6),
+    at(16, 6),
+    at(20, 16),
+    at(9, 18),
+    at(10, 18),
+    at(5, 19),
   ]);
-  expect(level.scenery.trees).toHaveLength(11);
-  expect(level.scenery.flowers).toHaveLength(25);
+  expect(level.scenery.trees).toHaveLength(26);
+  expect(level.scenery.flowers).toHaveLength(27);
+  expect(level.scenery.woodland.tiles).toHaveLength(163);
+});
+
+test('the first level holds a small pond in its southwestern orchard', () => {
+  const { scenery } = firstLevel(keepOrder);
+  const pond = tiles.filter((tile) => scenery.groundAt(tile).equals(Ground.Water));
+  expect(pond).toEqual([
+    at(7, 15),
+    at(8, 15),
+    at(6, 16),
+    at(7, 16),
+    at(8, 16),
+    at(9, 16),
+    at(5, 17),
+    at(6, 17),
+    at(7, 17),
+    at(8, 17),
+    at(9, 17),
+    at(6, 18),
+    at(7, 18),
+    at(8, 18),
+  ]);
 });
 
 test('the first level marks fifteen star spots and lets the shuffle choose its stars', () => {
   const spots = starSpotsOf(firstLevel);
-  expect(spots).toHaveLength(15);
-  expect(spots).toEqual(
-    expect.arrayContaining([
-      at(1, 3),
-      at(10, 3),
-      at(1, 9),
-      at(15, 9),
-      at(15, 13),
-      at(15, 3),
-      at(12, 4),
-      at(5, 6),
-      at(15, 7),
-      at(12, 8),
-      at(5, 10),
-      at(11, 10),
-      at(5, 12),
-      at(1, 13),
-      at(10, 13),
-    ]),
-  );
+  expect(spots).toEqual([
+    at(12, 1),
+    at(17, 2),
+    at(2, 4),
+    at(23, 6),
+    at(1, 8),
+    at(14, 8),
+    at(18, 12),
+    at(22, 13),
+    at(9, 14),
+    at(1, 15),
+    at(22, 18),
+    at(7, 19),
+    at(2, 21),
+    at(10, 22),
+    at(21, 22),
+  ]);
   expect(firstLevel(reverseOrder).stars.map((star) => star.position)).toEqual([...spots].reverse().slice(0, 5));
 });
 
-test('the first level starts the hero one or two rows above the bottom fence', () => {
+test('the first level leaves no open ground cut off from where the hero starts', () => {
   const level = firstLevel(keepOrder);
-  const rowsAboveFence = level.scenery.size.rows - 1 - level.hero.position.row;
-  expect(rowsAboveFence).toBeGreaterThanOrEqual(1);
-  expect(rowsAboveFence).toBeLessThanOrEqual(2);
+  const open = (tile: TilePosition): boolean =>
+    level.scenery.isWalkable(tile) &&
+    !level.stones.some((stone) => stone.position.equals(tile)) &&
+    !level.door.covers(tile);
+  const reached = new Set([`${level.hero.position.column},${level.hero.position.row}`]);
+  const ring = [level.hero.position];
+  for (let tile = ring.pop(); tile; tile = ring.pop()) {
+    for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
+      const neighbor = tile.neighbor(direction);
+      const key = `${neighbor.column},${neighbor.row}`;
+      if (reached.has(key) || !open(neighbor)) continue;
+      reached.add(key);
+      ring.push(neighbor);
+    }
+  }
+  expect(tiles.filter((tile) => open(tile) && !reached.has(`${tile.column},${tile.row}`))).toEqual([]);
+  expect(reached.size).toBe(386);
 });
 
 test('the first level places its key in an exploration area at least six tiles from the exit', () => {

@@ -2,6 +2,7 @@ import type { LevelView } from '../application/level-view';
 import type { Area } from '../domain/level/collectibles';
 import { Direction, TilePosition } from '../domain/level/position';
 import { FlowerVariant, Ground, type Scenery, TreeVariant } from '../domain/level/scenery';
+import { arrivalMotes, revealed } from './arrival';
 import type { Art } from './art/art';
 import { ditherSteps, ditherThreshold } from './ordered-dither';
 import { lighten, Picture, type Version } from './picture';
@@ -57,6 +58,41 @@ export interface Scene {
   readonly level: LevelView;
   readonly frame: number;
   readonly hero: Art;
+  readonly arrival?: number;
+}
+
+interface WoodlandTree {
+  readonly base: TilePosition;
+  readonly frames: readonly Art[];
+}
+
+// ponytail: fixed 8-tile margin, derive from the largest view if maps shrink below the view
+const woodlandMargin = 8;
+
+// A tree starts on every woodland tile, because canopies placed two tiles apart leave grass showing where their rounded edges meet.
+function woodlandTrees(scenery: Scenery): WoodlandTree[] {
+  if (scenery.woodland.tiles.length === 0) return [];
+  const { columns, rows } = scenery.size;
+  const wooded = (column: number, row: number): boolean =>
+    column < 0 || row < 0 || column >= columns || row >= rows || scenery.woodland.covers(TilePosition.at(column, row));
+  const bases: TilePosition[] = [];
+  for (let row = -woodlandMargin; row < rows + woodlandMargin; row++) {
+    for (let column = -woodlandMargin; column < columns + woodlandMargin; column++) {
+      if (!wooded(column, row) || (column > -woodlandMargin && wooded(column - 1, row))) continue;
+      let end = column;
+      while (end + 1 < columns + woodlandMargin && wooded(end + 1, row)) end++;
+      for (let start = column; start < Math.max(end, column + 1); start++) bases.push(TilePosition.at(start, row));
+    }
+  }
+  // propVariants derives its starting choice from the position, which must not be negative.
+  const choices = propVariants(
+    bases.map(({ column, row }) => [
+      TilePosition.at(column + woodlandMargin, row + woodlandMargin),
+      TilePosition.at(column + woodlandMargin + 1, row + woodlandMargin),
+    ]),
+    treeArt.length,
+  );
+  return bases.map((base, index) => ({ base, frames: treeArt[choices[index]!]! }));
 }
 
 const sized = (picture: Picture, target: Picture): Picture =>
@@ -145,6 +181,7 @@ export class WorldPainter {
   private before = new Picture(0, 0);
   private after = new Picture(0, 0);
   private readonly treeFrames: readonly (readonly Art[])[];
+  private readonly woodland: readonly WoodlandTree[];
   private readonly stoneChoices: readonly number[];
   private readonly flowerChoices: readonly number[];
   private readonly fencePieces: readonly number[];
@@ -166,6 +203,7 @@ export class WorldPainter {
     this.treeFrames = level.scenery.trees.map(
       (tree) => fruitArt.get(tree.variant) ?? treeArt[plainChoices[plainTrees.indexOf(tree)]!]!,
     );
+    this.woodland = woodlandTrees(level.scenery);
     this.stoneChoices = propVariants(
       level.stones.map((stone) => [stone.position]),
       stoneVariants.length,
@@ -275,8 +313,13 @@ export class WorldPainter {
     const { level, frame } = scene;
     const camera = cameraPosition(level, picture.width, picture.height);
     picture.fill('Ink');
-    const draw = (art: Art, x: number, y: number, artVersion: Version = version): void =>
-      picture.draw(art, x - camera.x, y - camera.y, artVersion);
+    const draw = (
+      art: Art,
+      x: number,
+      y: number,
+      artVersion: Version = version,
+      visible?: (x: number, y: number) => boolean,
+    ): void => picture.draw(art, x - camera.x, y - camera.y, artVersion, visible);
 
     const waterFrame = Math.floor(frame / waterFrameLength) % 4;
     const { columns, rows } = level.scenery.size;
@@ -298,7 +341,14 @@ export class WorldPainter {
         );
       }
     }
-    for (const tree of level.scenery.trees) {
+    const woodland = this.woodland.filter(
+      ({ base }) =>
+        (base.column + 2) * tileSize > camera.x &&
+        base.column * tileSize < camera.x + picture.width &&
+        (base.row + 1) * tileSize > camera.y &&
+        (base.row - 1) * tileSize < camera.y + picture.height,
+    );
+    for (const tree of [...level.scenery.trees, ...woodland]) {
       picture.shade(tree.base.column * tileSize - camera.x, tree.base.row * tileSize - 4 - camera.y, 64, 4);
     }
 
@@ -329,6 +379,19 @@ export class WorldPainter {
       objects.push({
         base,
         shadow: shadow(12, tree.base, x + 26, base - 4),
+        paint: () => draw(art, x, base - art.rows.length),
+      });
+    });
+    woodland.forEach((tree) => {
+      const index = this.woodland.indexOf(tree) + level.scenery.trees.length;
+      const leaves = Math.floor((frame + index * 13) / treeFrameLength) % 2;
+      const art = tree.frames[leaves]!;
+      const x = tree.base.column * tileSize;
+      const base = (tree.base.row + 1) * tileSize;
+      const ground = TilePosition.at(clamp(tree.base.column, 0, columns - 1), clamp(tree.base.row, 0, rows - 1));
+      objects.push({
+        base,
+        shadow: shadow(12, ground, x + 26, base - 4),
         paint: () => draw(art, x, base - art.rows.length),
       });
     });
@@ -390,7 +453,15 @@ export class WorldPainter {
       base: hero.y + tileSize,
       shadow: shadow(14, standingOn, hero.x + 9, hero.y + tileSize),
       paint: () => {
-        draw(scene.hero, hero.x, hero.y, 'colored');
+        const age = scene.arrival;
+        if (age === undefined) {
+          draw(scene.hero, hero.x, hero.y, 'colored');
+          return;
+        }
+        const left = hero.x - camera.x;
+        const top = hero.y - camera.y;
+        draw(scene.hero, hero.x, hero.y, 'colored', (x, y) => revealed(age, x - left, y - top));
+        for (const mote of arrivalMotes(age)) draw(lightMote, hero.x + mote.x, hero.y + mote.y, 'colored');
       },
     });
     objects.forEach((object) => object.shadow());

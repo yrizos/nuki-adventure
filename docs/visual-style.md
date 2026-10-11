@@ -208,11 +208,20 @@ A new element uses the smallest size in this table that fits its shape.
 
 ### Door
 
-- The door stands in a fence, framed by an E1 wooden lintel and two E1 posts, with an E2 highlight along the top of the lintel and the left of each post, E0 shading on their right and bottom edges, and E0 grain
+- The door stands in a fence or is framed by woodland, with its opening free of canopies. It is framed by an E1 wooden lintel and two E1 posts, with an E2 highlight along the top of the lintel and the left of each post, E0 shading on their right and bottom edges, and E0 grain
 - The closed door is made of vertical E2 planks separated by E0 lines, with two rails across each leaf and two E0 handles at the center
 - The open door shows an E0 doorway, with the leaves swung inward visible only as their E2 and E1 edges
 - Paper light motes rise through the open doorway
 - The door has one ground shadow across its width
+
+### Woodland
+
+- Woodland reuses the plain tree art and its variants. It has no art of its own
+- Woodland trees are placed by a fixed pattern per map and never change between frames
+- Tree canopies over woodland overlap so no ground shows inside the woodland
+- In a level bounded by woodland, woodland continues beyond the map edges, so the camera never shows where the trees end
+- Woodland follows the ordinary depth order, shading, ground shadows and restoration
+- In the faded state, woodland reads as impassable and stays distinct from the grass of the clearing
 
 ## Terrain
 
@@ -263,6 +272,8 @@ At the start, only the hero, stars and keys are in color. Every scenery tile and
 - Every frame of the dissolve contains palette colors only
 - The door stays closed until every key is picked up. During the last restoration it is drawn open where color reaches it, and the hero can step into it once color covers the whole door
 
+- The magical arrival changes only the hero's visibility. It never restores color or changes the faded state of the world
+
 ### Leaving a Level
 
 - Stepping into the open doorway completes the level
@@ -293,6 +304,24 @@ At the start, only the hero, stars and keys are in color. Every scenery tile and
 | Light motes | 1 | Rise 1 pixel every 4 game frames over 64 pixels and sway 1 pixel every 40 game frames, offset per mote |
 | Restoring color | 16 dither thresholds | The front moves 1 tile every 4 game frames, and each pixel shows its lighter crest for 8 game frames |
 | Leaving a level | 16 dither thresholds | 3 game frames each, 48 in total |
+
+### Magical Arrival
+
+The hero materializes at her start over 12 game frames. She cannot move until it ends.
+
+| Frames | Animation |
+| --- | --- |
+| 0 to 2 | Three Paper light motes converge on the hero's start. The hero is invisible |
+| 3 to 8 | The hero appears from her feet upward through the ordered 4 × 4 dither, each revealed pixel in its normal color |
+| 9 to 11 | The hero is fully visible. The motes rise and disappear |
+| 12 onward | Normal idle and movement |
+
+- The arrival uses the existing hero frames in her start facing, the existing light mote and the ordered 4 × 4 dither. It has no art of its own
+- The reveal masks only the hero. The rest of the scene is drawn as usual
+- Motes stay within about one hero-sized area around the start and move in whole pixels
+- The hero and motes keep the ordinary depth order
+- Transparency fades, scaling, rotation and blur are not used
+- Nothing marks the end of the arrival, and no pause follows it
 
 ### Animation Rules
 

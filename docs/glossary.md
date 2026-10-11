@@ -88,7 +88,19 @@ A star or a key that the hero picks up.
 
 ### Level
 
-One enclosed part of the game world that the hero plays through.
+One enclosed part of the game world that the hero plays through. A woodland boundary or fences enclose it.
+
+### Playable Area
+
+The connected traversable tiles of a level that are reachable from the hero's start, excluding the closed door.
+
+### Woodland Boundary
+
+A connected set of impassable woodland tiles that encloses a playable area. Each woodland tile is blocked as a whole tile, and the existing plain tree art is drawn over the woodland.
+
+### Magical Arrival
+
+The 12-frame presentation in which the hero materializes at her start before movement begins.
 
 ### Door
 
@@ -100,7 +112,7 @@ Describes a tile the hero can walk to from her start tile without stepping into 
 
 ### Hidden
 
-Describes a tile that a tree canopy or the door is drawn over.
+Describes a tile that a tree canopy, a woodland canopy or the door is drawn over.
 
 ### Star
 
@@ -120,7 +132,7 @@ A golden collectible that floats, buzzes and hums when the hero is near. Every k
 
 ### Stone
 
-A gray object in the game world that the player interacts with.
+A gray object in the game world that the player interacts with. A stone is a local obstacle and never forms a level boundary.
 
 ### Floor Trigger
 
@@ -128,7 +140,7 @@ A plate in the ground that activates when an object arrives on it.
 
 ### Scenery
 
-Everything in the game world that the player does not interact with, such as grass, trees, water, paths and flowers.
+Everything in the game world that the player does not interact with, such as grass, trees, woodland, water, paths and flowers.
 
 ### Prop
 
@@ -184,7 +196,7 @@ One play of a level from its start to the door, made of its play time, the stars
 
 ### Play Time
 
-The number of game frames from the start of a level until the hero steps into the door.
+The number of game frames from the first playable frame of a level until the hero steps into the door. Magical arrival frames are excluded.
 
 ### Last Playthrough
 

@@ -35,6 +35,8 @@ Invariants are checked exhaustively over enumerated inputs with `test.each`, not
 Each test collects its violations with plain comparisons and asserts once on the list, because an assertion per input dominates the run time.
 
 - In every authored level, the hero starts on each walkable tile of the playable area and moves in each of the eight directions. She never ends inside an obstacle or outside the level. The door stays closed until every key is collected.
+- In every authored level bounded by woodland, every woodland tile is impassable and every open tile is reachable from the start.
+- The magical arrival advances only through explicit frames. Through its last frame the hero does not move, collect anything or complete the level, and its frames add no play time. A held direction moves her on the first playable frame.
 - Every short sequence of reaching and completing levels keeps unlocked levels unlocked and sets the last playthrough of each completed level. Every resulting progress state survives a save and load.
 
 ## Rendering

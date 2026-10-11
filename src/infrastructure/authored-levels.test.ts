@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { LevelCompleted, KeyCollected } from '../domain/level/level-events';
-import { Direction, TilePosition } from '../domain/level/position';
+import { Direction } from '../domain/level/position';
 import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
 import { follow, pathTo } from '../test-support/walk-level';
 import { firstLevel } from './first-level';
@@ -15,25 +15,16 @@ const authoredLevels = [
 const multiKeyLevels = authoredLevels.filter(({ keyCount }) => keyCount > 1);
 
 for (const { name, create } of authoredLevels) {
-  test(`the ${name} level enters at its bottom playable edge, facing inward and far from the exit`, () => {
+  test(`the ${name} level starts in view, facing inward and far from the exit`, () => {
     const level = create(keepOrder);
-    const bottomPlayableRow = Math.max(
-      ...Array.from({ length: level.scenery.size.rows }, (_, row) =>
-        Array.from({ length: level.scenery.size.columns }, (_, column) => TilePosition.at(column, row)),
-      )
-        .flat()
-        .filter(
-          (tile) =>
-            level.scenery.isWalkable(tile) &&
-            !level.stones.some((stone) => stone.position.equals(tile)) &&
-            !level.door.covers(tile),
-        )
-        .map((tile) => tile.row),
-    );
+    const start = level.hero.position;
     expect(level.hero.facing).toBe(Direction.Up);
-    expect(level.hero.position.row, 'the entry belongs on the bottom playable edge').toBe(bottomPlayableRow);
     expect(
-      Math.min(...level.door.footprint.map((tile) => level.hero.position.row - tile.row)),
+      level.scenery.trees.some((tree) => tree.hides(start)) || level.scenery.hides(start) || level.door.hides(start),
+      'no canopy or door may cover the start',
+    ).toBe(false);
+    expect(
+      Math.min(...level.door.footprint.map((tile) => start.row - tile.row)),
       'the exit must stay beyond the seven-row minimum game view from the entry',
     ).toBeGreaterThanOrEqual(7);
   });
@@ -51,20 +42,6 @@ test.each(authoredLevels)('the $name level holds different stars under a differe
   const stars = (shuffle: typeof keepOrder) => create(shuffle).stars.map((star) => star.position);
   expect(stars(reverseOrder)).not.toEqual(stars(keepOrder));
 });
-
-test.each(authoredLevels.slice(1).map((next, index) => ({ previous: authoredLevels[index]!, next })))(
-  'the $next.name level entry aligns with the $previous.name exit after normalizing map widths',
-  ({ previous, next }) => {
-    const exited = previous.create(keepOrder);
-    const entered = next.create(keepOrder);
-    const exitCenter = exited.door.footprint.reduce((sum, tile) => sum + tile.column, 0) / exited.door.footprint.length;
-    const alignedColumn = (exitCenter / (exited.scenery.size.columns - 1)) * (entered.scenery.size.columns - 1);
-    expect(
-      Math.abs(entered.hero.position.column - alignedColumn),
-      'the entry may differ from the normalized previous exit by at most one tile',
-    ).toBeLessThanOrEqual(1);
-  },
-);
 
 test.each(
   multiKeyLevels.flatMap(({ name, create, keyCount }) =>

@@ -258,7 +258,11 @@ export class Level {
   }
 
   private hides(position: TilePosition): boolean {
-    return this.scenery.trees.some((tree) => tree.hides(position)) || this.currentDoor.hides(position);
+    return (
+      this.scenery.trees.some((tree) => tree.hides(position)) ||
+      this.scenery.hides(position) ||
+      this.currentDoor.hides(position)
+    );
   }
 
   private canEnter(position: TilePosition): boolean {

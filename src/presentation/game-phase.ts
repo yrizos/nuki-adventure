@@ -4,12 +4,19 @@ import type { TilePosition } from '../domain/level/position';
 import { closingLength } from './world-transition';
 
 export type Phase =
+  | { readonly name: 'appearing'; readonly since: number }
   | { readonly name: 'playing' }
   | { readonly name: 'restoring'; readonly since: number; readonly origin: TilePosition; readonly restores: Area }
   | { readonly name: 'closing'; readonly since: number }
   | { readonly name: 'ended' };
 
 export const playing: Phase = { name: 'playing' };
+
+export const arrivalLength = 12;
+
+export function appearing(frame: number): Phase {
+  return { name: 'appearing', since: frame };
+}
 
 export function restoringKey(key: KeyCollected, frame: number): Phase {
   return { name: 'restoring', since: frame, origin: key.position, restores: key.restores };
@@ -26,6 +33,9 @@ interface FrameEnd {
 
 export function phaseAfterFrame(phase: Phase, { frame, restorationLength }: FrameEnd): Phase {
   switch (phase.name) {
+    // The phase is checked at the end of a frame, so leaving it after the last arrival frame lets the next frame play.
+    case 'appearing':
+      return frame - phase.since >= arrivalLength - 1 ? playing : phase;
     case 'playing':
       return phase;
     case 'restoring':

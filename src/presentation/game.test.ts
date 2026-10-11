@@ -45,6 +45,7 @@ function gameSession(
   keys: readonly Key[] = [Key.at(TilePosition.at(1, 0), everywhere)],
   stars: readonly Star[] = [Star.at(TilePosition.at(3, 5))],
   size: LevelSize = LevelSize.of(5, 6),
+  arrives = false,
 ) {
   const levelId = LevelId.of('session');
   const pressed = new Set<'a' | 'b'>();
@@ -52,7 +53,15 @@ function gameSession(
     takePress: vi.fn((button: 'a' | 'b') => pressed.delete(button)),
     heading: vi.fn<() => Heading | null>(() => null),
   };
-  const sound = { star: vi.fn(), key: vi.fn(), hum: vi.fn(), door: vi.fn(), footstep: vi.fn(), restoring: vi.fn() };
+  const sound = {
+    star: vi.fn(),
+    key: vi.fn(),
+    hum: vi.fn(),
+    door: vi.fn(),
+    footstep: vi.fn(),
+    restoring: vi.fn(),
+    arrival: vi.fn(),
+  };
   const progress = { reach: vi.fn<(level: LevelId) => void>(), complete: vi.fn() };
   let play: PlayLevel;
   const createPlay = vi.fn(() => {
@@ -77,7 +86,7 @@ function gameSession(
     return play;
   });
   const report = { completed: vi.fn() };
-  const session = new GameSession({ id: levelId, start: createPlay }, controls, sound, progress, report);
+  const session = new GameSession({ id: levelId, start: createPlay, arrives }, controls, sound, progress, report);
   const normalAnimator = new HeroAnimator();
   let frames = 0;
   const tick = (): void => {
@@ -302,7 +311,48 @@ describe('the game session', () => {
   });
 });
 
-function gamePage({ secondUnlocked = false } = {}) {
+describe('the magical arrival', () => {
+  const arriving = (stars: readonly Star[] = [Star.at(TilePosition.at(3, 5))]) =>
+    gameSession(undefined, stars, undefined, true);
+
+  test('plays its chime once when the session starts', () => {
+    expect(arriving().sound.arrival).toHaveBeenCalledOnce();
+    expect(gameSession().sound.arrival).not.toHaveBeenCalled();
+  });
+
+  test('holds the hero still through frame 11 and lets a held direction move her on frame 12', () => {
+    const subject = arriving();
+    const start = subject.level.hero.feet;
+    subject.controls.heading.mockReturnValue(Heading.of(Direction.Right));
+    subject.advance(12);
+    expect(subject.level.hero.feet).toEqual(start);
+    expect(subject.sound.footstep).not.toHaveBeenCalled();
+    subject.advance(1);
+    expect(subject.level.hero.feet.x).toBeGreaterThan(start.x);
+  });
+
+  test('collects nothing beside the start until play begins', () => {
+    const subject = arriving([Star.at(TilePosition.at(0, 4))]);
+    subject.controls.heading.mockReturnValue(Heading.of(Direction.Up));
+    subject.advance(12);
+    expect(subject.level.stars).toHaveLength(1);
+    expect(subject.sound.star).not.toHaveBeenCalled();
+    subject.walkUntil(Direction.Up, () => subject.level.stars.length === 0);
+  });
+
+  test('keeps its twelve frames out of the play time', () => {
+    const subject = arriving();
+    subject.advance(12);
+    for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
+    for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
+    const completedAt = subject.frames;
+    subject.advance(closingLength);
+    const playthrough = Playthrough.of(PlayTime.ofFrames(completedAt - 1 - 12), StarCount.of(1), StarCount.of(1));
+    expect(subject.progress.complete).toHaveBeenCalledExactlyOnceWith(subject.level.id, playthrough);
+  });
+});
+
+function gamePage({ secondUnlocked = false, arrives = false } = {}) {
   FakeDocument.stubGlobals();
   audioWindow();
   const display = stubDisplay(1);
@@ -357,6 +407,7 @@ function gamePage({ secondUnlocked = false } = {}) {
     const id = LevelId.of(name);
     return {
       id,
+      arrives,
       start: () => {
         started.push(name);
         return new PlayLevel(
@@ -537,6 +588,19 @@ describe('the game page', () => {
     page.frame();
     expect(page.announcement.textContent).toBe('');
     expect(page.started).toEqual(['one']);
+  });
+
+  test('opens the menu during the magical arrival and replays the arrival on the next start', () => {
+    const arrival = vi.spyOn(Sound.prototype, 'arrival');
+    const page = gamePage({ arrives: true });
+    page.newGame();
+    page.frame();
+    page.frame();
+    page.openMenu();
+    expect(page.startScreen.hidden).toBe(false);
+    page.newGame();
+    expect(page.started).toEqual(['one', 'one']);
+    expect(arrival).toHaveBeenCalledTimes(2);
   });
 
   test('silences the key hum when the menu switch leaves the level', () => {

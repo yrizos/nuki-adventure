@@ -15,8 +15,17 @@ const scenery = (
   flowers: readonly Flower[] = [],
   fences: readonly Fence[] = [],
   variants?: readonly FlowerVariant[],
+  woodland: readonly TilePosition[] = [],
 ): Scenery =>
-  Scenery.of(LevelSize.of(layout[0]!.length, layout.length), ground(layout), trees, flowers, fences, variants);
+  Scenery.of(
+    LevelSize.of(layout[0]!.length, layout.length),
+    ground(layout),
+    trees,
+    flowers,
+    fences,
+    variants,
+    woodland,
+  );
 
 describe('a level size', () => {
   test.each([
@@ -58,6 +67,12 @@ describe('scenery', () => {
     ['a fence outside the level', () => scenery(['..'], [], [], [Fence.at(at(0, 1))])],
     ['a fence on a tree', () => scenery(['..'], [tree(at(0, 0))], [], [Fence.at(at(1, 0))])],
     ['two fences on one tile', () => scenery(['..'], [], [], [Fence.at(at(0, 0)), Fence.at(at(0, 0))])],
+    ['woodland outside the level', () => scenery(['..'], [], [], [], undefined, [at(2, 0)])],
+    ['woodland in water', () => scenery(['.~'], [], [], [], undefined, [at(1, 0)])],
+    ['woodland on a path', () => scenery(['.='], [], [], [], undefined, [at(1, 0)])],
+    ['woodland on a tree', () => scenery(['..'], [tree(at(0, 0))], [], [], undefined, [at(1, 0)])],
+    ['woodland on a flower', () => scenery(['..'], [], [Flower.at(at(1, 0))], [], undefined, [at(1, 0)])],
+    ['woodland on a fence', () => scenery(['..'], [], [], [Fence.at(at(1, 0))], undefined, [at(1, 0)])],
     ['no flower variants', () => scenery(['..'], [], [], [], [])],
     ['a repeated flower variant', () => scenery(['..'], [], [], [], [FlowerVariant.Blue, FlowerVariant.Blue])],
   ])('rejects %s', (_, create) => {
@@ -86,6 +101,24 @@ describe('scenery', () => {
   ])('is walkable at %j: %s', (position, walkable) => {
     const subject = scenery(['.~=', '...'], [tree(at(0, 1))], [], [Fence.at(at(2, 1))]);
     expect(subject.isWalkable(position)).toBe(walkable);
+  });
+
+  test('blocks every woodland tile and covers it with a whole-tile obstacle', () => {
+    const subject = scenery(['...', '...'], [], [], [], undefined, [at(1, 0), at(1, 1)]);
+    expect(subject.woodland.tiles).toEqual([at(1, 0), at(1, 1)]);
+    expect(subject.isWalkable(at(1, 0))).toBe(false);
+    expect(subject.isWalkable(at(1, 1))).toBe(false);
+    expect(subject.isWalkable(at(0, 0))).toBe(true);
+    expect(subject.obstacles(() => false)).toContainEqual(Outline.spanning(at(1, 1), 0, 0, 32, 32));
+  });
+
+  test('hides exactly the tile above each woodland tile', () => {
+    const subject = scenery(['...', '...', '...'], [], [], [], undefined, [at(1, 2)]);
+    for (let row = 0; row < 3; row++) {
+      for (let column = 0; column < 3; column++) {
+        expect(subject.hides(at(column, row))).toBe(column === 1 && row === 1);
+      }
+    }
   });
 
   test('joins neighboring fences with rails reaching toward each other only', () => {

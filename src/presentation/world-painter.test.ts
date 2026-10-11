@@ -2,11 +2,13 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { crc32, deflateSync } from 'node:zlib';
 import { describe, expect, test, vi } from 'vitest';
+import { levelView } from '../application/level-view';
 import { Area, Key } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
 import { Level, Stone } from '../domain/level/level';
 import { LevelId } from '../domain/shared/level-id';
-import { Direction, Heading, TilePosition } from '../domain/level/position';
+import { HeroState } from '../domain/level/hero';
+import { Direction, Heading, TilePosition, WorldPosition } from '../domain/level/position';
 import { Flower, FlowerVariant, Ground, LevelSize, Scenery, Tree, TreeVariant } from '../domain/level/scenery';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { firstLevel } from '../infrastructure/first-level';
@@ -19,6 +21,7 @@ import * as library from './sprite-library';
 import { faded, lighter, palette, type PaletteCode } from './palette';
 import { lighten, Picture, sprite } from './picture';
 import { cameraPosition, heroPixels, tileSize } from './world-geometry';
+import { arrivalMotes } from './arrival';
 import { keyOffset, propVariants, WorldPainter } from './world-painter';
 import { closingLength, crestLength, isRestored, restorationLength } from './world-transition';
 
@@ -160,17 +163,18 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    await expectChecksum(picture, '8347343ef5143c9c6f6d0d98af1c8182c07d9ca27a0ebd3d9140f63a3b755bc1');
+    await expectChecksum(picture, 'e9fc3c17caf27c06d16cfa040f0778de421dd4fde6c65d715dec72f2053214ee');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
-    painter.paintRestoring(picture, scene, key.position, 40, [], [key.restores]);
-    await expectChecksum(picture, '917990eda0eda05c9a2d08b82442bf493c71dd83c3af8d1b689f59217d6515fc');
+    // The key lies outside the frame, so the wave starts from her start to stop partway across the frame.
+    painter.paintRestoring(picture, scene, level.hero.position, 20, [], [key.restores]);
+    await expectChecksum(picture, '9a8444b92d69069875199ad5e9e1d45cc8c1613aaafe021747057795e5dce564');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [key.restores]);
-    await expectChecksum(picture, '1b536984e8139950dca45124af1c38b298677b3e679a92538ea2deaf6142c5ba');
+    await expectChecksum(picture, '76e67f6de1a31d10c89618df57774130a81d6d50a33156fbcef7671f834208e2');
   });
 });
 
@@ -319,7 +323,7 @@ function flowerArtDrawn(level: Level, frame: number): Art[] {
 
 test('all first-level flowers render exactly the two allowed variants in both sway frames', () => {
   const level = firstLevel((positions) => positions);
-  expect(level.scenery.flowers).toHaveLength(25);
+  expect(level.scenery.flowers).toHaveLength(27);
   const first = flowerArtDrawn(level, 0);
   const second = flowerArtDrawn(level, library.flowerFrameLength);
   const allowed = [scenery.flowerArt[0]!, scenery.flowerArt[1]!];
@@ -408,7 +412,7 @@ test('the first level renders different stone art for each touching neighbor', (
       expect(left.art).not.toBe(right.art);
     }
   }
-  expect(touchingPairs).toBe(3);
+  expect(touchingPairs).toBe(2);
 });
 
 test.each([
@@ -1172,4 +1176,141 @@ test.each([
     expect(Math.abs(pixels.y - previous.y)).toBeLessThanOrEqual(2);
     previous = pixels;
   }
+});
+
+// Only tiles with woodland beside and below are checked, because canopies round off where woodland meets open grass.
+test.each([
+  [0, 0],
+  [799, 0],
+  [0, 799],
+  [799, 799],
+])('woodland trees leave no grass inside woodland at the minimum view, with the hero at %i, %i', (x, y) => {
+  const base = firstLevel((positions) => positions);
+  const level = { ...levelView(base), hero: HeroState.of(WorldPosition.at(x, y), Direction.Down, false) };
+  const picture = new Picture(224, 224);
+  const camera = cameraPosition(level, picture.width, picture.height);
+  const draw = vi.spyOn(picture, 'draw');
+  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, []);
+  const covered = new Uint8Array(picture.width * picture.height);
+  const trees = scenery.treeArt.flat();
+  for (const [art, left, top] of draw.mock.calls) {
+    if (!trees.includes(art)) continue;
+    const { width, height, colored } = sprite(art);
+    for (let row = 0; row < height; row++) {
+      for (let column = 0; column < width; column++) {
+        const px = left + column;
+        const py = top + row;
+        if (
+          px < 0 ||
+          py < 0 ||
+          px >= picture.width ||
+          py >= picture.height ||
+          colored[(row * width + column) * 4 + 3] === 0
+        )
+          continue;
+        covered[py * picture.width + px] = 1;
+      }
+    }
+  }
+  const { columns, rows } = level.scenery.size;
+  const wooded = (column: number, row: number): boolean =>
+    column < 0 ||
+    row < 0 ||
+    column >= columns ||
+    row >= rows ||
+    level.scenery.woodland.covers(TilePosition.at(column, row));
+  let checked = 0;
+  let gaps = 0;
+  for (let py = 0; py < picture.height; py++) {
+    for (let px = 0; px < picture.width; px++) {
+      const column = Math.floor((px + camera.x) / tileSize);
+      const row = Math.floor((py + camera.y) / tileSize);
+      if ([-1, 0, 1].some((beside) => !wooded(column + beside, row) || !wooded(column + beside, row + 1))) continue;
+      checked++;
+      if (!covered[py * picture.width + px]) gaps++;
+    }
+  }
+  expect(checked).toBeGreaterThan(picture.width * tileSize);
+  expect(gaps).toBe(0);
+});
+
+test('levels without woodland draw only their authored trees', () => {
+  for (const level of [secondLevel(randomShuffle), thirdLevel(randomShuffle)]) {
+    const picture = new Picture(224, 320);
+    const draw = vi.spyOn(picture, 'draw');
+    new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, []);
+    const trees = [...scenery.treeArt.flat(), ...Object.values(scenery.fruitTreeArt).flat()];
+    expect(draw.mock.calls.filter(([art]) => trees.includes(art)).length).toBeLessThanOrEqual(
+      level.scenery.trees.length,
+    );
+  }
+});
+
+function arrivalDraws(age: number) {
+  const level = renderingLevel();
+  const picture = new Picture(384, 384);
+  const camera = cameraPosition(level, picture.width, picture.height);
+  const hero = heroPixels(level);
+  const draw = vi.spyOn(picture, 'draw');
+  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand, arrival: age }, [
+    everywhere,
+  ]);
+  const heroCall = draw.mock.calls.find(([art]) => art === sprites.heroArt.down.stand)!;
+  const { width, height, colored } = sprite(sprites.heroArt.down.stand);
+  const rowsShown = Array.from({ length: height }, (_, row) => {
+    let shown = 0;
+    for (let column = 0; column < width; column++) {
+      if (colored[(row * width + column) * 4 + 3] !== 0 && heroCall[4]!(heroCall[1] + column, heroCall[2] + row))
+        shown++;
+    }
+    return shown;
+  });
+  const opaque = Array.from(
+    { length: height },
+    (_, row) =>
+      Array.from({ length: width }, (_, column) => colored[(row * width + column) * 4 + 3]).filter(
+        (alpha) => alpha !== 0,
+      ).length,
+  );
+  const motes = draw.mock.calls
+    .filter(([art]) => art === sprites.lightMote)
+    .map(([, x, y]) => ({ x: x - (hero.x - camera.x), y: y - (hero.y - camera.y) }));
+  return { rowsShown, opaque, motes };
+}
+
+const sum = (values: readonly number[]): number => values.reduce((total, value) => total + value, 0);
+
+test.each([0, 1, 2])('an arriving hero shows no pixels at age %i', (age) => {
+  expect(sum(arrivalDraws(age).rowsShown)).toBe(0);
+});
+
+test('an arriving hero is revealed from the feet upward and shows the full sprite from age 9', () => {
+  let previous = { shown: 0, highest: 32 };
+  for (let age = 3; age <= 8; age++) {
+    const { rowsShown, opaque } = arrivalDraws(age);
+    const shown = sum(rowsShown);
+    const highest = rowsShown.findIndex((count) => count > 0);
+    expect(shown).toBeGreaterThan(previous.shown);
+    expect(shown).toBeLessThan(sum(opaque));
+    expect(highest).toBeLessThan(previous.highest);
+    if (age >= 4) expect(rowsShown[31]).toBe(opaque[31]);
+    previous = { shown, highest };
+  }
+  for (const age of [9, 10, 11]) {
+    const { rowsShown, opaque } = arrivalDraws(age);
+    expect(rowsShown).toEqual(opaque);
+  }
+});
+
+test.each([0, 1, 2, 5, 9, 11, 12])('arrival motes at age %i are drawn at their offsets from the hero', (age) => {
+  expect(arrivalDraws(age).motes).toEqual(arrivalMotes(age));
+});
+
+test('a hero without an arrival is drawn without a mask or motes', () => {
+  const level = renderingLevel();
+  const picture = new Picture(384, 384);
+  const draw = vi.spyOn(picture, 'draw');
+  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, [everywhere]);
+  expect(draw.mock.calls.find(([art]) => art === sprites.heroArt.down.stand)?.[4]).toBeUndefined();
+  expect(draw.mock.calls.some(([art]) => art === sprites.lightMote)).toBe(false);
 });

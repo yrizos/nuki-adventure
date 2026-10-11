@@ -7,7 +7,15 @@ import { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import type { LevelId } from '../domain/shared/level-id';
 import { StarCount } from '../domain/shared/star-count';
 import type { Controls } from './controls';
-import { closingLevel, restoringKey, type Phase, phaseAfterFrame, playing } from './game-phase';
+import {
+  appearing,
+  arrivalLength,
+  closingLevel,
+  restoringKey,
+  type Phase,
+  phaseAfterFrame,
+  playing,
+} from './game-phase';
 import { HeroAnimator } from './hero-animator';
 import { MessageBox } from './message-box';
 import type { Picture } from './picture';
@@ -33,6 +41,7 @@ export function humVolume(level: LevelView): number {
 export interface PlayableLevel {
   readonly id: LevelId;
   readonly start: () => PlayLevel;
+  readonly arrives?: boolean;
 }
 
 export interface SessionReport {
@@ -51,17 +60,19 @@ interface LevelRun {
 
 export class GameSession {
   private frame = 0;
-  private phase: Phase = playing;
+  private phase: Phase;
   private readonly run: LevelRun;
 
   constructor(
     level: PlayableLevel,
     private readonly controls: Pick<Controls, 'takePress' | 'heading'>,
-    private readonly sound: Pick<Sound, 'star' | 'key' | 'hum' | 'door' | 'footstep' | 'restoring'>,
+    private readonly sound: Pick<Sound, 'star' | 'key' | 'hum' | 'door' | 'footstep' | 'restoring' | 'arrival'>,
     private readonly progress: Pick<ManageProgress, 'reach' | 'complete'>,
     private readonly report: SessionReport,
   ) {
     this.run = this.begin(level);
+    this.phase = level.arrives ? appearing(this.frame) : playing;
+    if (level.arrives) this.sound.arrival();
   }
 
   get level(): LevelView {
@@ -127,6 +138,7 @@ export class GameSession {
       level,
       frame: this.frame,
       hero: this.run.animator.pose(level.hero, this.frame),
+      ...(this.phase.name === 'appearing' ? { arrival: this.frame - this.phase.since } : {}),
     };
     if (this.phase.name === 'restoring') {
       this.run.painter.paintRestoring(picture, scene, this.phase.origin, this.frame - this.phase.since, restored, [
@@ -150,7 +162,7 @@ export class GameSession {
     if (previous.name === 'closing' && next.name === 'ended') this.report.completed();
   }
 
-  private begin({ id, start }: PlayableLevel): LevelRun {
+  private begin({ id, start, arrives }: PlayableLevel): LevelRun {
     const play = start();
     this.progress.reach(id);
     return {
@@ -159,7 +171,8 @@ export class GameSession {
       painter: new WorldPainter(play.view(id)),
       animator: new HeroAnimator(),
       messageBox: new MessageBox(),
-      startFrame: this.frame,
+      // Play time starts on the first playable frame, so the arrival never counts toward it.
+      startFrame: this.frame + (arrives ? arrivalLength : 0),
       restored: [],
     };
   }

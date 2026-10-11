@@ -45,6 +45,15 @@ describe('a level built from a layout', () => {
     expect(level.scenery.fences).toEqual([Fence.at(at(5, 1))]);
   });
 
+  test('grows woodland on grass under each woodland symbol', () => {
+    const wooded = levelFromLayout(LevelId.of('wooded'), ['WDDDW', 'W.H.W', 'WK..W'], keepOrder, {
+      keys: { K: { restores: () => true } },
+    });
+    expect(wooded.scenery.woodland.tiles).toEqual([at(0, 0), at(4, 0), at(0, 1), at(4, 1), at(0, 2), at(4, 2)]);
+    expect(wooded.scenery.groundAt(at(0, 1))).toBe(Ground.Grass);
+    expect(wooded.scenery.isWalkable(at(0, 1))).toBe(false);
+  });
+
   test('defaults to all flower variants when contents omit the selection', () => {
     expect(level.scenery.flowerVariants).toEqual(FlowerVariant.All);
   });

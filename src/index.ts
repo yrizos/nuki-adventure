@@ -15,7 +15,7 @@ const playing = (create: (shuffle: Shuffle) => Level) => () =>
   new PlayLevel(new InMemoryLevelRepository([create(randomShuffle)]));
 
 const levels = [
-  { id: firstLevelId, start: playing(firstLevel) },
+  { id: firstLevelId, start: playing(firstLevel), arrives: true },
   { id: secondLevelId, start: playing(secondLevel) },
   { id: thirdLevelId, start: playing(thirdLevel) },
 ];
