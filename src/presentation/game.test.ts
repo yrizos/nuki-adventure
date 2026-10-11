@@ -149,7 +149,7 @@ describe('the game session', () => {
   test('starts the restoration sound on the key pickup tick', () => {
     const subject = gameSession();
     subject.walkUntil(Direction.Right, () => subject.level.keys.length === 0);
-    expect(subject.sound.key).toHaveBeenCalledOnce();
+    expect(subject.sound.key).toHaveBeenCalledExactlyOnceWith(true);
     expect(subject.sound.restoring).toHaveBeenCalledOnce();
   });
 
@@ -261,7 +261,7 @@ describe('the game session', () => {
     subject.move(Direction.Right);
     expect(subject.session.messageText).toBe(messages.colorsBack);
     expect(subject.level.door.isOpen).toBe(false);
-    expect(subject.sound.key).toHaveBeenCalledTimes(2);
+    expect(subject.sound.key.mock.calls).toEqual([[false], [true]]);
   });
 
   test('opens the door only once color has drawn it open from the last key, however long ago the first was taken', () => {

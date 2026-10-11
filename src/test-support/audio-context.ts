@@ -99,10 +99,12 @@ export function audioWindow(localStorage: Storage = memoryStorage()) {
   );
   vi.stubGlobal('GainNode', StubGainNode);
   vi.stubGlobal('OscillatorNode', StubOscillatorNode);
-  const root = Object.assign(new EventTarget(), { localStorage });
+  const vibrate = vi.fn((_pattern: number | number[]) => true);
+  const root = Object.assign(new EventTarget(), { localStorage, navigator: { vibrate } });
   return {
     root: root as unknown as Window,
     localStorage,
+    vibrate,
     interact: (): void => void root.dispatchEvent(new Event('pointerup')),
     audio: (): StubAudioContext | undefined => contexts.at(-1),
   };

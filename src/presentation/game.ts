@@ -101,7 +101,7 @@ export function startGame(
     controls.advance();
     navigator.tick();
     promptAge = navigator.session?.promptsA ? (promptAge ?? -1) + 1 : null;
-    if (promptAge !== null && promptAge % wobbleEvery === 0) sound.hint();
+    if (promptAge !== null && promptAge % wobbleEvery === 0) sound.hint(promptAge === 0);
     actionButtons.a.style.setProperty('--wobble', String(promptAge === null ? 0 : aButtonWobble(promptAge)));
     // Completing a level replaces the session during its own tick, so the message comes from whichever level is now open.
     const spoken = navigator.session?.messageText ?? '';

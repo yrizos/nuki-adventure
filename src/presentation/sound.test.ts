@@ -67,3 +67,33 @@ test('the hum keeps sounding at the volume asked for until it is set to zero or 
   sound.hum(0);
   expect(page.audio()!.sounding()).toEqual([]);
 });
+
+test.each(['star', 'key', 'restoring', 'gate', 'door'] as const)('%s vibrates only while sound is on', (event) => {
+  const page = audioWindow();
+  const sound = new Sound(page.root);
+  sound[event]();
+  expect(page.vibrate).toHaveBeenCalledOnce();
+  sound.toggle();
+  sound[event]();
+  expect(page.vibrate).toHaveBeenCalledOnce();
+});
+
+test('the last key and repeated hints do not vibrate', () => {
+  const page = audioWindow();
+  const sound = new Sound(page.root);
+  sound.key(true);
+  sound.hint();
+  expect(page.vibrate).not.toHaveBeenCalled();
+  sound.hint(true);
+  expect(page.vibrate).toHaveBeenCalledOnce();
+});
+
+test('footsteps, the hum and the arrival never vibrate', () => {
+  const page = audioWindow();
+  const sound = new Sound(page.root);
+  page.interact();
+  sound.footstep();
+  sound.hum(0.5);
+  sound.arrival();
+  expect(page.vibrate).not.toHaveBeenCalled();
+});

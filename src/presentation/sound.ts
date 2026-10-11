@@ -62,10 +62,13 @@ export class Sound {
   }
 
   star(last = false): void {
+    this.buzz(last ? [15, 40, 15] : 15);
     this.notes(last ? [1319, 1760, 2093, 2637] : [1319, 1760], last ? 0.09 : 0.06, 'square', 0.08);
   }
 
-  key(): void {
+  // The last key's pulse is left out because the restoring pattern starts on the same tick and would blur into it.
+  key(last = false): void {
+    if (!last) this.buzz(60);
     this.notes([1047, 1568, 1319, 2093], 0.07, 'triangle', 0.12);
   }
 
@@ -87,6 +90,7 @@ export class Sound {
   }
 
   restoring(): void {
+    this.buzz([20, 80, 30, 80, 40]);
     this.notes([523, 587, 659, 784, 880, 1047, 1175, 1319], 0.12, 'triangle', 0.15);
   }
 
@@ -95,17 +99,26 @@ export class Sound {
   }
 
   // Two quiet high notes nudge the player toward the A button without competing with the key hum.
-  hint(): void {
+  // Only the first chime vibrates, since a buzz repeating while the game waits would nag.
+  hint(first = false): void {
+    if (first) this.buzz(20);
     this.notes([1568, 2093], 0.05, 'triangle', 0.04);
   }
 
   // A low creak then a knock reads as wood swinging on its hinge and coming to rest.
   gate(): void {
+    this.buzz(40);
     this.notes([147, 131, 110, 82], 0.06, 'triangle', 0.18);
   }
 
   door(): void {
+    this.buzz([30, 50, 30, 50, 80]);
     this.notes([784, 659, 523, 392], 0.15, 'square', 0.1);
+  }
+
+  // iOS browsers have no vibrate method, so the call is skipped there.
+  private buzz(pattern: number | number[]): void {
+    if (this.enabled) this.root.navigator.vibrate?.(pattern);
   }
 
   private music(start: number): void {

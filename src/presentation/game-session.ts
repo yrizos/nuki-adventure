@@ -112,7 +112,7 @@ export class GameSession {
       for (const event of events) {
         if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
         else if (event instanceof KeyCollected) {
-          this.sound.key();
+          this.sound.key(play.view(id).keys.length === 0);
           messageBox.show(play.view(id).keys.length > 0 ? messages.someColorsBack : messages.colorsBack, this.frame);
           this.transitionTo(restoringKey(event, this.frame));
         } else if (event instanceof LevelCompleted) {

@@ -224,6 +224,7 @@ export function stubDisplay(devicePixelRatio: number) {
   const observers: (() => void)[] = [];
   const window = Object.defineProperties(new EventTarget(), {
     devicePixelRatio: { get: () => display.devicePixelRatio },
+    navigator: { value: {} },
     matchMedia: {
       value: (): EventTarget => {
         const query = new EventTarget();
