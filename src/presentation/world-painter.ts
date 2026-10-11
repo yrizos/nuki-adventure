@@ -16,7 +16,6 @@ import {
   lightMote,
   keyArt,
   pathArt,
-  signpostArt,
   starArt,
   stoneVariants,
   terrainArt,
@@ -341,18 +340,6 @@ export class WorldPainter {
         paint: () => draw(stoneVariants[this.stoneChoices[index]!]!, column * tileSize, row * tileSize),
       });
     });
-    for (const signpost of level.signposts) {
-      const { column, row } = signpost.position;
-      const againstFence = level.scenery.fences.some((fence) =>
-        fence.position.equals(signpost.position.neighbor(Direction.Up)),
-      );
-      const y = row * tileSize - (againstFence ? 12 : 0);
-      objects.push({
-        base: y + tileSize,
-        shadow: shadow(10, signpost.position, column * tileSize + 11, y + 27),
-        paint: () => draw(signpostArt, column * tileSize, y),
-      });
-    }
     level.scenery.fences.forEach((fence, index) => {
       const { column, row } = fence.position;
       objects.push({

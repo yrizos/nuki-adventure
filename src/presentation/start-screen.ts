@@ -1,6 +1,6 @@
 import { PixelGrid, type Art } from './art/art';
 import { glyphHeight, glyphWidth, letterGap, textWidth, writeText } from './art/font';
-import { continueHeight, newGameWidth, pickLevelWidth } from './art/panel';
+import { textButtonHeight, newGameWidth, pickLevelWidth } from './art/panel';
 import { artUrl } from './canvas-art';
 import { element } from './dom';
 import { idleHeroPose } from './hero-animator';
@@ -60,7 +60,7 @@ export class StartScreen {
       [this.pickLevelButton, pickLevelWidth],
     ] as const) {
       button.style.setProperty('--art-width', String(width));
-      button.style.setProperty('--art-height', String(continueHeight));
+      button.style.setProperty('--art-height', String(textButtonHeight));
     }
     takeMenuKeys(root, this.screen);
   }

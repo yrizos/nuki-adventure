@@ -3,19 +3,11 @@ import { Area, Key, Star } from './collectibles';
 import { StarCount } from '../shared/star-count';
 import { Door } from './door';
 import { Level, Stone } from './level';
-import {
-  LevelCompleted,
-  type LevelEvent,
-  KeyCollected,
-  SignpostLeft,
-  SignpostRead,
-  StarCollected,
-} from './level-events';
+import { LevelCompleted, type LevelEvent, KeyCollected, StarCollected } from './level-events';
 import { LevelId } from '../shared/level-id';
 import { Direction, Heading, TilePosition } from './position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree, TreeVariant } from './scenery';
 import { check2dObstacles } from '../../infrastructure/check2d-obstacles';
-import { Signpost, SignpostText } from './signpost';
 
 const at = TilePosition.at;
 const area = (keep: (position: TilePosition) => boolean): Area =>
@@ -23,8 +15,6 @@ const area = (keep: (position: TilePosition) => boolean): Area =>
 const everywhere = area(() => true);
 const leftHalf = area((position) => position.column < 2);
 const rightHalf = area((position) => position.column >= 2);
-const hint = SignpostText.of('ΔΙΑΒΑΣΕ ΜΕ');
-const signpostAt = (position: TilePosition): Signpost => Signpost.at(position, hint);
 
 function parse(given: readonly string[]): { scenery: Scenery; where: (symbol: string) => TilePosition[] } {
   const layout = given.some((line) => line.includes('D'))
@@ -60,7 +50,6 @@ function level(given: readonly string[], start: TilePosition, key: TilePosition)
     hero: { position: start, facing: Direction.Right },
     obstacles: check2dObstacles,
     stars: where('S').map(Star.at),
-    signposts: where('P').map(signpostAt),
   });
 }
 
@@ -81,7 +70,6 @@ function scattered(
       door: Door.closedAt(where('D')[0]!),
       hero: { position: start, facing: Direction.Right },
       obstacles: check2dObstacles,
-      signposts: where('P').map(signpostAt),
     },
     StarCount.of(count),
     shuffle,
@@ -162,7 +150,6 @@ describe('the hero in a level', () => {
     ['a tree', '.Tt.', 55, 64],
     ['a fence', '.F..', 44, 44],
     ['water', '.~..', 32, 32],
-    ['a signpost', '.P..', 45, 45],
   ])('walks up to the base of %s without passing it', (_, line, nearest, farthest) => {
     const subject = level(['DDD.', line], at(0, 1), at(0, 1));
     hold(subject, Direction.Right, 40);
@@ -281,61 +268,6 @@ describe('the hero in a level', () => {
   });
 });
 
-describe('the hero beside a signpost', () => {
-  test.each([at(1, 0), at(0, 1), at(2, 1), at(1, 2)])('reads it from %j', (start) => {
-    const subject = level(['...', '.P.', '...'], start, at(0, 0).equals(start) ? at(2, 2) : at(0, 0));
-    expect(subject.read()).toEqual([new SignpostRead(LevelId.of('test'), at(1, 1), hint)]);
-  });
-
-  test('reads it while her feet stand on its tile beside the post', () => {
-    const subject = level(['.P..', '....'], at(0, 0), at(3, 1));
-    hold(subject, Direction.Right, 40);
-    hold(subject, null, 1);
-    expect(subject.hero.position).toEqual(at(1, 0));
-    expect(subject.read()).toEqual([new SignpostRead(LevelId.of('test'), at(1, 0), hint)]);
-  });
-
-  test('reads the words of whichever signpost she stands beside', () => {
-    const { scenery, where } = parse(['DDD.', 'P..P', '....']);
-    const left = SignpostText.of('ΑΡΙΣΤΕΡΑ');
-    const right = SignpostText.of('ΔΕΞΙΑ');
-    const subject = Level.create({
-      id: LevelId.of('test'),
-      scenery,
-      stones: [],
-      keys: [Key.at(at(3, 2), everywhere)],
-      door: Door.closedAt(where('D')[0]!),
-      hero: { position: at(1, 1), facing: Direction.Right },
-      obstacles: check2dObstacles,
-      stars: [],
-      signposts: [Signpost.at(at(0, 1), left), Signpost.at(at(3, 1), right)],
-    });
-    expect(subject.read()).toEqual([new SignpostRead(LevelId.of('test'), at(0, 1), left)]);
-    hold(subject, Direction.Right, 16);
-    hold(subject, null, 1);
-    expect(subject.read()).toEqual([new SignpostRead(LevelId.of('test'), at(3, 1), right)]);
-  });
-
-  test('reads nothing from a diagonal tile', () => {
-    const subject = level(['....', '.P..', '....'], at(0, 0), at(3, 2));
-    expect(subject.read()).toEqual([]);
-  });
-
-  test('reads nothing while walking', () => {
-    const subject = level(['....', '.P..', '....'], at(1, 0), at(3, 2));
-    hold(subject, Direction.Right, 3);
-    expect(subject.read()).toEqual([]);
-  });
-
-  test('keeps reading while she turns in place and stops once she walks off the reading tiles', () => {
-    const subject = level(['....', '.P..', '....'], at(1, 0), at(3, 2));
-    subject.read();
-    expect(hold(subject, Direction.Left, 2)).toEqual([]);
-    expect(subject.hero.facing).toBe(Direction.Left);
-    expect(hold(subject, Direction.Left, 40)).toEqual([new SignpostLeft(LevelId.of('test'))]);
-  });
-});
-
 describe('a level', () => {
   test.each([
     ['inside the map', ['.......', '..DDD..', '.......', '.......', '.......']],
@@ -365,31 +297,6 @@ describe('a level', () => {
     expect(() => level(['.Tt....', '....Tt.', 'FFDDDFF', '.......', '...S...'], at(0, 4), at(0, 0))).toThrow(
       new RangeError('Every key must lie where the hero can reach it'),
     );
-  });
-
-  test('rejects a signpost in water', () => {
-    expect(() =>
-      Level.create({
-        id: LevelId.of('test'),
-        scenery: Scenery.of(
-          LevelSize.of(3, 3),
-          [
-            [Ground.Grass, Ground.Grass, Ground.Grass],
-            [Ground.Grass, Ground.Grass, Ground.Water],
-            [Ground.Grass, Ground.Grass, Ground.Grass],
-          ],
-          [],
-          [],
-        ),
-        stones: [],
-        keys: [Key.at(at(1, 2), everywhere)],
-        door: Door.closedAt(at(0, 0)),
-        hero: { position: at(0, 2), facing: Direction.Right },
-        obstacles: check2dObstacles,
-        stars: [],
-        signposts: [signpostAt(at(2, 1))],
-      }),
-    ).toThrow('A signpost needs open ground of its own, at 2, 1');
   });
 
   test('reports the collected key position and area in its collection event', () => {
@@ -629,7 +536,6 @@ describe('stars chosen among star spots', () => {
         door: Door.closedAt(where('D')[0]!),
         hero: { position: hero, facing: Direction.Right },
         obstacles: check2dObstacles,
-        signposts: [],
       },
       spots,
       shuffle,

@@ -2,14 +2,13 @@ import type { LevelView } from '../application/level-view';
 import type { ManageProgress } from '../application/manage-progress';
 import type { PlayLevel } from '../application/play-level';
 import type { Area } from '../domain/level/collectibles';
-import { LevelCompleted, KeyCollected, SignpostLeft, SignpostRead, StarCollected } from '../domain/level/level-events';
+import { LevelCompleted, KeyCollected, StarCollected } from '../domain/level/level-events';
 import { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import type { LevelId } from '../domain/shared/level-id';
 import { StarCount } from '../domain/shared/star-count';
 import type { Controls } from './controls';
 import { closingLevel, restoringKey, type Phase, phaseAfterFrame, playing } from './game-phase';
 import { HeroAnimator } from './hero-animator';
-import type { LevelEndWindow } from './level-end';
 import { MessageBox } from './message-box';
 import type { Picture } from './picture';
 import type { Sound } from './sound';
@@ -19,7 +18,6 @@ import { doorOpeningLength, restorationLength } from './world-transition';
 export const messages = {
   someColorsBack: 'ΜΠΡΑΒΟ! ΜΕΝΕΙ ΑΚΟΜΑ ΕΝΑ ΚΛΕΙΔΙ!',
   colorsBack: 'ΜΠΡΑΒΟ! ΤΑ ΧΡΩΜΑΤΑ ΕΠΕΣΤΡΕΨΑΝ!',
-  doorOpen: 'ΜΠΡΑΒΟ! Η ΠΟΡΤΑ ΓΙΑ ΤΟ ΕΠΟΜΕΝΟ ΕΠΙΠΕΔΟ ΕΙΝΑΙ ΑΝΟΙΧΤΗ!',
 } as const;
 
 const humReach = 4;
@@ -39,7 +37,6 @@ export interface PlayableLevel {
 
 export interface SessionReport {
   readonly completed: () => void;
-  readonly continued: () => void;
 }
 
 interface LevelRun {
@@ -50,7 +47,6 @@ interface LevelRun {
   readonly messageBox: MessageBox;
   readonly startFrame: number;
   restored: readonly Area[];
-  signpostText: string | null;
 }
 
 export class GameSession {
@@ -62,7 +58,6 @@ export class GameSession {
     level: PlayableLevel,
     private readonly controls: Pick<Controls, 'takePress' | 'heading'>,
     private readonly sound: Pick<Sound, 'star' | 'key' | 'hum' | 'door' | 'footstep' | 'restoring'>,
-    private readonly levelEnd: Pick<LevelEndWindow, 'show' | 'hide'>,
     private readonly progress: Pick<ManageProgress, 'reach' | 'complete'>,
     private readonly report: SessionReport,
   ) {
@@ -77,28 +72,15 @@ export class GameSession {
     return this.run.messageBox.text ?? '';
   }
 
-  continuePlaying(): void {
-    if (this.phase.name !== 'ended') return;
-    this.transitionTo(playing);
-  }
-
   tick(): void {
-    const pressedA = this.controls.takePress('a');
-    const pressedB = this.controls.takePress('b');
+    // Nothing in a level answers A or B, so presses are dropped instead of waiting for a later screen.
+    this.controls.takePress('a');
+    this.controls.takePress('b');
     const { messageBox, id, play } = this.run;
     if (this.phase.name === 'playing' || this.phase.name === 'restoring') {
-      const dismissing =
-        (pressedA || pressedB) && messageBox.text !== null && messageBox.text === this.run.signpostText;
-      if (dismissing) messageBox.hide(this.frame);
-      const reading = (pressedA || pressedB) && !dismissing;
-      const events = [...(reading ? play.read(id) : []), ...play.advance(id, this.controls.heading())];
+      const events = play.advance(id, this.controls.heading());
       for (const event of events) {
-        if (event instanceof SignpostRead) {
-          this.run.signpostText = play.view(id).door.isOpen ? messages.doorOpen : event.text.value;
-          messageBox.show(this.run.signpostText, this.frame);
-        } else if (event instanceof SignpostLeft && messageBox.text === this.run.signpostText)
-          messageBox.hide(this.frame);
-        else if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
+        if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
         else if (event instanceof KeyCollected) {
           this.sound.key();
           messageBox.show(play.view(id).keys.length > 0 ? messages.someColorsBack : messages.colorsBack, this.frame);
@@ -112,7 +94,7 @@ export class GameSession {
             StarCount.of(level.collected.length + level.stars.length),
           );
           this.progress.complete(id, playthrough);
-          this.transitionTo(closingLevel(playthrough, this.frame));
+          this.transitionTo(closingLevel(this.frame));
         }
       }
       const restorationMessage = messageBox.text === messages.colorsBack || messageBox.text === messages.someColorsBack;
@@ -129,7 +111,6 @@ export class GameSession {
       phaseAfterFrame(this.phase, {
         frame: this.frame,
         restorationLength: (origin) => restorationLength(play.view(id).scenery.size, origin),
-        continuing: pressedA || pressedB,
       }),
     );
     this.run.animator.advance(this.run.play.view(this.run.id).hero);
@@ -166,14 +147,7 @@ export class GameSession {
       this.run.restored = [...this.run.restored, previous.restores];
     this.phase = next;
     if (next.name === 'restoring') this.sound.restoring();
-    if (previous.name === 'closing' && next.name === 'ended') {
-      this.levelEnd.show(previous.playthrough);
-      this.report.completed();
-    }
-    if (previous.name === 'ended' && next.name === 'playing') {
-      this.levelEnd.hide();
-      this.report.continued();
-    }
+    if (previous.name === 'closing' && next.name === 'ended') this.report.completed();
   }
 
   private begin({ id, start }: PlayableLevel): LevelRun {
@@ -187,7 +161,6 @@ export class GameSession {
       messageBox: new MessageBox(),
       startFrame: this.frame,
       restored: [],
-      signpostText: null,
     };
   }
 }

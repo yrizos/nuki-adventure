@@ -29,7 +29,6 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
   let heading: Heading | null = null;
   const controls = { takePress: (button: 'a' | 'b') => pressed.delete(button), heading: () => heading };
   const sound = { star: vi.fn(), key: vi.fn(), hum: vi.fn(), door: vi.fn(), footstep: vi.fn(), restoring: vi.fn() };
-  const levelEnd = { show: vi.fn(), hide: vi.fn() };
   const progress = new ManageProgress(new LocalProgressRepository(memoryStorage()), [
     LevelId.of('one'),
     LevelId.of('two'),
@@ -76,7 +75,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
   const subject = new GameNavigator(
     [playable('one'), playable('two')],
     progress,
-    (level, report) => new GameSession(level, controls, sound, levelEnd, progress, report),
+    (level, report) => new GameSession(level, controls, sound, progress, report),
     screens,
   );
   if (first) subject.play(LevelId.of(first));
@@ -85,18 +84,16 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
     return subject.session!;
   };
   const complete = (): void => {
-    const shown = levelEnd.show.mock.calls.length;
+    const finished = session();
     heading = Heading.of(Direction.Up);
-    for (let frame = 0; frame < 120 && !current().isComplete; frame++) session().tick();
+    for (let frame = 0; frame < 120 && !current().isComplete; frame++) finished.tick();
     heading = null;
-    for (let frame = 0; frame <= closingLength && levelEnd.show.mock.calls.length === shown; frame++) session().tick();
-    expect(levelEnd.show).toHaveBeenCalledTimes(shown + 1);
+    for (let frame = 1; frame < closingLength; frame++) finished.tick();
+    expect(subject.session).toBe(finished);
+    finished.tick();
+    expect(subject.session).not.toBe(finished);
   };
-  const continueWith = (button: 'level-end button' | 'a' | 'b'): void => {
-    if (button === 'level-end button') {
-      session().continuePlaying();
-      return;
-    }
+  const press = (button: 'a' | 'b'): void => {
     pressed.add(button);
     session().tick();
   };
@@ -107,7 +104,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
   const steer = (direction: Direction | null): void => {
     heading = direction && Heading.of(direction);
   };
-  return { navigator: subject, started, progress, screens, showStartScreen, complete, continueWith, current, steer };
+  return { navigator: subject, started, progress, screens, showStartScreen, complete, press, current, steer };
 }
 
 describe('the game navigator', () => {
@@ -145,22 +142,11 @@ describe('the game navigator', () => {
     expect(subject.screens.showLevel).not.toHaveBeenCalled();
   });
 
-  test('enters the level end when the level end window opens', () => {
+  test('starts a fresh next level once the screen has darkened', () => {
     const subject = navigator();
     subject.complete();
-    expect(subject.navigator.state).toBe('level-end');
-    expect(subject.started).toEqual(['one']);
-  });
-
-  test.each(['level-end button', 'a', 'b'] as const)('continues once to a fresh next level with %s', (button) => {
-    const subject = navigator();
-    const finished = subject.navigator.session;
-    subject.complete();
-    subject.continueWith(button);
-    subject.continueWith(button);
     expect(subject.started).toEqual(['one', 'two']);
     expect(subject.navigator.state).toBe('playing');
-    expect(subject.navigator.session).not.toBe(finished);
     const level = subject.current();
     expect(level.id.value).toBe('two');
     expect(level.hero.position).toEqual(TilePosition.at(1, 4));
@@ -170,32 +156,25 @@ describe('the game navigator', () => {
     expect(subject.navigator.session!.messageText).toBe('');
   });
 
-  test.each(['level-end button', 'a', 'b'] as const)(
-    'opens the start screen after the last level with %s',
-    (button) => {
-      const subject = navigator('two');
-      subject.complete();
-      subject.continueWith(button);
-      expect(subject.showStartScreen).toHaveBeenCalledOnce();
-      expect(subject.navigator.state).toBe('start-screen');
-      expect(subject.navigator.session).toBeNull();
-      expect(subject.started).toEqual(['two']);
-    },
-  );
+  test('opens the start screen after the last level', () => {
+    const subject = navigator('two');
+    subject.complete();
+    expect(subject.showStartScreen).toHaveBeenCalledOnce();
+    expect(subject.navigator.state).toBe('start-screen');
+    expect(subject.navigator.session).toBeNull();
+    expect(subject.started).toEqual(['two']);
+  });
 
-  test.each(['before', 'after'] as const)(
-    'continues once when the level-end button is used %s a pending action press',
-    (order) => {
-      const subject = navigator();
-      subject.complete();
-      if (order === 'before') subject.continueWith('level-end button');
-      subject.continueWith('a');
-      if (order === 'after') subject.continueWith('level-end button');
-      expect(subject.started).toEqual(['one', 'two']);
-      expect(subject.navigator.state).toBe('playing');
-      expect(subject.current().isComplete).toBe(false);
-    },
-  );
+  test.each(['a', 'b'] as const)('ignores %s pressed while the screen darkens', (button) => {
+    const subject = navigator();
+    const finished = subject.navigator.session!;
+    subject.steer(Direction.Up);
+    for (let frame = 0; frame < 120 && !subject.current().isComplete; frame++) finished.tick();
+    subject.steer(null);
+    subject.press(button);
+    expect(subject.navigator.session).toBe(finished);
+    expect(subject.started).toEqual(['one']);
+  });
 
   test('discards the session when the start screen opens during play', () => {
     const subject = navigator();
@@ -205,19 +184,9 @@ describe('the game navigator', () => {
     expect(subject.navigator.session).toBeNull();
   });
 
-  test('discards the session when the start screen opens over the level end window', () => {
-    const subject = navigator();
-    subject.complete();
-    subject.navigator.openStartScreen();
-    expect(subject.showStartScreen).toHaveBeenCalledOnce();
-    expect(subject.navigator.state).toBe('start-screen');
-    expect(subject.navigator.session).toBeNull();
-  });
-
   test('paints the next level as a fresh painter and animator would, idle and walking', () => {
     const subject = navigator();
     subject.complete();
-    subject.continueWith('level-end button');
     const session = subject.navigator.session!;
     const animator = new HeroAnimator();
     for (const [frame, walking] of [
@@ -270,9 +239,7 @@ describe('the game navigator', () => {
   test('saves each completion once', () => {
     const subject = navigator();
     subject.complete();
-    subject.continueWith('a');
     subject.complete();
-    subject.continueWith('a');
     expect(vi.mocked(subject.progress.complete).mock.calls.map(([id]) => id.value)).toEqual(['one', 'two']);
     expect(vi.mocked(subject.progress.reach).mock.calls.map(([id]) => id.value)).toEqual(['one', 'two']);
   });

@@ -2,19 +2,11 @@ import { type Key, Star } from './collectibles';
 import { StarCount } from '../shared/star-count';
 import type { Door } from './door';
 import { Hero, type HeroState } from './hero';
-import {
-  LevelCompleted,
-  type LevelEvent,
-  KeyCollected,
-  SignpostLeft,
-  SignpostRead,
-  StarCollected,
-} from './level-events';
+import { LevelCompleted, type LevelEvent, KeyCollected, StarCollected } from './level-events';
 import type { LevelId } from '../shared/level-id';
 import { type Obstacles, Outline, type PlaceObstacles } from './obstacles';
 import { Direction, type Heading, TilePosition, TilePositions, WorldPosition } from './position';
 import type { Scenery } from './scenery';
-import type { Signpost } from './signpost';
 
 const starSpotCount = StarCount.of(15);
 const starsAmongSpots = StarCount.of(5);
@@ -43,7 +35,6 @@ export interface LevelDefinition {
   readonly door: Door;
   readonly hero: { readonly position: TilePosition; readonly facing: Direction };
   readonly stars?: readonly Star[];
-  readonly signposts?: readonly Signpost[];
   readonly obstacles: PlaceObstacles;
 }
 
@@ -54,7 +45,6 @@ export class Level {
   private completed = false;
   private remainingStars: readonly Star[];
   private collectedStars: readonly Star[] = [];
-  private reading: Signpost | null = null;
   private readonly placeObstacles: PlaceObstacles;
   private obstacles: Obstacles;
   private obstacleOutlines: readonly Outline[] = [];
@@ -62,24 +52,12 @@ export class Level {
   readonly id: LevelId;
   readonly scenery: Scenery;
   readonly stones: readonly Stone[];
-  readonly signposts: readonly Signpost[];
 
-  private constructor({
-    id,
-    scenery,
-    stones,
-    keys,
-    door,
-    hero,
-    stars = [],
-    signposts = [],
-    obstacles,
-  }: LevelDefinition) {
+  private constructor({ id, scenery, stones, keys, door, hero, stars = [], obstacles }: LevelDefinition) {
     this.id = id;
     this.scenery = scenery;
     this.stones = stones;
     this.heroEntity = new Hero(hero.position, hero.facing);
-    this.signposts = signposts;
     for (const stone of stones) {
       if (!scenery.isWalkable(stone.position)) {
         throw new RangeError(`A stone needs open ground, at ${stone.position.column}, ${stone.position.row}`);
@@ -91,17 +69,6 @@ export class Level {
       throw new RangeError('The door needs open ground across its whole width');
     }
     this.currentDoor = door;
-    signposts.forEach((signpost, index) => {
-      const { position } = signpost;
-      if (
-        !scenery.isWalkable(position) ||
-        door.covers(position) ||
-        stones.some((stone) => stone.position.equals(position)) ||
-        signposts.findIndex((other) => other.position.equals(position)) !== index
-      ) {
-        throw new RangeError(`A signpost needs open ground of its own, at ${position.column}, ${position.row}`);
-      }
-    });
     if (keys.length === 0) throw new RangeError('A level needs at least one key to open its door');
     for (let row = 0; row < scenery.size.rows; row++) {
       for (let column = 0; column < scenery.size.columns; column++) {
@@ -228,24 +195,12 @@ export class Level {
     this.obstacles = this.placedObstacles();
   }
 
-  read(): readonly LevelEvent[] {
-    if (this.completed || this.heroEntity.isWalking) return [];
-    const signpost = this.signposts.find((candidate) => candidate.isReadableFrom(this.heroEntity.position));
-    if (!signpost) return [];
-    this.reading = signpost;
-    return [new SignpostRead(this.id, signpost.position, signpost.text)];
-  }
-
   tick(heading: Heading | null): readonly LevelEvent[] {
     if (this.completed) return [];
     const before = this.heroEntity.position;
     this.heroEntity.steer(heading, this.obstacles);
     const tile = this.heroEntity.position;
     const events: LevelEvent[] = [];
-    if (this.reading && !this.reading.isReadableFrom(tile)) {
-      this.reading = null;
-      events.push(new SignpostLeft(this.id));
-    }
     if (tile.equals(before)) return events;
     const star = this.remainingStars.find((candidate) => candidate.position.equals(tile));
     if (star) {
@@ -271,7 +226,6 @@ export class Level {
     this.obstacleOutlines = [
       ...this.scenery.obstacles((position) => door.covers(position)),
       ...this.stones.map((stone) => stone.obstacle),
-      ...this.signposts.map((signpost) => signpost.obstacle),
       ...(door.isOpen ? [] : [door.obstacle]),
     ];
     return this.placeObstacles(this.obstacleOutlines);
@@ -311,7 +265,6 @@ export class Level {
     return (
       this.scenery.isWalkable(position) &&
       !this.stones.some((stone) => stone.position.equals(position)) &&
-      !this.signposts.some((signpost) => signpost.position.equals(position)) &&
       (this.currentDoor.isOpen || !this.currentDoor.covers(position))
     );
   }

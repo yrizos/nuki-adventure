@@ -45,17 +45,6 @@ test.each([
   expect(key.restores.covers(key.position)).toBe(true);
 });
 
-test('the third level has a hint for each key that names its place and an exit sign that never does', () => {
-  const level = thirdLevel(keepOrder);
-  const texts = level.signposts.map((signpost) => signpost.text.value);
-  expect(texts).toHaveLength(3);
-  expect(texts.filter((text) => text.includes('ΜΗΛΕΩΝΑ') && !text.includes('ΛΙΜΝΗ'))).toHaveLength(1);
-  expect(texts.filter((text) => text.includes('ΛΙΜΝΗ') && !text.includes('ΜΗΛΕΩΝΑ'))).toHaveLength(1);
-  const [exit, ...others] = texts.filter((text) => !/ΜΗΛΕΩΝ|ΛΙΜΝ/u.test(text));
-  expect(others).toEqual([]);
-  expect(exit).toContain('ΔΥΟ ΚΛΕΙΔΙΑ');
-});
-
 test('the third level marks fifteen star spots and lets the shuffle choose its stars', () => {
   const spots = starSpotsOf(thirdLevel);
   expect(spots).toHaveLength(15);

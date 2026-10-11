@@ -2,17 +2,15 @@ import { describe, expect, test } from 'vitest';
 import { Area, Key, Star } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
 import { Level } from '../domain/level/level';
-import { SignpostRead, StarCollected } from '../domain/level/level-events';
+import { StarCollected } from '../domain/level/level-events';
 import { LevelId } from '../domain/shared/level-id';
 import type { LevelRepository } from '../domain/level/level-repository';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
 import { Ground, LevelSize, Scenery } from '../domain/level/scenery';
-import { Signpost, SignpostText } from '../domain/level/signpost';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { PlayLevel } from './play-level';
 
 const levelId = LevelId.of('play');
-const hint = SignpostText.of('ΔΙΑΒΑΣΕ ΜΕ');
 const right = Heading.of(Direction.Right);
 
 function playing() {
@@ -30,7 +28,6 @@ function playing() {
     door: Door.closedAt(TilePosition.at(2, 0)),
     hero: { position: TilePosition.at(0, 0), facing: Direction.Right },
     stars: [Star.at(TilePosition.at(1, 0))],
-    signposts: [Signpost.at(TilePosition.at(0, 1), hint)],
     obstacles: check2dObstacles,
   });
   const loaded: LevelId[] = [];
@@ -58,7 +55,6 @@ describe('playing a level', () => {
       keys: subject.level.keys,
       stars: [Star.at(TilePosition.at(1, 0))],
       collected: [],
-      signposts: [Signpost.at(TilePosition.at(0, 1), hint)],
       door: subject.level.door,
       hero: subject.level.hero,
       isComplete: false,
@@ -88,18 +84,5 @@ describe('playing a level', () => {
     expect(subject.loaded).toHaveLength(17);
     expect(subject.saved).toHaveLength(17);
     expect(subject.saved.every((level) => level === subject.level)).toBe(true);
-  });
-
-  test('reads the signpost beside the hero and saves the level', () => {
-    const subject = playing();
-    expect(subject.play.read(levelId)).toEqual([new SignpostRead(levelId, TilePosition.at(0, 1), hint)]);
-    expect(subject.saved).toEqual([subject.level]);
-  });
-
-  test('saves the level even when there is nothing to read', () => {
-    const subject = playing();
-    subject.play.advance(levelId, right);
-    expect(subject.play.read(levelId)).toEqual([]);
-    expect(subject.saved).toHaveLength(2);
   });
 });

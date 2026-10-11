@@ -1,7 +1,6 @@
 import { expect, test } from 'vitest';
 import { Door } from '../domain/level/door';
 import { Direction, TilePosition } from '../domain/level/position';
-import { SignpostText } from '../domain/level/signpost';
 import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
 import { secondLevel, secondLevelId } from './second-level';
 
@@ -16,10 +15,6 @@ test('the second level restores the lakeside garden with one key', () => {
   expect(level.door.equals(Door.closedAt(at(9, 2)))).toBe(true);
   expect(level.keys.map((key) => key.position)).toEqual([at(17, 4)]);
   expect(level.keys[0]!.restores.tiles).toHaveLength(21 * 19);
-  expect(level.signposts.map((signpost) => [signpost.position, signpost.text])).toEqual([
-    [at(9, 17), SignpostText.of('ΤΟ ΚΛΕΙΔΙ ΣΕ ΠΕΡΙΜΕΝΕΙ ΣΤΑ ΛΟΥΛΟΥΔΙΑ ΔΙΠΛΑ ΣΤΗ ΛΙΜΝΗ.')],
-    [at(8, 3), SignpostText.of('ΒΡΕΣ ΤΟ ΚΛΕΙΔΙ. ΘΑ ΦΕΡΕΙ ΠΙΣΩ ΤΑ ΧΡΩΜΑΤΑ ΚΑΙ ΘΑ ΑΝΟΙΞΕΙ ΤΗΝ ΠΥΛΗ.')],
-  ]);
   expect(level.stones.map((stone) => stone.position)).toEqual([
     at(17, 10),
     at(18, 10),

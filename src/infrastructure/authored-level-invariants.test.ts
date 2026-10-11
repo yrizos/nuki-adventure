@@ -37,8 +37,7 @@ const starts = [
       (tile) =>
         tile.row > authored.door.left.row &&
         authored.scenery.isWalkable(tile) &&
-        !authored.stones.some((stone) => stone.position.equals(tile)) &&
-        !authored.signposts.some((signpost) => signpost.position.equals(tile)),
+        !authored.stones.some((stone) => stone.position.equals(tile)),
     )
     .map((tile) => ({ name, authored, obstacles, tile, label: `${tile.column}, ${tile.row}` }));
 });
@@ -55,7 +54,6 @@ test.each(starts)(
         keys: authored.keys,
         door: authored.door,
         hero: { position: tile, facing: Direction.Up },
-        signposts: authored.signposts,
         obstacles: () => obstacles,
       });
       const width = level.scenery.size.columns * tileSize;

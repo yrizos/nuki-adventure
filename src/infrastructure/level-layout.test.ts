@@ -5,18 +5,16 @@ import { Stone } from '../domain/level/level';
 import { LevelId } from '../domain/shared/level-id';
 import { Direction, TilePosition } from '../domain/level/position';
 import { Fence, Flower, FlowerVariant, Ground, LevelSize, Scenery, Tree, TreeVariant } from '../domain/level/scenery';
-import { Signpost, SignpostText } from '../domain/level/signpost';
 import { levelFromLayout } from './level-layout';
 
 const at = TilePosition.at;
 const keepOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => positions;
-const layout = ['.DDD..', 'Tt...F', '#H*o~P', 'O....R'];
+const layout = ['.DDD..', 'Tt...F', '#H*o~.', 'O....R'];
 const contents = {
   keys: {
     O: { restores: (position: TilePosition) => position.column < 3 },
     R: { restores: (position: TilePosition) => position.column >= 3 },
   },
-  signposts: { P: 'ΔΙΑΒΑΣΕ ΜΕ' },
   starCount: StarCount.of(2),
 };
 
@@ -81,31 +79,22 @@ describe('a level built from a layout', () => {
     expect(red!.restores.tiles.every((tile) => tile.column >= 3)).toBe(true);
   });
 
-  test('places signposts with their text', () => {
-    expect(level.signposts).toEqual([Signpost.at(at(5, 2), SignpostText.of('ΔΙΑΒΑΣΕ ΜΕ'))]);
-  });
-
   test('scatters the star count through the shuffle', () => {
     expect(level.stars.map((star) => star.position)).toEqual([at(1, 3), at(0, 2)]);
   });
 
   test.each([
-    ['no hero', ['.DDD..', 'Tt...F', '#.*o~P', 'O....R'], 'The layout of level layout needs exactly one "H"'],
-    ['two heroes', ['.DDD..', 'Tt...F', '#H*o~P', 'OH...R'], 'The layout of level layout needs exactly one "H"'],
-    ['no door', ['......', 'Tt...F', '#H*o~P', 'O....R'], 'The layout of level layout needs exactly one door'],
-    ['a split door', ['.DD.D.', 'Tt...F', '#H*o~P', 'O....R'], 'The layout of level layout needs exactly one door'],
-    ['two doors', ['DDDDDD', '......', '#H*o~P', 'O....R'], 'The layout of level layout needs exactly one door'],
+    ['no hero', ['.DDD..', 'Tt...F', '#.*o~.', 'O....R'], 'The layout of level layout needs exactly one "H"'],
+    ['two heroes', ['.DDD..', 'Tt...F', '#H*o~.', 'OH...R'], 'The layout of level layout needs exactly one "H"'],
+    ['no door', ['......', 'Tt...F', '#H*o~.', 'O....R'], 'The layout of level layout needs exactly one door'],
+    ['a split door', ['.DD.D.', 'Tt...F', '#H*o~.', 'O....R'], 'The layout of level layout needs exactly one door'],
+    ['two doors', ['DDDDDD', '......', '#H*o~.', 'O....R'], 'The layout of level layout needs exactly one door'],
     [
       'star spots and a star count',
-      ['.DDD..', 'Tt...F', '#H*o~P', 'O.+..R'],
+      ['.DDD..', 'Tt...F', '#H*o~.', 'O.+..R'],
       'The layout of level layout marks star spots, so it takes no star count',
     ],
-    ['a missing key', ['.DDD..', 'Tt...F', '#H*o~P', '.....R'], 'The layout of level layout needs exactly one "O"'],
-    [
-      'a missing signpost',
-      ['.DDD..', 'Tt...F', '#H*o~.', 'O....R'],
-      'The layout of level layout needs exactly one "P"',
-    ],
+    ['a missing key', ['.DDD..', 'Tt...F', '#H*o~.', '.....R'], 'The layout of level layout needs exactly one "O"'],
   ])('rejects a layout with %s', (_, given, message) => {
     expect(() => levelFromLayout(LevelId.of('layout'), given, keepOrder, contents)).toThrow(message);
   });

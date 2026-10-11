@@ -1,7 +1,6 @@
 import type { Area } from './collectibles';
 import type { LevelId } from '../shared/level-id';
 import type { TilePosition } from './position';
-import type { SignpostText } from './signpost';
 
 export class KeyCollected {
   constructor(
@@ -18,20 +17,8 @@ export class StarCollected {
   ) {}
 }
 
-export class SignpostRead {
-  constructor(
-    readonly levelId: LevelId,
-    readonly position: TilePosition,
-    readonly text: SignpostText,
-  ) {}
-}
-
-export class SignpostLeft {
-  constructor(readonly levelId: LevelId) {}
-}
-
 export class LevelCompleted {
   constructor(readonly levelId: LevelId) {}
 }
 
-export type LevelEvent = KeyCollected | StarCollected | SignpostRead | SignpostLeft | LevelCompleted;
+export type LevelEvent = KeyCollected | StarCollected | LevelCompleted;

@@ -23,11 +23,4 @@ export class PlayLevel {
     level.openDoor();
     this.levels.save(level);
   }
-
-  read(id: LevelId): readonly LevelEvent[] {
-    const level = this.levels.load(id);
-    const events = level.read();
-    this.levels.save(level);
-    return events;
-  }
 }

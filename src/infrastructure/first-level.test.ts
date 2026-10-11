@@ -2,7 +2,6 @@ import { expect, test } from 'vitest';
 import { Door } from '../domain/level/door';
 import { Direction, TilePosition } from '../domain/level/position';
 import { FlowerVariant } from '../domain/level/scenery';
-import { Signpost, SignpostText } from '../domain/level/signpost';
 import { fitCanvas } from '../presentation/viewport-layout';
 import { cameraPosition, tileSize } from '../presentation/world-geometry';
 import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
@@ -23,13 +22,6 @@ test('the first level hides one key that restores the whole level', () => {
   expect(level.door.equals(Door.closedAt(at(5, 2)))).toBe(true);
   expect(level.keys.map((key) => key.position)).toEqual([at(1, 4)]);
   expect(level.keys[0]!.restores.tiles).toHaveLength(17 * 15);
-  expect(level.signposts).toEqual([
-    Signpost.at(
-      at(14, 12),
-      SignpostText.of('ΤΟ ΚΛΕΙΔΙ ΠΕΡΙΜΕΝΕΙ ΔΙΠΛΑ ΣΤΑ ΛΟΥΛΟΥΔΙΑ, ΚΟΝΤΑ ΣΤΑ ΔΕΝΤΡΑ ΧΩΡΙΣ ΚΑΡΠΟΥΣ.'),
-    ),
-    Signpost.at(at(8, 3), SignpostText.of('ΒΡΕΣ ΤΟ ΚΛΕΙΔΙ. ΘΑ ΦΕΡΕΙ ΠΙΣΩ ΤΑ ΧΡΩΜΑΤΑ ΚΑΙ ΘΑ ΑΝΟΙΞΕΙ ΤΗΝ ΠΥΛΗ.')),
-  ]);
   expect(level.stones.map((stone) => stone.position)).toEqual([
     at(10, 6),
     at(11, 6),

@@ -5,11 +5,30 @@ import { StarCount } from '../domain/shared/star-count';
 import { FakeDocument, type FakeHTMLElement } from '../test-support/fake-document';
 import { PixelGrid, type Art } from './art/art';
 import { glyphHeight, textWidth, writeText } from './art/font';
-import { playTime, putClock, putStar, windowFrame, windowLegend } from './level-end';
 import type { LevelProgressView } from '../application/manage-progress';
-import { LevelPicker, levelPickerArt, levelRowText, rowHeight } from './level-picker';
+import {
+  LevelPicker,
+  levelPickerArt,
+  levelRowText,
+  playTime,
+  putClock,
+  putStar,
+  rowHeight,
+  windowFrame,
+  windowLegend,
+} from './level-picker';
 import { faded, neutralCode, type PaletteCode } from './palette';
 import { sprite } from './picture';
+
+test.each([
+  [0, '0:00'],
+  [59, '0:00'],
+  [60, '0:01'],
+  [60 * 65, '1:05'],
+  [60 * 60 * 120, '120:00'],
+])('shows %s frames as %s', (frames, shown) => {
+  expect(playTime(PlayTime.ofFrames(frames))).toBe(shown);
+});
 
 const level = (
   number: number,

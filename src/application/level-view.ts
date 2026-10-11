@@ -5,7 +5,6 @@ import type { Level, Stone } from '../domain/level/level';
 import type { LevelId } from '../domain/shared/level-id';
 import type { Outline } from '../domain/level/obstacles';
 import type { Scenery } from '../domain/level/scenery';
-import type { Signpost } from '../domain/level/signpost';
 
 export interface LevelView {
   readonly id: LevelId;
@@ -14,7 +13,6 @@ export interface LevelView {
   readonly keys: readonly Key[];
   readonly stars: readonly Star[];
   readonly collected: readonly Star[];
-  readonly signposts: readonly Signpost[];
   readonly door: Door;
   readonly hero: HeroState;
   readonly isComplete: boolean;
@@ -29,7 +27,6 @@ export function levelView(level: Level): LevelView {
     keys: [...level.keys],
     stars: [...level.stars],
     collected: [...level.collected],
-    signposts: [...level.signposts],
     door: level.door,
     hero: level.hero,
     isComplete: level.isComplete,

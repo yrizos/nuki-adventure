@@ -11,8 +11,7 @@ export interface Screens {
 }
 
 type Screen =
-  | { readonly name: 'start-screen' | 'level-picker' }
-  | { readonly name: 'playing' | 'level-end'; readonly session: GameSession };
+  { readonly name: 'start-screen' | 'level-picker' } | { readonly name: 'playing'; readonly session: GameSession };
 
 export class GameNavigator {
   private screen: Screen = { name: 'start-screen' };
@@ -64,9 +63,6 @@ export class GameNavigator {
     this.screens.showLevel();
     const session = this.startSession(level, {
       completed: () => {
-        this.screen = { name: 'level-end', session };
-      },
-      continued: () => {
         const next = this.order.after(level.id);
         if (next) this.play(next);
         else this.openStartScreen();

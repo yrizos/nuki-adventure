@@ -2,15 +2,12 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { crc32, deflateSync } from 'node:zlib';
 import { describe, expect, test, vi } from 'vitest';
-import { levelView } from '../application/level-view';
 import { Area, Key } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
-import { HeroState } from '../domain/level/hero';
 import { Level, Stone } from '../domain/level/level';
 import { LevelId } from '../domain/shared/level-id';
-import { Direction, Heading, TilePosition, WorldPosition } from '../domain/level/position';
+import { Direction, Heading, TilePosition } from '../domain/level/position';
 import { Flower, FlowerVariant, Ground, LevelSize, Scenery, Tree, TreeVariant } from '../domain/level/scenery';
-import type { Signpost } from '../domain/level/signpost';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { firstLevel } from '../infrastructure/first-level';
 import { randomShuffle } from '../infrastructure/random-shuffle';
@@ -20,7 +17,7 @@ import { pixelDifference } from '../test-support/pictures';
 import type { Art } from './art/art';
 import * as library from './sprite-library';
 import { faded, lighter, palette, type PaletteCode } from './palette';
-import { lighten, Picture, sprite, type Version } from './picture';
+import { lighten, Picture, sprite } from './picture';
 import { cameraPosition, heroPixels, tileSize } from './world-geometry';
 import { keyOffset, propVariants, WorldPainter } from './world-painter';
 import { closingLength, crestLength, isRestored, restorationLength } from './world-transition';
@@ -41,7 +38,6 @@ const sprites = {
   keyArt: library.keyArt,
   starArt: library.starArt,
   stoneVariants: library.stoneVariants,
-  signpostArt: library.signpostArt,
   lightMote: library.lightMote,
   groundShadow: library.groundShadow,
 };
@@ -150,172 +146,6 @@ async function expectChecksum(picture: Picture, expected: string): Promise<void>
   expect(actual, `actual frame written to ${decodeURIComponent(file.pathname)}`).toBe(expected);
 }
 
-const exitSignCases = [
-  { name: 'first, right-side', create: firstLevel, version: 'faded' },
-  { name: 'first, right-side', create: firstLevel, version: 'colored' },
-  { name: 'second, left-side', create: secondLevel, version: 'faded' },
-  { name: 'second, left-side', create: secondLevel, version: 'colored' },
-  { name: 'third, right-side', create: thirdLevel, version: 'faded' },
-  { name: 'third, right-side', create: thirdLevel, version: 'colored' },
-] as const;
-
-function isolatedSign(level: Level, signpost: Signpost, version: Version) {
-  const view = levelView(level);
-  const width = view.scenery.size.columns * tileSize;
-  const height = view.scenery.size.rows * tileSize;
-  const actual = new Picture(width, height);
-  const expected = new Picture(width, height);
-  const scene = { level: view, frame: 0, hero: sprites.heroArt.down.stand };
-  const restored = version === 'colored' ? level.keys.map((key) => key.restores) : [];
-  const withoutSigns = { ...view, signposts: [] };
-  new WorldPainter(withoutSigns).paint(expected, { ...scene, level: withoutSigns }, restored);
-  const withSign = { ...view, signposts: [signpost] };
-  new WorldPainter(withSign).paint(actual, { ...scene, level: withSign }, restored);
-  const camera = cameraPosition(view, width, height);
-  return {
-    actual,
-    expected,
-    x: signpost.position.column * tileSize - camera.x,
-    y: signpost.position.row * tileSize - camera.y,
-  };
-}
-
-function expectSignPixels(actual: Picture, expected: Picture, x: number, top: number, bottom: number): void {
-  const mismatches: string[] = [];
-  for (let row = top; row < bottom; row++) {
-    for (let column = x; column < x + tileSize; column++) {
-      const offset = (row * actual.width + column) * 4;
-      if (
-        actual.pixels.subarray(offset, offset + 4).some((channel, index) => channel !== expected.pixels[offset + index])
-      )
-        mismatches.push(`${column},${row}`);
-    }
-  }
-  expect(mismatches, 'rendered sign, contact shadow and surrounding ground must match').toEqual([]);
-}
-
-test.each(exitSignCases)(
-  'the $name exit sign touches the fence with its shadow attached when $version',
-  ({ create, version }) => {
-    const level = create((positions) => positions);
-    const signpost = level.signposts.find((sign) => /ΠΥΛ/.test(sign.text.value))!;
-    const { actual, expected, x, y } = isolatedSign(level, signpost, version);
-    const fencePosition = signpost.position.neighbor(Direction.Up);
-    const fence = level.scenery.fences.find((piece) => piece.position.equals(fencePosition))!;
-    expect(fence).toBeDefined();
-    const draw = vi.spyOn(expected, 'draw');
-    const view = { ...levelView(level), signposts: [] };
-    new WorldPainter(view).paint(
-      expected,
-      { level: view, frame: 0, hero: sprites.heroArt.down.stand },
-      version === 'colored' ? level.keys.map((key) => key.restores) : [],
-    );
-    const fenceDrawing = draw.mock.calls.find(
-      ([art, column, row]) => scenery.fenceArt.includes(art) && column === x && row === y - tileSize,
-    )!;
-    expect(fenceDrawing).toBeDefined();
-    const fenceSprite = sprite(fenceDrawing[0]);
-    const fenceRows = Array.from({ length: fenceSprite.height }, (_, row) => row).filter(
-      (row) => fenceSprite[version][(row * fenceSprite.width + tileSize / 2) * 4 + 3] !== 0,
-    );
-    const fenceBottom = y - tileSize + Math.max(...fenceRows);
-    const signRows = sprites.signpostArt.rows
-      .map((row, index) => (row.includes('k') ? index : -1))
-      .filter((row) => row >= 0);
-    const top = fenceBottom - Math.min(...signRows);
-    expect(
-      colorAt(actual, x + tileSize / 2, fenceBottom),
-      'the top outline must meet the lowest opaque fence row without padding leaving a gap',
-    ).toBe(palette.Ink);
-    const surface = level.scenery.groundAt(signpost.position).equals(Ground.Path) ? 'E2' : 'G1';
-    const shadow = sprites.groundShadow(10, surface);
-    expected.draw(shadow, x + (tileSize - shadow.rows[0]!.length) / 2, top + Math.max(...signRows) + 1, version);
-    expected.draw(sprites.signpostArt, x, top, version);
-    expectSignPixels(actual, expected, x, y - tileSize, y + tileSize);
-  },
-);
-
-test.each(exitSignCases)(
-  'the $name ordinary key hint keeps its grid position and contact shadow when $version',
-  ({ create, version }) => {
-    const level = create((positions) => positions);
-    const hints = level.signposts.filter((sign) => /ΠΕΡΙΜΕΝΕΙ/.test(sign.text.value));
-    expect(hints, 'the level needs an ordinary hint for each key').toHaveLength(level.keys.length);
-    for (const signpost of hints) {
-      expect(
-        level.scenery.fences.some((fence) => fence.position.equals(signpost.position.neighbor(Direction.Up))),
-      ).toBe(false);
-      const { actual, expected, x, y } = isolatedSign(level, signpost, version);
-      const lastOpaqueRow = sprites.signpostArt.rows.findLastIndex((row) => row.includes('k'));
-      const surface = level.scenery.groundAt(signpost.position).equals(Ground.Path) ? 'E2' : 'G1';
-      const shadow = sprites.groundShadow(10, surface);
-      expected.draw(shadow, x + (tileSize - shadow.rows[0]!.length) / 2, y + lastOpaqueRow + 1, version);
-      expected.draw(sprites.signpostArt, x, y, version);
-      expectSignPixels(actual, expected, x, y - tileSize, y + tileSize);
-    }
-  },
-);
-
-test.each(exitSignCases)(
-  'the $name fence-backed sign stays behind a hero in front of its visible base when $version',
-  ({ create, version }) => {
-    const level = create((positions) => positions);
-    const signpost = level.signposts.find((sign) => /ΠΥΛ/.test(sign.text.value))!;
-    const signView = { ...levelView(level), signposts: [signpost] };
-    const picture = new Picture(level.scenery.size.columns * tileSize, (level.scenery.size.rows + 2) * tileSize);
-    const restored = version === 'colored' ? level.keys.map((key) => key.restores) : [];
-    new WorldPainter(signView).paint(
-      picture,
-      { level: signView, frame: 0, hero: sprites.heroArt.down.stand },
-      restored,
-    );
-    const camera = cameraPosition(signView, picture.width, picture.height);
-    const x = signpost.position.column * tileSize - camera.x;
-    const y = signpost.position.row * tileSize - camera.y;
-    const visibleRows = Array.from({ length: tileSize * 2 }, (_, row) => y - tileSize + row).filter(
-      (row) => colorAt(picture, x + tileSize / 2, row) === palette.Ink,
-    );
-    expect(visibleRows.length).toBeGreaterThan(0);
-    const visibleBottom = Math.max(...visibleRows);
-    const nominalBase = y + tileSize;
-    const heroBase = Math.floor((visibleBottom + 1 + nominalBase) / 2);
-    const view = {
-      ...signView,
-      hero: HeroState.of(
-        WorldPosition.at(x + camera.x + tileSize / 2 + 8, heroBase + camera.y - 4),
-        Direction.Down,
-        false,
-      ),
-    };
-    const actual = new Picture(picture.width, picture.height);
-    new WorldPainter(view).paint(actual, { level: view, frame: 0, hero: sprites.heroArt.down.stand }, restored);
-    const hero = heroPixels(view);
-    const art = sprite(sprites.heroArt.down.stand);
-    let overlaps = 0;
-    for (let row = 0; row < art.height; row++) {
-      for (let column = 0; column < art.width; column++) {
-        const targetX = hero.x - camera.x + column;
-        const targetY = hero.y - camera.y + row;
-        if (targetX < x || targetX >= x + tileSize || targetY < Math.min(...visibleRows) || targetY > visibleBottom)
-          continue;
-        const source = (row * art.width + column) * 4;
-        if (art.colored[source + 3] === 0) continue;
-        const target = (targetY * actual.width + targetX) * 4;
-        if (
-          picture.pixels.subarray(target, target + 4).every((channel, index) => channel === art.colored[source + index])
-        )
-          continue;
-        overlaps++;
-        expect(
-          [...actual.pixels.subarray(target, target + 4)],
-          `hero pixel at ${targetX},${targetY} must be in front`,
-        ).toEqual([...art.colored.subarray(source, source + 4)]);
-      }
-    }
-    expect(overlaps, 'the fixture must include overlapping, visibly different hero and sign pixels').toBeGreaterThan(0);
-  },
-);
-
 describe('whole frames of the first level', () => {
   // The frame shows only the lower right of the level, so the stars must come from spots inside it to be drawn at all.
   const inFrame = (tile: TilePosition): boolean => tile.column >= 10 && tile.row >= 7;
@@ -330,17 +160,17 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    await expectChecksum(picture, '6c4aec6c45e08d051d950913e06696035f33c981ba3351b5151f26d04f45d202');
+    await expectChecksum(picture, '8347343ef5143c9c6f6d0d98af1c8182c07d9ca27a0ebd3d9140f63a3b755bc1');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     painter.paintRestoring(picture, scene, key.position, 40, [], [key.restores]);
-    await expectChecksum(picture, 'ce99263c8859785d23d045f61f155ca87ecd906a8d0f8613d356c296fd183d78');
+    await expectChecksum(picture, '917990eda0eda05c9a2d08b82442bf493c71dd83c3af8d1b689f59217d6515fc');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [key.restores]);
-    await expectChecksum(picture, '59a327750c32847037524048a3861eb9bbd45c576076d36f17b12625b00df89d');
+    await expectChecksum(picture, '1b536984e8139950dca45124af1c38b298677b3e679a92538ea2deaf6142c5ba');
   });
 });
 

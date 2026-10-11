@@ -8,7 +8,6 @@ import { GameNavigator } from './game-navigator';
 import { GameSession, type PlayableLevel } from './game-session';
 import { connectGameSwitches } from './game-switches';
 import { GameView } from './game-view';
-import { LevelEndWindow } from './level-end';
 import { LevelPicker } from './level-picker';
 import { drawObstacles } from './obstacle-overlay';
 import { Sound } from './sound';
@@ -34,16 +33,14 @@ export function startGame(
   const gameView = new GameView(screen, view, canvas);
 
   const sound = new Sound(window);
-  const levelEnd = new LevelEndWindow(root);
   const startScreen = new StartScreen(root);
   const levelPicker = new LevelPicker(root);
   const navigator = new GameNavigator(
     levels,
     progress,
-    (level, report) => new GameSession(level, controls, sound, levelEnd, progress, report),
+    (level, report) => new GameSession(level, controls, sound, progress, report),
     {
       showStartScreen: () => {
-        levelEnd.hide();
         levelPicker.hide();
         announcement.textContent = '';
         startScreen.show();
@@ -70,13 +67,12 @@ export function startGame(
     sound.hum(0);
     navigator.openStartScreen();
   });
-  levelEnd.whenContinued(() => navigator.session?.continuePlaying());
   navigator.openStartScreen();
 
   const tick = (): void => {
     controls.advance();
     navigator.tick();
-    // Continuing can replace the session during its own tick, so the message comes from whichever level is now open.
+    // Completing a level replaces the session during its own tick, so the message comes from whichever level is now open.
     const spoken = navigator.session?.messageText ?? '';
     if (announcement.textContent !== spoken) announcement.textContent = spoken;
   };

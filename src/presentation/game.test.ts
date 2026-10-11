@@ -9,7 +9,6 @@ import { LevelId } from '../domain/shared/level-id';
 import { StarCount } from '../domain/shared/star-count';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
 import { Ground, LevelSize, Scenery } from '../domain/level/scenery';
-import { Signpost, SignpostText } from '../domain/level/signpost';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
 import { LocalProgressRepository } from '../infrastructure/local-progress-repository';
@@ -39,8 +38,6 @@ const everywhere = area(() => true);
 const leftHalf = area((position) => position.column < 2);
 const rightHalf = area((position) => position.column >= 2);
 
-const hint = 'ΒΡΕΣ ΤΟ ΚΛΕΙΔΙ!';
-
 // The page drives the joystick through the keyboard, so the touch joystick library only needs to accept listeners.
 vi.mock('nipplejs', () => ({ create: () => ({ on: () => {}, destroy: () => {} }) }));
 
@@ -56,7 +53,6 @@ function gameSession(
     heading: vi.fn<() => Heading | null>(() => null),
   };
   const sound = { star: vi.fn(), key: vi.fn(), hum: vi.fn(), door: vi.fn(), footstep: vi.fn(), restoring: vi.fn() };
-  const levelEnd = { show: vi.fn(), hide: vi.fn() };
   const progress = { reach: vi.fn<(level: LevelId) => void>(), complete: vi.fn() };
   let play: PlayLevel;
   const createPlay = vi.fn(() => {
@@ -76,13 +72,12 @@ function gameSession(
       hero: { position: TilePosition.at(0, 5), facing: Direction.Right },
       obstacles: check2dObstacles,
       stars,
-      signposts: [Signpost.at(TilePosition.at(0, 4), SignpostText.of(hint))],
     });
     play = new PlayLevel(new InMemoryLevelRepository([level]));
     return play;
   });
-  const report = { completed: vi.fn(), continued: vi.fn() };
-  const session = new GameSession({ id: levelId, start: createPlay }, controls, sound, levelEnd, progress, report);
+  const report = { completed: vi.fn() };
+  const session = new GameSession({ id: levelId, start: createPlay }, controls, sound, progress, report);
   const normalAnimator = new HeroAnimator();
   let frames = 0;
   const tick = (): void => {
@@ -114,7 +109,6 @@ function gameSession(
     session,
     controls,
     sound,
-    levelEnd,
     progress,
     report,
     normalAnimator,
@@ -137,27 +131,6 @@ function gameSession(
 }
 
 describe('the game session', () => {
-  test.each(['a', 'b'] as const)('keeps a signpost message until button %s dismisses it', (button) => {
-    const subject = gameSession();
-    subject.press(button);
-    expect(subject.session.messageText).toBe(hint);
-    subject.advance(600);
-    expect(subject.session.messageText).toBe(hint);
-    subject.press(button);
-    expect(subject.session.messageText).toBe('');
-    subject.press(button);
-    expect(subject.session.messageText).toBe(hint);
-  });
-
-  test('dismisses the signpost message when walking away', () => {
-    const subject = gameSession();
-    subject.press('a');
-    subject.controls.heading.mockReturnValue(Heading.of(Direction.Right));
-    for (let frame = 0; frame < 40 && subject.session.messageText === hint; frame++) subject.tick();
-    expect(subject.session.messageText).not.toBe(hint);
-    expect(subject.level.hero.isWalking).toBe(true);
-  });
-
   test('starts the restoration sound on the key pickup tick', () => {
     const subject = gameSession();
     subject.walkUntil(Direction.Right, () => subject.level.keys.length === 0);
@@ -310,55 +283,23 @@ describe('the game session', () => {
     expect(subject.session.messageText).toBe('');
   });
 
-  test('does not restart a level before it ends', () => {
+  test('reports completion once, after the closing transition', () => {
     const subject = gameSession();
-    subject.session.continuePlaying();
+    for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
+    for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
+    const completedAt = subject.frames;
+    expect(subject.sound.door).toHaveBeenCalledOnce();
+    subject.advance(closingLength - 1);
+    expect(subject.report.completed).not.toHaveBeenCalled();
+    subject.advance(1);
+    expect(subject.report.completed).toHaveBeenCalledOnce();
+    const playthrough = Playthrough.of(PlayTime.ofFrames(completedAt - 1), StarCount.of(1), StarCount.of(1));
+    expect(subject.progress.complete).toHaveBeenCalledExactlyOnceWith(subject.level.id, playthrough);
+    subject.press('a');
+    subject.advance(10);
+    expect(subject.report.completed).toHaveBeenCalledOnce();
     expect(subject.createPlay).toHaveBeenCalledOnce();
-    expect(subject.levelEnd.hide).not.toHaveBeenCalled();
   });
-
-  test.each(['level-end button', 'a', 'b'] as const)(
-    'shows completion after the closing transition and continues with %s',
-    (button) => {
-      const subject = gameSession();
-      const continuePlaying = (): void => {
-        if (button === 'level-end button') subject.session.continuePlaying();
-        else subject.press(button);
-      };
-      continuePlaying();
-      expect(subject.createPlay).toHaveBeenCalledOnce();
-      expect(subject.levelEnd.hide).not.toHaveBeenCalled();
-      for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
-      for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
-      const completedAt = subject.frames;
-      expect(subject.sound.door).toHaveBeenCalledOnce();
-      expect(subject.levelEnd.show).not.toHaveBeenCalled();
-      continuePlaying();
-      expect(subject.createPlay).toHaveBeenCalledOnce();
-      expect(subject.levelEnd.hide).not.toHaveBeenCalled();
-      subject.advance(closingLength - 1 - (button === 'level-end button' ? 0 : 1));
-      expect(subject.levelEnd.show).not.toHaveBeenCalled();
-      subject.advance(1);
-      const playthrough = Playthrough.of(PlayTime.ofFrames(completedAt - 1), StarCount.of(1), StarCount.of(1));
-      expect(subject.levelEnd.show).toHaveBeenCalledExactlyOnceWith(playthrough);
-      expect(subject.report.completed).toHaveBeenCalledOnce();
-      expect(subject.report.continued).not.toHaveBeenCalled();
-      expect(subject.progress.complete).toHaveBeenCalledExactlyOnceWith(subject.level.id, playthrough);
-      const picture = new Picture(224, 224);
-      subject.session.paint(picture);
-      expect(new Set(picture.pixels.filter((_, index) => index % 4 === 3))).toEqual(new Set([255]));
-      continuePlaying();
-      expect(subject.levelEnd.hide).toHaveBeenCalledOnce();
-      expect(subject.report.continued).toHaveBeenCalledOnce();
-      expect(subject.createPlay).toHaveBeenCalledOnce();
-      continuePlaying();
-      expect(subject.levelEnd.hide).toHaveBeenCalledOnce();
-      expect(subject.report.continued).toHaveBeenCalledOnce();
-      expect(subject.report.completed).toHaveBeenCalledOnce();
-      expect(subject.createPlay).toHaveBeenCalledOnce();
-      expect(subject.progress.complete).toHaveBeenCalledOnce();
-    },
-  );
 });
 
 function gamePage({ secondUnlocked = false } = {}) {
@@ -374,10 +315,6 @@ function gamePage({ secondUnlocked = false } = {}) {
   for (const name of [
     'screen',
     'game-view',
-    'level-end',
-    'level-end-card',
-    'level-end-summary',
-    'continue-button',
     'menu-switch',
     'full-screen-switch',
     'sound-switch',
@@ -413,7 +350,6 @@ function gamePage({ secondUnlocked = false } = {}) {
   // The smallest view the game allows keeps painting every frame of whole playthroughs fast.
   view.bounds = { left: 0, top: 0, width: 224, height: 224 };
   view.append(root.createElement('canvas'));
-  elements.get('level-end')!.hidden = true;
   elements.get('start-screen')!.hidden = true;
   elements.get('level-picker-screen')!.hidden = true;
   const started: string[] = [];
@@ -471,7 +407,6 @@ function gamePage({ secondUnlocked = false } = {}) {
     startScreen: elements.get('start-screen')!,
     startHero: elements.get('start-hero')!,
     levelPicker: elements.get('level-picker-screen')!,
-    levelEnd: elements.get('level-end')!,
     newGame: (): void => (elements.get('start-new-game') as FakeHTMLElement).click(),
     pickLevel: (): void => (elements.get('start-pick-level') as FakeHTMLElement).click(),
     back: (): void => (elements.get('level-picker-back') as FakeHTMLElement).click(),
@@ -485,7 +420,6 @@ function gamePage({ secondUnlocked = false } = {}) {
     },
     choose: (number: number): void => (root.querySelectorAll('.level-row')[number - 1] as FakeHTMLElement).click(),
     openMenu: (): void => (elements.get('menu-switch') as FakeHTMLElement).click(),
-    continuePlaying: (): void => (elements.get('continue-button') as FakeHTMLElement).click(),
     walkUpUntil(done: () => boolean): void {
       key('keydown', 'ArrowUp');
       for (let count = 0; count < 400 && !done(); count++) frame();
@@ -493,7 +427,8 @@ function gamePage({ secondUnlocked = false } = {}) {
       expect(done()).toBe(true);
     },
     completeLevel(): void {
-      this.walkUpUntil(() => !elements.get('level-end')!.hidden);
+      const count = started.length;
+      this.walkUpUntil(() => started.length > count || !elements.get('start-screen')!.hidden);
     },
   };
 }
@@ -615,13 +550,11 @@ describe('the game page', () => {
     expect(hum).toHaveBeenLastCalledWith(0);
   });
 
-  test('shows the start screen with the level end window hidden after continuing from the last level', () => {
+  test('shows the start screen after completing the last level', () => {
     const page = gamePage({ secondUnlocked: true });
     page.pickLevel();
     page.choose(2);
     page.completeLevel();
-    page.continuePlaying();
-    expect(page.levelEnd.hidden).toBe(true);
     expect(page.startScreen.hidden).toBe(false);
     page.frame();
     expect(page.started).toEqual(['two']);
@@ -634,7 +567,6 @@ describe('the game page', () => {
     expect(page.announcement.textContent).toBe('');
     page.walkUpUntil(() => page.announcement.textContent === messages.colorsBack);
     page.completeLevel();
-    page.continuePlaying();
     page.frame();
     expect(page.started).toEqual(['one', 'two']);
     expect(page.announcement.textContent).toBe('');
@@ -781,12 +713,6 @@ describe('whole frames of the game session', () => {
     expect(unexpectedHeroPixels(subject, 18, 18)).toBe(0);
   });
 
-  test('paints the current signpost message fixture unchanged', async () => {
-    const subject = gameSession();
-    subject.press('a');
-    expect(await paintedChecksum(subject)).toBe('e183faa0b00aee0cce963fe2aec30fc9a2de5fe844c03216d9681681cf47d312');
-  });
-
   test.each([false, true])(
     'paints spreading colors with the normal hero and message, interrupted: %s',
     (interrupted) => {
@@ -864,7 +790,6 @@ describe('whole frames of the game session', () => {
     expect(completedFrame - pickupFrame).toBeLessThan(restorationLength(subject.level.scenery.size, key.position));
     const playthrough = Playthrough.of(PlayTime.ofFrames(completedFrame), StarCount.of(0), StarCount.of(0));
     expect(subject.progress.complete).toHaveBeenCalledExactlyOnceWith(subject.level.id, playthrough);
-    expect(subject.levelEnd.show).not.toHaveBeenCalled();
     for (const elapsed of [1, closingLength / 2, closingLength]) {
       subject.advance(elapsed - (subject.frames - completedFrame));
       const actual = new Picture(224, 224);
@@ -881,11 +806,11 @@ describe('whole frames of the game session', () => {
       );
       subject.session.paint(actual);
       expect(pixelDifference(actual, expected)).toBeUndefined();
-      expect(subject.levelEnd.show).not.toHaveBeenCalled();
+      expect(subject.report.completed).not.toHaveBeenCalled();
       expect(subject.progress.complete).toHaveBeenCalledOnce();
     }
     subject.tick();
-    expect(subject.levelEnd.show).toHaveBeenCalledExactlyOnceWith(playthrough);
+    expect(subject.report.completed).toHaveBeenCalledOnce();
     expect(subject.progress.complete).toHaveBeenCalledOnce();
   });
 
@@ -894,7 +819,7 @@ describe('whole frames of the game session', () => {
     for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
     for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
     subject.advance(closingLength / 2);
-    expect(await paintedChecksum(subject)).toBe('d01ad9c5da9e6a897b90094076fa2278dec177b994adc0fea521b32eb608a175');
+    expect(await paintedChecksum(subject)).toBe('f07d9a6b383c9aa9fbbd87b96c78c728635b889bdf9ef611d4acc205f8666f3b');
   });
 
   test('paints the current ended fixture unchanged', async () => {

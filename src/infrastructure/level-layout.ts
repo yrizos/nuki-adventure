@@ -14,12 +14,10 @@ import {
   Tree,
   TreeVariant,
 } from '../domain/level/scenery';
-import { Signpost, SignpostText } from '../domain/level/signpost';
 import { check2dObstacles } from './check2d-obstacles';
 
 interface LayoutContents {
   readonly keys: Readonly<Record<string, { readonly restores: (position: TilePosition) => boolean }>>;
-  readonly signposts: Readonly<Record<string, string>>;
   readonly starCount?: StarCount;
   readonly flowerVariants?: readonly FlowerVariant[];
 }
@@ -74,9 +72,6 @@ export function levelFromLayout(
   const keys = Object.entries(contents.keys).map(([symbol, { restores }]) =>
     Key.at(one(symbol), Area.of(cells.map((cell) => cell.at).filter(restores))),
   );
-  const signposts = Object.entries(contents.signposts).map(([symbol, text]) =>
-    Signpost.at(one(symbol), SignpostText.of(text)),
-  );
   const definition = {
     id,
     scenery,
@@ -84,7 +79,6 @@ export function levelFromLayout(
     keys,
     door: Door.closedAt(door),
     hero: { position: one('H'), facing: Direction.Up },
-    signposts,
     obstacles: check2dObstacles,
   };
   if (contents.starCount) return Level.withScatteredStars(definition, contents.starCount, shuffle);
