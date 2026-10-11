@@ -1,11 +1,11 @@
-import { type Orb, Star } from './collectibles';
+import { type Key, Star } from './collectibles';
 import { StarCount } from '../shared/star-count';
 import type { Door } from './door';
 import { Hero, type HeroState } from './hero';
 import {
   LevelCompleted,
   type LevelEvent,
-  OrbCollected,
+  KeyCollected,
   SignpostLeft,
   SignpostRead,
   StarCollected,
@@ -39,7 +39,7 @@ export interface LevelDefinition {
   readonly id: LevelId;
   readonly scenery: Scenery;
   readonly stones: readonly Stone[];
-  readonly orbs: readonly Orb[];
+  readonly keys: readonly Key[];
   readonly door: Door;
   readonly hero: { readonly position: TilePosition; readonly facing: Direction };
   readonly stars?: readonly Star[];
@@ -49,7 +49,7 @@ export interface LevelDefinition {
 
 export class Level {
   private readonly heroEntity: Hero;
-  private remainingOrbs: readonly Orb[];
+  private remainingKeys: readonly Key[];
   private currentDoor: Door;
   private completed = false;
   private remainingStars: readonly Star[];
@@ -68,7 +68,7 @@ export class Level {
     id,
     scenery,
     stones,
-    orbs,
+    keys,
     door,
     hero,
     stars = [],
@@ -102,23 +102,23 @@ export class Level {
         throw new RangeError(`A signpost needs open ground of its own, at ${position.column}, ${position.row}`);
       }
     });
-    if (orbs.length === 0) throw new RangeError('A level needs at least one orb to open its door');
+    if (keys.length === 0) throw new RangeError('A level needs at least one key to open its door');
     for (let row = 0; row < scenery.size.rows; row++) {
       for (let column = 0; column < scenery.size.columns; column++) {
-        if (!orbs.some((orb) => orb.restores.covers(TilePosition.at(column, row)))) {
-          throw new RangeError(`The orbs of a level must together restore every tile, but not ${column}, ${row}`);
+        if (!keys.some((key) => key.restores.covers(TilePosition.at(column, row)))) {
+          throw new RangeError(`The keys of a level must together restore every tile, but not ${column}, ${row}`);
         }
       }
     }
-    orbs.forEach((orb, index) => {
-      if (!this.canEnter(orb.position)) throw new RangeError('Every orb must lie where the hero can reach it');
-      if (this.hides(orb.position)) {
+    keys.forEach((key, index) => {
+      if (!this.canEnter(key.position)) throw new RangeError('Every key must lie where the hero can reach it');
+      if (this.hides(key.position)) {
         throw new RangeError(
-          `An orb must stay visible, not behind a tree or the door, at ${orb.position.column}, ${orb.position.row}`,
+          `A key must stay visible, not behind a tree or the door, at ${key.position.column}, ${key.position.row}`,
         );
       }
-      if (orbs.findIndex((other) => other.position.equals(orb.position)) !== index) {
-        throw new RangeError(`An orb needs a tile of its own, at ${orb.position.column}, ${orb.position.row}`);
+      if (keys.findIndex((other) => other.position.equals(key.position)) !== index) {
+        throw new RangeError(`A key needs a tile of its own, at ${key.position.column}, ${key.position.row}`);
       }
     });
     if (!this.canEnter(hero.position)) throw new RangeError('The hero must start on open ground');
@@ -126,8 +126,8 @@ export class Level {
     if (reachable.some((tile) => tile.row < door.left.row)) {
       throw new RangeError('The door must stand on the top edge of the playable area');
     }
-    if (orbs.some((orb) => !reachable.some((tile) => tile.equals(orb.position)))) {
-      throw new RangeError('Every orb must lie where the hero can reach it');
+    if (keys.some((key) => !reachable.some((tile) => tile.equals(key.position)))) {
+      throw new RangeError('Every key must lie where the hero can reach it');
     }
     const directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
     if (
@@ -146,14 +146,14 @@ export class Level {
         );
       }
       if (
-        orbs.some((orb) => orb.position.equals(star.position)) ||
+        keys.some((key) => key.position.equals(star.position)) ||
         star.position.equals(hero.position) ||
         stars.findIndex((other) => other.equals(star)) !== index
       ) {
         throw new RangeError(`A star needs a tile of its own, at ${star.position.column}, ${star.position.row}`);
       }
     });
-    this.remainingOrbs = [...orbs];
+    this.remainingKeys = [...keys];
     this.remainingStars = [...stars];
     this.placeObstacles = obstacles;
     this.obstacles = this.placedObstacles();
@@ -168,12 +168,12 @@ export class Level {
     starCount: StarCount,
     shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[],
   ): Level {
-    const { orbs, hero } = definition;
+    const { keys, hero } = definition;
     const empty = new Level({ ...definition, stars: [] });
     const spots = empty
       .reachableTiles()
       .filter(
-        (tile) => !empty.hides(tile) && !orbs.some((orb) => orb.position.equals(tile)) && !tile.equals(hero.position),
+        (tile) => !empty.hides(tile) && !keys.some((key) => key.position.equals(tile)) && !tile.equals(hero.position),
       );
     if (spots.length < starCount.value) {
       throw new RangeError(`The level has room for ${spots.length} visible, reachable stars, not ${starCount.value}`);
@@ -205,8 +205,8 @@ export class Level {
     return this.collectedStars;
   }
 
-  get orbs(): readonly Orb[] {
-    return this.remainingOrbs;
+  get keys(): readonly Key[] {
+    return this.remainingKeys;
   }
 
   get outlines(): readonly Outline[] {
@@ -221,9 +221,9 @@ export class Level {
     return this.completed;
   }
 
-  // Collecting the last orb only allows the door to open, because it should not let the hero through before it is seen to open.
+  // Collecting the last key only allows the door to open, because it should not let the hero through before it is seen to open.
   openDoor(): void {
-    if (this.remainingOrbs.length > 0) throw new Error('The door opens only once every orb is picked up');
+    if (this.remainingKeys.length > 0) throw new Error('The door opens only once every key is picked up');
     this.currentDoor = this.currentDoor.opened();
     this.obstacles = this.placedObstacles();
   }
@@ -253,10 +253,10 @@ export class Level {
       this.collectedStars = [...this.collectedStars, star];
       events.push(new StarCollected(this.id, star.position));
     }
-    const orb = this.remainingOrbs.find((candidate) => candidate.position.equals(tile));
-    if (orb) {
-      this.remainingOrbs = this.remainingOrbs.filter((candidate) => candidate !== orb);
-      events.push(new OrbCollected(this.id, orb.position, orb.color, orb.restores));
+    const key = this.remainingKeys.find((candidate) => candidate.position.equals(tile));
+    if (key) {
+      this.remainingKeys = this.remainingKeys.filter((candidate) => candidate !== key);
+      events.push(new KeyCollected(this.id, key.position, key.restores));
     }
     if (this.currentDoor.covers(tile)) {
       this.completed = true;

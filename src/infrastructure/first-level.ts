@@ -1,4 +1,3 @@
-import { OrbColor } from '../domain/level/collectibles';
 import { type Level } from '../domain/level/level';
 import { FlowerVariant } from '../domain/level/scenery';
 import { LevelId } from '../domain/shared/level-id';
@@ -11,7 +10,7 @@ const layout = [
   '.Tt.*****.Tt.***.',
   'FFFFFDDDFFFFFFFFF',
   'F+**.##.E.+....+F',
-  'FO....#....*+...F',
+  'FK....#....*+...F',
   'F.Tt..##..**.Tt.F',
   'F..Tt+.##.oo..TtF',
   'F.......#o...oo+F',
@@ -27,10 +26,10 @@ const layout = [
 export function firstLevel(shuffle: Shuffle): Level {
   return levelFromLayout(firstLevelId, layout, shuffle, {
     flowerVariants: [FlowerVariant.WhiteCoral, FlowerVariant.BlueViolet],
-    orbs: { O: { color: OrbColor.Violet, restores: () => true } },
+    keys: { K: { restores: () => true } },
     signposts: {
-      P: 'Η ΜΩΒ ΣΦΑΙΡΑ ΠΕΡΙΜΕΝΕΙ ΔΙΠΛΑ ΣΤΑ ΛΟΥΛΟΥΔΙΑ, ΚΟΝΤΑ ΣΤΑ ΔΕΝΤΡΑ ΧΩΡΙΣ ΚΑΡΠΟΥΣ.',
-      E: 'ΒΡΕΣ ΤΗ ΣΦΑΙΡΑ. ΘΑ ΦΕΡΕΙ ΠΙΣΩ ΤΑ ΧΡΩΜΑΤΑ ΚΑΙ ΘΑ ΑΝΟΙΞΕΙ ΤΗΝ ΠΥΛΗ.',
+      P: 'ΤΟ ΚΛΕΙΔΙ ΠΕΡΙΜΕΝΕΙ ΔΙΠΛΑ ΣΤΑ ΛΟΥΛΟΥΔΙΑ, ΚΟΝΤΑ ΣΤΑ ΔΕΝΤΡΑ ΧΩΡΙΣ ΚΑΡΠΟΥΣ.',
+      E: 'ΒΡΕΣ ΤΟ ΚΛΕΙΔΙ. ΘΑ ΦΕΡΕΙ ΠΙΣΩ ΤΑ ΧΡΩΜΑΤΑ ΚΑΙ ΘΑ ΑΝΟΙΞΕΙ ΤΗΝ ΠΥΛΗ.',
     },
   });
 }

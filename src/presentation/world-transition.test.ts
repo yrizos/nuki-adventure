@@ -40,7 +40,7 @@ function lastToSettle(left: number, top: number, width: number, height: number, 
 test('spreads restoration in a circle of one tile every four frames until the crest settles at the farthest corner', () => {
   const origin = TilePosition.at(15, 9);
   expect(restorationLength(LevelSize.of(18, 20), origin)).toBe(81 + 16 + 8);
-  // These pixels have dither threshold 0, so only their distance from the orb tile center sets when they arrive.
+  // These pixels have dither threshold 0, so only their distance from the key tile center sets when they arrive.
   const [centerX, centerY] = [15 * 32 + 16, 9 * 32 + 16];
   expect(isRestored(centerX, centerY, origin, 0)).toBe(false);
   expect(isRestored(centerX, centerY, origin, 1)).toBe(true);
@@ -142,7 +142,7 @@ test.each([
   expect(doorOpeningLength(closed, size, origin)).toBeLessThanOrEqual(restorationLength(size, origin));
 });
 
-test('opens a door nearer the orb before a door farther from it', () => {
+test('opens a door nearer the key before a door farther from it', () => {
   const size = LevelSize.of(12, 6);
   const origin = at(0, 5);
   expect(doorOpeningLength(Door.closedAt(at(1, 2)), size, origin)).toBeLessThan(

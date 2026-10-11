@@ -1,5 +1,5 @@
 import type { Area } from '../domain/level/collectibles';
-import type { OrbCollected } from '../domain/level/level-events';
+import type { KeyCollected } from '../domain/level/level-events';
 import type { TilePosition } from '../domain/level/position';
 import type { Playthrough } from '../domain/progress/playthrough';
 import { closingLength } from './world-transition';
@@ -12,8 +12,8 @@ export type Phase =
 
 export const playing: Phase = { name: 'playing' };
 
-export function restoringOrb(orb: OrbCollected, frame: number): Phase {
-  return { name: 'restoring', since: frame, origin: orb.position, restores: orb.restores };
+export function restoringKey(key: KeyCollected, frame: number): Phase {
+  return { name: 'restoring', since: frame, origin: key.position, restores: key.restores };
 }
 
 export function closingLevel(playthrough: Playthrough, frame: number): Phase {

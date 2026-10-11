@@ -1,36 +1,36 @@
 import { expect, test } from 'vitest';
-import { OrbColor } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
 import { Direction, TilePosition } from '../domain/level/position';
 import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
 import { thirdLevel, thirdLevelId } from './third-level';
 
 const at = TilePosition.at;
-const orbOf = (color: OrbColor) => thirdLevel(keepOrder).orbs.find((orb) => orb.color === color)!;
+const orchardKey = () => thirdLevel(keepOrder).keys[0]!;
+const lakeKey = () => thirdLevel(keepOrder).keys[1]!;
 
-test('the third level opens at the foot of its orchard and lake with one red and one blue orb', () => {
+test('the third level opens at the foot of its orchard and lake with an orchard key and a lake key', () => {
   const level = thirdLevel(keepOrder);
   expect(level.id).toBe(thirdLevelId);
   expect(level.scenery.size).toEqual({ columns: 25, rows: 25 });
   expect(level.hero.position).toEqual(at(12, 23));
   expect(level.hero.facing).toBe(Direction.Up);
   expect(level.door.equals(Door.closedAt(at(11, 2)))).toBe(true);
-  expect(level.orbs).toHaveLength(2);
-  expect(orbOf(OrbColor.Red).position).toEqual(at(4, 12));
-  expect(orbOf(OrbColor.Blue).position).toEqual(at(19, 12));
+  expect(level.keys).toHaveLength(2);
+  expect(orchardKey().position).toEqual(at(4, 12));
+  expect(lakeKey().position).toEqual(at(19, 12));
 });
 
-test('the restore areas of the two orbs split the map between them', () => {
+test('the restore areas of the two keys split the map between them', () => {
   const level = thirdLevel(keepOrder);
-  const red = orbOf(OrbColor.Red).restores;
-  const blue = orbOf(OrbColor.Blue).restores;
+  const red = orchardKey().restores;
+  const blue = lakeKey().restores;
   expect(red.tiles).toHaveLength(347);
   expect(blue.tiles).toHaveLength(278);
   expect(red.tiles.length + blue.tiles.length).toBe(level.scenery.size.columns * level.scenery.size.rows);
   for (let row = 0; row < level.scenery.size.rows; row++) {
     for (let column = 0; column < level.scenery.size.columns; column++) {
       const tile = at(column, row);
-      expect(red.covers(tile) !== blue.covers(tile), `tile ${column}, ${row} must be restored by exactly one orb`).toBe(
+      expect(red.covers(tile) !== blue.covers(tile), `tile ${column}, ${row} must be restored by exactly one key`).toBe(
         true,
       );
     }
@@ -38,22 +38,22 @@ test('the restore areas of the two orbs split the map between them', () => {
 });
 
 test.each([
-  ['red', OrbColor.Red],
-  ['blue', OrbColor.Blue],
-])('the %s orb stands inside the area it restores', (_, color) => {
-  const orb = orbOf(color);
-  expect(orb.restores.covers(orb.position)).toBe(true);
+  ['orchard', orchardKey],
+  ['lake', lakeKey],
+])('the %s key stands inside the area it restores', (_, keyOf) => {
+  const key = keyOf();
+  expect(key.restores.covers(key.position)).toBe(true);
 });
 
-test('the third level has a hint for each orb that names its color and an exit sign that never does', () => {
+test('the third level has a hint for each key that names its place and an exit sign that never does', () => {
   const level = thirdLevel(keepOrder);
   const texts = level.signposts.map((signpost) => signpost.text.value);
   expect(texts).toHaveLength(3);
-  expect(texts.filter((text) => text.includes('ΚΟΚΚΙΝΗ') && !text.includes('ΜΠΛΕ'))).toHaveLength(1);
-  expect(texts.filter((text) => text.includes('ΜΠΛΕ') && !text.includes('ΚΟΚΚΙΝΗ'))).toHaveLength(1);
-  const [exit, ...others] = texts.filter((text) => !/ΚΟΚΚΙΝ|ΜΠΛΕ/u.test(text));
+  expect(texts.filter((text) => text.includes('ΜΗΛΕΩΝΑ') && !text.includes('ΛΙΜΝΗ'))).toHaveLength(1);
+  expect(texts.filter((text) => text.includes('ΛΙΜΝΗ') && !text.includes('ΜΗΛΕΩΝΑ'))).toHaveLength(1);
+  const [exit, ...others] = texts.filter((text) => !/ΜΗΛΕΩΝ|ΛΙΜΝ/u.test(text));
   expect(others).toEqual([]);
-  expect(exit).toContain('ΔΥΟ ΣΦΑΙΡΕΣ');
+  expect(exit).toContain('ΔΥΟ ΚΛΕΙΔΙΑ');
 });
 
 test('the third level marks fifteen star spots and lets the shuffle choose its stars', () => {

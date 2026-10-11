@@ -15,11 +15,11 @@ test('draws the game name from palette codes, inside the narrowest column', () =
   expect(art.rows[0]!.length).toBeLessThanOrEqual(180 - 16);
 });
 
-const orbCycle = ['V2', 'T2', 'R2'];
+const keyCycle = ['V2', 'T2', 'R2'];
 const titleLines: (readonly [string, string])[][] = [
   [
     ...[...'Η '].map((letter) => [letter, 'Paper'] as const),
-    ...[...'ΠΟΛΥΧΡΩΜΗ'].map((letter, index) => [letter, orbCycle[index % 3]!] as const),
+    ...[...'ΠΟΛΥΧΡΩΜΗ'].map((letter, index) => [letter, keyCycle[index % 3]!] as const),
     ...[...' ΠΕΡΙΠΕΤΕΙΑ'].map((letter) => [letter, 'Paper'] as const),
   ],
   [

@@ -7,7 +7,7 @@ import { idleHeroPose } from './hero-animator';
 import { takeMenuKeys } from './menu-keys';
 import { ditherSteps, ditherThreshold } from './ordered-dither';
 
-// ΠΟΛΥΧΡΩΜΗ means colorful, so its letters take the orb colors in turn, and the hero's name takes the gold of the stars.
+// ΠΟΛΥΧΡΩΜΗ means colorful, so its letters take violet, teal and red in turn, and the hero's name takes the gold of the stars.
 const gameName = [
   { text: 'Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ', colors: 'pp' + 'vtr'.repeat(3) + 'p'.repeat(11) },
   { text: 'ΤΗΣ ΝΟΥΚΙ', colors: 'pppp' + 'yyyyy' },

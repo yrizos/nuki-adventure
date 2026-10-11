@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { LevelView } from '../application/level-view';
 import { ManageProgress } from '../application/manage-progress';
 import { PlayLevel } from '../application/play-level';
-import { Area, Orb, OrbColor } from '../domain/level/collectibles';
+import { Area, Key } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
 import { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import { StarCount } from '../domain/shared/star-count';
@@ -28,7 +28,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
   const pressed = new Set<'a' | 'b'>();
   let heading: Heading | null = null;
   const controls = { takePress: (button: 'a' | 'b') => pressed.delete(button), heading: () => heading };
-  const sound = { star: vi.fn(), orb: vi.fn(), door: vi.fn(), footstep: vi.fn(), restoring: vi.fn() };
+  const sound = { star: vi.fn(), key: vi.fn(), hum: vi.fn(), door: vi.fn(), footstep: vi.fn(), restoring: vi.fn() };
   const levelEnd = { show: vi.fn(), hide: vi.fn() };
   const progress = new ManageProgress(new LocalProgressRepository(memoryStorage()), [
     LevelId.of('one'),
@@ -62,7 +62,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
             [],
           ),
           stones: [],
-          orbs: [Orb.at(TilePosition.at(1, 3), OrbColor.Violet, everywhere)],
+          keys: [Key.at(TilePosition.at(1, 3), everywhere)],
           door: Door.closedAt(TilePosition.at(0, 0)),
           hero: { position: TilePosition.at(1, 4), facing: Direction.Up },
           obstacles: check2dObstacles,
@@ -164,7 +164,7 @@ describe('the game navigator', () => {
     const level = subject.current();
     expect(level.id.value).toBe('two');
     expect(level.hero.position).toEqual(TilePosition.at(1, 4));
-    expect(level.orbs).toHaveLength(1);
+    expect(level.keys).toHaveLength(1);
     expect(level.door.isOpen).toBe(false);
     expect(level.isComplete).toBe(false);
     expect(subject.navigator.session!.messageText).toBe('');
@@ -232,11 +232,7 @@ describe('the game navigator', () => {
       const actual = new Picture(224, 224);
       const expected = new Picture(224, 224);
       const level = session.level;
-      new WorldPainter(level).paint(
-        expected,
-        { level, frame, hero: animator.pose(level.hero, frame, false), heldOrb: null },
-        [],
-      );
+      new WorldPainter(level).paint(expected, { level, frame, hero: animator.pose(level.hero, frame) }, []);
       session.paint(actual);
       expect(pixelDifference(actual, expected)).toBeUndefined();
     }

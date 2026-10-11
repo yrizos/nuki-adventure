@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'vitest';
-import { OrbColor } from '../domain/level/collectibles';
 import { StarCount } from '../domain/shared/star-count';
 import { Door } from '../domain/level/door';
 import { Stone } from '../domain/level/level';
@@ -13,9 +12,9 @@ const at = TilePosition.at;
 const keepOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => positions;
 const layout = ['.DDD..', 'Tt...F', '#H*o~P', 'O....R'];
 const contents = {
-  orbs: {
-    O: { color: OrbColor.Teal, restores: (position: TilePosition) => position.column < 3 },
-    R: { color: OrbColor.Red, restores: (position: TilePosition) => position.column >= 3 },
+  keys: {
+    O: { restores: (position: TilePosition) => position.column < 3 },
+    R: { restores: (position: TilePosition) => position.column >= 3 },
   },
   signposts: { P: 'ΔΙΑΒΑΣΕ ΜΕ' },
   starCount: StarCount.of(2),
@@ -73,12 +72,9 @@ describe('a level built from a layout', () => {
     expect(planted.scenery.trees).toEqual([Tree.at(at(0, 1), variant)]);
   });
 
-  test('gives each orb its color and the area its rule selects', () => {
-    expect(level.orbs.map((orb) => [orb.position, orb.color])).toEqual([
-      [at(0, 3), OrbColor.Teal],
-      [at(5, 3), OrbColor.Red],
-    ]);
-    const [teal, red] = level.orbs;
+  test('gives each key the area its rule selects', () => {
+    expect(level.keys.map((key) => key.position)).toEqual([at(0, 3), at(5, 3)]);
+    const [teal, red] = level.keys;
     expect(teal!.restores.tiles).toHaveLength(12);
     expect(teal!.restores.tiles.every((tile) => tile.column < 3)).toBe(true);
     expect(red!.restores.tiles).toHaveLength(12);
@@ -104,7 +100,7 @@ describe('a level built from a layout', () => {
       ['.DDD..', 'Tt...F', '#H*o~P', 'O.+..R'],
       'The layout of level layout marks star spots, so it takes no star count',
     ],
-    ['a missing orb', ['.DDD..', 'Tt...F', '#H*o~P', '.....R'], 'The layout of level layout needs exactly one "O"'],
+    ['a missing key', ['.DDD..', 'Tt...F', '#H*o~P', '.....R'], 'The layout of level layout needs exactly one "O"'],
     [
       'a missing signpost',
       ['.DDD..', 'Tt...F', '#H*o~.', 'O....R'],

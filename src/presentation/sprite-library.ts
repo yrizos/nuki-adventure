@@ -105,7 +105,6 @@ function heroDirection(facing: keyof HeroArt): HeroDirectionArt {
     breathe: frame('hero', `${facing}-breathe`),
     blink: frames[`${facing}-blink`] ?? null,
     walk: animation('hero', `${facing}-walk`).frames,
-    holding: frame('hero', `${facing}-holding`),
   };
 }
 
@@ -143,12 +142,7 @@ export const signpostArt = frame('signpost', 'signpost');
 export const fenceArt = Array.from({ length: 16 }, (_, piece) => frame('fence', `piece-${piece}`));
 export const doorArt = { closed: frame('door', 'closed'), open: frame('door', 'open') } as const;
 
-export const orbArt = {
-  red: frame('orb', 'red'),
-  blue: frame('orb', 'blue'),
-  violet: frame('orb', 'violet'),
-  teal: frame('orb', 'teal'),
-} as const;
+export const keyArt = frame('key', 'key');
 export const starArt = frame('star', 'star');
 
 export const lightMote = frame('light-mote', 'light-mote');

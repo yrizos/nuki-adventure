@@ -1,4 +1,4 @@
-import type { Orb, Star } from '../domain/level/collectibles';
+import type { Key, Star } from '../domain/level/collectibles';
 import type { Door } from '../domain/level/door';
 import type { HeroState } from '../domain/level/hero';
 import type { Level, Stone } from '../domain/level/level';
@@ -11,7 +11,7 @@ export interface LevelView {
   readonly id: LevelId;
   readonly scenery: Scenery;
   readonly stones: readonly Stone[];
-  readonly orbs: readonly Orb[];
+  readonly keys: readonly Key[];
   readonly stars: readonly Star[];
   readonly collected: readonly Star[];
   readonly signposts: readonly Signpost[];
@@ -26,7 +26,7 @@ export function levelView(level: Level): LevelView {
     id: level.id,
     scenery: level.scenery,
     stones: [...level.stones],
-    orbs: [...level.orbs],
+    keys: [...level.keys],
     stars: [...level.stars],
     collected: [...level.collected],
     signposts: [...level.signposts],

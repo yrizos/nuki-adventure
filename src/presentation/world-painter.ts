@@ -1,5 +1,5 @@
 import type { LevelView } from '../application/level-view';
-import type { Area, OrbColor } from '../domain/level/collectibles';
+import type { Area } from '../domain/level/collectibles';
 import { Direction, TilePosition } from '../domain/level/position';
 import { FlowerVariant, Ground, type Scenery, TreeVariant } from '../domain/level/scenery';
 import type { Art } from './art/art';
@@ -14,7 +14,7 @@ import {
   grassArt,
   groundShadow,
   lightMote,
-  orbArt,
+  keyArt,
   pathArt,
   signpostArt,
   starArt,
@@ -28,7 +28,17 @@ import {
 import { cameraPosition, clamp, heroPixels, tileSize } from './world-geometry';
 import { crestLength, isDarkened, restorationAge } from './world-transition';
 
-const orbBob = [0, -1, 0, 1];
+const starBob = [0, -1, 0, 1];
+const keyFloatFrames = 150;
+const keySwayFrames = 60;
+
+// Rounding a sine holds each pixel longest near the turning points, so the key eases in and out instead of jerking.
+export function keyOffset(frame: number): { readonly x: number; readonly y: number } {
+  return {
+    x: Math.round(Math.sin((2 * Math.PI * frame) / keySwayFrames)),
+    y: Math.round(2 * Math.sin((2 * Math.PI * frame) / keyFloatFrames)),
+  };
+}
 const motes = [
   [22, 0],
   [34, 37],
@@ -48,7 +58,6 @@ export interface Scene {
   readonly level: LevelView;
   readonly frame: number;
   readonly hero: Art;
-  readonly heldOrb: OrbColor | null;
 }
 
 const sized = (picture: Picture, target: Picture): Picture =>
@@ -228,7 +237,7 @@ export class WorldPainter {
     );
     const coloredTiles = colored.reduce((sum, tile) => sum + tile, 0);
     if (coloredTiles === colored.length) {
-      this.paintVersion(target, scene, 'colored', scene.level.orbs.length === 0);
+      this.paintVersion(target, scene, 'colored', scene.level.keys.length === 0);
       return;
     }
     this.paintVersion(target, scene, 'faded', false);
@@ -262,7 +271,7 @@ export class WorldPainter {
     }
   }
 
-  // The door is drawn open once every orb is picked up, so during the last restoration it opens exactly where color reaches it.
+  // The door is drawn open once every key is picked up, so during the last restoration it opens exactly where color reaches it.
   private paintVersion(picture: Picture, scene: Scene, version: Version, doorLit: boolean): void {
     const { level, frame } = scene;
     const camera = cameraPosition(level, picture.width, picture.height);
@@ -370,18 +379,18 @@ export class WorldPainter {
         }
       },
     });
-    for (const orb of level.orbs) {
-      const { column, row } = orb.position;
-      const bob = orbBob[Math.floor(frame / 10) % orbBob.length]!;
+    for (const key of level.keys) {
+      const { column, row } = key.position;
+      const offset = keyOffset(frame);
       objects.push({
         base: (row + 1) * tileSize,
-        shadow: shadow(12, orb.position, column * tileSize + 10, row * tileSize + 27),
-        paint: () => draw(orbArt[orb.color.name], column * tileSize + 4, row * tileSize + 4 + bob, 'colored'),
+        shadow: shadow(12, key.position, column * tileSize + 10, row * tileSize + 27),
+        paint: () => draw(keyArt, column * tileSize + 4 + offset.x, row * tileSize + 4 + offset.y, 'colored'),
       });
     }
     for (const star of level.stars) {
       const { column, row } = star.position;
-      const bob = orbBob[Math.floor(frame / 10) % orbBob.length]!;
+      const bob = starBob[Math.floor(frame / 10) % starBob.length]!;
       objects.push({
         base: (row + 1) * tileSize,
         shadow: shadow(12, star.position, column * tileSize + 10, row * tileSize + 27),
@@ -394,7 +403,6 @@ export class WorldPainter {
       base: hero.y + tileSize,
       shadow: shadow(14, standingOn, hero.x + 9, hero.y + tileSize),
       paint: () => {
-        if (scene.heldOrb) draw(orbArt[scene.heldOrb.name], hero.x + 4, hero.y - 18, 'colored');
         draw(scene.hero, hero.x, hero.y, 'colored');
       },
     });

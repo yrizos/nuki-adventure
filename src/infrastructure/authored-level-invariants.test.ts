@@ -52,7 +52,7 @@ test.each(starts)(
         id: authored.id,
         scenery: authored.scenery,
         stones: authored.stones,
-        orbs: authored.orbs,
+        keys: authored.keys,
         door: authored.door,
         hero: { position: tile, facing: Direction.Up },
         signposts: authored.signposts,
@@ -67,10 +67,10 @@ test.each(starts)(
         if (at.x < 0 || at.y < 0) violations.push(`${where}: below the level origin`);
         if (at.x >= width || at.y >= height) violations.push(`${where}: beyond the level size`);
         if (!obstacles.walk(feet.at(farAway), at).equals(at)) violations.push(`${where}: inside an obstacle`);
-        if (level.orbs.length > 0) {
-          if (level.door.isOpen) violations.push(`${where}: door open while orbs remain`);
-          if (level.door.covers(level.hero.position)) violations.push(`${where}: on the door while orbs remain`);
-          if (level.isComplete) violations.push(`${where}: complete while orbs remain`);
+        if (level.keys.length > 0) {
+          if (level.door.isOpen) violations.push(`${where}: door open while keys remain`);
+          if (level.door.covers(level.hero.position)) violations.push(`${where}: on the door while keys remain`);
+          if (level.isComplete) violations.push(`${where}: complete while keys remain`);
         }
       }
     }

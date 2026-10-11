@@ -14,7 +14,6 @@ export interface HeroDirectionArt {
   readonly breathe: Art;
   readonly blink: Art | null;
   readonly walk: readonly Art[];
-  readonly holding?: Art;
 }
 
 export interface HeroArt {

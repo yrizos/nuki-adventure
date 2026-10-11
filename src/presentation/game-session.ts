@@ -2,12 +2,12 @@ import type { LevelView } from '../application/level-view';
 import type { ManageProgress } from '../application/manage-progress';
 import type { PlayLevel } from '../application/play-level';
 import type { Area } from '../domain/level/collectibles';
-import { LevelCompleted, OrbCollected, SignpostLeft, SignpostRead, StarCollected } from '../domain/level/level-events';
+import { LevelCompleted, KeyCollected, SignpostLeft, SignpostRead, StarCollected } from '../domain/level/level-events';
 import { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import type { LevelId } from '../domain/shared/level-id';
 import { StarCount } from '../domain/shared/star-count';
 import type { Controls } from './controls';
-import { closingLevel, restoringOrb, type Phase, phaseAfterFrame, playing } from './game-phase';
+import { closingLevel, restoringKey, type Phase, phaseAfterFrame, playing } from './game-phase';
 import { HeroAnimator } from './hero-animator';
 import type { LevelEndWindow } from './level-end';
 import { MessageBox } from './message-box';
@@ -17,10 +17,20 @@ import { WorldPainter } from './world-painter';
 import { doorOpeningLength, restorationLength } from './world-transition';
 
 export const messages = {
-  someColorsBack: 'ΜΠΡΑΒΟ! ΜΕΝΕΙ ΑΛΛΗ ΜΙΑ ΣΦΑΙΡΑ!',
+  someColorsBack: 'ΜΠΡΑΒΟ! ΜΕΝΕΙ ΑΚΟΜΑ ΕΝΑ ΚΛΕΙΔΙ!',
   colorsBack: 'ΜΠΡΑΒΟ! ΤΑ ΧΡΩΜΑΤΑ ΕΠΕΣΤΡΕΨΑΝ!',
   doorOpen: 'ΜΠΡΑΒΟ! Η ΠΟΡΤΑ ΓΙΑ ΤΟ ΕΠΟΜΕΝΟ ΕΠΙΠΕΔΟ ΕΙΝΑΙ ΑΝΟΙΧΤΗ!',
 } as const;
+
+const humReach = 4;
+
+export function humVolume(level: LevelView): number {
+  const hero = level.hero.position;
+  const nearest = Math.min(
+    ...level.keys.map((key) => Math.hypot(key.position.column - hero.column, key.position.row - hero.row)),
+  );
+  return Math.max(0, 1 - nearest / humReach);
+}
 
 export interface PlayableLevel {
   readonly id: LevelId;
@@ -51,7 +61,7 @@ export class GameSession {
   constructor(
     level: PlayableLevel,
     private readonly controls: Pick<Controls, 'takePress' | 'heading'>,
-    private readonly sound: Pick<Sound, 'star' | 'orb' | 'door' | 'footstep' | 'restoring'>,
+    private readonly sound: Pick<Sound, 'star' | 'key' | 'hum' | 'door' | 'footstep' | 'restoring'>,
     private readonly levelEnd: Pick<LevelEndWindow, 'show' | 'hide'>,
     private readonly progress: Pick<ManageProgress, 'reach' | 'complete'>,
     private readonly report: SessionReport,
@@ -89,10 +99,10 @@ export class GameSession {
         } else if (event instanceof SignpostLeft && messageBox.text === this.run.signpostText)
           messageBox.hide(this.frame);
         else if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
-        else if (event instanceof OrbCollected) {
-          this.sound.orb();
-          messageBox.show(play.view(id).orbs.length > 0 ? messages.someColorsBack : messages.colorsBack, this.frame);
-          this.transitionTo(restoringOrb(event, this.frame));
+        else if (event instanceof KeyCollected) {
+          this.sound.key();
+          messageBox.show(play.view(id).keys.length > 0 ? messages.someColorsBack : messages.colorsBack, this.frame);
+          this.transitionTo(restoringKey(event, this.frame));
         } else if (event instanceof LevelCompleted) {
           this.sound.door();
           const level = play.view(id);
@@ -113,7 +123,7 @@ export class GameSession {
       const level = play.view(id);
       const doorShown =
         this.frame - this.phase.since >= doorOpeningLength(level.door, level.scenery.size, this.phase.origin);
-      if (level.orbs.length === 0 && !level.door.isOpen && doorShown) play.openDoor(id);
+      if (level.keys.length === 0 && !level.door.isOpen && doorShown) play.openDoor(id);
     }
     this.transitionTo(
       phaseAfterFrame(this.phase, {
@@ -124,6 +134,7 @@ export class GameSession {
     );
     this.run.animator.advance(this.run.play.view(this.run.id).hero);
     if (this.run.animator.footfall) this.sound.footstep();
+    this.sound.hum(this.phase.name === 'playing' ? humVolume(play.view(id)) : 0);
     this.frame++;
   }
 
@@ -134,8 +145,7 @@ export class GameSession {
     const scene = {
       level,
       frame: this.frame,
-      hero: this.run.animator.pose(level.hero, this.frame, false),
-      heldOrb: null,
+      hero: this.run.animator.pose(level.hero, this.frame),
     };
     if (this.phase.name === 'restoring') {
       this.run.painter.paintRestoring(picture, scene, this.phase.origin, this.frame - this.phase.since, restored, [

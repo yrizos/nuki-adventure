@@ -17,10 +17,10 @@ test('animation history is identical with and without intervening renders', () =
     hero.steer(frame < 25 ? down : null, openGround);
     everyRender.advance(hero.state);
     skippedRenders.advance(hero.state);
-    everyRender.pose(hero.state, frame, false);
-    everyRender.pose(hero.state, frame, false);
+    everyRender.pose(hero.state, frame);
+    everyRender.pose(hero.state, frame);
     if (frame % 7 === 0 || frame === 34) {
-      expect(skippedRenders.pose(hero.state, frame, false)).toEqual(everyRender.pose(hero.state, frame, false));
+      expect(skippedRenders.pose(hero.state, frame)).toEqual(everyRender.pose(hero.state, frame));
     }
   }
 });
@@ -32,7 +32,7 @@ test('walk frames last eight ticks, and stopping on a passing frame settles for 
   for (let frame = 0; frame < 24; frame++) {
     hero.steer(down, openGround);
     animator.advance(hero.state);
-    shown.push(animator.pose(hero.state, frame, false));
+    shown.push(animator.pose(hero.state, frame));
   }
   const walk = heroArt.down.walk;
   expect(shown).toEqual([
@@ -47,29 +47,19 @@ test('walk frames last eight ticks, and stopping on a passing frame settles for 
   for (let frame = 32; frame < 40; frame++) {
     hero.steer(null, openGround);
     animator.advance(hero.state);
-    expect(animator.pose(hero.state, frame, false)).toBe(heroArt.down.settle);
+    expect(animator.pose(hero.state, frame)).toBe(heroArt.down.settle);
   }
   animator.advance(hero.state);
-  expect(animator.pose(hero.state, 40, false)).toBe(heroArt.down.stand);
+  expect(animator.pose(hero.state, 40)).toBe(heroArt.down.stand);
 });
 
 test('idle blinks for six ticks every three seconds and breathes every ninety ticks', () => {
   const hero = new Hero(TilePosition.at(0, 0), Direction.Down);
   const animator = new HeroAnimator();
-  expect(animator.pose(hero.state, 0, false)).toBe(heroArt.down.stand);
-  expect(animator.pose(hero.state, 90, false)).toBe(heroArt.down.breathe);
-  for (let frame = 180; frame < 186; frame++) expect(animator.pose(hero.state, frame, false)).toBe(heroArt.down.blink);
-  expect(animator.pose(hero.state, 186, false)).toBe(heroArt.down.stand);
-});
-
-test.each([
-  ['down', Direction.Down],
-  ['up', Direction.Up],
-  ['left', Direction.Left],
-  ['right', Direction.Right],
-] as const)('%s has its own holding pose', (name, direction) => {
-  const hero = new Hero(TilePosition.at(0, 0), direction);
-  expect(new HeroAnimator().pose(hero.state, 0, true)).toBe(heroArt[name].holding);
+  expect(animator.pose(hero.state, 0)).toBe(heroArt.down.stand);
+  expect(animator.pose(hero.state, 90)).toBe(heroArt.down.breathe);
+  for (let frame = 180; frame < 186; frame++) expect(animator.pose(hero.state, frame)).toBe(heroArt.down.blink);
+  expect(animator.pose(hero.state, 186)).toBe(heroArt.down.stand);
 });
 
 test('a foot lands on the first walking tick and every sixteen ticks after', () => {

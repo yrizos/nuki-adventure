@@ -1,4 +1,3 @@
-import { OrbColor } from '../domain/level/collectibles';
 import { type Level } from '../domain/level/level';
 import { FlowerVariant } from '../domain/level/scenery';
 import { LevelId } from '../domain/shared/level-id';
@@ -11,7 +10,7 @@ const layout = [
   '.Nt...*****....Nt....',
   'FFFFFFFFFDDDFFFFFFFFF',
   'F.+**.+.E##....***..F',
-  'F..**....###..**.O.+F',
+  'F..**....###..**.K.+F',
   'F.Nt.Nt.#########**.F',
   'F.......#~~~~~~~~~~~F',
   'F.Nt+Nt###..+.~~~~~~F',
@@ -31,10 +30,10 @@ const layout = [
 export function secondLevel(shuffle: Shuffle): Level {
   return levelFromLayout(secondLevelId, layout, shuffle, {
     flowerVariants: [FlowerVariant.WhiteCoral, FlowerVariant.BlueViolet],
-    orbs: { O: { color: OrbColor.Teal, restores: () => true } },
+    keys: { K: { restores: () => true } },
     signposts: {
-      1: 'Η ΤΥΡΚΟΥΑΖ ΣΦΑΙΡΑ ΣΕ ΠΕΡΙΜΕΝΕΙ ΣΤΑ ΛΟΥΛΟΥΔΙΑ ΔΙΠΛΑ ΣΤΗ ΛΙΜΝΗ.',
-      E: 'ΒΡΕΣ ΤΗ ΣΦΑΙΡΑ. ΘΑ ΦΕΡΕΙ ΠΙΣΩ ΤΑ ΧΡΩΜΑΤΑ ΚΑΙ ΘΑ ΑΝΟΙΞΕΙ ΤΗΝ ΠΥΛΗ.',
+      1: 'ΤΟ ΚΛΕΙΔΙ ΣΕ ΠΕΡΙΜΕΝΕΙ ΣΤΑ ΛΟΥΛΟΥΔΙΑ ΔΙΠΛΑ ΣΤΗ ΛΙΜΝΗ.',
+      E: 'ΒΡΕΣ ΤΟ ΚΛΕΙΔΙ. ΘΑ ΦΕΡΕΙ ΠΙΣΩ ΤΑ ΧΡΩΜΑΤΑ ΚΑΙ ΘΑ ΑΝΟΙΞΕΙ ΤΗΝ ΠΥΛΗ.',
     },
   });
 }

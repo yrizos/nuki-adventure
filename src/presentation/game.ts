@@ -66,7 +66,10 @@ export function startGame(
   startScreen.whenPickingLevel(() => navigator.openLevelPicker());
   levelPicker.whenChosen((level) => navigator.play(level));
   levelPicker.whenBack(() => navigator.openStartScreen());
-  connectGameSwitches(root, sound, () => navigator.openStartScreen());
+  connectGameSwitches(root, sound, () => {
+    sound.hum(0);
+    navigator.openStartScreen();
+  });
   levelEnd.whenContinued(() => navigator.session?.continuePlaying());
   navigator.openStartScreen();
 

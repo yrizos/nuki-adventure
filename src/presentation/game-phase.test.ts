@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'vitest';
 import { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import { StarCount } from '../domain/shared/star-count';
-import { Area, OrbColor } from '../domain/level/collectibles';
-import { OrbCollected } from '../domain/level/level-events';
+import { Area } from '../domain/level/collectibles';
+import { KeyCollected } from '../domain/level/level-events';
 import { LevelId } from '../domain/shared/level-id';
 import { TilePosition } from '../domain/level/position';
-import { closingLevel, restoringOrb, type Phase, phaseAfterFrame, playing } from './game-phase';
+import { closingLevel, restoringKey, type Phase, phaseAfterFrame, playing } from './game-phase';
 import { closingLength } from './world-transition';
 
 const playthrough = (frames: number, collectedStars: number, starCount: number): Playthrough =>
@@ -13,14 +13,14 @@ const playthrough = (frames: number, collectedStars: number, starCount: number):
 
 const origin = TilePosition.at(3, 4);
 const restores = Area.of([origin]);
-const orb = new OrbCollected(LevelId.of('phase'), origin, OrbColor.Teal, restores);
+const key = new KeyCollected(LevelId.of('phase'), origin, restores);
 const completed = playthrough(600, 2, 5);
 const after = (phase: Phase, frame: number, continuing = false): Phase =>
   phaseAfterFrame(phase, { frame, restorationLength: () => 40, continuing });
 
 describe('the game phase', () => {
-  test('starts restoring the collected orb area on the pickup frame', () => {
-    const restoring = restoringOrb(orb, 100);
+  test('starts restoring the collected key area on the pickup frame', () => {
+    const restoring = restoringKey(key, 100);
     expect(restoring).toEqual({ name: 'restoring', since: 100, origin, restores });
     expect(after(restoring, 100)).toBe(restoring);
   });

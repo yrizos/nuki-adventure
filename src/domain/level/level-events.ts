@@ -1,13 +1,12 @@
-import type { Area, OrbColor } from './collectibles';
+import type { Area } from './collectibles';
 import type { LevelId } from '../shared/level-id';
 import type { TilePosition } from './position';
 import type { SignpostText } from './signpost';
 
-export class OrbCollected {
+export class KeyCollected {
   constructor(
     readonly levelId: LevelId,
     readonly position: TilePosition,
-    readonly color: OrbColor,
     readonly restores: Area,
   ) {}
 }
@@ -35,4 +34,4 @@ export class LevelCompleted {
   constructor(readonly levelId: LevelId) {}
 }
 
-export type LevelEvent = OrbCollected | StarCollected | SignpostRead | SignpostLeft | LevelCompleted;
+export type LevelEvent = KeyCollected | StarCollected | SignpostRead | SignpostLeft | LevelCompleted;

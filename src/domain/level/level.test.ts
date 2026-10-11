@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'vitest';
-import { Area, Orb, OrbColor, Star } from './collectibles';
+import { Area, Key, Star } from './collectibles';
 import { StarCount } from '../shared/star-count';
 import { Door } from './door';
 import { Level, Stone } from './level';
 import {
   LevelCompleted,
   type LevelEvent,
-  OrbCollected,
+  KeyCollected,
   SignpostLeft,
   SignpostRead,
   StarCollected,
@@ -49,13 +49,13 @@ function parse(given: readonly string[]): { scenery: Scenery; where: (symbol: st
   };
 }
 
-function level(given: readonly string[], start: TilePosition, orb: TilePosition): Level {
+function level(given: readonly string[], start: TilePosition, key: TilePosition): Level {
   const { scenery, where } = parse(given);
   return Level.create({
     id: LevelId.of('test'),
     scenery,
     stones: where('o').map(Stone.at),
-    orbs: [Orb.at(orb, OrbColor.Violet, everywhere)],
+    keys: [Key.at(key, everywhere)],
     door: Door.closedAt(where('D')[0]!),
     hero: { position: start, facing: Direction.Right },
     obstacles: check2dObstacles,
@@ -67,7 +67,7 @@ function level(given: readonly string[], start: TilePosition, orb: TilePosition)
 function scattered(
   given: readonly string[],
   start: TilePosition,
-  orb: TilePosition,
+  key: TilePosition,
   count: number,
   shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[],
 ): Level {
@@ -77,7 +77,7 @@ function scattered(
       id: LevelId.of('test'),
       scenery,
       stones: where('o').map(Stone.at),
-      orbs: [Orb.at(orb, OrbColor.Violet, everywhere)],
+      keys: [Key.at(key, everywhere)],
       door: Door.closedAt(where('D')[0]!),
       hero: { position: start, facing: Direction.Right },
       obstacles: check2dObstacles,
@@ -203,34 +203,34 @@ describe('the hero in a level', () => {
     expect(subject.hero.position).toEqual(at(1, 0));
   });
 
-  test('picks up the orb once her feet reach its tile, leaving the door closed', () => {
+  test('picks up the key once her feet reach its tile, leaving the door closed', () => {
     const subject = level(['....', '....', '....'], at(0, 0), at(2, 0));
     let events = subject.tick(toward(Direction.Right));
     for (let frame = 0; frame < 80 && events.length === 0; frame++) events = subject.tick(toward(Direction.Right));
-    expect(events).toEqual([new OrbCollected(LevelId.of('test'), at(2, 0), OrbColor.Violet, everywhere)]);
-    expect(subject.orbs).toEqual([]);
+    expect(events).toEqual([new KeyCollected(LevelId.of('test'), at(2, 0), everywhere)]);
+    expect(subject.keys).toEqual([]);
     expect(subject.door.isOpen).toBe(false);
     expect(subject.isComplete).toBe(false);
     expect(subject.hero.position).toEqual(at(2, 0));
   });
 
-  test('opens the door only once she has picked up every orb', () => {
+  test('opens the door only once she has picked up every key', () => {
     const { scenery, where } = parse(['DDD', '...', '...', '...']);
     const subject = Level.create({
       id: LevelId.of('test'),
       scenery,
       stones: [],
-      orbs: [Orb.at(at(1, 3), OrbColor.Red, leftHalf), Orb.at(at(2, 3), OrbColor.Blue, rightHalf)],
+      keys: [Key.at(at(1, 3), leftHalf), Key.at(at(2, 3), rightHalf)],
       door: Door.closedAt(where('D')[0]!),
       hero: { position: at(0, 3), facing: Direction.Right },
       obstacles: check2dObstacles,
     });
     hold(subject, Direction.Right, 16);
-    expect(subject.orbs).toEqual([Orb.at(at(2, 3), OrbColor.Blue, rightHalf)]);
-    expect(() => subject.openDoor()).toThrow('The door opens only once every orb is picked up');
+    expect(subject.keys).toEqual([Key.at(at(2, 3), rightHalf)]);
+    expect(() => subject.openDoor()).toThrow('The door opens only once every key is picked up');
     expect(subject.door.isOpen).toBe(false);
     hold(subject, Direction.Right, 16);
-    expect(subject.orbs).toEqual([]);
+    expect(subject.keys).toEqual([]);
     expect(subject.door.isOpen).toBe(false);
     subject.openDoor();
     expect(subject.door.isOpen).toBe(true);
@@ -254,7 +254,7 @@ describe('the hero in a level', () => {
     expect(subject.stars).toEqual([Star.at(at(0, 3))]);
   });
 
-  test('is stopped by the door after picking up every orb until the door opens', () => {
+  test('is stopped by the door after picking up every key until the door opens', () => {
     const subject = level(['DDD', '...', '...', '...'], at(0, 3), at(1, 3));
     hold(subject, Direction.Right, 16);
     hold(subject, Direction.Up, 60);
@@ -303,7 +303,7 @@ describe('the hero beside a signpost', () => {
       id: LevelId.of('test'),
       scenery,
       stones: [],
-      orbs: [Orb.at(at(3, 2), OrbColor.Violet, everywhere)],
+      keys: [Key.at(at(3, 2), everywhere)],
       door: Door.closedAt(where('D')[0]!),
       hero: { position: at(1, 1), facing: Direction.Right },
       obstacles: check2dObstacles,
@@ -357,13 +357,13 @@ describe('a level', () => {
     const subject = level(['.Tt....', '....Tt.', 'FFDDDFF', '.......', '...S...'], at(0, 4), at(6, 4));
     expect(subject.door.left).toEqual(at(2, 2));
     expect(subject.scenery.trees.map((tree) => tree.base)).toEqual([at(1, 0), at(4, 1)]);
-    expect(subject.orbs.map((orb) => orb.position)).toEqual([at(6, 4)]);
+    expect(subject.keys.map((key) => key.position)).toEqual([at(6, 4)]);
     expect(subject.stars.map((star) => star.position)).toEqual([at(3, 4)]);
   });
 
-  test('rejects an orb outside the fenced playable area', () => {
+  test('rejects a key outside the fenced playable area', () => {
     expect(() => level(['.Tt....', '....Tt.', 'FFDDDFF', '.......', '...S...'], at(0, 4), at(0, 0))).toThrow(
-      new RangeError('Every orb must lie where the hero can reach it'),
+      new RangeError('Every key must lie where the hero can reach it'),
     );
   });
 
@@ -382,7 +382,7 @@ describe('a level', () => {
           [],
         ),
         stones: [],
-        orbs: [Orb.at(at(1, 2), OrbColor.Violet, everywhere)],
+        keys: [Key.at(at(1, 2), everywhere)],
         door: Door.closedAt(at(0, 0)),
         hero: { position: at(0, 2), facing: Direction.Right },
         obstacles: check2dObstacles,
@@ -392,33 +392,30 @@ describe('a level', () => {
     ).toThrow('A signpost needs open ground of its own, at 2, 1');
   });
 
-  test.each([OrbColor.Red, OrbColor.Blue, OrbColor.Violet, OrbColor.Teal])(
-    'preserves collected %s orb color in its collection event',
-    (color) => {
-      const ground = Array.from({ length: 4 }, () => [Ground.Grass, Ground.Grass, Ground.Grass]);
-      const subject = Level.create({
-        id: LevelId.of('color'),
-        scenery: Scenery.of(LevelSize.of(3, 4), ground, [], []),
-        stones: [],
-        orbs: [Orb.at(at(1, 3), color, everywhere)],
-        door: Door.closedAt(at(0, 0)),
-        hero: { position: at(0, 3), facing: Direction.Right },
-        obstacles: check2dObstacles,
-      });
-      const events = Array.from({ length: 17 }, () => subject.tick(Heading.of(Direction.Right))).flat();
-      expect(events).toEqual([new OrbCollected(LevelId.of('color'), at(1, 3), color, everywhere)]);
-      expect(subject.orbs).toEqual([]);
-    },
-  );
+  test('reports the collected key position and area in its collection event', () => {
+    const ground = Array.from({ length: 4 }, () => [Ground.Grass, Ground.Grass, Ground.Grass]);
+    const subject = Level.create({
+      id: LevelId.of('color'),
+      scenery: Scenery.of(LevelSize.of(3, 4), ground, [], []),
+      stones: [],
+      keys: [Key.at(at(1, 3), everywhere)],
+      door: Door.closedAt(at(0, 0)),
+      hero: { position: at(0, 3), facing: Direction.Right },
+      obstacles: check2dObstacles,
+    });
+    const events = Array.from({ length: 17 }, () => subject.tick(Heading.of(Direction.Right))).flat();
+    expect(events).toEqual([new KeyCollected(LevelId.of('color'), at(1, 3), everywhere)]);
+    expect(subject.keys).toEqual([]);
+  });
 
-  test('rejects a level without an orb', () => {
+  test('rejects a level without a key', () => {
     const { scenery, where } = parse(['...']);
     expect(() =>
       Level.create({
         id: LevelId.of('test'),
         scenery,
         stones: [],
-        orbs: [],
+        keys: [],
         door: Door.closedAt(where('D')[0]!),
         hero: { position: at(0, 0), facing: Direction.Right },
         obstacles: check2dObstacles,
@@ -426,14 +423,14 @@ describe('a level', () => {
     ).toThrow(RangeError);
   });
 
-  test('rejects two orbs on one tile', () => {
+  test('rejects two keys on one tile', () => {
     const { scenery, where } = parse(['...']);
     expect(() =>
       Level.create({
         id: LevelId.of('test'),
         scenery,
         stones: [],
-        orbs: [Orb.at(at(2, 0), OrbColor.Red, leftHalf), Orb.at(at(2, 0), OrbColor.Blue, rightHalf)],
+        keys: [Key.at(at(2, 0), leftHalf), Key.at(at(2, 0), rightHalf)],
         door: Door.closedAt(where('D')[0]!),
         hero: { position: at(0, 0), facing: Direction.Right },
         obstacles: check2dObstacles,
@@ -441,14 +438,14 @@ describe('a level', () => {
     ).toThrow(RangeError);
   });
 
-  test('rejects orbs that leave a tile faded', () => {
+  test('rejects keys that leave a tile faded', () => {
     const { scenery, where } = parse(['...']);
     expect(() =>
       Level.create({
         id: LevelId.of('test'),
         scenery,
         stones: [],
-        orbs: [Orb.at(at(2, 0), OrbColor.Red, leftHalf)],
+        keys: [Key.at(at(2, 0), leftHalf)],
         door: Door.closedAt(where('D')[0]!),
         hero: { position: at(0, 0), facing: Direction.Right },
         obstacles: check2dObstacles,
@@ -460,7 +457,7 @@ describe('a level', () => {
     expect(() => level(['o..'], at(0, 0), at(2, 0))).toThrow(RangeError);
   });
 
-  test('rejects an orb that cannot be reached', () => {
+  test('rejects a key that cannot be reached', () => {
     expect(() => level(['..~'], at(0, 0), at(2, 0))).toThrow(RangeError);
   });
 
@@ -479,7 +476,7 @@ describe('a level', () => {
           [],
         ),
         stones: [],
-        orbs: [Orb.at(at(1, 2), OrbColor.Violet, everywhere)],
+        keys: [Key.at(at(1, 2), everywhere)],
         door: Door.closedAt(at(0, 0)),
         hero: { position: at(0, 2), facing: Direction.Right },
         obstacles: check2dObstacles,
@@ -496,7 +493,7 @@ describe('a level', () => {
     expect(() => level(['.S..', '.Tt.'], at(0, 0), at(3, 0))).toThrow(RangeError);
   });
 
-  test('rejects a star on the orb', () => {
+  test('rejects a star on the key', () => {
     expect(() => level(['S..'], at(1, 0), at(0, 0))).toThrow(RangeError);
   });
 
@@ -504,7 +501,7 @@ describe('a level', () => {
     expect(() => level(['S..'], at(0, 0), at(2, 0))).toThrow(RangeError);
   });
 
-  test('rejects an orb behind a tree', () => {
+  test('rejects a key behind a tree', () => {
     expect(() => level(['...', '.Tt'], at(0, 0), at(2, 0))).toThrow(RangeError);
   });
 
@@ -514,8 +511,8 @@ describe('a level', () => {
     );
   });
 
-  test('rejects an orb on the closed door', () => {
-    expect(() => level(['DDD', '...'], at(0, 1), at(1, 0))).toThrow('Every orb must lie where the hero can reach it');
+  test('rejects a key on the closed door', () => {
+    expect(() => level(['DDD', '...'], at(0, 1), at(1, 0))).toThrow('Every key must lie where the hero can reach it');
   });
 
   test('rejects a door that does not stand on open ground', () => {
@@ -614,9 +611,9 @@ describe('stars scattered across a level', () => {
 describe('stars chosen among star spots', () => {
   const open = ['......', '......', '......', '......'];
   const hero = at(0, 0);
-  const orb = at(5, 3);
+  const key = at(5, 3);
   const free = Array.from({ length: 24 }, (_, index) => at(index % 6, Math.floor(index / 6))).filter(
-    (tile) => !tile.equals(hero) && !tile.equals(orb),
+    (tile) => !tile.equals(hero) && !tile.equals(key),
   );
   const among = (
     spots: readonly TilePosition[],
@@ -628,7 +625,7 @@ describe('stars chosen among star spots', () => {
         id: LevelId.of('test'),
         scenery,
         stones: [],
-        orbs: [Orb.at(orb, OrbColor.Violet, everywhere)],
+        keys: [Key.at(key, everywhere)],
         door: Door.closedAt(where('D')[0]!),
         hero: { position: hero, facing: Direction.Right },
         obstacles: check2dObstacles,

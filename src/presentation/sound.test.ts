@@ -3,7 +3,7 @@ import { audioWindow } from '../test-support/audio-context';
 import { memoryStorage } from '../test-support/memory-storage';
 import { Sound } from './sound';
 
-const events = ['footstep', 'star', 'orb', 'restoring', 'door'] as const;
+const events = ['footstep', 'star', 'key', 'restoring', 'door'] as const;
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -51,4 +51,19 @@ test.each(events)('%s is heard only while sound is on', (event) => {
   sound.toggle();
   sound[event]();
   expect(page.audio()!.heard()).toEqual(whileOn);
+});
+
+test('the hum keeps sounding at the volume asked for until it is set to zero or muted', () => {
+  const page = audioWindow();
+  const sound = new Sound(page.root);
+  page.interact();
+  sound.hum(0);
+  expect(page.audio()!.sounding()).toEqual([]);
+  sound.hum(0.5);
+  expect(page.audio()!.sounding().length).toBeGreaterThan(0);
+  sound.toggle();
+  expect(page.audio()!.sounding()).toEqual([]);
+  sound.toggle();
+  sound.hum(0);
+  expect(page.audio()!.sounding()).toEqual([]);
 });

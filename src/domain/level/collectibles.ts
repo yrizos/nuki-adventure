@@ -1,18 +1,5 @@
 import type { TilePosition } from './position';
 
-export class OrbColor {
-  static readonly Red = new OrbColor('red');
-  static readonly Blue = new OrbColor('blue');
-  static readonly Violet = new OrbColor('violet');
-  static readonly Teal = new OrbColor('teal');
-
-  private constructor(readonly name: 'red' | 'blue' | 'violet' | 'teal') {}
-
-  equals(other: OrbColor): boolean {
-    return this === other;
-  }
-}
-
 export class Area {
   private readonly keys: ReadonlySet<string>;
 
@@ -36,21 +23,18 @@ export class Area {
   }
 }
 
-export class Orb {
+export class Key {
   private constructor(
     readonly position: TilePosition,
-    readonly color: OrbColor,
     readonly restores: Area,
   ) {}
 
-  static at(position: TilePosition, color: OrbColor, restores: Area): Orb {
-    return new Orb(position, color, restores);
+  static at(position: TilePosition, restores: Area): Key {
+    return new Key(position, restores);
   }
 
-  equals(other: Orb): boolean {
-    return (
-      this.position.equals(other.position) && this.color.equals(other.color) && this.restores.equals(other.restores)
-    );
+  equals(other: Key): boolean {
+    return this.position.equals(other.position) && this.restores.equals(other.restores);
   }
 }
 

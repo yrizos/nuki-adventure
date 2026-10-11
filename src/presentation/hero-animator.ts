@@ -36,13 +36,11 @@ export class HeroAnimator {
     this.walkTicks = 0;
   }
 
-  pose(hero: HeroState, frame: number, holdingOrb: boolean): Art {
+  pose(hero: HeroState, frame: number): Art {
     const facing = hero.facing;
     const facingKey: keyof HeroArt =
       facing.rowStep < 0 ? 'up' : facing.rowStep > 0 ? 'down' : facing.columnStep < 0 ? 'left' : 'right';
     const art = heroArt[facingKey];
-    // The raised arms only read as holding when the hero stands still, so a walking hero keeps the walk cycle under the orb.
-    if (holdingOrb && !hero.isWalking) return art.holding!;
     if (hero.isWalking) return art.walk[this.walkFrame()]!;
     if (this.settleLeft > 0) return art.settle;
     return idleHeroPose(facingKey, frame);

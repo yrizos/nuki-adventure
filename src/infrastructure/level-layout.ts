@@ -1,4 +1,4 @@
-import { Area, Orb, type OrbColor } from '../domain/level/collectibles';
+import { Area, Key } from '../domain/level/collectibles';
 import type { StarCount } from '../domain/shared/star-count';
 import { Door } from '../domain/level/door';
 import { Level, Stone } from '../domain/level/level';
@@ -18,9 +18,7 @@ import { Signpost, SignpostText } from '../domain/level/signpost';
 import { check2dObstacles } from './check2d-obstacles';
 
 interface LayoutContents {
-  readonly orbs: Readonly<
-    Record<string, { readonly color: OrbColor; readonly restores: (position: TilePosition) => boolean }>
-  >;
+  readonly keys: Readonly<Record<string, { readonly restores: (position: TilePosition) => boolean }>>;
   readonly signposts: Readonly<Record<string, string>>;
   readonly starCount?: StarCount;
   readonly flowerVariants?: readonly FlowerVariant[];
@@ -73,8 +71,8 @@ export function levelFromLayout(
   const starSpots = cells.filter((cell) => '+='.includes(cell.symbol)).map((cell) => cell.at);
   if (starSpots.length > 0 && contents.starCount)
     throw new Error(`The layout of level ${id.value} marks star spots, so it takes no star count`);
-  const orbs = Object.entries(contents.orbs).map(([symbol, { color, restores }]) =>
-    Orb.at(one(symbol), color, Area.of(cells.map((cell) => cell.at).filter(restores))),
+  const keys = Object.entries(contents.keys).map(([symbol, { restores }]) =>
+    Key.at(one(symbol), Area.of(cells.map((cell) => cell.at).filter(restores))),
   );
   const signposts = Object.entries(contents.signposts).map(([symbol, text]) =>
     Signpost.at(one(symbol), SignpostText.of(text)),
@@ -83,7 +81,7 @@ export function levelFromLayout(
     id,
     scenery,
     stones: where('o').map(Stone.at),
-    orbs,
+    keys,
     door: Door.closedAt(door),
     hero: { position: one('H'), facing: Direction.Up },
     signposts,

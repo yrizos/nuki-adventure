@@ -3,7 +3,16 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { expect, test } from 'vitest';
 import { sprite } from './picture';
-import { flowerArt, fruitTreeArt, readSprite, sprites, terrainArt, treeArt, waterFrameLength } from './sprite-library';
+import {
+  flowerArt,
+  fruitTreeArt,
+  keyArt,
+  readSprite,
+  sprites,
+  terrainArt,
+  treeArt,
+  waterFrameLength,
+} from './sprite-library';
 
 const valid = {
   legend: { k: 'Ink', g: 'G2' },
@@ -179,4 +188,10 @@ test.each([
   ['a faded correction in color', { ...valid, faded: { a: { legend: { n: 'G2' }, rows: ['nn', 'nn'] } } }],
 ])('rejects %s', (_, data) => {
   expect(() => readSprite(data)).toThrow();
+});
+
+test('the key is one 24 by 24 frame', () => {
+  expect(Object.keys(sprites.key!.frames)).toEqual(['key']);
+  expect(keyArt).toBe(sprites.key!.frames.key);
+  expect([sprite(keyArt).width, sprite(keyArt).height]).toEqual([24, 24]);
 });

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { Area, Orb, OrbColor, Star } from '../domain/level/collectibles';
+import { Area, Key, Star } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
 import { Level } from '../domain/level/level';
 import { SignpostRead, StarCollected } from '../domain/level/level-events';
@@ -26,7 +26,7 @@ function playing() {
       [],
     ),
     stones: [],
-    orbs: [Orb.at(TilePosition.at(4, 1), OrbColor.Violet, Area.of(tiles))],
+    keys: [Key.at(TilePosition.at(4, 1), Area.of(tiles))],
     door: Door.closedAt(TilePosition.at(2, 0)),
     hero: { position: TilePosition.at(0, 0), facing: Direction.Right },
     stars: [Star.at(TilePosition.at(1, 0))],
@@ -55,7 +55,7 @@ describe('playing a level', () => {
       id: levelId,
       scenery: subject.level.scenery,
       stones: [],
-      orbs: subject.level.orbs,
+      keys: subject.level.keys,
       stars: [Star.at(TilePosition.at(1, 0))],
       collected: [],
       signposts: [Signpost.at(TilePosition.at(0, 1), hint)],

@@ -3,6 +3,9 @@ type Wave = 'square' | 'triangle';
 const melody = [523, 659, 784, 659, 587, 698, 880, 698, 523, 659, 784, 1047, 988, 784, 659, 587];
 const melodyNoteLength = 0.25;
 const storageKey = 'sound';
+// Two close pitches beat against each other, so the steady tone buzzes without a second modulating oscillator.
+const humPitches = [440, 446];
+const humVolume = 0.03;
 
 // Storage can be unavailable, such as in some private browsing modes, and the switch must still work for the current visit.
 function remembered(root: Window): boolean {
@@ -22,6 +25,7 @@ function remember(root: Window, on: boolean): void {
 export class Sound {
   private context: AudioContext | null = null;
   private output: GainNode | null = null;
+  private humGain: GainNode | null = null;
   private enabled: boolean;
   private readonly root: Window;
 
@@ -61,8 +65,25 @@ export class Sound {
     this.notes(last ? [1319, 1760, 2093, 2637] : [1319, 1760], last ? 0.09 : 0.06, 'square', 0.08);
   }
 
-  orb(): void {
-    this.notes([784, 988, 1175, 1568], 0.08, 'square', 0.1);
+  key(): void {
+    this.notes([1047, 1568, 1319, 2093], 0.07, 'triangle', 0.12);
+  }
+
+  // The hum is one continuous voice whose level glides toward each new volume, so moving tick by tick never clicks.
+  hum(volume: number): void {
+    const context = this.context;
+    const output = this.output;
+    if (!context || !output) return;
+    if (!this.humGain) {
+      this.humGain = new GainNode(context, { gain: 0 });
+      this.humGain.connect(output);
+      for (const frequency of humPitches) {
+        const oscillator = new OscillatorNode(context, { type: 'triangle', frequency });
+        oscillator.connect(this.humGain);
+        oscillator.start();
+      }
+    }
+    this.humGain.gain.setTargetAtTime(volume * humVolume, context.currentTime, 0.1);
   }
 
   restoring(): void {

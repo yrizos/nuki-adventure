@@ -24,6 +24,10 @@ class StubAudioParam {
   }
 
   exponentialRampToValueAtTime(): void {}
+
+  setTargetAtTime(value: number): void {
+    this.value = value;
+  }
 }
 
 class StubGainNode extends StubAudioNode {
@@ -40,6 +44,8 @@ class StubGainNode extends StubAudioNode {
 }
 
 class StubOscillatorNode extends StubAudioNode {
+  stopped = false;
+
   constructor(
     context: StubAudioContext,
     readonly options: { frequency: number },
@@ -50,18 +56,29 @@ class StubOscillatorNode extends StubAudioNode {
   // Time never advances in the stub, so audibility is captured when the note starts and a later gain change cannot rewrite what was already played.
   start(): void {
     this.context.started.push({ frequency: this.options.frequency, audible: this.reachesSpeakers() });
+    this.context.oscillators.push(this);
   }
 
-  stop(): void {}
+  // Notes are stopped as soon as they are scheduled, so only a continuous voice is left unstopped.
+  stop(): void {
+    this.stopped = true;
+  }
 }
 
 export class StubAudioContext {
   readonly currentTime = 0;
   readonly destination = new StubAudioNode(this);
   readonly started: { readonly frequency: number; readonly audible: boolean }[] = [];
+  readonly oscillators: StubOscillatorNode[] = [];
 
   resume(): Promise<void> {
     return Promise.resolve();
+  }
+
+  sounding(): number[] {
+    return this.oscillators
+      .filter((oscillator) => !oscillator.stopped && oscillator.reachesSpeakers())
+      .map((oscillator) => oscillator.options.frequency);
   }
 
   heard(): number[] {

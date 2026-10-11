@@ -1,4 +1,3 @@
-import { OrbColor } from '../domain/level/collectibles';
 import { type Level } from '../domain/level/level';
 import { type TilePosition } from '../domain/level/position';
 import { FlowerVariant } from '../domain/level/scenery';
@@ -20,7 +19,7 @@ const layout = [
   'F........~P#.+~~~~~#~~~.F',
   'F........###..~~~~~#.~~*F',
   'F........~.#...~~~~..o~*F',
-  'FAt.R..At~~#.oo~~~~B.~~.F',
+  'FAt.K..At~~#.oo~~~~J.~~.F',
   'F.......*.~#.o~~~~~~~~~+F',
   'F+....***.~##.~~~~~~~~~~F',
   'FFFFFFFFFF~.#..~~~~~~~~~F',
@@ -72,14 +71,14 @@ const inArea =
 export function thirdLevel(shuffle: Shuffle): Level {
   return levelFromLayout(thirdLevelId, layout, shuffle, {
     flowerVariants: [FlowerVariant.CoralBlue, FlowerVariant.WhiteViolet],
-    orbs: {
-      R: { color: OrbColor.Red, restores: inArea('r') },
-      B: { color: OrbColor.Blue, restores: inArea('b') },
+    keys: {
+      K: { restores: inArea('r') },
+      J: { restores: inArea('b') },
     },
     signposts: {
-      P: 'Η ΚΟΚΚΙΝΗ ΣΦΑΙΡΑ ΠΕΡΙΜΕΝΕΙ ΜΕΣΑ ΣΤΟΝ ΜΗΛΕΩΝΑ, ΣΤΟ ΚΕΝΟ ΜΕΤΑΞΥ ΤΩΝ ΜΗΛΙΩΝ.',
-      Q: 'Η ΜΠΛΕ ΣΦΑΙΡΑ ΠΕΡΙΜΕΝΕΙ ΣΤΟ ΤΕΛΟΣ ΤΟΥ ΣΤΕΝΟΥ ΜΟΝΟΠΑΤΙΟΥ ΜΕΣΑ ΣΤΗ ΛΙΜΝΗ.',
-      E: 'ΒΡΕΣ ΚΑΙ ΤΙΣ ΔΥΟ ΣΦΑΙΡΕΣ. ΜΟΛΙΣ ΦΕΡΟΥΝ ΠΙΣΩ ΤΑ ΧΡΩΜΑΤΑ, Η ΠΥΛΗ ΘΑ ΑΝΟΙΞΕΙ.',
+      P: 'ΕΝΑ ΚΛΕΙΔΙ ΠΕΡΙΜΕΝΕΙ ΜΕΣΑ ΣΤΟΝ ΜΗΛΕΩΝΑ, ΣΤΟ ΚΕΝΟ ΜΕΤΑΞΥ ΤΩΝ ΜΗΛΙΩΝ.',
+      Q: 'ΕΝΑ ΚΛΕΙΔΙ ΠΕΡΙΜΕΝΕΙ ΣΤΟ ΤΕΛΟΣ ΤΟΥ ΣΤΕΝΟΥ ΜΟΝΟΠΑΤΙΟΥ ΜΕΣΑ ΣΤΗ ΛΙΜΝΗ.',
+      E: 'ΒΡΕΣ ΚΑΙ ΤΑ ΔΥΟ ΚΛΕΙΔΙΑ. ΜΟΛΙΣ ΦΕΡΟΥΝ ΠΙΣΩ ΤΑ ΧΡΩΜΑΤΑ, Η ΠΥΛΗ ΘΑ ΑΝΟΙΞΕΙ.',
     },
   });
 }
