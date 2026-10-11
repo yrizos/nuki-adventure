@@ -1,7 +1,7 @@
 import type { LevelProgressView } from '../application/manage-progress';
 import type { LevelId } from '../domain/shared/level-id';
-import type { Art } from './art/art';
-import { textWidth, writeText } from './art/font';
+import { PixelGrid, type Art } from './art/art';
+import { glyphHeight, textWidth, writeText } from './art/font';
 import { backWidth, continueHeight } from './art/panel';
 import { artUrl } from './canvas-art';
 import { element } from './dom';
@@ -17,43 +17,52 @@ import {
   windowLegend,
 } from './level-end';
 import { menuChoices, takeMenuKeys } from './menu-keys';
+import { faded } from './palette';
 
 const edge = 2;
 const padding = 6;
 const columnGap = 10;
-export const rowHeight = 2 * edge + 2 * padding + iconSize;
-const noPlaythrough = '-';
+const numberScale = 2;
+const numberHeight = numberScale * glyphHeight;
+const statsTop = edge + padding + numberHeight + padding;
+export const rowHeight = statsTop + iconSize + padding + edge;
+// The widths of the shortest statistics keep a card from shrinking before any level is completed.
+const shortestTime = '0:00';
+const shortestStars = '0/0';
 
-function timeText(level: LevelProgressView): string {
-  return level.lastPlaythrough ? playTime(level.lastPlaythrough.time) : noPlaythrough;
+const lockedLegend = Object.fromEntries(Object.entries(windowLegend).map(([symbol, code]) => [symbol, faded(code)]));
+
+function putNumber(grid: PixelGrid, number: string, left: number, top: number): void {
+  const text = new PixelGrid(textWidth(number), glyphHeight);
+  writeText(text, number, 0, 0, 't');
+  for (let row = 0; row < numberHeight; row++)
+    for (let column = 0; column < numberScale * textWidth(number); column++) {
+      const pixel = text.get(Math.floor(column / numberScale), Math.floor(row / numberScale));
+      if (pixel !== '.') grid.put(left + column, top + row, pixel);
+    }
 }
 
-function starText(level: LevelProgressView): string {
-  return level.lastPlaythrough ? starsText(level.lastPlaythrough) : noPlaythrough;
-}
-
-// Every row shares one set of column widths, so numbers, times and stars line up down the list.
+// Every card shares one size and one set of columns, so numbers, times and stars line up down the list.
 export function levelPickerArt(levels: readonly LevelProgressView[]): Art[] {
-  const widest = (text: (level: LevelProgressView) => string): number =>
-    Math.max(...levels.map((level) => textWidth(text(level))));
-  const numberWidth = widest((level) => String(level.number));
-  const timeWidth = widest(timeText);
-  const starWidth = widest(starText);
-  const timeLeft = edge + padding + numberWidth + columnGap;
-  const starLeft = timeLeft + iconSize + iconGap + timeWidth + columnGap;
-  const width = starLeft + iconSize + iconGap + starWidth + padding + edge;
-  const textTop = edge + padding + iconTextTop;
+  const widest = (texts: readonly string[]): number => Math.max(...texts.map(textWidth));
+  const playthroughs = levels.flatMap(({ lastPlaythrough }) => (lastPlaythrough ? [lastPlaythrough] : []));
+  const numberWidth = numberScale * widest(levels.map(({ number }) => String(number)));
+  const timeWidth = widest([shortestTime, ...playthroughs.map(({ time }) => playTime(time))]);
+  const starWidth = widest([shortestStars, ...playthroughs.map(starsText)]);
+  const left = edge + padding;
+  const starLeft = left + iconSize + iconGap + timeWidth + columnGap;
+  const width = Math.max(left + numberWidth, starLeft + iconSize + iconGap + starWidth) + padding + edge;
   return levels.map((level) => {
     const grid = windowFrame(width, rowHeight);
     const number = String(level.number);
-    writeText(grid, number, edge + padding + numberWidth - textWidth(number), textTop, level.isUnlocked ? 't' : 'q');
-    if (level.isUnlocked) {
-      putClock(grid, timeLeft, edge + padding);
-      writeText(grid, timeText(level), timeLeft + iconSize + iconGap, textTop, 't');
-      putStar(grid, starLeft, edge + padding);
-      writeText(grid, starText(level), starLeft + iconSize + iconGap, textTop, 't');
+    putNumber(grid, number, left + numberWidth - numberScale * textWidth(number), edge + padding);
+    if (level.lastPlaythrough) {
+      putClock(grid, left, statsTop);
+      writeText(grid, playTime(level.lastPlaythrough.time), left + iconSize + iconGap, statsTop + iconTextTop, 't');
+      putStar(grid, starLeft, statsTop);
+      writeText(grid, starsText(level.lastPlaythrough), starLeft + iconSize + iconGap, statsTop + iconTextTop, 't');
     }
-    return grid.build(windowLegend);
+    return grid.build(level.isUnlocked ? windowLegend : lockedLegend);
   });
 }
 
@@ -61,7 +70,7 @@ export function levelPickerArt(levels: readonly LevelProgressView[]): Art[] {
 export function levelRowText(level: LevelProgressView): string {
   if (!level.isUnlocked) return `ΕΠΙΠΕΔΟ ${level.number}. ΚΛΕΙΔΩΜΕΝΟ.`;
   if (!level.lastPlaythrough) return `ΕΠΙΠΕΔΟ ${level.number}.`;
-  return `ΕΠΙΠΕΔΟ ${level.number}. ΧΡΟΝΟΣ ${timeText(level)}. ΑΣΤΕΡΙΑ ${starText(level)}.`;
+  return `ΕΠΙΠΕΔΟ ${level.number}. ΧΡΟΝΟΣ ${playTime(level.lastPlaythrough.time)}. ΑΣΤΕΡΙΑ ${starsText(level.lastPlaythrough)}.`;
 }
 
 export class LevelPicker {

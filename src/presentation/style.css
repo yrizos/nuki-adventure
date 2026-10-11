@@ -440,12 +440,12 @@ body {
   --art: var(--art-new-game-pressed);
 }
 
-/* The rows are smaller than a finger at narrow widths, so the gap keeps each row's touch area at the Material minimum. */
+/* The cards are smaller than a finger at narrow widths, so the gap keeps each card's touch area at the Material minimum. */
 .level-picker {
   display: flex;
   flex: none;
   flex-direction: column;
-  gap: max(4 * var(--pixel), 48px - 32 * var(--pixel));
+  gap: max(4 * var(--pixel), 48px - 56 * var(--pixel));
   margin: calc(4 * var(--pixel)) 0 0;
   padding: 0;
   list-style: none;

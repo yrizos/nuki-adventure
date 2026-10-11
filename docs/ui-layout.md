@@ -94,16 +94,17 @@ Landscape orientation is not supported.
 ## Level Picker
 
 - The level picker covers the whole page like the start screen, on the same background
-- It lists every level of the game in order, one row per level, above a ΠΙΣΩ button in the A button colors that returns to the start screen
-- Each row is a window in the message box frame, 32 panel pixels tall, and the rows share one width so their columns line up
-- Each row shows the level number in Paper, then the clock drawing beside the last play time and the star drawing beside the last stars out of all stars
-- An unlocked level that has no completed playthrough shows its number with a dash in place of the time and the stars
-- A locked level shows its number in N4 with no time or stars and cannot be chosen
-- Tapping an unlocked row starts that level, and a locked level never starts, whatever chose it
-- Arrow keys move keyboard focus between the rows and ΠΙΣΩ, and A or B chooses the focused one
-- The focused button or row shows a one pixel Paper outline
-- The rows are spaced so each touch area stays above the Material minimum touch target
-- Screen readers hear each row as the level number, then the last time and stars in words, or that it is locked
+- It lists every level of the game in order, one card per level, above a ΠΙΣΩ button in the A button colors that returns to the start screen
+- Each card is a window in the message box frame, and every card has the same size whatever its statistics, so the cards line up
+- The top of a card shows the level number in Paper at twice the font size
+- The bottom of a completed level's card shows the clock drawing beside the last play time and the star drawing beside the last stars out of all stars
+- An unlocked level that has no completed playthrough shows its number only, with no time, stars, dash or label
+- A locked level's card is drawn through the faded world's neutral palette mapping, shows its number only and cannot be focused or chosen
+- Tapping an unlocked card starts that level, and a locked level never starts, whatever chose it
+- Arrow keys move keyboard focus between the cards and ΠΙΣΩ, and A or B chooses the focused one
+- The focused button or card shows a one pixel Paper outline
+- The cards are spaced so each touch area stays above the Material minimum touch target
+- Screen readers hear each card as the level number, then the last time and stars in words, or that it is locked
 - The level picker scrolls when its contents do not fit
 
 ## Control Panel
