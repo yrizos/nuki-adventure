@@ -1,6 +1,21 @@
 import { expect, test } from 'vitest';
-import { Area } from './collectibles';
+import { Area, Key, KeyMaterial } from './collectibles';
+import { TilePosition } from './position';
+
+const at = TilePosition.at;
 
 test('rejects an area without tiles', () => {
   expect(() => Area.of([])).toThrow(RangeError);
+});
+
+test('a key is gold unless made of another material', () => {
+  const area = Area.of([at(0, 0)]);
+  expect(Key.at(at(1, 1), area).material).toBe(KeyMaterial.Gold);
+  expect(Key.at(at(1, 1), area, KeyMaterial.Silver).material).toBe(KeyMaterial.Silver);
+});
+
+test('keys are equal only when made of the same material', () => {
+  const area = Area.of([at(0, 0)]);
+  expect(Key.at(at(1, 1), area).equals(Key.at(at(1, 1), area, KeyMaterial.Gold))).toBe(true);
+  expect(Key.at(at(1, 1), area).equals(Key.at(at(1, 1), area, KeyMaterial.Silver))).toBe(false);
 });

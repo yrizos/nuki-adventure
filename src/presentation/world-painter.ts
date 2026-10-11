@@ -456,7 +456,8 @@ export class WorldPainter {
       objects.push({
         base: (row + 1) * tileSize,
         shadow: shadow(12, key.position, column * tileSize + 10, row * tileSize + 27),
-        paint: () => draw(keyArt, column * tileSize + 4 + offset.x, row * tileSize + 4 + offset.y, 'colored'),
+        paint: () =>
+          draw(keyArt[key.material.name], column * tileSize + 4 + offset.x, row * tileSize + 4 + offset.y, 'colored'),
       });
     }
     for (const star of level.stars) {

@@ -23,18 +23,34 @@ export class Area {
   }
 }
 
+export class KeyMaterial {
+  static readonly Gold = new KeyMaterial('gold');
+  static readonly Silver = new KeyMaterial('silver');
+
+  private constructor(readonly name: 'gold' | 'silver') {}
+
+  equals(other: KeyMaterial): boolean {
+    return this === other;
+  }
+}
+
 export class Key {
   private constructor(
     readonly position: TilePosition,
     readonly restores: Area,
+    readonly material: KeyMaterial,
   ) {}
 
-  static at(position: TilePosition, restores: Area): Key {
-    return new Key(position, restores);
+  static at(position: TilePosition, restores: Area, material: KeyMaterial = KeyMaterial.Gold): Key {
+    return new Key(position, restores, material);
   }
 
   equals(other: Key): boolean {
-    return this.position.equals(other.position) && this.restores.equals(other.restores);
+    return (
+      this.position.equals(other.position) &&
+      this.restores.equals(other.restores) &&
+      this.material.equals(other.material)
+    );
   }
 }
 

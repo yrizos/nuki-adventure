@@ -132,7 +132,7 @@ The number of stars a level holds. A level either picks its stars from its star 
 
 ### Key
 
-A golden collectible that floats, buzzes and hums when the hero is near. Every key looks the same, and each restores color to its own area of the level.
+A collectible that floats, buzzes and hums when the hero is near. Each restores color to its own area of the level. A key is made of gold unless its level makes it silver. Gold and silver keys share one shape and differ only in color.
 
 ### Stone
 

@@ -12,7 +12,7 @@ The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/dom
 
 - A layout has exactly one explicit hero start.
 - A layout has exactly one door, three tiles wide, on open ground.
-- The door stands on the top edge of the playable area, facing inward. Scenery may lie behind it, outside the area the hero can reach.
+- The door stands on the top edge of the playable area, facing inward, and never on another edge. Scenery may lie behind it, outside the area the hero can reach.
 - The door stands beside a reachable tile, so the hero can walk through it once it opens.
 - The door stands in a fence or is framed by woodland. Its opening stays free of canopies.
 - The hero start is reachable and not hidden.
@@ -41,6 +41,10 @@ The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/dom
 - Every woodland tile is impassable and blocked as a whole tile.
 - In a level bounded by woodland, every tile the hero cannot reach is woodland, water, the door or covered by a prop. No unreachable grass or path tile exists.
 - Woodland drawn beyond the map edges is decoration only. It never adds playable space.
+
+### Path Tiles
+
+- Every path tile shares an edge with at least one other path tile. Path tiles include the door, the hero start and a swing gate. A path tile that touches other path tiles only at its corners is rejected.
 
 ### Swing Gates
 
@@ -153,6 +157,8 @@ A pond is a self-contained body of water with an irregular shoreline, sized to i
 ### Paths
 
 Paths wind and branch like worn tracks rather than following straight grid lines. Straight paths belong only to built places, such as a courtyard or the approach to the door.
+
+A path reads as a continuous track only when its tiles join by their edges. Where a path turns or runs at a slant, it steps through a full corner tile, as every path in Level 1 does, and never climbs as a diagonal staircase of single tiles.
 
 ### Gardens and Flowers
 

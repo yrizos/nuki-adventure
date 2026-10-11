@@ -145,7 +145,12 @@ export const gateArt = {
 } as const;
 export const doorArt = { closed: frame('door', 'closed'), open: frame('door', 'open') } as const;
 
-export const keyArt = frame('key', 'key');
+const goldKey = frame('key', 'key');
+// Both keys share one pixel grid, so silver swaps only the legend of the gold ramp for a cool neutral one.
+export const keyArt: Readonly<Record<'gold' | 'silver', Art>> = {
+  gold: goldKey,
+  silver: { ...goldKey, legend: { ...goldKey.legend, b: 'N3', a: 'N4', c: 'W4' } },
+};
 export const starArt = frame('star', 'star');
 
 export const lightMote = frame('light-mote', 'light-mote');

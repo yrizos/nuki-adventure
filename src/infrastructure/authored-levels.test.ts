@@ -1,8 +1,9 @@
 import { expect, test } from 'vitest';
 import { LevelCompleted, KeyCollected } from '../domain/level/level-events';
-import { Direction } from '../domain/level/position';
+import { Direction, TilePosition } from '../domain/level/position';
+import { Ground } from '../domain/level/scenery';
 import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
-import { follow, pathTo } from '../test-support/walk-level';
+import { follow, openGate, pathTo } from '../test-support/walk-level';
 import { firstLevel } from './first-level';
 import { secondLevel } from './second-level';
 import { thirdLevel } from './third-level';
@@ -29,6 +30,25 @@ for (const { name, create } of authoredLevels) {
     ).toBeGreaterThanOrEqual(7);
   });
 }
+
+test.each(authoredLevels)('every path tile of the $name level shares an edge with another path tile', ({ create }) => {
+  const level = create(keepOrder);
+  const isPath = (tile: TilePosition): boolean =>
+    level.scenery.size.contains(tile) && level.scenery.groundAt(tile).equals(Ground.Path);
+  const { columns, rows } = level.scenery.size;
+  const alone = Array.from({ length: columns * rows }, (_, index) =>
+    TilePosition.at(index % columns, Math.floor(index / columns)),
+  )
+    .filter(
+      (tile) =>
+        isPath(tile) &&
+        ![Direction.Up, Direction.Down, Direction.Left, Direction.Right].some((direction) =>
+          isPath(tile.neighbor(direction)),
+        ),
+    )
+    .map((tile) => `${tile.column}, ${tile.row}`);
+  expect(alone).toEqual([]);
+});
 
 test.each(authoredLevels)('the $name level holds exactly five stars', ({ create }) => {
   expect(create(keepOrder).stars).toHaveLength(5);
@@ -58,6 +78,7 @@ test.each(
 )('the $name level completes at its door after its keys are collected $label', ({ create, order }) => {
   const level = create(keepOrder);
   const keys = order.map((index) => level.keys[index]!);
+  if (level.gate) openGate(level);
   for (const [collected, key] of keys.entries()) {
     const path = pathTo(level, (position) => position.equals(key.position));
     expect(path, 'the key must be reachable from where she stands').toBeDefined();

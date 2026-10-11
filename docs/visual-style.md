@@ -199,7 +199,8 @@ A new element uses the smallest size in this table that fits its shape.
 ### Stars and Keys
 
 - Stars and keys sit centered in their tile with a four pixel empty margin
-- Every key uses one shared sprite: a golden key with a round bow, a shaft and teeth
+- Every key uses one shared sprite: a key with a round bow, a shaft and teeth
+- A gold key uses Y1, Y2 and Y3. A silver key swaps those for N3, N4 and W4 on the same pixels, so both keep one silhouette
 
 ### Scenery Props
 

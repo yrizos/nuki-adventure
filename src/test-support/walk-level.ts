@@ -57,3 +57,15 @@ export function follow(level: Level, path: readonly WorldPosition[]): readonly L
   level.tick(null);
   return events;
 }
+
+// The gate opens only from its approach while she faces it, so she walks there and turns up first.
+export function openGate(level: Level): void {
+  const gate = level.gate!;
+  const path = pathTo(level, (tile) => tile.equals(gate.approach));
+  expect(path, 'the gate approach must be reachable').toBeDefined();
+  follow(level, path!);
+  level.tick(Heading.of(Direction.Up));
+  level.tick(null);
+  expect(level.operateGate(), 'she must be able to operate the gate from its approach').not.toEqual([]);
+  level.finishGate();
+}

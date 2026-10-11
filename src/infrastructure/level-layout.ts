@@ -1,4 +1,4 @@
-import { Area, Key } from '../domain/level/collectibles';
+import { Area, Key, type KeyMaterial } from '../domain/level/collectibles';
 import type { StarCount } from '../domain/shared/star-count';
 import { Door } from '../domain/level/door';
 import { Level, Stone } from '../domain/level/level';
@@ -18,7 +18,9 @@ import { SwingGate } from '../domain/level/swing-gate';
 import { check2dObstacles } from './check2d-obstacles';
 
 interface LayoutContents {
-  readonly keys: Readonly<Record<string, { readonly restores: (position: TilePosition) => boolean }>>;
+  readonly keys: Readonly<
+    Record<string, { readonly restores: (position: TilePosition) => boolean; readonly material?: KeyMaterial }>
+  >;
   readonly starCount?: StarCount;
   readonly flowerVariants?: readonly FlowerVariant[];
 }
@@ -76,8 +78,8 @@ export function levelFromLayout(
   const starSpots = cells.filter((cell) => '+='.includes(cell.symbol)).map((cell) => cell.at);
   if (starSpots.length > 0 && contents.starCount)
     throw new Error(`The layout of level ${id.value} marks star spots, so it takes no star count`);
-  const keys = Object.entries(contents.keys).map(([symbol, { restores }]) =>
-    Key.at(one(symbol), Area.of(cells.map((cell) => cell.at).filter(restores))),
+  const keys = Object.entries(contents.keys).map(([symbol, { restores, material }]) =>
+    Key.at(one(symbol), Area.of(cells.map((cell) => cell.at).filter(restores)), material),
   );
   const definition = {
     id,

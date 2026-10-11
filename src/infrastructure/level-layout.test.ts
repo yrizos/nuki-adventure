@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { StarCount } from '../domain/shared/star-count';
+import { KeyMaterial } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
 import { Stone } from '../domain/level/level';
 import { LevelId } from '../domain/shared/level-id';
@@ -117,6 +118,18 @@ describe('a level built from a layout', () => {
     expect(placed.stars.map((star) => star.position)).toEqual([at(2, 6), at(1, 6), at(0, 6), at(5, 5), at(4, 5)]);
     expect(placed.scenery.groundAt(at(0, 4))).toBe(Ground.Grass);
     expect(placed.scenery.groundAt(at(5, 5))).toBe(Ground.Path);
+  });
+});
+
+describe('key materials in a layout', () => {
+  test('gives each key the material its contents name, gold by default', () => {
+    const level = levelFromLayout(LevelId.of('metals'), ['.DDD.', '.K.S.', '.....', '..H..'], keepOrder, {
+      keys: {
+        K: { restores: (position: TilePosition) => position.column < 2 },
+        S: { restores: (position: TilePosition) => position.column >= 2, material: KeyMaterial.Silver },
+      },
+    });
+    expect(level.keys.map((key) => key.material)).toEqual([KeyMaterial.Gold, KeyMaterial.Silver]);
   });
 });
 

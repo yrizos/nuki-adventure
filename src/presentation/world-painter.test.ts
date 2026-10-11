@@ -3,7 +3,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { crc32, deflateSync } from 'node:zlib';
 import { describe, expect, test, vi } from 'vitest';
 import { levelView } from '../application/level-view';
-import { Area, Key } from '../domain/level/collectibles';
+import { Area, Key, KeyMaterial } from '../domain/level/collectibles';
 import { Door } from '../domain/level/door';
 import { Level, Stone } from '../domain/level/level';
 import { LevelId } from '../domain/shared/level-id';
@@ -65,6 +65,7 @@ function renderingLevel(
   trees: readonly Tree[] = [],
   flowers: readonly Flower[] = [],
   flowerVariants: readonly FlowerVariant[] = FlowerVariant.All,
+  keyMaterial: KeyMaterial = KeyMaterial.Gold,
 ): Level {
   return Level.create({
     id: LevelId.of('render'),
@@ -77,7 +78,7 @@ function renderingLevel(
       flowerVariants,
     ),
     stones,
-    keys: [Key.at(TilePosition.at(0, 0), everywhere)],
+    keys: [Key.at(TilePosition.at(0, 0), everywhere, keyMaterial)],
     door: Door.closedAt(TilePosition.at(9, 0)),
     hero: { position: hero, facing: Direction.Down },
     obstacles: check2dObstacles,
@@ -232,7 +233,7 @@ test('native interactive sprites use their documented dimensions', () => {
     expect(sprite(art).height).toBe(32);
   }
   for (const art of sprites.stoneVariants) expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
-  expect([sprite(sprites.keyArt).width, sprite(sprites.keyArt).height]).toEqual([24, 24]);
+  for (const art of Object.values(sprites.keyArt)) expect([sprite(art).width, sprite(art).height]).toEqual([24, 24]);
 });
 
 test('interactive sprites keep a closed one-pixel Ink silhouette', () => {
@@ -243,7 +244,7 @@ test('interactive sprites keep a closed one-pixel Ink silhouette', () => {
       ...direction.walk,
     ]),
     ...sprites.stoneVariants,
-    sprites.keyArt,
+    ...Object.values(sprites.keyArt),
   ];
   for (const piece of art) {
     piece.rows.forEach((row, vertical) =>
@@ -435,19 +436,31 @@ test.each([
   expect(shadow.rows.map((row) => row.replaceAll('.', '').length)).toEqual([14, 10, 10, 10, 6]);
 });
 
-test('a key keeps its gold in a faded world', () => {
-  const level = renderingLevel();
+test.each([
+  ['gold', KeyMaterial.Gold, ['Y1', 'Y2', 'Y3']],
+  ['silver', KeyMaterial.Silver, ['N3', 'N4', 'W4']],
+] as const)('a %s key keeps its metal in a faded world', (_, material, codes) => {
+  const level = renderingLevel(Ground.Grass, undefined, [], [], [], FlowerVariant.All, material);
   const picture = new Picture(384, 384);
   new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, []);
-  const gold = [...sprites.keyArt.rows.join('')].filter((symbol) => symbol !== '.' && symbol !== 'k').length;
+  const metal = [...sprites.keyArt.gold.rows.join('')].filter((symbol) => symbol !== '.' && symbol !== 'k').length;
   const camera = cameraPosition(level, picture.width, picture.height);
+  const art = sprite(sprites.keyArt[material.name]).colored;
   let shown = 0;
   for (let y = 0; y < 24; y++)
     for (let x = 0; x < 24; x++) {
+      if (art[(y * 24 + x) * 4 + 3] === 0 || sprites.keyArt.gold.rows[y]![x] === 'k') continue;
       const color = colorAt(picture, 4 + x - camera.x, 4 + y - camera.y);
-      if ([palette.Y1, palette.Y2, palette.Y3].includes(color)) shown++;
+      if (codes.some((code) => palette[code] === color)) shown++;
     }
-  expect(shown).toBe(gold);
+  expect(shown).toBe(metal);
+});
+
+test('gold and silver keys share one pixel grid and differ only in their metal colors', () => {
+  const { gold, silver } = sprites.keyArt;
+  expect(silver.rows).toBe(gold.rows);
+  expect(silver.legend.k).toBe(gold.legend.k);
+  for (const symbol of ['a', 'b', 'c']) expect(silver.legend[symbol]).not.toBe(gold.legend[symbol]);
 });
 
 test('a key floats and buzzes within two pixels up and down and one pixel sideways', () => {
@@ -1236,15 +1249,12 @@ test.each([
 });
 
 test('levels without woodland draw only their authored trees', () => {
-  for (const level of [thirdLevel(randomShuffle)]) {
-    const picture = new Picture(224, 320);
-    const draw = vi.spyOn(picture, 'draw');
-    new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, []);
-    const trees = [...scenery.treeArt.flat(), ...Object.values(scenery.fruitTreeArt).flat()];
-    expect(draw.mock.calls.filter(([art]) => trees.includes(art)).length).toBeLessThanOrEqual(
-      level.scenery.trees.length,
-    );
-  }
+  const level = renderingLevel(Ground.Grass, undefined, [], [Tree.at(TilePosition.at(4, 5), TreeVariant.NoFruit)]);
+  const picture = new Picture(224, 320);
+  const draw = vi.spyOn(picture, 'draw');
+  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, []);
+  const trees = [...scenery.treeArt.flat(), ...Object.values(scenery.fruitTreeArt).flat()];
+  expect(draw.mock.calls.filter(([art]) => trees.includes(art))).toHaveLength(level.scenery.trees.length);
 });
 
 function arrivalDraws(age: number) {
