@@ -2,9 +2,14 @@
 
 ## Procedure
 
-1. Read complete `git diff --cached`. Never derive messages from conversation, one file or filtered summaries.
-2. Select type by the purpose of the whole change. Accompanying documentation/tests never override the code change's type.
-3. Write `<type>: <subject>` and optional body using the rules below.
+1. WHEN explicitly instructed to commit: stage explicit intended paths only. Keep one logical change per commit and preserve unrelated work.
+2. Read complete `git diff --cached` and verify every change belongs. Never derive messages from conversation, one file or filtered summaries.
+3. Select type by the purpose of the whole change. Accompanying documentation/tests never override the code change's type.
+4. Write `<type>: <subject>` and optional body using the rules below.
+5. Run cryptographically signed `git commit` with installed hooks. Never separately run `pre-commit run --all-files` before committing. Never bypass hooks.
+6. On hook failure or edits: inspect automatic fixes, fix remaining failures, stage intended paths, recheck the complete staged diff and retry the signed commit. Never commit failures.
+7. On signing failure: stop and report. Never create an unsigned commit.
+8. Verify commit creation and cryptographic signature.
 
 ## Types
 

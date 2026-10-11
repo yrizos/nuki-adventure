@@ -12,8 +12,8 @@ Own: src/infrastructure/*-level.ts; level imports/list in src/index.ts; directly
 2. Read task-relevant [Design Guidance](../../docs/level-design.md#design-guidance) and [Natural Layouts](../../docs/level-design.md#natural-layouts).
 3. Inspect affected `src/infrastructure/level-layout.ts` declarations. New level: inspect one representative layout, previous exit and progression. Existing level: start at target; read predecessor only for continuity, entry or difficulty.
 4. Consult affected [glossary](../../docs/glossary.md) entries.
-5. Satisfy constraints and applicable guidance; layout validation alone is insufficient. Author fifteen deliberate valid star spots, five selected at level start, across optional exploration areas. Never replace authored spots with a random-placement count.
-6. Run affected tests with `make test-file FILE=<path>`. Shared checks: `src/infrastructure/authored-levels.test.ts`, `src/infrastructure/authored-level-invariants.test.ts`.
+5. Apply the canonical hard constraints, including fifteen authored star spots, and applicable guidance. Layout validation alone is insufficient.
+6. Use [Test Discovery](../../AGENTS.md#test-discovery) on relevant authored-level tests and required helpers only. Do not inspect unrelated level tests. Run affected tests with `make test-file FILE=<path>`. Shared checks: `src/infrastructure/authored-levels.test.ts`, `src/infrastructure/authored-level-invariants.test.ts`.
 
 Stop: new domain concept, sprite or validation rule required.
 
