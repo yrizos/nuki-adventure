@@ -38,9 +38,10 @@ function setup() {
   const knob = controlElement(56);
   const buttons = { a: controlElement(56, 272, 32), b: controlElement(56, 208, 96) };
   const html = (element: FakeHTMLElement): HTMLElement => element as unknown as HTMLElement;
+  const button = (element: FakeHTMLElement): HTMLButtonElement => element as unknown as HTMLButtonElement;
   const controls = new Controls(html(panel), html(joystick), html(knob), {
-    a: html(buttons.a),
-    b: html(buttons.b),
+    a: button(buttons.a),
+    b: button(buttons.b),
   });
   const key = (type: 'keydown' | 'keyup', name: string, target = keyboard, repeat = false): Event => {
     const event = Object.assign(new Event(type, { cancelable: true }), { key: name, repeat });
@@ -226,6 +227,15 @@ test.each([
   expect(joystick.dataset.direction).toBe('');
   for (let frame = 0; frame < 4; frame++) controls.advance();
   expect(knob.style.transform).toBe('');
+});
+
+test('a disabled action button ignores its keys', () => {
+  const { buttons, controls, key } = setup();
+  buttons.a.disabled = true;
+  const target = new FakeHTMLElement('canvas');
+  expect(key('keydown', 'z', target).defaultPrevented).toBe(false);
+  expect(buttons.a.classList.contains('pressed')).toBe(false);
+  expect(controls.takePress('a')).toBe(false);
 });
 
 test.each([

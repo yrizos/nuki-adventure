@@ -25,10 +25,20 @@ export function startGame(
     screen.style.setProperty(`--art-${name}`, `url(${artUrl(root, art)})`);
   const view = element<HTMLElement>(root, '.game-view');
   const canvas = element<HTMLCanvasElement>(root, '.game-view canvas');
-  const controls = new Controls(element(root, '.control-panel'), element(root, '.joystick'), element(root, '.knob'), {
-    a: element(root, '.button-a'),
-    b: element(root, '.button-b'),
-  });
+  const actionButtons = {
+    a: element<HTMLButtonElement>(root, '.button-a'),
+    b: element<HTMLButtonElement>(root, '.button-b'),
+  };
+  const setActionButtonsEnabled = (enabled: boolean): void => {
+    actionButtons.a.disabled = !enabled;
+    actionButtons.b.disabled = !enabled;
+  };
+  const controls = new Controls(
+    element(root, '.control-panel'),
+    element(root, '.joystick'),
+    element(root, '.knob'),
+    actionButtons,
+  );
   const announcement = element<HTMLElement>(root, '.announcement');
   const gameView = new GameView(screen, view, canvas);
 
@@ -43,16 +53,20 @@ export function startGame(
       showStartScreen: () => {
         levelPicker.hide();
         announcement.textContent = '';
+        setActionButtonsEnabled(true);
         startScreen.show();
       },
       animateStartScreen: (framesOpen) => startScreen.animate(framesOpen),
       showLevelPicker: () => {
         startScreen.hide();
+        setActionButtonsEnabled(true);
         levelPicker.show(progress.view().levels);
       },
       showLevel: () => {
         startScreen.hide();
         levelPicker.hide();
+        // No level uses A or B, so they stay disabled while playing.
+        setActionButtonsEnabled(false);
         // A press that chose the level must not also act inside it.
         controls.takePress('a');
         controls.takePress('b');

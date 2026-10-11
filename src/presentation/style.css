@@ -297,6 +297,11 @@ body {
   grid-area: 2 / 1;
 }
 
+.action-cross button:disabled {
+  filter: grayscale(1) opacity(0.4);
+  cursor: default;
+}
+
 .button-a.pressed {
   --art: var(--art-button-a-pressed);
 }

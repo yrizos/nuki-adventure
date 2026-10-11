@@ -32,7 +32,7 @@ export class Controls {
     panel: HTMLElement,
     joystick: HTMLElement,
     knob: HTMLElement,
-    buttons: Readonly<Record<'a' | 'b', HTMLElement>>,
+    buttons: Readonly<Record<'a' | 'b', HTMLButtonElement>>,
   ) {
     const heldKeys = { a: new Set<string>(), b: new Set<string>() };
     const heldPointers = { a: new Set<number>(), b: new Set<number>() };
@@ -96,7 +96,7 @@ export class Controls {
       if (arrow) {
         if (!this.heldArrows.includes(arrow)) this.heldArrows.push(arrow);
         updateKeyboardJoystick();
-      } else if (button) {
+      } else if (button && !buttons[button].disabled) {
         if (!event.repeat) this.freshPresses.add(button);
         heldKeys[button].add(event.key.toLowerCase());
         updateButton(button);
@@ -147,6 +147,7 @@ export class Controls {
       const bounds = panel.getBoundingClientRect();
       if (event.clientX < bounds.left + bounds.width / 2) return;
       const name = nearestButton(event);
+      if (buttons[name].disabled) return;
       panel.setPointerCapture(event.pointerId);
       pointerButtons.set(event.pointerId, name);
       this.freshPresses.add(name);

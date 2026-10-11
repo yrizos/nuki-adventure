@@ -168,6 +168,8 @@ All values are in panel pixels.
 - A and B are circles that sit on a lip below them
 - A pressed button sinks into its lip, so the lip disappears
 - The right half of the control panel is the touch area for the action buttons, and a touch anywhere in it presses the button whose center is nearest
+- A and B are disabled while a level is played, because no level uses them. A disabled button is dimmed and ignores touch and keys
+- A and B are enabled on the start screen and the level picker, where they choose items
 
 ## Browser Behavior
 
