@@ -50,10 +50,10 @@ test.each(Object.entries(sprites.stone!.frames))('stone %s rasterizes as a valid
   expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
 });
 
-test('boulder loads a single 32 by 32 frame', () => {
+test('boulder loads a single 32 by 48 frame', () => {
   const art = sprites.boulder!.frames['variant-0']!;
   expect(Object.keys(sprites.boulder!.frames)).toEqual(['variant-0']);
-  expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
+  expect([sprite(art).width, sprite(art).height]).toEqual([32, 48]);
 });
 
 test('terrain source, parsed and registered sprites preserve the exact original ordered content', () => {

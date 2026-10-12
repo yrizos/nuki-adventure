@@ -424,7 +424,7 @@ export class WorldPainter {
       objects.push({
         base: y + tileSize,
         shadow: shadow(14, boulder.position, x + 9, y + 27),
-        paint: () => draw(boulderArt, x, y),
+        paint: () => draw(boulderArt, x, y + tileSize - boulderArt.rows.length),
       });
     });
     level.scenery.fences.forEach((fence, index) => {
