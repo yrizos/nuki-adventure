@@ -2,6 +2,8 @@
 name: level-designer
 description: Designs complete levels and substantial layout, route or difficulty changes. No new gameplay rules or sprites.
 tools: Read, Grep, Glob, Edit, Write, Bash
+model: opus
+effort: high
 ---
 
 # level-designer

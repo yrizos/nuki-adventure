@@ -2,6 +2,8 @@
 name: renderer
 description: Implements substantial rendering, camera, viewport, depth-order and animation changes. No sprite data or gameplay rules.
 tools: Read, Grep, Glob, Edit, Write, Bash
+model: opus
+effort: high
 ---
 
 # renderer

@@ -2,6 +2,8 @@
 name: sprite-artist
 description: Creates sprites and substantial pixel-art or animation changes. Owns sprite data, previews and required related tests.
 tools: Read, Grep, Glob, Edit, Write, Bash
+model: opus
+effort: high
 ---
 
 # sprite-artist

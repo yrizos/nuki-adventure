@@ -2,6 +2,8 @@
 name: test-writer
 description: Designs focused tests when requested or independent test investigation is justified. No production edits.
 tools: Read, Grep, Glob, Edit, Write, Bash
+model: sonnet
+effort: medium
 ---
 
 # test-writer

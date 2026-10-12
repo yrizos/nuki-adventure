@@ -2,6 +2,8 @@
 name: reviewer
 description: Independently reviews changes selected by AGENTS.md Review Policy. Read-only.
 tools: Read, Grep, Glob, Bash
+model: opus
+effort: high
 ---
 
 # reviewer
