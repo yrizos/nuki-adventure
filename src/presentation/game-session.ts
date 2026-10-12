@@ -33,7 +33,7 @@ import { HeroAnimator, pushingPose } from './hero-animator';
 import { MessageBox } from './message-box';
 import type { Picture } from './picture';
 import type { Sound } from './sound';
-import { WorldPainter } from './world-painter';
+import { plateSinkLength, WorldPainter } from './world-painter';
 import { doorOpeningLength, restorationLength } from './world-transition';
 
 export const messages = {
@@ -73,6 +73,8 @@ interface LevelRun {
   readonly startFrame: number;
   restored: readonly Area[];
   plateSwingSince: number | undefined;
+  plateDown: boolean;
+  plateDepth: number;
 }
 
 export class GameSession {
@@ -143,9 +145,10 @@ export class GameSession {
           const since = this.run.plateSwingSince;
           const swung = since === undefined ? gateSwingLength - 1 : this.frame - since;
           this.run.plateSwingSince = this.frame - Math.max(0, gateSwingLength - 1 - swung);
-        } else if (event instanceof PlatePressed || event instanceof PlateReleased)
-          this.sound.plate(event instanceof PlatePressed);
-        else if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
+        } else if (event instanceof PlatePressed || event instanceof PlateReleased) {
+          this.run.plateDown = event instanceof PlatePressed;
+          this.sound.plate(this.run.plateDown);
+        } else if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
         else if (event instanceof KeyCollected) {
           this.sound.key(play.view(id).keys.length === 0);
           messageBox.show(play.view(id).keys.length > 0 ? messages.someColorsBack : messages.colorsBack, this.frame);
@@ -167,6 +170,8 @@ export class GameSession {
       );
       if (this.phase.name === 'playing' && walkAwayMessage && play.view(id).hero.isWalking) messageBox.hide(this.frame);
     }
+    // Depth steps one frame at a time, so a plate released halfway down rises from where it is.
+    this.run.plateDepth = Math.min(Math.max(this.run.plateDepth + (this.run.plateDown ? 1 : -1), 0), plateSinkLength);
     const { plateSwingSince } = this.run;
     if (plateSwingSince !== undefined && this.frame - plateSwingSince >= gateSwingLength - 1) {
       play.finishGate(id);
@@ -212,6 +217,7 @@ export class GameSession {
           : sliding?.heading === Direction.Up && level.hero.facing === Direction.Up
             ? pushingPose(sliding.travelled / 2)
             : this.run.animator.pose(level.hero, this.frame),
+      plateDepth: this.run.plateDepth,
       ...(this.phase.name === 'appearing' ? { arrival: this.frame - this.phase.since } : {}),
       ...(this.phase.name === 'swinging-gate' ? { gateAge: this.frame - this.phase.since } : {}),
       ...(this.run.plateSwingSince === undefined ? {} : { gateAge: this.frame - this.run.plateSwingSince }),
@@ -252,6 +258,8 @@ export class GameSession {
       startFrame: this.frame + (arrives ? arrivalLength : 0),
       restored: [],
       plateSwingSince: undefined,
+      plateDown: false,
+      plateDepth: 0,
     };
   }
 }

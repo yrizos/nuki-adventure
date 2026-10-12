@@ -191,6 +191,7 @@ A new element uses the smallest size that fits its shape.
 | Star bob | 4 | 1 pixel up and down, 10 game frames each |
 | Key float | Sine, whole pixels | 2 pixels up and down over 150 frames, 1 pixel sideways over 60. The shadow stays still |
 | Water | 4 | 15 game frames each, all tiles in sync |
+| Pressure plate sinking | 3 | 4 game frames each. Sinks deeper into the ground while pressed and rises in reverse once released. A release partway down rises from the current frame |
 | Flowers sway | 2 | 30 game frames each, offset per tile |
 | Tree leaves | 1 cluster shift | Every 40 game frames, out of sync between trees |
 | Light motes | 1 | Rise 1 pixel every 4 frames over 64 pixels, sway 1 pixel every 40, offset per mote |

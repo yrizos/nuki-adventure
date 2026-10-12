@@ -14,6 +14,7 @@ import {
   fruitTreeArt,
   gateArt,
   plateArt,
+  plateFrameLength,
   sideGateArt,
   grassArt,
   groundShadow,
@@ -59,12 +60,15 @@ interface GroundTile {
   readonly frames: readonly Art[];
 }
 
+export const plateSinkLength = (plateArt.length - 1) * plateFrameLength;
+
 export interface Scene {
   readonly level: LevelView;
   readonly frame: number;
   readonly hero: Art;
   readonly arrival?: number;
   readonly gateAge?: number;
+  readonly plateDepth?: number;
 }
 
 interface WoodlandTree {
@@ -365,7 +369,10 @@ export class WorldPainter {
       const sway = Math.floor((frame + (column * 11 + row * 17) * 7) / flowerFrameLength) % 2;
       draw(flowerArt[this.flowerChoices[index]!]![sway]!, column * tileSize, row * tileSize);
     });
-    if (level.plate) draw(plateArt, level.plate.column * tileSize, level.plate.row * tileSize);
+    if (level.plate) {
+      const sunk = plateArt[Math.floor((scene.plateDepth ?? 0) / plateFrameLength)]!;
+      draw(sunk, level.plate.column * tileSize, level.plate.row * tileSize);
+    }
 
     const objects: { base: number; paint: () => void; shadow: () => void }[] = [];
     const shadow =

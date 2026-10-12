@@ -148,7 +148,8 @@ export const sideGateArt = {
   opening: animation('fence', 'side-opening').frames,
   open: frame('fence', 'side-gate-open'),
 } as const;
-export const plateArt = frame('plate', 'plate');
+export const plateArt = animation('plate', 'press').frames;
+export const plateFrameLength = frameLength('plate');
 export const doorArt = { closed: frame('door', 'closed'), open: frame('door', 'open') } as const;
 
 const goldKey = frame('key', 'key');

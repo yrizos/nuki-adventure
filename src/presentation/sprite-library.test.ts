@@ -219,10 +219,14 @@ test('the side gate frames cover the gate tile, the tile east of it and the two 
   expect(sprites.fence!.animations['side-opening']!.frames).toEqual(gate.slice(0, 8).map(([, art]) => art));
 });
 
-test('the pressure plate is one 32 by 32 frame', () => {
-  expect(Object.keys(sprites.plate!.frames)).toEqual(['plate']);
-  const art = sprites.plate!.frames.plate!;
-  expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
+test('the pressure plate presses through three 32 by 32 frames', () => {
+  const frames = ['plate', 'plate-1', 'plate-2'];
+  expect(Object.keys(sprites.plate!.frames)).toEqual(frames);
+  for (const name of frames) {
+    const art = sprites.plate!.frames[name]!;
+    expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
+  }
+  expect(sprites.plate!.animations.press!.frames).toEqual(frames.map((name) => sprites.plate!.frames[name]));
 });
 
 test('the hero push frames are 32 by 32', () => {
