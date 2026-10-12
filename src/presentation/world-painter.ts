@@ -162,28 +162,62 @@ interface WaterLily {
   readonly art: Art;
 }
 
-const lilyChance = 0.6;
 const lilyDrift = 4;
+const secondGroupArea = 12;
 
 // Pads sit on the half-offset ground grid, where four water corners mean a tile with no shore foam at all.
 function waterLilies(scenery: Scenery, random: () => number): WaterLily[] {
   const { columns, rows } = scenery.size;
   const isWater = (column: number, row: number): boolean =>
     scenery.groundAt(TilePosition.at(column, row)).equals(Ground.Water);
-  const open: TilePosition[] = [];
+  const open = new Set<number>();
   for (let row = 1; row < rows; row++)
     for (let column = 1; column < columns; column++)
       if (isWater(column - 1, row - 1) && isWater(column, row - 1) && isWater(column - 1, row) && isWater(column, row))
-        open.push(TilePosition.at(column, row));
-  const chosen = open.filter(() => random() < lilyChance);
-  // ponytail: one guaranteed lily per level equals one per pond while every level has a single pond; group by pond if one gets two.
-  if (chosen.length === 0 && open.length > 0) chosen.push(open[Math.floor(random() * open.length)]!);
+        open.add(row * columns + column);
+  // Column 0 is never open, so stepping one key across a row edge can never land on an open tile.
+  const neighbors = (key: number): number[] =>
+    [key - 1, key + 1, key - columns, key + columns].filter((next) => open.has(next));
+  const pick = <T>(items: readonly T[]): T => items[Math.floor(random() * items.length)]!;
+  const between = (low: number, high: number): number => low + Math.floor(random() * (high - low + 1));
+  const chosen: number[] = [];
+  const seen = new Set<number>();
+  for (const start of open) {
+    if (seen.has(start)) continue;
+    seen.add(start);
+    const pond = [start];
+    for (let index = 0; index < pond.length; index++)
+      for (const next of neighbors(pond[index]!))
+        if (!seen.has(next)) {
+          seen.add(next);
+          pond.push(next);
+        }
+    const taken = new Set<number>();
+    const grow = (seed: number, size: number): void => {
+      taken.add(seed);
+      const group = [seed];
+      while (group.length < size) {
+        const frontier = group.flatMap(neighbors).filter((next) => !taken.has(next));
+        if (frontier.length === 0) break;
+        const next = pick(frontier);
+        taken.add(next);
+        group.push(next);
+      }
+      chosen.push(...group);
+    };
+    grow(pick(pond), between(3, 5));
+    if (pond.length >= secondGroupArea) {
+      const apart = pond.filter((key) => !taken.has(key) && neighbors(key).every((next) => !taken.has(next)));
+      if (apart.length > 0) grow(pick(apart), between(2, 3));
+    }
+  }
+  const positions = chosen.map((key) => TilePosition.at(key % columns, Math.floor(key / columns)));
   const drift = (): number => Math.round((random() * 2 - 1) * lilyDrift);
   const choices = propVariants(
-    chosen.map((position) => [position]),
+    positions.map((position) => [position]),
     waterLilyVariants.length,
   );
-  return chosen.map((position, index) => ({
+  return positions.map((position, index) => ({
     x: position.column * tileSize - tileSize / 2 + drift(),
     y: position.row * tileSize - tileSize / 2 + drift(),
     art: waterLilyVariants[choices[index]!]!,

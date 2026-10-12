@@ -402,7 +402,7 @@ function firstLevelStoneArtDrawn(): { position: TilePosition; art: Art }[] {
 }
 
 test.each([firstLevel, secondLevel, thirdLevel, fourthLevel, fifthLevel])(
-  'level %# floats lilies only inside its pond, with different art on touching tiles',
+  'level %# floats lilies in groups inside its pond, with different art on touching tiles',
   (create) => {
     const level = create((positions) => positions);
     const picture = new Picture(level.scenery.size.columns * tileSize, level.scenery.size.rows * tileSize);
@@ -435,6 +435,19 @@ test.each([firstLevel, secondLevel, thirdLevel, fourthLevel, fifthLevel])(
       for (const second of lilies)
         if (Math.abs(first.column - second.column) + Math.abs(first.row - second.row) === 1)
           expect(first.art).not.toBe(second.art);
+    const open = (column: number, row: number): boolean =>
+      water(column - 1, row - 1) && water(column, row - 1) && water(column - 1, row) && water(column, row);
+    const sides = [
+      [-1, 0],
+      [1, 0],
+      [0, -1],
+      [0, 1],
+    ] as const;
+    for (const { column, row } of lilies)
+      if (sides.some(([dx, dy]) => open(column + dx, row + dy)))
+        expect(
+          sides.some(([dx, dy]) => lilies.some((other) => other.column === column + dx && other.row === row + dy)),
+        ).toBe(true);
   },
 );
 
