@@ -39,15 +39,6 @@ export class Outline {
       Math.abs(this.center.y - other.center.y) < (this.height + other.height) / 2
     );
   }
-
-  equals(other: Outline): boolean {
-    return (
-      this.form === other.form &&
-      this.center.equals(other.center) &&
-      this.width === other.width &&
-      this.height === other.height
-    );
-  }
 }
 
 export interface Obstacles {

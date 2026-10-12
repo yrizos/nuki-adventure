@@ -27,11 +27,3 @@ test('keeps its form and size when placed elsewhere', () => {
   const elsewhere = WorldPosition.at(40, 50);
   expect(Outline.oval(center, 18, 12).at(elsewhere)).toEqual(Outline.oval(elsewhere, 18, 12));
 });
-
-test('is equal only with the same form, center and size', () => {
-  const box = Outline.box(center, 18, 12);
-  expect(box.equals(Outline.box(center, 18, 12))).toBe(true);
-  expect(box.equals(Outline.oval(center, 18, 12))).toBe(false);
-  expect(box.equals(Outline.box(WorldPosition.at(17, 16), 18, 12))).toBe(false);
-  expect(box.equals(Outline.box(center, 12, 18))).toBe(false);
-});

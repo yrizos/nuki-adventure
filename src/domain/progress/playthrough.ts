@@ -8,10 +8,6 @@ export class PlayTime {
       throw new RangeError(`A play time needs a whole number of frames of zero or more, got ${frames}`);
     return new PlayTime(frames);
   }
-
-  equals(other: PlayTime): boolean {
-    return this.frames === other.frames;
-  }
 }
 
 export class Playthrough {
@@ -25,13 +21,5 @@ export class Playthrough {
     if (collectedStars.value > starCount.value)
       throw new RangeError(`A playthrough cannot collect ${collectedStars.value} of ${starCount.value} stars`);
     return new Playthrough(time, collectedStars, starCount);
-  }
-
-  equals(other: Playthrough): boolean {
-    return (
-      this.time.equals(other.time) &&
-      this.collectedStars.equals(other.collectedStars) &&
-      this.starCount.equals(other.starCount)
-    );
   }
 }

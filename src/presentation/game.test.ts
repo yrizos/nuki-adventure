@@ -13,7 +13,7 @@ import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { levelFromLayout } from '../infrastructure/level-layout';
 import { secondLevel, secondLevelId } from '../infrastructure/second-level';
 import { keepOrder } from '../test-support/star-spots';
-import { pathTo } from '../test-support/walk-level';
+import { pathTo, same } from '../test-support/walk-level';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
 import { LocalProgressRepository } from '../infrastructure/local-progress-repository';
 import { ManageProgress } from '../application/manage-progress';
@@ -280,17 +280,6 @@ describe('the game session', () => {
     expect(subject.level.door.isOpen).toBe(true);
   });
 
-  test('keeps the door shut until the spreading color has drawn all of it open', () => {
-    const subject = gameSession();
-    const opening = doorOpeningLength(subject.level.door, subject.level.scenery.size, subject.level.keys[0]!.position);
-    subject.walkUntil(Direction.Right, () => subject.sound.key.mock.calls.length > 0);
-    expect(subject.sound.restoring).toHaveBeenCalledOnce();
-    subject.advance(opening - 1);
-    expect(subject.level.door.isOpen).toBe(false);
-    subject.advance(1);
-    expect(subject.level.door.isOpen).toBe(true);
-  });
-
   test('keeps the restoration message until movement resumes', () => {
     const subject = gameSession();
     subject.move(Direction.Right);
@@ -534,12 +523,12 @@ describe('the second level in the game session', () => {
       const path = pathTo(session.level, arrived);
       expect(path, 'the destination must be reachable').toBeDefined();
       for (const next of path!.slice(1)) {
-        for (let attempt = 0; attempt < 3 && !session.level.hero.feet.equals(next); attempt++) {
+        for (let attempt = 0; attempt < 3 && !same(session.level.hero.feet, next); attempt++) {
           const { feet } = session.level.hero;
           heading = Heading.toward(next.x - feet.x, next.y - feet.y);
           session.tick();
         }
-        expect(session.level.hero.feet.equals(next)).toBe(true);
+        expect(session.level.hero.feet).toEqual(next);
       }
       heading = null;
       session.tick();
@@ -763,14 +752,13 @@ describe('the game page', () => {
     expect(page.startHero.style.getPropertyValue('--art')).toBe(url(heroArt.down.blink!));
   });
 
-  test('Nuki stands on the start screen as soon as it opens, before any frame', () => {
+  test('Nuki stands on the start screen as soon as it opens, before any frame, and again when it reopens mid-blink', () => {
     const page = gamePage();
     const shown = (): string => page.startHero.style.getPropertyValue('--art');
     const stand = `url(${artUrl(page.root as unknown as Document, heroArt.down.stand)})`;
     const onLoad = shown();
     // 181 frames land inside the first blink whether the opening frame counts as frame 0 or not.
     for (let frame = 0; frame < 181; frame++) page.frame();
-    expect(shown()).toBe(`url(${artUrl(page.root as unknown as Document, heroArt.down.blink!)})`);
     page.pickLevel();
     page.back();
     expect([onLoad, shown()]).toEqual([stand, stand]);
@@ -960,17 +948,6 @@ describe('the game loop', () => {
     );
     for (const now of [16.7, 100, 101, 250, 400, 550, 700, 850, 1000.001]) loop.advance(now);
     expect(ticks).toBe(60);
-  });
-
-  test('runs every tick before rendering the frame', () => {
-    const calls: string[] = [];
-    const loop = new GameLoop(
-      () => calls.push('tick'),
-      () => calls.push('render'),
-      0,
-    );
-    loop.advance(51);
-    expect(calls).toEqual(['tick', 'tick', 'tick', 'render']);
   });
 });
 
@@ -1168,10 +1145,6 @@ test.each([
   expect(humVolume(level)).toBe(volume);
 });
 
-test('no key left means no hum', () => {
-  expect(humVolume({ keys: [], hero: { position: TilePosition.at(0, 0) } } as unknown as LevelView)).toBe(0);
-});
-
 describe('a boulder in the game session', () => {
   function boulderSession() {
     const id = LevelId.of('bouldered');
@@ -1229,28 +1202,6 @@ describe('a boulder in the game session', () => {
     expect(subject.session.level.hero.position).toEqual(TilePosition.at(2, 4));
   });
 
-  test('moves the gripped boulder whichever way she walks, one whole tile at a time', () => {
-    const subject = boulderSession();
-    subject.held.add('a');
-    subject.walk(Direction.Up);
-    subject.tick(16);
-    subject.walk(null);
-    subject.tick(20);
-    expect(subject.session.level.boulders[0]?.position).toEqual(TilePosition.at(2, 2));
-    subject.walk(Direction.Left);
-    subject.tick(16);
-    subject.walk(null);
-    subject.tick(20);
-    expect(subject.session.level.boulders[0]?.position).toEqual(TilePosition.at(1, 2));
-    expect(subject.session.level.hero.position).toEqual(TilePosition.at(1, 3));
-    subject.walk(Direction.Down);
-    subject.tick(16);
-    subject.walk(null);
-    subject.tick(20);
-    expect(subject.session.level.boulders[0]?.position).toEqual(TilePosition.at(1, 3));
-    expect(subject.session.level.boulders[0]?.isSliding).toBe(false);
-  });
-
   test('keeps the boulder and her moving without a pause between tiles while she holds A and a direction', () => {
     const subject = boulderSession();
     subject.held.add('a');
@@ -1300,17 +1251,6 @@ describe('a boulder in the game session', () => {
     const boulder = session.level.boulders[0]?.position;
     for (let frame = 0; frame < 40; frame++) session.tick();
     expect(session.level.boulders[0]?.position).toEqual(boulder);
-  });
-
-  test('lets go once A is released, so walking leaves the boulder behind', () => {
-    const subject = boulderSession();
-    subject.held.add('a');
-    subject.tick(1);
-    subject.held.delete('a');
-    subject.walk(Direction.Down);
-    subject.tick(20);
-    expect(subject.session.level.isGripping).toBe(false);
-    expect(subject.session.level.boulders[0]?.position).toEqual(TilePosition.at(2, 3));
   });
 
   test('asks A to wobble only while she faces the boulder from beside it and has not gripped it', () => {

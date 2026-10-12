@@ -106,10 +106,4 @@ export class SwingGate {
   private with(state: SwingGateState): SwingGate {
     return new SwingGate(this.position, state, this.approachSide);
   }
-
-  equals(other: SwingGate): boolean {
-    return (
-      this.position.equals(other.position) && this.state === other.state && this.approachSide.equals(other.approachSide)
-    );
-  }
 }

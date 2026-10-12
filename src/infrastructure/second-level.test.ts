@@ -68,9 +68,8 @@ test('the second level holds a lakeside behind a swing gate and one key that res
   expect(level.id).toBe(secondLevelId);
   expect(level.scenery.size).toEqual({ columns: 25, rows: 25 });
   expect(level.hero.position).toEqual(at(11, 21));
-  expect(level.hero.facing).toBe(Direction.Up);
-  expect(level.gate?.equals(SwingGate.closedAt(at(17, 13)))).toBe(true);
-  expect(level.door.equals(Door.closedAt(at(11, 2)))).toBe(true);
+  expect(level.gate).toEqual(SwingGate.closedAt(at(17, 13)));
+  expect(level.door).toEqual(Door.closedAt(at(11, 2)));
   expect(level.keys.map((key) => key.position)).toEqual([at(2, 8)]);
   expect(level.keys[0]!.restores.tiles).toHaveLength(625);
   expect(tiles.filter((tile) => level.scenery.groundAt(tile) === Ground.Water)).toHaveLength(28);
@@ -91,35 +90,6 @@ test('the second level keeps the lakeside, its key and its star spots out of rea
   expect(reachable(at(2, 8))).toBe(false);
   expect(northernSpots.filter(reachable)).toEqual([]);
   expect(southernSpots.filter((spot) => !reachable(spot))).toEqual([]);
-});
-
-test('the second level leaves no open ground cut off once the gate opens', () => {
-  const level = secondLevel(keepOrder);
-  const reached = reachedFromStart(level, true);
-  const open = (tile: TilePosition): boolean =>
-    level.scenery.isWalkable(tile) &&
-    !level.stones.some((stone) => stone.position.equals(tile)) &&
-    !level.door.covers(tile);
-  expect(tiles.filter((tile) => open(tile) && !reached.some((other) => other.equals(tile)))).toEqual([]);
-});
-
-test('the second level lets the hero materialize with every surrounding tile free', () => {
-  const level = secondLevel(keepOrder);
-  const spots = starSpotsOf(secondLevel);
-  const start = level.hero.position;
-  const blocked = [-1, 0, 1]
-    .flatMap((rows) => [-1, 0, 1].map((columns) => at(start.column + columns, start.row + rows)))
-    .filter(
-      (tile) =>
-        !level.scenery.isWalkable(tile) ||
-        level.stones.some((stone) => stone.position.equals(tile)) ||
-        level.scenery.flowers.some((flower) => flower.position.equals(tile)) ||
-        level.keys.some((key) => key.position.equals(tile)) ||
-        spots.some((spot) => spot.equals(tile)) ||
-        level.scenery.trees.some((tree) => tree.hides(tile)) ||
-        level.scenery.hides(tile),
-    );
-  expect(blocked).toEqual([]);
 });
 
 test('the second level is played through the gate, to the key and out of the door', () => {

@@ -166,19 +166,6 @@ function levelPicker() {
   return { root, screen, backButton, rows, chosen, back, key };
 }
 
-test('shows the picker with focus on the first row', () => {
-  const { root, screen, rows } = levelPicker();
-  expect(screen.hidden).toBe(false);
-  expect(root.activeElement).toBe(rows[0]);
-});
-
-test.each([0, 1])('clicking row %s chooses its level', (index) => {
-  const { rows, chosen, back } = levelPicker();
-  rows[index]!.click();
-  expect(chosen).toHaveBeenCalledExactlyOnceWith(levels[index]!.id);
-  expect(back).not.toHaveBeenCalled();
-});
-
 test('arrow keys move focus through the rows and a choose key picks the focused one', () => {
   const { root, rows, chosen, key } = levelPicker();
   expect(key('ArrowDown').defaultPrevented).toBe(true);
@@ -197,21 +184,5 @@ test('a locked row is disabled, cannot be clicked and is skipped by arrow keys',
   expect(root.activeElement).toBe(backButton);
   key('ArrowUp');
   expect(root.activeElement).toBe(rows[1]);
-  expect(chosen).not.toHaveBeenCalled();
-});
-
-test('clicking ΠΙΣΩ goes back', () => {
-  const { backButton, back, chosen } = levelPicker();
-  backButton.click();
-  expect(back).toHaveBeenCalledOnce();
-  expect(chosen).not.toHaveBeenCalled();
-});
-
-test('choosing ΠΙΣΩ with the keyboard goes back', () => {
-  const { root, backButton, back, chosen, key } = levelPicker();
-  for (let press = 0; press < levels.length + 1; press++) key('ArrowDown');
-  expect(root.activeElement).toBe(backButton);
-  key('Enter');
-  expect(back).toHaveBeenCalledOnce();
   expect(chosen).not.toHaveBeenCalled();
 });

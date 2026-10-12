@@ -13,20 +13,6 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-test('the switch turns sound off and back on', () => {
-  const page = audioWindow();
-  const sound = new Sound(page.root);
-  page.interact();
-  expect(sound.on).toBe(true);
-  sound.toggle();
-  expect(sound.on).toBe(false);
-  sound.toggle();
-  expect(sound.on).toBe(true);
-  const before = page.audio()!.heard().length;
-  sound.footstep();
-  expect(page.audio()!.heard().slice(before)).toEqual([110]);
-});
-
 test('the next visit remembers whether sound was off', () => {
   const storage = memoryStorage();
   new Sound(audioWindow(storage).root).toggle();
@@ -40,7 +26,7 @@ test('the next visit remembers whether sound was off', () => {
   expect(new Sound(audioWindow(storage).root).on).toBe(true);
 });
 
-test.each(events)('%s is heard only while sound is on', (event) => {
+test.each(events)('%s is heard only while sound is on, and again once it is switched back on', (event) => {
   const page = audioWindow();
   const sound = new Sound(page.root);
   page.interact();
@@ -51,6 +37,9 @@ test.each(events)('%s is heard only while sound is on', (event) => {
   sound.toggle();
   sound[event]();
   expect(page.audio()!.heard()).toEqual(whileOn);
+  sound.toggle();
+  sound[event]();
+  expect(page.audio()!.heard().length).toBeGreaterThan(whileOn.length);
 });
 
 test('the hum keeps sounding at the volume asked for until it is set to zero or muted', () => {

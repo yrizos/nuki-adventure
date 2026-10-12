@@ -32,10 +32,6 @@ export class LevelSize {
   contains(position: TilePosition): boolean {
     return position.column >= 0 && position.row >= 0 && position.column < this.columns && position.row < this.rows;
   }
-
-  equals(other: LevelSize): boolean {
-    return this.columns === other.columns && this.rows === other.rows;
-  }
 }
 
 export class TreeVariant {
@@ -86,10 +82,6 @@ export class Tree {
   hides(position: TilePosition): boolean {
     return this.covers(position.neighbor(Direction.Down));
   }
-
-  equals(other: Tree): boolean {
-    return this.base.equals(other.base) && this.variant.equals(other.variant);
-  }
 }
 
 export class FlowerVariant {
@@ -129,10 +121,6 @@ export class Flower {
 
   static at(position: TilePosition): Flower {
     return new Flower(position);
-  }
-
-  equals(other: Flower): boolean {
-    return this.position.equals(other.position);
   }
 }
 

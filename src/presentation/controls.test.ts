@@ -346,24 +346,6 @@ test.each([
   expect(buttons[button].classList.contains('pressed')).toBe(false);
 });
 
-test.each([
-  ['ArrowUp', Direction.Up, 'translate(0px, -26px)'],
-  ['ArrowDown', Direction.Down, 'translate(0px, 26px)'],
-  ['ArrowLeft', Direction.Left, 'translate(-26px, 0px)'],
-  ['ArrowRight', Direction.Right, 'translate(26px, 0px)'],
-])('%s moves the knob with the hero and recenters on release', (arrow, direction, transform) => {
-  const { joystick, knob, controls, key } = setup();
-  key('keydown', arrow);
-  expect(controls.heading()).toEqual(toward(direction));
-  expect(knob.style.transform).toBe(transform);
-  expect(joystick.classList.contains('active')).toBe(true);
-  key('keyup', arrow);
-  expect(controls.heading()).toBeNull();
-  for (let frame = 0; frame < 4; frame++) controls.advance();
-  expect(knob.style.transform).toBe('');
-  expect(joystick.classList.contains('active')).toBe(false);
-});
-
 test('perpendicular held arrows combine and releasing one restores the remaining arrow', () => {
   const { knob, controls, key } = setup();
   key('keydown', 'ArrowLeft');

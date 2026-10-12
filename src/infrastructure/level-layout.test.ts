@@ -28,7 +28,7 @@ describe('a level built from a layout', () => {
     expect(level.id.value).toBe('layout');
     expect(level.hero.position).toEqual(at(1, 2));
     expect(level.hero.facing).toBe(Direction.Up);
-    expect(level.door.equals(Door.closedAt(at(1, 0)))).toBe(true);
+    expect(level.door).toEqual(Door.closedAt(at(1, 0)));
   });
 
   test('lays paths under the path, door and hero symbols, water under waves and grass elsewhere', () => {
@@ -140,7 +140,7 @@ describe('a gate in a layout', () => {
 
   test('hangs a closed gate on path ground between two fences', () => {
     const level = gated(['.DDD.', '.K...', 'WFGFW', '..H..']);
-    expect(level.gate?.equals(SwingGate.closedAt(at(2, 2)))).toBe(true);
+    expect(level.gate).toEqual(SwingGate.closedAt(at(2, 2)));
     expect(level.scenery.groundAt(at(2, 2))).toBe(Ground.Path);
   });
 
@@ -156,7 +156,7 @@ describe('a gate in a layout', () => {
 
   test('hangs a gate between fences above and below it as one approached from the west', () => {
     const level = gated(['.DDD..', '...F..', '.P.G.K', '...F..', '..H...']);
-    expect(level.gate?.equals(SwingGate.closedAt(at(3, 2), Direction.Left))).toBe(true);
+    expect(level.gate).toEqual(SwingGate.closedAt(at(3, 2), Direction.Left));
     expect(level.plate).toEqual(at(1, 2));
   });
 

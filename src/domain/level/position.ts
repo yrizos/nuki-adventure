@@ -77,23 +77,22 @@ export class TilePosition {
   }
 }
 
+// A number key avoids building a string for every lookup, and levels stay far below 65536 rows.
+export const tileKey = (tile: TilePosition): number => tile.column * 65536 + tile.row;
+
 // Walkability and reachability ask about every tile of a level, so membership goes through an index instead of a list scan.
 export class TilePositions {
   private constructor(
     readonly tiles: readonly TilePosition[],
-    private readonly index: ReadonlySet<string>,
+    private readonly index: ReadonlySet<number>,
   ) {}
 
   static of(tiles: readonly TilePosition[]): TilePositions {
     return new TilePositions([], new Set()).with(tiles);
   }
 
-  private static key(tile: TilePosition): string {
-    return `${tile.column},${tile.row}`;
-  }
-
   covers(tile: TilePosition): boolean {
-    return this.index.has(TilePositions.key(tile));
+    return this.index.has(tileKey(tile));
   }
 
   // A tile already held keeps its first place, so the same tiles never count twice.
@@ -101,16 +100,12 @@ export class TilePositions {
     const held = [...this.tiles];
     const index = new Set(this.index);
     for (const tile of tiles) {
-      const key = TilePositions.key(tile);
+      const key = tileKey(tile);
       if (index.has(key)) continue;
       index.add(key);
       held.push(tile);
     }
     return new TilePositions(held, index);
-  }
-
-  equals(other: TilePositions): boolean {
-    return this.tiles.length === other.tiles.length && this.tiles.every((tile) => other.covers(tile));
   }
 }
 
@@ -140,10 +135,6 @@ export class WorldPosition {
   get tile(): TilePosition {
     return TilePosition.at(Math.floor(this.x / tileSize), Math.floor(this.y / tileSize));
   }
-
-  equals(other: WorldPosition): boolean {
-    return this.x === other.x && this.y === other.y;
-  }
 }
 
 export class Heading {
@@ -164,9 +155,5 @@ export class Heading {
 
   alignment(direction: Direction): number {
     return this.x * direction.columnStep + this.y * direction.rowStep;
-  }
-
-  equals(other: Heading): boolean {
-    return this.x === other.x && this.y === other.y;
   }
 }

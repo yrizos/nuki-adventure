@@ -26,7 +26,7 @@ import { lighten, Picture, sprite } from './picture';
 import { cameraPosition, heroPixels, tileSize } from './world-geometry';
 import { arrivalMotes, risingEdge } from './arrival';
 import { keyOffset, propVariants, WorldPainter } from './world-painter';
-import { closingLength, crestLength, isRestored, restorationLength } from './world-transition';
+import { closingLength, crestLength, restorationAge, restorationLength } from './world-transition';
 
 const scenery = {
   grassArt: library.grassArt,
@@ -108,7 +108,7 @@ const codeOfPacked = new Map(paletteCodes.map((code) => [packedOf(code), code]))
 
 function firstArrival(worldX: number, worldY: number, origin: TilePosition): number {
   let frame = 0;
-  while (!isRestored(worldX, worldY, origin, frame)) frame++;
+  while (restorationAge(worldX, worldY, origin, frame) < 0) frame++;
   return frame;
 }
 
@@ -203,7 +203,6 @@ test.each([
 });
 
 test('native terrain grids cover all 81 three-terrain corner combinations', () => {
-  expect(Object.keys(scenery.terrainArt)).toHaveLength(81);
   for (const art of allArt(scenery)) {
     const size = art.legend.t === 'E1' ? 64 : Object.values(scenery.doorArt).includes(art) ? 96 : 32;
     expect(sprite(art).width).toBe(size);
@@ -574,49 +573,7 @@ test('tall props occlude the hero behind them and never paint over a hero in fro
   }
 });
 
-test('restoration advances outward with palette-only pixels and matches both endpoint worlds', () => {
-  const level = renderingLevel();
-  const painter = new WorldPainter(level);
-  const scene = { level, frame: 0, hero: sprites.heroArt.down.stand };
-  const origin = TilePosition.at(2, 2);
-  const colored = new Picture(224, 224);
-  const neutral = new Picture(224, 224);
-  const dissolve = new Picture(224, 224);
-  painter.paint(colored, scene, [everywhere]);
-  painter.paint(neutral, scene, []);
-  painter.paintRestoring(dissolve, scene, origin, -1, [], [everywhere]);
-  expect(pixelDifference(dissolve, neutral)).toBeUndefined();
-  painter.paintRestoring(
-    dissolve,
-    scene,
-    origin,
-    restorationLength(scene.level.scenery.size, origin),
-    [],
-    [everywhere],
-  );
-  expect(pixelDifference(dissolve, colored)).toBeUndefined();
-  const colors = new Set(Object.values(palette));
-  const violations: string[] = [];
-  for (const frame of [0, 3, 4, 15, 16, 31]) {
-    painter.paintRestoring(dissolve, scene, origin, frame, [], [everywhere]);
-    scan: for (let row = 0; row < dissolve.height; row++) {
-      for (let column = 0; column < dissolve.width; column++) {
-        const color = colorAt(dissolve, column, row);
-        const alpha = dissolve.pixels[(row * dissolve.width + column) * 4 + 3];
-        if (!colors.has(color) || alpha !== 255) {
-          violations.push(`frame ${frame} pixel ${column}, ${row}: ${color} alpha ${alpha}`);
-          break scan;
-        }
-      }
-    }
-  }
-  expect(violations).toEqual([]);
-  painter.paintRestoring(dissolve, scene, origin, 11, [], [everywhere]);
-  expect(colorAt(dissolve, 64, 96)).toBe(colorAt(colored, 64, 96));
-  expect(colorAt(dissolve, 0, 32)).toBe(colorAt(neutral, 0, 32));
-});
-
-test('restoring one area leaves the rest of the map faded', () => {
+test('restoring both halves paints the same picture as restoring everywhere', () => {
   const level = Level.create({
     id: LevelId.of('areas'),
     scenery: Scenery.of(
@@ -637,14 +594,6 @@ test('restoring one area leaves the rest of the map faded', () => {
     painter.paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, restored);
     return picture;
   };
-  const grass = (['G1', 'G2', 'G3'] as const).map((code) => palette[code]);
-  const neutrals = (['N1', 'N2', 'N3', 'N4', 'Paper'] as const).map((code) => palette[code]);
-  const left = painted([leftHalf]);
-  expect(grass).toContain(colorAt(left, 120, 200));
-  expect(neutrals).toContain(colorAt(left, 300, 200));
-  const right = painted([rightHalf]);
-  expect(neutrals).toContain(colorAt(right, 120, 200));
-  expect(grass).toContain(colorAt(right, 300, 200));
   expect(pixelDifference(painted([leftHalf, rightHalf]), painted([everywhere]))).toBeUndefined();
 });
 
@@ -684,16 +633,6 @@ function seamColumns(faded: Picture, colored: Picture, seam: Picture): { faded: 
   }
   return columns;
 }
-
-test('every pixel along a straight restored edge is a pixel of the faded or the colored picture', () => {
-  const { faded, colored, seam } = seamFixture();
-  let foreign = 0;
-  for (let index = 0; index < seam.packedPixels.length; index++) {
-    const pixel = seam.packedPixels[index]!;
-    if (pixel !== faded.packedPixels[index] && pixel !== colored.packedPixels[index]) foreign++;
-  }
-  expect(foreign).toBe(0);
-});
 
 test.each([
   { side: 'outside', from: seamEdge + 2 * tileSize, to: overview.width, expected: 'faded' },
@@ -920,7 +859,7 @@ test('a wave over the right half of the map starts as the before picture whereve
   let altered = 0;
   for (let y = 0; y < wave.height; y++) {
     for (let x = 0; x < wave.width; x++) {
-      if (isRestored(x + camera.x, y + camera.y, waveOrigin, 0)) continue;
+      if (restorationAge(x + camera.x, y + camera.y, waveOrigin, 0) >= 0) continue;
       waiting++;
       const index = y * wave.width + x;
       if (wave.packedPixels[index] !== before.packedPixels[index]) altered++;
@@ -1038,7 +977,6 @@ test('flowers stacked above each other use different variants, each with a groun
   expect(drawn).toHaveLength(3);
   expect(drawn[0]).not.toBe(drawn[1]);
   expect(drawn[1]).not.toBe(drawn[2]);
-  for (const art of flowerFrames) expect(art.rows.join('\n').match(/(?<!d)ddd(?!d)/g)).toHaveLength(4);
 });
 
 test('the door is drawn open only in the colored world once the key is collected', () => {

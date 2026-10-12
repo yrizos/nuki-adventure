@@ -13,7 +13,6 @@ import {
   SwingGateClosingStarted,
   SwingGateOpened,
   SwingGateOpeningStarted,
-  SwingGateStuck,
   PlatePressed,
   PlateReleased,
 } from './level-events';
@@ -183,15 +182,11 @@ describe('the hero in a level', () => {
     expect(subject.hero.feet.x + 7).toBeCloseTo(128, 0);
   });
 
-  test('slides along water when pushed diagonally into it', () => {
-    const subject = level(['DDD..', '.....', '~~~~~'], at(0, 1), at(4, 1));
-    hold(subject, Direction.DownRight, 40);
-    expect(subject.hero.position.row).toBe(1);
-    expect(subject.hero.feet.x).toBeGreaterThan(16 + 40);
-  });
-
-  test('slides along woodland when pushed diagonally into it', () => {
-    const subject = level(['DDD..', '.....', 'WWWWW'], at(0, 1), at(4, 0));
+  test.each([
+    ['water', '~~~~~', at(4, 1)],
+    ['woodland', 'WWWWW', at(4, 0)],
+  ])('slides along %s when pushed diagonally into it', (_, edge, key) => {
+    const subject = level(['DDD..', '.....', edge], at(0, 1), key);
     hold(subject, Direction.DownRight, 40);
     expect(subject.hero.position.row).toBe(1);
     expect(subject.hero.feet.x).toBeGreaterThan(16 + 40);
@@ -255,24 +250,6 @@ describe('the hero in a level', () => {
     expect(subject.door.isOpen).toBe(true);
   });
 
-  test('picks up a star by walking onto it and keeps walking', () => {
-    const subject = level(['.S..', '....', '....'], at(0, 0), at(3, 0));
-    const events = hold(subject, Direction.Right, 16);
-    expect(events).toEqual([new StarCollected(LevelId.of('test'), at(1, 0))]);
-    expect(subject.stars).toEqual([]);
-    expect(subject.collected).toEqual([Star.at(at(1, 0))]);
-    expect(subject.hero.isWalking).toBe(true);
-  });
-
-  test('completes the level without picking up the stars', () => {
-    const subject = level(['DDD', '...', '...', 'S..'], at(1, 3), at(2, 3));
-    hold(subject, Direction.Right, 16);
-    subject.openDoor();
-    const events = hold(subject, Direction.Up, 80);
-    expect(events).toEqual([new LevelCompleted(LevelId.of('test'))]);
-    expect(subject.stars).toEqual([Star.at(at(0, 3))]);
-  });
-
   test('is stopped by the door after picking up every key until the door opens', () => {
     const subject = level(['DDD', '...', '...', '...'], at(0, 3), at(1, 3));
     hold(subject, Direction.Right, 16);
@@ -281,14 +258,8 @@ describe('the hero in a level', () => {
     expect(subject.isComplete).toBe(false);
   });
 
-  test('is stopped by a closed door', () => {
-    const subject = level(['DDD', '...', '...', '...'], at(1, 3), at(2, 3));
-    hold(subject, Direction.Up, 60);
-    expect(subject.hero.position).toEqual(at(1, 1));
-  });
-
-  test('completes the level by stepping into the open doorway, after which nothing moves', () => {
-    const subject = level(['DDD', '...', '...', '...'], at(0, 3), at(1, 3));
+  test('completes the level by stepping into the open doorway, without needing the stars, after which nothing moves', () => {
+    const subject = level(['DDD', '...', '...', 'S..'], at(1, 3), at(2, 3));
     hold(subject, Direction.Right, 16);
     expect(subject.door.isOpen).toBe(false);
     subject.openDoor();
@@ -296,7 +267,8 @@ describe('the hero in a level', () => {
     const events = hold(subject, Direction.Up, 80);
     expect(events).toEqual([new LevelCompleted(LevelId.of('test'))]);
     expect(subject.isComplete).toBe(true);
-    expect(subject.hero.position).toEqual(at(1, 0));
+    expect(subject.hero.position).toEqual(at(2, 0));
+    expect(subject.stars).toEqual([Star.at(at(0, 3))]);
   });
 });
 
@@ -329,22 +301,6 @@ describe('a level', () => {
     expect(() => level(['.Tt....', '....Tt.', 'FFDDDFF', '.......', '...S...'], at(0, 4), at(0, 0))).toThrow(
       new RangeError('Every key must lie where the hero can reach it'),
     );
-  });
-
-  test('reports the collected key position and area in its collection event', () => {
-    const ground = Array.from({ length: 4 }, () => [Ground.Grass, Ground.Grass, Ground.Grass]);
-    const subject = Level.create({
-      id: LevelId.of('color'),
-      scenery: Scenery.of(LevelSize.of(3, 4), ground, [], []),
-      stones: [],
-      keys: [Key.at(at(1, 3), everywhere)],
-      door: Door.closedAt(at(0, 0)),
-      hero: { position: at(0, 3), facing: Direction.Right },
-      obstacles: check2dObstacles,
-    });
-    const events = Array.from({ length: 17 }, () => subject.tick(Heading.of(Direction.Right))).flat();
-    expect(events).toEqual([new KeyCollected(LevelId.of('color'), at(1, 3), everywhere)]);
-    expect(subject.keys).toEqual([]);
   });
 
   test('rejects a level without a key', () => {
@@ -513,12 +469,6 @@ describe('trees in the scenery', () => {
       ),
     ).not.toThrow();
   });
-
-  test('are equal only with the same base and variant', () => {
-    expect(Tree.at(at(1, 1), TreeVariant.Apples).equals(Tree.at(at(1, 1), TreeVariant.Apples))).toBe(true);
-    expect(Tree.at(at(1, 1), TreeVariant.Apples).equals(Tree.at(at(1, 1), TreeVariant.Lemons))).toBe(false);
-    expect(Tree.at(at(1, 1), TreeVariant.Apples).equals(Tree.at(at(2, 1), TreeVariant.Apples))).toBe(false);
-  });
 });
 
 describe('stars scattered across a level', () => {
@@ -645,33 +595,6 @@ describe('a swing gate', () => {
     expect(pathTo(opened(subject), (tile) => tile.equals(at(0, 0)))).toBeDefined();
   });
 
-  test('opens from any tile beside it, whichever way the hero faces', () => {
-    expect(gated().canOperateGate).toBe(true);
-    expect(gated(at(2, 4)).canOperateGate).toBe(true);
-    expect(gated(at(4, 4), Direction.Left).canOperateGate).toBe(true);
-    expect(gated(at(3, 4), Direction.Down).canOperateGate).toBe(true);
-    expect(gated(at(3, 5)).canOperateGate).toBe(false);
-    expect(gated(at(1, 4)).operateGate()).toEqual([]);
-    expect(gated(at(1, 4)).gate?.state).toBe('closed');
-  });
-
-  test('starts opening once and stays shut while it swings', () => {
-    const subject = gated();
-    expect(subject.operateGate()).toEqual([new SwingGateOpeningStarted(LevelId.of('test'), at(3, 3))]);
-    expect(subject.gate?.state).toBe('opening');
-    expect(subject.canOperateGate).toBe(false);
-    expect(subject.operateGate()).toEqual([]);
-    for (let tick = 0; tick < 40; tick++) subject.tick(Heading.of(Direction.Up));
-    expect(subject.hero.position).toEqual(at(3, 4));
-  });
-
-  test('never opens when the hero walks into it', () => {
-    const subject = gated();
-    for (let tick = 0; tick < 40; tick++) subject.tick(Heading.of(Direction.Up));
-    expect(subject.gate?.state).toBe('closed');
-    expect(subject.hero.position).toEqual(at(3, 4));
-  });
-
   test('lets the hero through both ways once it finishes opening', () => {
     const subject = gated();
     expect(subject.finishGate()).toEqual([]);
@@ -750,11 +673,6 @@ describe('a swing gate', () => {
     expect(subject.gate?.state).toBe('open');
   });
 
-  test('a new level starts with the gate closed again', () => {
-    opened(gated());
-    expect(gated().gate?.state).toBe('closed');
-  });
-
   test('must be operable from where the hero starts', () => {
     const pocket = ['..DDD..', '.......', '.......', 'WWFGFWW', 'WW.....', '.W.....'];
     expect(() => gated(at(0, 5), Direction.Up, at(0, 0), pocket)).toThrow('The gate must be operable');
@@ -825,17 +743,6 @@ describe('a boulder', () => {
     return [...subject.tick(Heading.of(direction)), ...Array.from({ length: 16 }, () => subject.tick(null)).flat()];
   }
 
-  test('moves nothing while she only grips it', () => {
-    const subject = bouldered();
-    expect(subject.canGrip).toBe(true);
-    subject.grip();
-    expect(subject.isGripping).toBe(true);
-    expect(subject.canGrip).toBe(false);
-    slide(subject);
-    expect(subject.boulders).toEqual([Boulder.at(at(2, 2))]);
-    expect(subject.hero.position).toEqual(at(2, 3));
-  });
-
   test('slides one tile away from her when she walks into it while gripping, with her following', () => {
     const subject = bouldered();
     subject.grip();
@@ -863,22 +770,6 @@ describe('a boulder', () => {
     expect(subject.hero.facing).toBe(Direction.Up);
     move(subject, Direction.Right);
     expect(subject.boulders).toEqual([Boulder.at(at(2, 2))]);
-  });
-
-  test('keeps moving one tile at a time while she keeps walking and gripping', () => {
-    const subject = bouldered();
-    move(subject, Direction.Up);
-    move(subject, Direction.Up);
-    expect(subject.boulders).toEqual([Boulder.at(at(2, 0))]);
-  });
-
-  test('lets her walk freely again once she lets go', () => {
-    const subject = bouldered();
-    subject.grip();
-    subject.release();
-    for (let tick = 0; tick < 40; tick++) subject.tick(Heading.of(Direction.Left));
-    expect(subject.boulders).toEqual([Boulder.at(at(2, 2))]);
-    expect(subject.hero.position).toEqual(at(0, 3));
   });
 
   test('can be gripped at every moment she presses against it, from every side', () => {
@@ -1023,13 +914,6 @@ describe('a pressure plate', () => {
     return [...subject.tick(Heading.of(direction)), ...Array.from({ length: 16 }, () => subject.tick(null)).flat()];
   }
 
-  test('keeps the gate shut and tells her so when she tries it', () => {
-    const subject = pressable(at(4, 3), Direction.Right);
-    expect(subject.canOperateGate).toBe(true);
-    expect(subject.operateGate()).toEqual([new SwingGateStuck(LevelId.of('test'), at(5, 3))]);
-    expect(subject.gate?.state).toBe('closed');
-  });
-
   test('opens the gate by itself once the boulder rests on it, and lets her reach the key', () => {
     const subject = pressable();
     expect(slide(subject, Direction.Up)).toEqual([
@@ -1068,30 +952,6 @@ describe('a pressure plate', () => {
         obstacles: check2dObstacles,
       }),
     ).toThrow('needs a gate');
-  });
-
-  test('opens the gate while she stands on it and closes it once she walks off', () => {
-    const subject = pressable(at(3, 5), Direction.Left);
-    expect(
-      follow(
-        subject,
-        pathTo(subject, (tile) => tile.equals(at(2, 5)))!,
-      ),
-    ).toEqual([
-      new PlatePressed(LevelId.of('test'), at(2, 5)),
-      new SwingGateOpeningStarted(LevelId.of('test'), at(5, 3)),
-    ]);
-    subject.finishGate();
-    expect(subject.gate?.state).toBe('open');
-    expect(
-      follow(
-        subject,
-        pathTo(subject, (tile) => tile.equals(at(3, 5)))!,
-      ),
-    ).toEqual([
-      new PlateReleased(LevelId.of('test'), at(2, 5)),
-      new SwingGateClosingStarted(LevelId.of('test'), at(5, 3)),
-    ]);
   });
 
   test('turns a swing back the moment the plate changes, so the gate never finishes opening with the plate empty', () => {

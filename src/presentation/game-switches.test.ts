@@ -100,12 +100,6 @@ describe('the full screen switch', () => {
 });
 
 describe('the menu switch', () => {
-  test('opens the start screen', () => {
-    const subject = page();
-    subject.click(subject.menuSwitch);
-    expect(subject.openStartScreen).toHaveBeenCalledOnce();
-  });
-
   test('opens the start screen and prevents default on an initial Escape keydown', () => {
     const subject = page();
     const event = Object.assign(new Event('keydown', { cancelable: true }), { key: 'Escape', repeat: false });

@@ -31,15 +31,11 @@ const savedByVersionOne = {
 const isFresh = (progress: GameProgress): boolean =>
   progress.continueLevel === null && progress.unlockedLevels.length === 0 && progress.lastPlaythroughs.length === 0;
 
-function expectSameProgress(loaded: GameProgress, expected: GameProgress, label: string): void {
-  for (const level of progressLevels) {
-    expect(loaded.isUnlocked(level, progressOrder), `${label}: ${level.value} unlocked`).toBe(
-      expected.isUnlocked(level, progressOrder),
-    );
-    expect(loaded.lastPlaythroughOf(level), `${label}: ${level.value} last`).toEqual(expected.lastPlaythroughOf(level));
-  }
-  expect(loaded.continueLevelAmong(progressOrder), label).toEqual(expected.continueLevelAmong(progressOrder));
-}
+const snapshot = (progress: GameProgress) => ({
+  unlocked: progressLevels.map((level) => progress.isUnlocked(level, progressOrder)),
+  last: progressLevels.map((level) => progress.lastPlaythroughOf(level)),
+  continueLevel: progress.continueLevelAmong(progressOrder),
+});
 
 describe('loading saved progress', () => {
   test('gives fresh progress when nothing is saved', () => {
@@ -120,7 +116,7 @@ describe('saving progress', () => {
     );
     repository.save(progress);
     expect(JSON.parse(store.getItem(progressKey)!)).toEqual(saved);
-    expectSameProgress(repository.load(), progress, 'saved progress');
+    expect(snapshot(repository.load())).toEqual(snapshot(progress));
   });
 
   test('leaves progress saved by a newer version of the game alone', () => {
@@ -154,12 +150,17 @@ describe('saving progress', () => {
   });
 });
 
-test.each(progressSequences)('every progress state after $label loads back the same', ({ steps }) => {
-  const progress = GameProgress.fresh();
-  for (const step of steps) {
-    step.apply(progress);
-    const repository = new LocalProgressRepository(storage());
-    repository.save(progress);
-    expectSameProgress(repository.load(), progress, step.label);
+test('every progress state after every short sequence loads back the same', () => {
+  const differences: string[] = [];
+  for (const { steps } of progressSequences) {
+    const progress = GameProgress.fresh();
+    for (const step of steps) {
+      step.apply(progress);
+      const repository = new LocalProgressRepository(storage());
+      repository.save(progress);
+      const loaded = repository.load();
+      if (JSON.stringify(snapshot(loaded)) !== JSON.stringify(snapshot(progress))) differences.push(step.label);
+    }
   }
+  expect(differences).toEqual([]);
 });

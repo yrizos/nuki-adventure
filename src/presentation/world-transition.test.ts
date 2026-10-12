@@ -8,7 +8,6 @@ import {
   crestLength,
   doorOpeningLength,
   isDarkened,
-  isRestored,
   restorationAge,
   restorationCovers,
   restorationLength,
@@ -19,7 +18,7 @@ const tileSize = 32;
 
 function arrival(x: number, y: number, origin: TilePosition): number {
   let frame = 0;
-  while (!isRestored(x, y, origin, frame)) frame++;
+  while (restorationAge(x, y, origin, frame) < 0) frame++;
   return frame;
 }
 
@@ -42,14 +41,14 @@ test('spreads restoration in a circle of one tile every four frames until the cr
   expect(restorationLength(LevelSize.of(18, 20), origin)).toBe(81 + 16 + 8);
   // These pixels have dither threshold 0, so only their distance from the key tile center sets when they arrive.
   const [centerX, centerY] = [15 * 32 + 16, 9 * 32 + 16];
-  expect(isRestored(centerX, centerY, origin, 0)).toBe(false);
-  expect(isRestored(centerX, centerY, origin, 1)).toBe(true);
-  expect(isRestored(centerX + 28, centerY, origin, 3)).toBe(false);
-  expect(isRestored(centerX + 28, centerY, origin, 4)).toBe(true);
-  expect(isRestored(centerX, centerY + 28, origin, 3)).toBe(false);
-  expect(isRestored(centerX, centerY + 28, origin, 4)).toBe(true);
-  expect(isRestored(centerX + 28, centerY + 28, origin, 5)).toBe(false);
-  expect(isRestored(centerX + 28, centerY + 28, origin, 6)).toBe(true);
+  expect(restorationAge(centerX, centerY, origin, 0) >= 0).toBe(false);
+  expect(restorationAge(centerX, centerY, origin, 1) >= 0).toBe(true);
+  expect(restorationAge(centerX + 28, centerY, origin, 3) >= 0).toBe(false);
+  expect(restorationAge(centerX + 28, centerY, origin, 4) >= 0).toBe(true);
+  expect(restorationAge(centerX, centerY + 28, origin, 3) >= 0).toBe(false);
+  expect(restorationAge(centerX, centerY + 28, origin, 4) >= 0).toBe(true);
+  expect(restorationAge(centerX + 28, centerY + 28, origin, 5) >= 0).toBe(false);
+  expect(restorationAge(centerX + 28, centerY + 28, origin, 6) >= 0).toBe(true);
 });
 
 // Threshold 0 pixels pin the travel time alone, and the others pin the extra delay from their dither threshold.
@@ -69,10 +68,7 @@ test.each(wavePixels)(
   'the wave reaches pixel $x, $y (dither threshold $threshold) at frame $arrives, not a frame before',
   ({ x, y, arrives }) => {
     expect(restorationAge(x, y, waveOrigin, arrives - 1)).toBeLessThan(0);
-    expect(isRestored(x, y, waveOrigin, arrives - 1)).toBe(false);
     expect(restorationAge(x, y, waveOrigin, arrives)).toBeGreaterThanOrEqual(0);
-    expect(isRestored(x, y, waveOrigin, arrives)).toBe(true);
-    expect(isRestored(x, y, waveOrigin, arrives + 1)).toBe(true);
   },
 );
 

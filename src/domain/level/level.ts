@@ -19,7 +19,7 @@ import {
 import type { LevelId } from '../shared/level-id';
 import type { LevelAction } from './level-action';
 import { type Obstacles, Outline, type PlaceObstacles } from './obstacles';
-import { Direction, type Heading, TilePosition, TilePositions, WorldPosition } from './position';
+import { Direction, type Heading, TilePosition, TilePositions, WorldPosition, tileKey } from './position';
 import type { Scenery } from './scenery';
 import type { SwingGate } from './swing-gate';
 
@@ -76,6 +76,7 @@ export class Level {
   readonly id: LevelId;
   readonly scenery: Scenery;
   readonly stones: readonly Stone[];
+  private readonly stoneTiles: TilePositions;
 
   private constructor({
     id,
@@ -93,6 +94,7 @@ export class Level {
     this.id = id;
     this.scenery = scenery;
     this.stones = stones;
+    this.stoneTiles = TilePositions.of(stones.map((stone) => stone.position));
     this.heroEntity = new Hero(hero.position, hero.facing);
     for (const stone of stones) {
       if (!scenery.isWalkable(stone.position)) {
@@ -171,28 +173,23 @@ export class Level {
       }
     });
     if (!this.canEnter(hero.position)) throw new RangeError('The hero must start on open ground');
-    if (gate && !this.reachableTiles(false).some((tile) => gate.operableFrom(tile))) {
+    if (gate && !this.reachableTiles(false).tiles.some((tile) => gate.operableFrom(tile))) {
       throw new RangeError('The gate must be operable from where the hero can reach before it opens');
     }
     // What lies behind a gate or a boulder still counts, because the hero can always open the gate or move the boulder.
     const reachable = this.reachableTiles(true);
-    if (reachable.some((tile) => tile.row < door.left.row)) {
+    if (reachable.tiles.some((tile) => tile.row < door.left.row)) {
       throw new RangeError('The door must stand on the top edge of the playable area');
     }
-    if (keys.some((key) => !reachable.some((tile) => tile.equals(key.position)))) {
+    if (keys.some((key) => !reachable.covers(key.position))) {
       throw new RangeError('Every key must lie where the hero can reach it');
     }
     const directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
-    if (
-      !door.footprint.some((tile) =>
-        directions.some((direction) => reachable.some((other) => other.equals(tile.neighbor(direction)))),
-      )
-    ) {
+    if (!door.footprint.some((tile) => directions.some((direction) => reachable.covers(tile.neighbor(direction))))) {
       throw new RangeError('The door must open beside a tile the hero can reach');
     }
     stars.forEach((star, index) => {
-      if (!reachable.some((tile) => tile.equals(star.position)))
-        throw new RangeError('Every star must lie where the hero can reach it');
+      if (!reachable.covers(star.position)) throw new RangeError('Every star must lie where the hero can reach it');
       if (this.hides(star.position)) {
         throw new RangeError(
           `A star must stay visible, not behind a tree or the door, at ${star.position.column}, ${star.position.row}`,
@@ -226,7 +223,7 @@ export class Level {
     const empty = new Level({ ...definition, stars: [] });
     const spots = empty
       .reachableTiles(true)
-      .filter(
+      .tiles.filter(
         (tile) =>
           !empty.hides(tile) &&
           !keys.some((key) => key.position.equals(tile)) &&
@@ -491,31 +488,27 @@ export class Level {
 
   // Every obstacle stays inside the tile it blocks, so whole open tiles always leave room for her feet to cross between them.
   // The door counts as closed because stepping onto it ends the level.
-  private reachableTiles(cleared: boolean): readonly TilePosition[] {
-    // Growing the reached tiles one ring at a time keeps the order of a plain breadth-first search.
-    let reached = TilePositions.of([this.heroEntity.position]);
-    let ring: readonly TilePosition[] = reached.tiles;
-    while (ring.length > 0) {
-      const next: TilePosition[] = [];
-      for (const tile of ring) {
-        for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
-          const neighbor = tile.neighbor(direction);
-          if (
-            !reached.covers(neighbor) &&
-            !next.some((other) => other.equals(neighbor)) &&
-            (this.canEnter(neighbor) ||
-              (cleared &&
-                ((this.currentGate?.covers(neighbor) ?? false) ||
-                  this.currentBoulders.some((boulder) => boulder.covers(neighbor))))) &&
-            !this.currentDoor.covers(neighbor)
-          )
-            next.push(neighbor);
+  private reachableTiles(cleared: boolean): TilePositions {
+    const start = this.heroEntity.position;
+    const reached = [start];
+    const seen = new Set([tileKey(start)]);
+    for (let index = 0; index < reached.length; index++) {
+      for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
+        const neighbor = reached[index]!.neighbor(direction);
+        if (
+          !seen.has(tileKey(neighbor)) &&
+          (this.canEnter(neighbor) ||
+            (cleared &&
+              ((this.currentGate?.covers(neighbor) ?? false) ||
+                this.currentBoulders.some((boulder) => boulder.covers(neighbor))))) &&
+          !this.currentDoor.covers(neighbor)
+        ) {
+          seen.add(tileKey(neighbor));
+          reached.push(neighbor);
         }
       }
-      reached = reached.with(next);
-      ring = next;
     }
-    return reached.tiles;
+    return TilePositions.of(reached);
   }
 
   private hides(position: TilePosition): boolean {
@@ -530,7 +523,7 @@ export class Level {
   private canEnter(position: TilePosition): boolean {
     return (
       this.scenery.isWalkable(position) &&
-      !this.stones.some((stone) => stone.position.equals(position)) &&
+      !this.stoneTiles.covers(position) &&
       !this.currentBoulders.some((boulder) => boulder.covers(position)) &&
       (this.currentDoor.isOpen || !this.currentDoor.covers(position)) &&
       (!this.currentGate || this.currentGate.isOpen || !this.currentGate.covers(position))

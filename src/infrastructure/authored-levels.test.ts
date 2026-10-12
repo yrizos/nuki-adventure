@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { LevelCompleted, KeyCollected } from '../domain/level/level-events';
-import { Direction, Heading, TilePosition } from '../domain/level/position';
+import { Direction, Heading, TilePosition, tileKey } from '../domain/level/position';
 import { Ground } from '../domain/level/scenery';
 import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
 import { follow, pathTo } from '../test-support/walk-level';
@@ -19,6 +19,32 @@ const authoredLevels = [
 ];
 
 for (const { name, create } of authoredLevels) {
+  // The gate and any boulder count as open, because she can always open the gate and move the boulder.
+  test(`the ${name} level leaves no open ground cut off from where the hero starts`, () => {
+    const level = create(keepOrder);
+    const open = (tile: TilePosition): boolean =>
+      level.scenery.isWalkable(tile) &&
+      !level.stones.some((stone) => stone.position.equals(tile)) &&
+      !level.door.covers(tile);
+    const reached = [level.hero.position];
+    const seen = new Set([tileKey(level.hero.position)]);
+    for (let index = 0; index < reached.length; index++) {
+      for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
+        const neighbor = reached[index]!.neighbor(direction);
+        if (seen.has(tileKey(neighbor)) || !open(neighbor)) continue;
+        seen.add(tileKey(neighbor));
+        reached.push(neighbor);
+      }
+    }
+    const { columns, rows } = level.scenery.size;
+    const cutOff = Array.from({ length: columns * rows }, (_, index) =>
+      TilePosition.at(index % columns, Math.floor(index / columns)),
+    )
+      .filter((tile) => open(tile) && !seen.has(tileKey(tile)))
+      .map((tile) => `${tile.column}, ${tile.row}`);
+    expect(cutOff).toEqual([]);
+  });
+
   test(`the ${name} level starts in view, facing inward and far from the exit`, () => {
     const level = create(keepOrder);
     const start = level.hero.position;
@@ -56,6 +82,11 @@ for (const { name, create } of authoredLevels) {
       )
       .map((tile) => `${tile.column}, ${tile.row}`);
     expect(blockedRing, 'every tile around the start must be drawn as free open ground').toEqual([]);
+    const spots = starSpotsOf(create);
+    const crowded = [start, ...ring]
+      .filter((tile) => level.keys.some((key) => key.position.equals(tile)) || spots.some((spot) => spot.equals(tile)))
+      .map((tile) => `${tile.column}, ${tile.row}`);
+    expect(crowded, 'no key or star spot may lie on or around the start').toEqual([]);
     const lowestVisibleRow = Math.max(...tiles.filter(visiblyOpen).map((tile) => tile.row));
     expect(lowestVisibleRow - start.row, 'one visibly free row, then the bottom boundary').toBe(1);
     const isPath = (tile: TilePosition): boolean =>

@@ -26,11 +26,4 @@ export class LevelOrder {
     const index = this.sequence.findIndex((candidate) => candidate.equals(level));
     return index >= 0 ? (this.sequence[index + 1] ?? null) : null;
   }
-
-  equals(other: LevelOrder): boolean {
-    return (
-      this.sequence.length === other.sequence.length &&
-      this.sequence.every((level, index) => level.equals(other.sequence[index]!))
-    );
-  }
 }

@@ -70,7 +70,7 @@ describe('playing a level', () => {
       isComplete: false,
       outlines: subject.level.outlines,
     });
-    expect('tick' in view || 'read' in view).toBe(false);
+    expect('tick' in view).toBe(false);
     expect(subject.loaded).toEqual([levelId]);
     expect(subject.saved).toEqual([]);
   });

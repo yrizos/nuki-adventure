@@ -25,9 +25,3 @@ test('starts closed and opens in place', () => {
   expect(opened.isOpen).toBe(true);
   expect(opened.left).toEqual(at(2, 2));
 });
-
-test('is equal only with the same position and state', () => {
-  expect(Door.closedAt(at(2, 2)).equals(Door.closedAt(at(2, 2)))).toBe(true);
-  expect(Door.closedAt(at(2, 2)).equals(Door.closedAt(at(3, 2)))).toBe(false);
-  expect(Door.closedAt(at(2, 2)).equals(Door.closedAt(at(2, 2)).opened())).toBe(false);
-});

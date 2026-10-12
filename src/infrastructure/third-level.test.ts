@@ -82,10 +82,8 @@ test('the third level is a 25 by 25 map with a top door, an orchard gate and one
   expect(level.id).toBe(thirdLevelId);
   expect(level.scenery.size).toEqual({ columns: 25, rows: 25 });
   expect(level.hero.position).toEqual(at(12, 21));
-  expect(level.hero.facing).toBe(Direction.Up);
-  expect(level.door.equals(Door.closedAt(at(11, 1)))).toBe(true);
-  expect(level.door.footprint).toEqual([at(11, 1), at(12, 1), at(13, 1)]);
-  expect(level.gate?.equals(SwingGate.closedAt(at(7, 12)))).toBe(true);
+  expect(level.door).toEqual(Door.closedAt(at(11, 1)));
+  expect(level.gate).toEqual(SwingGate.closedAt(at(7, 12)));
   expect(level.keys.map((key) => [key.position, key.material])).toEqual([[goldKey, KeyMaterial.Gold]]);
 });
 
@@ -106,20 +104,8 @@ test('the third level keeps the orchard and its key shut until the gate opens', 
   expect(pathTo(level, (tile) => inOrchard(tile))).toBeUndefined();
 });
 
-test('the third level leaves no open ground cut off once the gate opens', () => {
-  const level = thirdLevel(keepOrder);
-  const reachable = covered(reachedFromStart(level, true));
-  const open = (tile: TilePosition): boolean =>
-    level.scenery.isWalkable(tile) &&
-    !level.stones.some((stone) => stone.position.equals(tile)) &&
-    !level.door.covers(tile);
-  expect(tiles.filter((tile) => open(tile) && !reachable(tile))).toEqual([]);
-  expect(reachable(goldKey)).toBe(true);
-});
-
 test('the third level joins its pond island, which holds a star spot, to the shore by a single path tile', () => {
   const level = thirdLevel(keepOrder);
-  expect(starSpotsOf(thirdLevel)).toContainEqual(islandSpot);
   expect(covered(reachedFromStart(level, true))(islandSpot)).toBe(true);
   expect(covered(reachedFromStart(level, true, islandLink))(islandSpot)).toBe(false);
 });

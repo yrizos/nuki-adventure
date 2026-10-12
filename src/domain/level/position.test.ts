@@ -101,13 +101,6 @@ describe('a set of tile positions', () => {
   test('skips added tiles it already holds', () => {
     expect(TilePositions.of([at(1, 1)]).with([at(1, 1), at(2, 2)]).tiles).toEqual([at(1, 1), at(2, 2)]);
   });
-
-  test('is equal only when both hold the same tiles, in any order', () => {
-    const tiles = TilePositions.of([at(1, 1), at(2, 2)]);
-    expect(tiles.equals(TilePositions.of([at(2, 2), at(1, 1)]))).toBe(true);
-    expect(tiles.equals(TilePositions.of([at(1, 1)]))).toBe(false);
-    expect(tiles.equals(TilePositions.of([at(1, 1), at(2, 2), at(3, 3)]))).toBe(false);
-  });
 });
 
 describe('a world position', () => {
@@ -118,11 +111,6 @@ describe('a world position', () => {
     [0, Number.NEGATIVE_INFINITY],
   ])('rejects %s, %s', (x, y) => {
     expect(() => WorldPosition.at(x, y)).toThrow(RangeError);
-  });
-
-  test('is equal only with the same coordinates', () => {
-    expect(WorldPosition.at(1.5, 2).equals(WorldPosition.at(1.5, 2))).toBe(true);
-    expect(WorldPosition.at(1.5, 2).equals(WorldPosition.at(2, 1.5))).toBe(false);
   });
 
   test('is measured from the top left corner of a tile', () => {
@@ -154,7 +142,6 @@ describe('a heading', () => {
 
   test('keeps only the direction it is given, not its length', () => {
     const heading = Heading.toward(6, 8);
-    expect(heading.equals(Heading.toward(3, 4))).toBe(true);
     expect(heading.x).toBeCloseTo(0.6);
     expect(heading.y).toBeCloseTo(0.8);
   });

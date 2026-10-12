@@ -55,10 +55,6 @@ export function restorationAge(worldX: number, worldY: number, origin: TilePosit
   return framesSinceStart - Math.sqrt(across * across + down * down) / pixelsPerFrame - ditherThreshold(worldX, worldY);
 }
 
-export function isRestored(worldX: number, worldY: number, origin: TilePosition, framesSinceStart: number): boolean {
-  return restorationAge(worldX, worldY, origin, framesSinceStart) >= 0;
-}
-
 export function isDarkened(x: number, y: number, framesSinceStart: number): boolean {
   return framesSinceStart >= (ditherThreshold(x, y) + 1) * framesPerDarkening;
 }

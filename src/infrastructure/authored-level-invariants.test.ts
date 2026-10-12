@@ -78,7 +78,7 @@ const passes = [
   ];
 });
 
-const starts = passes.flatMap(({ name, authored, gate, region, beyond }) => {
+const sweeps = passes.map(({ name, authored, gate, region, beyond }) => {
   // Nothing here opens the door or moves the gate, so the obstacles never change and placing them once per pass keeps the suite fast.
   const obstacles = check2dObstacles(
     Level.create({
@@ -92,7 +92,7 @@ const starts = passes.flatMap(({ name, authored, gate, region, beyond }) => {
       obstacles: check2dObstacles,
     }).outlines,
   );
-  return Array.from({ length: authored.scenery.size.rows }, (_, row) =>
+  const starts = Array.from({ length: authored.scenery.size.rows }, (_, row) =>
     Array.from({ length: authored.scenery.size.columns }, (_, column) => TilePosition.at(column, row)),
   )
     .flat()
@@ -102,42 +102,44 @@ const starts = passes.flatMap(({ name, authored, gate, region, beyond }) => {
         authored.scenery.isWalkable(tile) &&
         !authored.stones.some((stone) => stone.position.equals(tile)) &&
         (!region || region.covers(tile)),
-    )
-    .map((tile) => ({ name, authored, gate, beyond, obstacles, tile, label: `${tile.column}, ${tile.row}` }));
+    );
+  return { name, authored, gate, beyond, obstacles, starts };
 });
 
-test.each(starts)(
-  'in the $name level from tile $label she stays on open ground inside the level and the door stays closed',
-  ({ authored, gate, beyond, obstacles, tile }) => {
+test.each(sweeps)(
+  'in the $name level from every tile she stays on open ground inside the level and the door stays closed',
+  ({ authored, gate, beyond, obstacles, starts }) => {
     const violations: string[] = [];
-    for (const direction of directions) {
-      const level = Level.create({
-        id: authored.id,
-        scenery: authored.scenery,
-        stones: authored.stones,
-        keys: authored.keys,
-        door: authored.door,
-        hero: { position: tile, facing: Direction.Up },
-        ...(gate ? { gate } : {}),
-        obstacles: () => obstacles,
-      });
-      const width = level.scenery.size.columns * tileSize;
-      const height = level.scenery.size.rows * tileSize;
-      for (let frame = 0; frame < frames; frame++) {
-        level.tick(Heading.of(direction));
-        const at = level.hero.feet;
-        const where = `${direction.name} frame ${frame} at ${at.x}, ${at.y}`;
-        if (at.x < 0 || at.y < 0) violations.push(`${where}: below the level origin`);
-        if (at.x >= width || at.y >= height) violations.push(`${where}: beyond the level size`);
-        if (!obstacles.walk(feet.at(farAway), at).equals(at)) violations.push(`${where}: inside an obstacle`);
-        if (beyond?.covers(level.hero.position)) violations.push(`${where}: past the closed gate`);
-        if (level.keys.length > 0) {
-          if (level.door.isOpen) violations.push(`${where}: door open while keys remain`);
-          if (level.door.covers(level.hero.position)) violations.push(`${where}: on the door while keys remain`);
-          if (level.isComplete) violations.push(`${where}: complete while keys remain`);
+    for (const tile of starts)
+      for (const direction of directions) {
+        const level = Level.create({
+          id: authored.id,
+          scenery: authored.scenery,
+          stones: authored.stones,
+          keys: authored.keys,
+          door: authored.door,
+          hero: { position: tile, facing: Direction.Up },
+          ...(gate ? { gate } : {}),
+          obstacles: () => obstacles,
+        });
+        const width = level.scenery.size.columns * tileSize;
+        const height = level.scenery.size.rows * tileSize;
+        for (let frame = 0; frame < frames; frame++) {
+          level.tick(Heading.of(direction));
+          const at = level.hero.feet;
+          const where = `${tile.column}, ${tile.row} ${direction.name} frame ${frame} at ${at.x}, ${at.y}`;
+          if (at.x < 0 || at.y < 0) violations.push(`${where}: below the level origin`);
+          if (at.x >= width || at.y >= height) violations.push(`${where}: beyond the level size`);
+          const settled = obstacles.walk(feet.at(farAway), at);
+          if (settled.x !== at.x || settled.y !== at.y) violations.push(`${where}: inside an obstacle`);
+          if (beyond?.covers(level.hero.position)) violations.push(`${where}: past the closed gate`);
+          if (level.keys.length > 0) {
+            if (level.door.isOpen) violations.push(`${where}: door open while keys remain`);
+            if (level.door.covers(level.hero.position)) violations.push(`${where}: on the door while keys remain`);
+            if (level.isComplete) violations.push(`${where}: complete while keys remain`);
+          }
         }
       }
-    }
     expect(violations).toEqual([]);
   },
 );

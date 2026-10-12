@@ -17,7 +17,9 @@ export class Door {
   }
 
   covers(position: TilePosition): boolean {
-    return this.footprint.some((tile) => tile.equals(position));
+    return (
+      position.row === this.left.row && position.column >= this.left.column && position.column <= this.left.column + 2
+    );
   }
 
   hides(position: TilePosition): boolean {
@@ -32,9 +34,5 @@ export class Door {
 
   opened(): Door {
     return new Door(this.left, true);
-  }
-
-  equals(other: Door): boolean {
-    return this.left.equals(other.left) && this.isOpen === other.isOpen;
   }
 }

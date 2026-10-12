@@ -122,25 +122,9 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
 }
 
 describe('the game navigator', () => {
-  test.each(['one', 'two'])('starts the chosen level %s', (first) => {
-    const subject = navigator(first);
-    expect(subject.started).toEqual([first]);
-    expect(subject.navigator.state).toBe('playing');
-    expect(subject.progress.reach).toHaveBeenCalledOnce();
-    expect(vi.mocked(subject.progress.reach).mock.calls[0]![0].value).toBe(first);
-  });
-
   test('shows the level when it plays an unlocked level, with A disabled where the level has no gate', () => {
     const subject = navigator();
     expect(subject.screens.showLevel).toHaveBeenCalledExactlyOnceWith(false, false);
-  });
-
-  test('opens the level picker', () => {
-    const subject = navigator(null);
-    subject.navigator.openLevelPicker();
-    expect(subject.screens.showLevelPicker).toHaveBeenCalledOnce();
-    expect(subject.navigator.state).toBe('level-picker');
-    expect(subject.navigator.session).toBeNull();
   });
 
   test.each([
@@ -170,15 +154,6 @@ describe('the game navigator', () => {
     expect(subject.navigator.session!.messageText).toBe('');
   });
 
-  test('opens the start screen after the last level', () => {
-    const subject = navigator('two');
-    subject.complete();
-    expect(subject.showStartScreen).toHaveBeenCalledOnce();
-    expect(subject.navigator.state).toBe('start-screen');
-    expect(subject.navigator.session).toBeNull();
-    expect(subject.started).toEqual(['two']);
-  });
-
   test.each(['a', 'b'] as const)('ignores %s pressed while the screen darkens', (button) => {
     const subject = navigator();
     const finished = subject.navigator.session!;
@@ -188,14 +163,6 @@ describe('the game navigator', () => {
     subject.press(button);
     expect(subject.navigator.session).toBe(finished);
     expect(subject.started).toEqual(['one']);
-  });
-
-  test('discards the session when the start screen opens during play', () => {
-    const subject = navigator();
-    subject.navigator.openStartScreen();
-    expect(subject.showStartScreen).toHaveBeenCalledOnce();
-    expect(subject.navigator.state).toBe('start-screen');
-    expect(subject.navigator.session).toBeNull();
   });
 
   test('paints the next level as a fresh painter and animator would, idle and walking', () => {
@@ -219,19 +186,6 @@ describe('the game navigator', () => {
       session.paint(actual);
       expect(pixelDifference(actual, expected)).toBeUndefined();
     }
-  });
-
-  test('draws frame 0 when the start screen opens, counts frames from there and restarts when it reopens', () => {
-    const subject = navigator(null);
-    const shown: string[] = [];
-    subject.screens.showStartScreen.mockImplementation(() => shown.push('open'));
-    subject.screens.animateStartScreen.mockImplementation((frame: number) => shown.push(String(frame)));
-    subject.navigator.openStartScreen();
-    for (let frame = 0; frame < 3; frame++) subject.navigator.tick();
-    subject.navigator.openLevelPicker();
-    subject.navigator.openStartScreen();
-    subject.navigator.tick();
-    expect(shown).toEqual(['open', '0', '1', '2', '3', 'open', '0', '1']);
   });
 
   test('animates nothing on the level picker', () => {

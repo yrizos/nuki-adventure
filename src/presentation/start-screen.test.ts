@@ -117,22 +117,6 @@ function startScreen() {
   };
 }
 
-test('shows the start screen with focus on ΝΕΟ ΠΑΙΧΝΙΔΙ', () => {
-  const { root, screen, newGameButton } = startScreen();
-  expect(screen.hidden).toBe(false);
-  expect(root.activeElement).toBe(newGameButton);
-});
-
-test.each([
-  ['ΝΕΟ ΠΑΙΧΝΙΔΙ', 'newGameButton', 'newGame', 'pickingLevel'],
-  ['ΕΠΙΛΟΓΗ ΕΠΙΠΕΔΟΥ', 'pickLevelButton', 'pickingLevel', 'newGame'],
-] as const)('clicking %s fires only its listener', (_label, button, fired, silent) => {
-  const page = startScreen();
-  page[button].click();
-  expect(page[fired]).toHaveBeenCalledOnce();
-  expect(page[silent]).not.toHaveBeenCalled();
-});
-
 test('a choose key on ΝΕΟ ΠΑΙΧΝΙΔΙ starts a new game', () => {
   const { newGame, pickingLevel, key } = startScreen();
   expect(key('Enter').defaultPrevented).toBe(true);

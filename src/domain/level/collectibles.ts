@@ -1,10 +1,10 @@
-import type { TilePosition } from './position';
+import { type TilePosition, tileKey } from './position';
 
 export class Area {
-  private readonly keys: ReadonlySet<string>;
+  private readonly keys: ReadonlySet<number>;
 
   private constructor(readonly tiles: readonly TilePosition[]) {
-    this.keys = new Set(tiles.map((tile) => `${tile.column},${tile.row}`));
+    this.keys = new Set(tiles.map(tileKey));
   }
 
   static of(tiles: readonly TilePosition[]): Area {
@@ -15,11 +15,7 @@ export class Area {
   }
 
   covers(position: TilePosition): boolean {
-    return this.keys.has(`${position.column},${position.row}`);
-  }
-
-  equals(other: Area): boolean {
-    return this.tiles.length === other.tiles.length && this.tiles.every((tile) => other.covers(tile));
+    return this.keys.has(tileKey(position));
   }
 }
 
@@ -28,10 +24,6 @@ export class KeyMaterial {
   static readonly Silver = new KeyMaterial('silver');
 
   private constructor(readonly name: 'gold' | 'silver') {}
-
-  equals(other: KeyMaterial): boolean {
-    return this === other;
-  }
 }
 
 export class Key {
@@ -43,14 +35,6 @@ export class Key {
 
   static at(position: TilePosition, restores: Area, material: KeyMaterial = KeyMaterial.Gold): Key {
     return new Key(position, restores, material);
-  }
-
-  equals(other: Key): boolean {
-    return (
-      this.position.equals(other.position) &&
-      this.restores.equals(other.restores) &&
-      this.material.equals(other.material)
-    );
   }
 }
 

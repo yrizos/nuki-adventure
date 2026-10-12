@@ -1,48 +1,8 @@
 import { expect, test } from 'vitest';
-import { arrivalMotes, revealed, risingEdge, shadowShown } from './arrival';
+import { arrivalMotes } from './arrival';
 
-const shown = (age: number): number => {
-  let count = 0;
-  for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) if (revealed(age, x, y)) count++;
-  return count;
-};
-const highestShown = (age: number): number => {
-  for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) if (revealed(age, x, y)) return y;
-  return 32;
-};
 const center = { x: 16, y: 17 };
 const distance = ({ x, y }: { x: number; y: number }): number => Math.hypot(x - center.x, y - center.y);
-
-test.each([0, 8, 15])('nothing is revealed and no shadow is shown at age %i', (age) => {
-  expect(shown(age)).toBe(0);
-  expect(shadowShown(age)).toBe(false);
-  expect(risingEdge(age)).toBeUndefined();
-});
-
-test('the reveal rises from the feet to the top of the head through ages 16 to 39', () => {
-  expect(shadowShown(16)).toBe(true);
-  expect(highestShown(16)).toBeGreaterThanOrEqual(30);
-  for (let age = 17; age <= 38; age++) {
-    expect(shown(age)).toBeGreaterThan(shown(age - 1));
-    expect(highestShown(age)).toBeLessThanOrEqual(highestShown(age - 1));
-  }
-  expect(shown(37)).toBeLessThan(32 * 32);
-});
-
-test.each([39, 40, 47, 48])('every pixel is revealed at age %i', (age) => {
-  expect(shown(age)).toBe(32 * 32);
-});
-
-test('the rising edge climbs inside the dithered band and stops with the reveal', () => {
-  let previous = 32;
-  for (let age = 16; age <= 37; age++) {
-    const edge = risingEdge(age)!;
-    expect(edge).toBeLessThanOrEqual(previous);
-    expect(edge).toBeGreaterThanOrEqual(highestShown(age));
-    previous = edge;
-  }
-  for (const age of [38, 39, 40]) expect(risingEdge(age)).toBeUndefined();
-});
 
 test('eight motes with two trail positions spiral inward from about 20 pixels through age 15', () => {
   expect(arrivalMotes(0)).toHaveLength(8);

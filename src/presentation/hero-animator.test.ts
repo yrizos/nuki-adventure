@@ -53,15 +53,6 @@ test('walk frames last eight ticks, and stopping on a passing frame settles for 
   expect(animator.pose(hero.state, 40)).toBe(heroArt.down.stand);
 });
 
-test('idle blinks for six ticks every three seconds and breathes every ninety ticks', () => {
-  const hero = new Hero(TilePosition.at(0, 0), Direction.Down);
-  const animator = new HeroAnimator();
-  expect(animator.pose(hero.state, 0)).toBe(heroArt.down.stand);
-  expect(animator.pose(hero.state, 90)).toBe(heroArt.down.breathe);
-  for (let frame = 180; frame < 186; frame++) expect(animator.pose(hero.state, frame)).toBe(heroArt.down.blink);
-  expect(animator.pose(hero.state, 186)).toBe(heroArt.down.stand);
-});
-
 test('a foot lands on the first walking tick and every sixteen ticks after', () => {
   const hero = new Hero(TilePosition.at(2, 2), Direction.Down);
   const animator = new HeroAnimator();

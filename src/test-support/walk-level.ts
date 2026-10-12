@@ -5,6 +5,8 @@ import type { LevelEvent } from '../domain/level/level-events';
 import { Direction, Heading, type TilePosition, type WorldPosition, tileSize } from '../domain/level/position';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 
+export const same = (a: WorldPosition, b: WorldPosition): boolean => a.x === b.x && a.y === b.y;
+
 const directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
 
 export function pathTo(
@@ -13,9 +15,9 @@ export function pathTo(
 ): readonly WorldPosition[] | undefined {
   const obstacles = check2dObstacles(level.outlines);
   const start = level.hero.feet;
-  const key = (position: WorldPosition): string => `${position.x},${position.y}`;
+  const key = (position: WorldPosition): number => position.x * 65536 + position.y;
   const reached = [start];
-  const previous = new Map<string, WorldPosition | null>([[key(start), null]]);
+  const previous = new Map<number, WorldPosition | null>([[key(start), null]]);
   for (let index = 0; index < reached.length; index++) {
     const here = reached[index]!;
     if (destination(here.tile)) {
@@ -35,7 +37,7 @@ export function pathTo(
         next.x >= level.scenery.size.columns * tileSize ||
         next.y >= level.scenery.size.rows * tileSize ||
         previous.has(key(next)) ||
-        !obstacles.walk(feet.at(here), next).equals(next)
+        !same(obstacles.walk(feet.at(here), next), next)
       ) {
         continue;
       }
@@ -49,10 +51,10 @@ export function pathTo(
 export function follow(level: Level, path: readonly WorldPosition[]): readonly LevelEvent[] {
   const events: LevelEvent[] = [];
   for (const next of path.slice(1)) {
-    for (let attempt = 0; attempt < 3 && !level.hero.feet.equals(next); attempt++) {
+    for (let attempt = 0; attempt < 3 && !same(level.hero.feet, next); attempt++) {
       events.push(...level.tick(Heading.toward(next.x - level.hero.feet.x, next.y - level.hero.feet.y)));
     }
-    expect(level.hero.feet.equals(next), 'the collision-checked path must be playable through Level.tick').toBe(true);
+    expect(same(level.hero.feet, next), 'the collision-checked path must be playable through Level.tick').toBe(true);
   }
   level.tick(null);
   return events;

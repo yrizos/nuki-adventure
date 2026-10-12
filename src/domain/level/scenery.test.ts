@@ -47,11 +47,6 @@ describe('a level size', () => {
   ])('of 3 × 2 contains %j: %s', (position, contained) => {
     expect(LevelSize.of(3, 2).contains(position)).toBe(contained);
   });
-
-  test('is equal only with the same columns and rows', () => {
-    expect(LevelSize.of(3, 2).equals(LevelSize.of(3, 2))).toBe(true);
-    expect(LevelSize.of(3, 2).equals(LevelSize.of(2, 3))).toBe(false);
-  });
 });
 
 describe('scenery', () => {
@@ -166,12 +161,5 @@ describe('a fence', () => {
   test('is equal only on the same tile', () => {
     expect(Fence.at(at(1, 1)).equals(Fence.at(at(1, 1)))).toBe(true);
     expect(Fence.at(at(1, 1)).equals(Fence.at(at(1, 2)))).toBe(false);
-  });
-});
-
-describe('a flower', () => {
-  test('is equal only on the same tile', () => {
-    expect(Flower.at(at(1, 1)).equals(Flower.at(at(1, 1)))).toBe(true);
-    expect(Flower.at(at(1, 1)).equals(Flower.at(at(1, 2)))).toBe(false);
   });
 });

@@ -33,19 +33,11 @@ describe('a level order', () => {
     expect(LevelOrder.of([one, two, three]).after(level)).toEqual(next);
   });
 
-  test.each([
-    [[one, two], true],
-    [[two, one], false],
-    [[one], false],
-  ])('equals another order only with the same levels in the same order', (levels, equal) => {
-    expect(LevelOrder.of([one, two]).equals(LevelOrder.of(levels))).toBe(equal);
-  });
-
   test('is unaffected by later changes to the list it was made from', () => {
     const levels = [one, two];
     const order = LevelOrder.of(levels);
     levels.push(three);
     levels[0] = three;
-    expect(order.equals(LevelOrder.of([one, two]))).toBe(true);
+    expect(order).toEqual(LevelOrder.of([one, two]));
   });
 });

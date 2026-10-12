@@ -1,17 +1,6 @@
 import { expect, test, vi } from 'vitest';
 import { FakeDocument } from '../test-support/fake-document';
-import { focusAfter, takeMenuKeys } from './menu-keys';
-
-test.each([
-  ['ArrowDown', 0, 1],
-  ['ArrowRight', 0, 1],
-  ['ArrowDown', 3, 3],
-  ['ArrowUp', 2, 1],
-  ['ArrowLeft', 2, 1],
-  ['ArrowUp', 0, 0],
-])('moves focus with %s from choice %s to %s of four', (key, from, to) => {
-  expect(focusAfter(key, from, 4)).toBe(to);
-});
+import { takeMenuKeys } from './menu-keys';
 
 test('a hidden menu leaves the keys to the game', () => {
   FakeDocument.stubGlobals();

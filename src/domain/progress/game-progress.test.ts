@@ -110,11 +110,10 @@ describe('game progress', () => {
   });
 });
 
-test.each(progressSequences)(
-  'progress through $label never relocks a level or moves the continue level on completion, and keeps each completion as the last playthrough',
-  ({ steps }) => {
+test('progress through every short sequence never relocks a level or moves the continue level on completion, and keeps each completion as the last playthrough', () => {
+  const violations: string[] = [];
+  for (const { steps } of progressSequences) {
     const progress = GameProgress.fresh();
-    const violations: string[] = [];
     for (const step of steps) {
       const continueBefore = progress.continueLevel;
       const unlockedBefore = progressLevels.map((level) => progress.isUnlocked(level, progressOrder));
@@ -126,13 +125,19 @@ test.each(progressSequences)(
           : continueAfter !== null && continueBefore.equals(continueAfter);
       if (step.completion && !continueKept) violations.push(`${step.label}: moved the continue level`);
       const last = step.completion && progress.lastPlaythroughOf(step.completion.level);
-      if (step.completion && !last?.equals(step.completion.playthrough))
+      const kept = step.completion?.playthrough;
+      if (
+        kept &&
+        (last?.time.frames !== kept.time.frames ||
+          last.collectedStars.value !== kept.collectedStars.value ||
+          last.starCount.value !== kept.starCount.value)
+      )
         violations.push(`${step.label}: did not keep the playthrough as the last one`);
       progressLevels.forEach((level, index) => {
         if (unlockedBefore[index] && !progress.isUnlocked(level, progressOrder))
           violations.push(`${step.label}: relocked ${level.value}`);
       });
     }
-    expect(violations).toEqual([]);
-  },
-);
+  }
+  expect(violations).toEqual([]);
+});

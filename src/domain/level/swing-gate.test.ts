@@ -81,13 +81,6 @@ test('leaves the middle of the passage clear once open, with the leaf along its 
   expect(open.obstacles).toEqual([Outline.spanning(at(3, 2), 0, 0, 3, 22), Outline.spanning(at(3, 1), 0, 12, 3, 32)]);
 });
 
-test('is equal only with the same position and state', () => {
-  const gate = SwingGate.closedAt(at(3, 2));
-  expect(gate.equals(SwingGate.closedAt(at(3, 2)))).toBe(true);
-  expect(gate.equals(SwingGate.closedAt(at(4, 2)))).toBe(false);
-  expect(gate.equals(gate.requestOpen())).toBe(false);
-});
-
 test('is clear of feet only where neither its shut nor its open leaf would touch them', () => {
   const gate = SwingGate.closedAt(at(3, 2));
   expect(gate.clearOf(feet.at(WorldPosition.within(at(3, 3), 16, 28)))).toBe(true);
