@@ -62,13 +62,13 @@ export class Sound {
   }
 
   star(last = false): void {
-    this.buzz(last ? [15, 40, 15] : 15);
+    this.buzz(last ? [25, 40, 25] : 25);
     this.notes(last ? [1319, 1760, 2093, 2637] : [1319, 1760], last ? 0.09 : 0.06, 'square', 0.08);
   }
 
   // The last key's pulse is left out because the restoring pattern starts on the same tick and would blur into it.
   key(last = false): void {
-    if (!last) this.buzz(60);
+    if (!last) this.buzz(90);
     this.notes([1047, 1568, 1319, 2093], 0.07, 'triangle', 0.12);
   }
 
@@ -90,7 +90,7 @@ export class Sound {
   }
 
   restoring(): void {
-    this.buzz([20, 80, 30, 80, 40]);
+    this.buzz([30, 80, 45, 80, 60]);
     this.notes([523, 587, 659, 784, 880, 1047, 1175, 1319], 0.12, 'triangle', 0.15);
   }
 
@@ -101,18 +101,18 @@ export class Sound {
   // Two quiet high notes nudge the player toward the A button without competing with the key hum.
   // Only the first chime vibrates, since a buzz repeating while the game waits would nag.
   hint(first = false): void {
-    if (first) this.buzz(20);
+    if (first) this.buzz(30);
     this.notes([1568, 2093], 0.05, 'triangle', 0.04);
   }
 
   // A low creak then a knock reads as wood swinging on its hinge and coming to rest.
   gate(): void {
-    this.buzz(40);
+    this.buzz(60);
     this.notes([147, 131, 110, 82], 0.06, 'triangle', 0.18);
   }
 
   door(): void {
-    this.buzz([30, 50, 30, 50, 80]);
+    this.buzz([45, 50, 45, 50, 120]);
     this.notes([784, 659, 523, 392], 0.15, 'square', 0.1);
   }
 
