@@ -46,6 +46,10 @@ globalThis.palette = {
     S1: '#C08262',
     S2: '#E8B896',
     S3: '#FFE0C7',
+    O0: '#7A2E0E',
+    O1: '#C4521C',
+    O2: '#F07A2A',
+    O3: '#FFB37A',
   },
   faded: {
     G0: 'N1',
@@ -88,5 +92,9 @@ globalThis.palette = {
     S1: 'N3',
     S2: 'N4',
     S3: 'Paper',
+    O0: 'N1',
+    O1: 'N1',
+    O2: 'N2',
+    O3: 'N3',
   },
 };

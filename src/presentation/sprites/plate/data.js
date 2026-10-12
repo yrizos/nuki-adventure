@@ -1,9 +1,9 @@
 (globalThis.sprites ??= {}).plate = {
   legend: {
     k: 'Ink',
-    c: 'N4',
-    a: 'N3',
-    b: 'N2',
+    c: 'O3',
+    a: 'O2',
+    b: 'O1',
   },
   frames: {
     plate: [

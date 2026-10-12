@@ -29,7 +29,7 @@ const layout = [
   'WWW+...#....#.o...#.**WWW',
   'WWW...+#....H.....##+.WWW',
   'WWWWW....+......+....WWWW',
-  'WWWWWWW...WWWWW....WWWWWW',
+  'WWWWWWW............WWWWWW',
   'WWWWWWWWWWWWWWWWWWWWWWWWW',
 ];
 

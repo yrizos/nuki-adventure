@@ -1066,6 +1066,7 @@ const ramps = [
   ['teal', ['T0', 'T1', 'T2', 'T3']],
   ['pink', ['P0', 'P1', 'P2', 'P3']],
   ['skin', ['S0', 'S1', 'S2', 'S3']],
+  ['orange', ['O0', 'O1', 'O2', 'O3']],
 ] as const satisfies readonly (readonly [string, readonly PaletteCode[]])[];
 
 test('the ramps hold every palette step but Ink exactly once', () => {
