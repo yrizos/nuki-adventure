@@ -33,6 +33,7 @@ Hex values and the faded mapping live in [`src/presentation/sprites/palette.js`]
 | Grass | G2 base, G3 tufts, G1 shading |
 | Trees | G1 canopy, G0 shadow, G3 leaf highlights, E1 trunk, E0 trunk shadow |
 | Water | W1 body, W0 deep edges, W2 ripples, W4 foam |
+| Water lilies | G2 pads, G3 highlights, G1 shading and bottom right edges, P3 petals, P2 petal shading, Y3 centers, W0 waterline |
 | Paths | E3 base, E4 highlights, E2 edges |
 | Flowers | R3, V3, W3 or Paper petals, Y3 centers, G1 stems |
 | Stars | Y2 body, Y1 shading, Y3 shine |

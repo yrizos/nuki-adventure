@@ -38,6 +38,7 @@ const scenery = {
   flowerArt: library.flowerArt,
   fenceArt: library.fenceArt,
   doorArt: library.doorArt,
+  waterLilyVariants: library.waterLilyVariants,
 };
 const sprites = {
   heroArt: library.heroArt,
@@ -399,6 +400,43 @@ function firstLevelStoneArtDrawn(): { position: TilePosition; art: Art }[] {
     return { position, art: calls[0]![0] };
   });
 }
+
+test.each([firstLevel, secondLevel, thirdLevel, fourthLevel, fifthLevel])(
+  'level %# floats lilies only inside its pond, with different art on touching tiles',
+  (create) => {
+    const level = create((positions) => positions);
+    const picture = new Picture(level.scenery.size.columns * tileSize, level.scenery.size.rows * tileSize);
+    const camera = cameraPosition(level, picture.width, picture.height);
+    const draw = vi.spyOn(picture, 'draw');
+    let seed = 7;
+    const random = (): number => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    new WorldPainter(level, random).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, [
+      level.keys[0]!.restores,
+    ]);
+    const water = (column: number, row: number): boolean =>
+      level.scenery.groundAt(TilePosition.at(column, row)).equals(Ground.Water);
+    const lilies = draw.mock.calls
+      .filter(([art]) => library.waterLilyVariants.includes(art))
+      .map(([art, x, y]) => ({
+        art,
+        column: Math.round((x + camera.x + tileSize / 2) / tileSize),
+        row: Math.round((y + camera.y + tileSize / 2) / tileSize),
+      }));
+    expect(lilies.length).toBeGreaterThan(0);
+    for (const { column, row } of lilies)
+      for (const [dx, dy] of [
+        [-1, -1],
+        [0, -1],
+        [-1, 0],
+        [0, 0],
+      ])
+        expect(water(column + dx!, row + dy!)).toBe(true);
+    for (const first of lilies)
+      for (const second of lilies)
+        if (Math.abs(first.column - second.column) + Math.abs(first.row - second.row) === 1)
+          expect(first.art).not.toBe(second.art);
+  },
+);
 
 test('the first level renders at least three distinct stone variants', () => {
   const drawn = firstLevelStoneArtDrawn();

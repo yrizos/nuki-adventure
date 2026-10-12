@@ -91,6 +91,7 @@ export class GameSession {
     >,
     private readonly progress: Pick<ManageProgress, 'reach' | 'complete'>,
     private readonly report: SessionReport,
+    private readonly random?: () => number,
   ) {
     this.run = this.begin(level);
     this.phase = level.arrives ? appearing(this.frame) : playing;
@@ -251,7 +252,7 @@ export class GameSession {
     return {
       id,
       play,
-      painter: new WorldPainter(play.view(id)),
+      painter: new WorldPainter(play.view(id), this.random),
       animator: new HeroAnimator(),
       messageBox: new MessageBox(),
       // Play time starts on the first playable frame, so the arrival never counts toward it.

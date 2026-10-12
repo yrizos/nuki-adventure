@@ -30,6 +30,7 @@ export function startGame(
   root: Document,
   levels: readonly PlayableLevel[],
   progress: Pick<ManageProgress, 'view' | 'reach' | 'complete'>,
+  random: () => number,
 ): void {
   const screen = element<HTMLElement>(root, '.screen');
   for (const [name, art] of Object.entries(panelArt))
@@ -59,7 +60,7 @@ export function startGame(
   const navigator = new GameNavigator(
     levels,
     progress,
-    (level, report) => new GameSession(level, controls, sound, progress, report),
+    (level, report) => new GameSession(level, controls, sound, progress, report, random),
     {
       showStartScreen: () => {
         levelPicker.hide();

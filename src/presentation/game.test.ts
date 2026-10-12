@@ -366,6 +366,29 @@ function gatedSession(arrives = false) {
   };
 }
 
+test('a game session passes its randomness to the world painter to float the water lilies', () => {
+  const random = vi.fn(() => 0.5);
+  new GameSession(
+    { id: secondLevelId, start: () => new PlayLevel(new InMemoryLevelRepository([secondLevel(keepOrder)])) },
+    { takePress: vi.fn(), isHeld: vi.fn(), heading: vi.fn() },
+    {
+      star: vi.fn(),
+      key: vi.fn(),
+      hum: vi.fn(),
+      door: vi.fn(),
+      footstep: vi.fn(),
+      restoring: vi.fn(),
+      arrival: vi.fn(),
+      gate: vi.fn(),
+      plate: vi.fn(),
+    },
+    { reach: vi.fn(), complete: vi.fn() },
+    { completed: vi.fn() },
+    random,
+  );
+  expect(random).toHaveBeenCalled();
+});
+
 describe('a swing gate in the game session', () => {
   test('enables A only in a level with a gate', () => {
     expect(gatedSession().session.uses('a')).toBe(true);
@@ -674,7 +697,7 @@ function gamePage({ secondUnlocked = false, arrives = false } = {}) {
   );
   if (secondUnlocked)
     progress.complete(levels[0]!.id, Playthrough.of(PlayTime.ofFrames(60), StarCount.of(0), StarCount.of(0)));
-  startGame(root as unknown as Document, levels, progress);
+  startGame(root as unknown as Document, levels, progress, () => 1);
   let now = 0;
   const frame = (): void => {
     now += 1000 / 60 + 0.001;

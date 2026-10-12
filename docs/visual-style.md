@@ -73,6 +73,7 @@ Color codes refer to the [palette](palette.md). Element colors live there, not h
 | Stone | At most two cracks per tile, 6 to 12 pixels long. Edges miss two to four corner pixels. Highlights are clusters on the top left facets only. |
 | Fences | Posts joined by two rails, each rail a three-pixel band of highlight, wood and shading. Each piece joins neighboring fences and the door on all four sides without seams. Ground shadow 8 pixels wide below the post. |
 | Water | Ripples are horizontal lines 4 to 10 pixels long, never vertical. Shore foam is broken into segments with gaps of 2 to 6 pixels. Objects in water show a W0 band along the waterline. |
+| Water lilies | Pads float only on ground tiles whose four corners are all water, so they never touch the shore foam. Each level start places them anew, with a drift of up to 4 pixels off the tile grid. |
 | Flowers | Petals are 2 to 4 pixels each around a center. At most two petal colors per tile. |
 
 ## Outlines

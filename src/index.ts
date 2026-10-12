@@ -31,4 +31,5 @@ startGame(
     new LocalProgressRepository(window.localStorage),
     levels.map(({ id }) => id),
   ),
+  Math.random,
 );

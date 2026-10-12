@@ -29,6 +29,7 @@ import {
   treeFrameLength,
   waterArt,
   waterFrameLength,
+  waterLilyVariants,
 } from './sprite-library';
 import { cameraPosition, clamp, heroPixels, tileSize } from './world-geometry';
 import { crestLength, isDarkened, restorationAge } from './world-transition';
@@ -155,6 +156,40 @@ function groundTiles(scenery: Scenery): GroundTile[] {
   return tiles;
 }
 
+interface WaterLily {
+  readonly x: number;
+  readonly y: number;
+  readonly art: Art;
+}
+
+const lilyChance = 0.6;
+const lilyDrift = 4;
+
+// Pads sit on the half-offset ground grid, where four water corners mean a tile with no shore foam at all.
+function waterLilies(scenery: Scenery, random: () => number): WaterLily[] {
+  const { columns, rows } = scenery.size;
+  const isWater = (column: number, row: number): boolean =>
+    scenery.groundAt(TilePosition.at(column, row)).equals(Ground.Water);
+  const open: TilePosition[] = [];
+  for (let row = 1; row < rows; row++)
+    for (let column = 1; column < columns; column++)
+      if (isWater(column - 1, row - 1) && isWater(column, row - 1) && isWater(column - 1, row) && isWater(column, row))
+        open.push(TilePosition.at(column, row));
+  const chosen = open.filter(() => random() < lilyChance);
+  // ponytail: one guaranteed lily per level equals one per pond while every level has a single pond; group by pond if one gets two.
+  if (chosen.length === 0 && open.length > 0) chosen.push(open[Math.floor(random() * open.length)]!);
+  const drift = (): number => Math.round((random() * 2 - 1) * lilyDrift);
+  const choices = propVariants(
+    chosen.map((position) => [position]),
+    waterLilyVariants.length,
+  );
+  return chosen.map((position, index) => ({
+    x: position.column * tileSize - tileSize / 2 + drift(),
+    y: position.row * tileSize - tileSize / 2 + drift(),
+    art: waterLilyVariants[choices[index]!]!,
+  }));
+}
+
 export function propVariants(footprints: readonly (readonly TilePosition[])[], count: number): readonly number[] {
   const choices = new Map<number, number>();
   const ordered = footprints
@@ -194,11 +229,13 @@ export class WorldPainter {
   private readonly woodland: readonly WoodlandTree[];
   private readonly stoneChoices: readonly number[];
   private readonly flowerChoices: readonly number[];
+  private readonly lilies: readonly WaterLily[];
   private readonly fencePieces: readonly number[];
   private readonly shadows = new Map<string, Art>();
 
-  constructor(level: LevelView) {
+  constructor(level: LevelView, random?: () => number) {
     this.ground = groundTiles(level.scenery);
+    this.lilies = random ? waterLilies(level.scenery, random) : [];
     // A tree cluster shares one variant, so no-fruit trees only ever touch each other and are spread over their own art.
     const fruitArt = new Map([
       [TreeVariant.Oranges, fruitTreeArt.orange],
@@ -353,6 +390,7 @@ export class WorldPainter {
         );
       }
     }
+    for (const lily of this.lilies) draw(lily.art, lily.x, lily.y);
     const woodland = this.woodland.filter(
       ({ base }) =>
         (base.column + 2) * tileSize > camera.x &&
