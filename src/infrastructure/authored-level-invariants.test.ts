@@ -4,6 +4,7 @@ import { Level } from '../domain/level/level';
 import { Direction, Heading, TilePosition, TilePositions, WorldPosition, tileSize } from '../domain/level/position';
 import { SwingGate } from '../domain/level/swing-gate';
 import { check2dObstacles } from './check2d-obstacles';
+import { fifthLevel } from './fifth-level';
 import { firstLevel } from './first-level';
 import { secondLevel } from './second-level';
 import { fourthLevel } from './fourth-level';
@@ -55,13 +56,14 @@ const passes = [
   { name: 'second', authored: secondLevel(keepOrder) },
   { name: 'third', authored: thirdLevel(keepOrder) },
   { name: 'fourth', authored: fourthLevel(keepOrder) },
+  { name: 'fifth', authored: fifthLevel(keepOrder) },
 ].flatMap(({ name, authored }): Pass[] => {
   const gate = authored.gate;
   if (!gate) return [{ name, authored, gate, region: undefined, beyond: undefined }];
   const open = (tile: TilePosition): boolean =>
     authored.scenery.isWalkable(tile) && !authored.stones.some((stone) => stone.position.equals(tile));
   const near = regionAround(authored, authored.hero.position, (tile) => open(tile) && !gate.covers(tile));
-  const far = regionAround(authored, gate.position.neighbor(Direction.Up), (tile) => open(tile) && !gate.covers(tile));
+  const far = regionAround(authored, gate.position.neighbor(gate.swing), (tile) => open(tile) && !gate.covers(tile));
   // She can close the gate behind her from either side, so a closed gate must hold from both.
   return [
     { name: `${name} (gate closed)`, authored, gate, region: near, beyond: far },
@@ -69,7 +71,7 @@ const passes = [
     {
       name: `${name} (gate open)`,
       authored,
-      gate: SwingGate.closedAt(gate.position).requestOpen().finishOpening(),
+      gate: SwingGate.closedAt(gate.position, gate.approachSide).requestOpen().finishOpening(),
       region: undefined,
       beyond: undefined,
     },

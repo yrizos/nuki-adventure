@@ -12,6 +12,9 @@ import {
   SwingGateClosingStarted,
   SwingGateOpened,
   SwingGateOpeningStarted,
+  SwingGateStuck,
+  PlatePressed,
+  PlateReleased,
 } from './level-events';
 import type { LevelId } from '../shared/level-id';
 import type { LevelAction } from './level-action';
@@ -49,6 +52,7 @@ export interface LevelDefinition {
   readonly stars?: readonly Star[];
   readonly gate?: SwingGate;
   readonly boulders?: readonly Boulder[];
+  readonly plate?: TilePosition;
   readonly obstacles: PlaceObstacles;
 }
 
@@ -58,8 +62,11 @@ export class Level {
   private currentDoor: Door;
   private currentGate: SwingGate | undefined;
   private currentBoulders: readonly Boulder[];
+  readonly plate: TilePosition | undefined;
+  private plateDown = false;
   private carried: { readonly from: WorldPosition; readonly to: WorldPosition } | undefined;
   private completed = false;
+  private gripping = false;
   private remainingStars: readonly Star[];
   private collectedStars: readonly Star[] = [];
   private readonly placeObstacles: PlaceObstacles;
@@ -80,6 +87,7 @@ export class Level {
     stars = [],
     gate,
     boulders = [],
+    plate,
     obstacles,
   }: LevelDefinition) {
     this.id = id;
@@ -100,13 +108,35 @@ export class Level {
     this.currentGate = gate;
     if (
       gate &&
-      [gate.position, gate.approach, gate.position.neighbor(Direction.Up)].some(
+      [gate.position, gate.approach, gate.position.neighbor(gate.swing)].some(
         (tile) => !scenery.isWalkable(tile) || stones.some((stone) => stone.position.equals(tile)),
       )
     ) {
       throw new RangeError('The gate needs open ground on its tile and on both sides of it');
     }
     this.currentBoulders = boulders;
+    this.plate = plate;
+    if (plate && !gate) throw new RangeError('A pressure plate needs a gate to open');
+    if (
+      plate &&
+      (!scenery.isWalkable(plate) || stones.some((stone) => stone.position.equals(plate)) || door.covers(plate))
+    ) {
+      throw new RangeError(
+        `A pressure plate needs open ground a boulder can rest on, at ${plate.column}, ${plate.row}`,
+      );
+    }
+    // Every step off the plate then leaves her clear of the leaf, so the gate can shut at once without sweeping through her.
+    if (
+      plate &&
+      gate &&
+      [gate.position, gate.position.neighbor(gate.swing)].some(
+        (tile) => Math.max(Math.abs(tile.column - plate.column), Math.abs(tile.row - plate.row)) < 2,
+      )
+    ) {
+      throw new RangeError(
+        `A pressure plate must stand at least two tiles from the gate and its swing, at ${plate.column}, ${plate.row}`,
+      );
+    }
     boulders.forEach((boulder, index) => {
       if (
         !scenery.isWalkable(boulder.position) ||
@@ -114,7 +144,7 @@ export class Level {
         boulders.findIndex((other) => other.covers(boulder.position)) !== index ||
         door.covers(boulder.position) ||
         (gate &&
-          [gate.position, gate.approach, gate.position.neighbor(Direction.Up)].some((tile) => boulder.covers(tile)))
+          [gate.position, gate.approach, gate.position.neighbor(gate.swing)].some((tile) => boulder.covers(tile)))
       ) {
         throw new RangeError(
           `A boulder needs open ground of its own, away from the door and the gate, at ${boulder.position.column}, ${boulder.position.row}`,
@@ -249,10 +279,11 @@ export class Level {
     return this.currentGate;
   }
 
+  // A gate held by a plate only answers her when shut, so trying it can tell her it will not open.
   get canOperateGate(): boolean {
     const gate = this.currentGate;
     return (
-      (gate?.state === 'closed' || gate?.state === 'open') &&
+      (gate?.state === 'closed' || (gate?.state === 'open' && !this.plate)) &&
       !this.completed &&
       gate.operableFrom(this.hero.position) &&
       gate.clearOf(feet.at(this.hero.feet))
@@ -262,6 +293,7 @@ export class Level {
   operateGate(): readonly LevelEvent[] {
     const gate = this.currentGate;
     if (!gate || !this.canOperateGate) return [];
+    if (this.plate) return [new SwingGateStuck(this.id, gate.position)];
     if (gate.isOpen) {
       this.currentGate = gate.requestClose();
       // A closing leaf blocks the passage at once, so she cannot slip in while it swings back.
@@ -295,28 +327,21 @@ export class Level {
     return [...(this.currentGate?.actions ?? []), ...this.currentBoulders.flatMap((boulder) => boulder.actions)];
   }
 
-  get canPush(): boolean {
-    const boulder = this.boulderAhead();
-    return boulder !== undefined && this.canHoldBoulder(boulder.position.neighbor(this.hero.facing));
+  get canGrip(): boolean {
+    return !this.gripping && this.boulderAhead() !== undefined;
   }
 
-  get canPull(): boolean {
-    const behind = this.hero.position.neighbor(this.hero.facing.opposite);
-    return this.boulderAhead() !== undefined && this.canHoldBoulder(behind) && this.canHoldBoulder(this.hero.position);
+  get isGripping(): boolean {
+    return this.gripping;
   }
 
-  push(): void {
-    const boulder = this.boulderAhead();
-    if (!boulder || !this.canPush) return;
-    this.replaceBoulder(boulder, boulder.slide(this.hero.facing));
-    this.carried = { from: this.hero.feet, to: Hero.feetOn(boulder.position) };
+  // Gripping alone moves nothing, it only attaches her to the boulder in front of her.
+  grip(): void {
+    if (this.boulderAhead()) this.gripping = true;
   }
 
-  pull(): void {
-    const boulder = this.boulderAhead();
-    if (!boulder || !this.canPull) return;
-    this.replaceBoulder(boulder, boulder.slide(this.hero.facing.opposite));
-    this.carried = { from: this.hero.feet, to: Hero.feetOn(this.hero.position.neighbor(this.hero.facing.opposite)) };
+  release(): void {
+    this.gripping = false;
   }
 
   get isComplete(): boolean {
@@ -335,9 +360,10 @@ export class Level {
     const before = this.heroEntity.position;
     const sliding = this.currentBoulders.find((boulder) => boulder.isSliding);
     if (sliding && this.carried) this.slideBoulder(sliding, this.carried);
+    else if (this.gripping) this.moveGripped(heading);
     else this.heroEntity.steer(heading, this.obstacles);
     const tile = this.heroEntity.position;
-    const events: LevelEvent[] = [];
+    const events: LevelEvent[] = [...this.followPlate()];
     if (tile.equals(before)) return events;
     const star = this.remainingStars.find((candidate) => candidate.position.equals(tile));
     if (star) {
@@ -358,6 +384,61 @@ export class Level {
     return events;
   }
 
+  // A sliding boulder presses both the tile it leaves and the tile it enters, so moving it on or off with her own weight on the plate never lets the plate spring up for half a slide.
+  private followPlate(): readonly LevelEvent[] {
+    const gate = this.currentGate;
+    const plate = this.plate;
+    if (!gate || !plate) return [];
+    const pressed = this.hero.position.equals(plate) || this.currentBoulders.some((boulder) => boulder.covers(plate));
+    const events: LevelEvent[] = [];
+    if (pressed !== this.plateDown) {
+      this.plateDown = pressed;
+      events.push(pressed ? new PlatePressed(this.id, plate) : new PlateReleased(this.id, plate));
+    }
+    // A swing turns back as soon as the plate changes, so the gate never finishes opening with nothing on the plate and never closes onto her later.
+    if (pressed && (gate.state === 'closed' || gate.state === 'closing')) {
+      this.currentGate = gate.state === 'closed' ? gate.requestOpen() : gate.reverse();
+      events.push(new SwingGateOpeningStarted(this.id, gate.position));
+    } else if (!pressed && (gate.state === 'open' || gate.state === 'opening')) {
+      this.currentGate = gate.state === 'open' ? gate.requestClose() : gate.reverse();
+      this.obstacles = this.placedObstacles();
+      events.push(new SwingGateClosingStarted(this.id, gate.position));
+    }
+    return events;
+  }
+
+  // She keeps facing the boulder, so it stays in front of her and gripped after every move.
+  private moveGripped(heading: Heading | null): void {
+    const boulder = this.boulderAhead();
+    if (!boulder || !heading) {
+      this.heroEntity.steer(null, this.obstacles);
+      return;
+    }
+    const direction =
+      Math.abs(heading.x) > Math.abs(heading.y)
+        ? heading.x > 0
+          ? Direction.Right
+          : Direction.Left
+        : heading.y > 0
+          ? Direction.Down
+          : Direction.Up;
+    const stand = boulder.position.neighbor(this.hero.facing.opposite);
+    const boulderTarget = boulder.position.neighbor(direction);
+    const heroTarget = stand.neighbor(direction);
+    if (
+      (!boulderTarget.equals(stand) && !this.canHoldBoulder(boulderTarget)) ||
+      (!heroTarget.equals(boulder.position) && !this.canHoldBoulder(heroTarget))
+    ) {
+      this.heroEntity.steer(null, this.obstacles);
+      return;
+    }
+    // The slide takes its first step on the same tick, so a held move never pauses between tiles.
+    const sliding = boulder.slide(direction);
+    this.replaceBoulder(boulder, sliding);
+    this.carried = { from: this.hero.feet, to: Hero.feetOn(heroTarget) };
+    this.slideBoulder(sliding, this.carried);
+  }
+
   // She ends each slide on the tile the boulder left when pushing, or the tile behind her when pulling.
   private slideBoulder(boulder: Boulder, { from, to }: { from: WorldPosition; to: WorldPosition }): void {
     const advanced = boulder.advance();
@@ -375,10 +456,20 @@ export class Level {
   }
 
   // One boulder moves at a time, because she walks along with it.
+  // The round boulder leaves the edges of its tile open, so feet pressed against it can stand inside its tile, short of its middle.
   private boulderAhead(): Boulder | undefined {
     if (this.completed || this.currentBoulders.some((boulder) => boulder.isSliding)) return undefined;
-    const ahead = this.hero.position.neighbor(this.hero.facing);
-    return this.currentBoulders.find((boulder) => boulder.position.equals(ahead));
+    const { facing, feet, position } = this.hero;
+    const ahead = position.neighbor(facing);
+    return this.currentBoulders.find((boulder) => {
+      if (boulder.position.equals(ahead)) return true;
+      // Passing along its open edge sideways must not count, so her feet must also lie within its span across her facing.
+      const { center, width, height } = boulder.obstacle;
+      const along = (center.x - feet.x) * facing.columnStep + (center.y - feet.y) * facing.rowStep;
+      const across =
+        facing.columnStep === 0 ? Math.abs(feet.x - center.x) <= width / 2 : Math.abs(feet.y - center.y) <= height / 2;
+      return boulder.position.equals(position) && along > 0 && across;
+    });
   }
 
   private canHoldBoulder(tile: TilePosition): boolean {
@@ -432,9 +523,7 @@ export class Level {
       this.scenery.trees.some((tree) => tree.hides(position)) ||
       this.scenery.hides(position) ||
       this.currentDoor.hides(position) ||
-      // The gate leaf is drawn over its own tile and, once swung, over the tile north of it.
-      (this.currentGate?.covers(position) ?? false) ||
-      (this.currentGate?.covers(position.neighbor(Direction.Down)) ?? false)
+      (this.currentGate?.hides(position) ?? false)
     );
   }
 

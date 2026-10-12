@@ -97,3 +97,22 @@ test('footsteps, the hum and the arrival never vibrate', () => {
   sound.arrival();
   expect(page.vibrate).not.toHaveBeenCalled();
 });
+
+test('the plate thuds and chirps when pressed, clicks softly when released, and buzzes only when pressed', () => {
+  const page = audioWindow();
+  const sound = new Sound(page.root);
+  page.interact();
+  const before = page.audio()!.heard().length;
+  sound.plate(true);
+  const pressed = page.audio()!.heard().slice(before);
+  expect(pressed).toEqual([73, 392, 523, 784]);
+  expect(page.vibrate).toHaveBeenCalledOnce();
+  sound.plate(false);
+  expect(
+    page
+      .audio()!
+      .heard()
+      .slice(before + pressed.length),
+  ).toEqual([523, 330]);
+  expect(page.vibrate).toHaveBeenCalledOnce();
+});

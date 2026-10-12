@@ -2,6 +2,7 @@ import './presentation/style.css';
 import { ManageProgress } from './application/manage-progress';
 import { PlayLevel } from './application/play-level';
 import type { Level } from './domain/level/level';
+import { fifthLevel, fifthLevelId } from './infrastructure/fifth-level';
 import { firstLevel, firstLevelId } from './infrastructure/first-level';
 import { InMemoryLevelRepository } from './infrastructure/in-memory-level-repository';
 import type { Shuffle } from './infrastructure/level-layout';
@@ -20,6 +21,7 @@ const levels = [
   { id: secondLevelId, start: playing(secondLevel), arrives: true },
   { id: thirdLevelId, start: playing(thirdLevel) },
   { id: fourthLevelId, start: playing(fourthLevel) },
+  { id: fifthLevelId, start: playing(fifthLevel) },
 ];
 
 startGame(

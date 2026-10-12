@@ -4,23 +4,34 @@ import { Direction, type TilePosition, tileSize } from './position';
 
 type SwingGateState = 'closed' | 'opening' | 'open' | 'closing';
 
-// Only a leaf hinged on its west post and swinging north exists, so the geometry is fixed rather than configured.
+// A leaf always swings away from the side she approaches, hinged on its west post in a row of fence or its north post in a column, so only the approach is configured.
 const leafThickness = 3;
 
 export class SwingGate {
   private constructor(
     readonly position: TilePosition,
     readonly state: SwingGateState,
+    readonly approachSide: Direction,
   ) {}
 
   readonly actions: readonly LevelAction[] = ['operate'];
 
-  static closedAt(position: TilePosition): SwingGate {
-    return new SwingGate(position, 'closed');
+  static closedAt(position: TilePosition, approachSide: Direction = Direction.Down): SwingGate {
+    if (!approachSide.equals(Direction.Down) && !approachSide.equals(Direction.Left))
+      throw new RangeError(`A gate is approached from the south or the west, not ${approachSide.name}`);
+    return new SwingGate(position, 'closed', approachSide);
   }
 
   get approach(): TilePosition {
-    return this.position.neighbor(Direction.Down);
+    return this.position.neighbor(this.approachSide);
+  }
+
+  get swing(): Direction {
+    return this.approachSide.opposite;
+  }
+
+  private get inColumn(): boolean {
+    return this.approachSide.equals(Direction.Left);
   }
 
   get isOpen(): boolean {
@@ -31,9 +42,19 @@ export class SwingGate {
     return this.position.equals(position);
   }
 
+  // The leaf is drawn over its own tile and over the tiles it stands in front of once swung.
+  hides(position: TilePosition): boolean {
+    const swung = this.position.neighbor(this.swing);
+    return [this.position, swung, ...(this.inColumn ? [swung.neighbor(Direction.Up)] : [])].some((tile) =>
+      tile.equals(position),
+    );
+  }
+
   // Children rarely stop on the exact tile in front, so any tile beside the passage on either side will do.
   operableFrom(tile: TilePosition): boolean {
-    return Math.abs(tile.row - this.position.row) === 1 && Math.abs(tile.column - this.position.column) <= 1;
+    const across = this.inColumn ? tile.column - this.position.column : tile.row - this.position.row;
+    const along = this.inColumn ? tile.row - this.position.row : tile.column - this.position.column;
+    return Math.abs(across) === 1 && Math.abs(along) <= 1;
   }
 
   // The leaf sweeps between its shut and open places, so feet touching either would be swung into.
@@ -42,19 +63,19 @@ export class SwingGate {
   }
 
   requestOpen(): SwingGate {
-    return this.state === 'closed' ? new SwingGate(this.position, 'opening') : this;
+    return this.state === 'closed' ? this.with('opening') : this;
   }
 
   finishOpening(): SwingGate {
-    return this.state === 'opening' ? new SwingGate(this.position, 'open') : this;
+    return this.state === 'opening' ? this.with('open') : this;
   }
 
   requestClose(): SwingGate {
-    return this.state === 'open' ? new SwingGate(this.position, 'closing') : this;
+    return this.state === 'open' ? this.with('closing') : this;
   }
 
   finishClosing(): SwingGate {
-    return this.state === 'closing' ? new SwingGate(this.position, 'closed') : this;
+    return this.state === 'closing' ? this.with('closed') : this;
   }
 
   // The leaf keeps the passage shut until it has finished opening, and from the moment it starts closing, so the crossing never looks shut while it lets her through.
@@ -63,14 +84,32 @@ export class SwingGate {
   }
 
   private get openLeaf(): readonly Outline[] {
-    const north = this.position.neighbor(Direction.Up);
+    const swung = this.position.neighbor(this.swing);
+    if (this.inColumn)
+      return [
+        Outline.spanning(this.position, tileSize / 2, 0, tileSize, leafThickness),
+        Outline.spanning(swung, 0, 0, tileSize / 2, leafThickness),
+      ];
     return [
       Outline.spanning(this.position, 0, 0, leafThickness, 22),
-      Outline.spanning(north, 0, 12, leafThickness, tileSize),
+      Outline.spanning(swung, 0, 12, leafThickness, tileSize),
     ];
   }
 
+  // A swing turned back halfway keeps the passage shut, because the leaf blocks it while opening and while closing.
+  reverse(): SwingGate {
+    if (this.state === 'opening') return this.with('closing');
+    if (this.state === 'closing') return this.with('opening');
+    return this;
+  }
+
+  private with(state: SwingGateState): SwingGate {
+    return new SwingGate(this.position, state, this.approachSide);
+  }
+
   equals(other: SwingGate): boolean {
-    return this.position.equals(other.position) && this.state === other.state;
+    return (
+      this.position.equals(other.position) && this.state === other.state && this.approachSide.equals(other.approachSide)
+    );
   }
 }

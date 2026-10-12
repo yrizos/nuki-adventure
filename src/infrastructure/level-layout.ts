@@ -48,7 +48,7 @@ export function levelFromLayout(
   const where = (symbol: string): TilePosition[] =>
     cells.filter((cell) => cell.symbol === symbol).map((cell) => cell.at);
   const ground = layout.map((line) =>
-    [...line].map((symbol) => ('#DHG='.includes(symbol) ? Ground.Path : symbol === '~' ? Ground.Water : Ground.Grass)),
+    [...line].map((symbol) => ('#DHG=P'.includes(symbol) ? Ground.Path : symbol === '~' ? Ground.Water : Ground.Grass)),
   );
   const scenery = Scenery.of(
     size,
@@ -74,25 +74,38 @@ export function levelFromLayout(
   const [gate, ...otherGates] = where('G');
   if (otherGates.length > 0) throw new Error(`The layout of level ${id.value} holds at most one gate`);
   const fenced = (tile: TilePosition): boolean => where('F').some((fence) => fence.equals(tile));
-  if (gate && !(fenced(gate.neighbor(Direction.Left)) && fenced(gate.neighbor(Direction.Right))))
-    throw new Error(`The gate of level ${id.value} must hang between two fences`);
+  const inRow = gate && fenced(gate.neighbor(Direction.Left)) && fenced(gate.neighbor(Direction.Right));
+  const inColumn = gate && fenced(gate.neighbor(Direction.Up)) && fenced(gate.neighbor(Direction.Down));
+  if (gate && inRow === inColumn)
+    throw new Error(`The gate of level ${id.value} must hang between two fences, in a row or in a column`);
+  const plates = where('P');
+  if (plates.length > 1) throw new Error(`The layout of level ${id.value} holds at most one pressure plate`);
   const starSpots = cells.filter((cell) => '+='.includes(cell.symbol)).map((cell) => cell.at);
   if (starSpots.length > 0 && contents.starCount)
     throw new Error(`The layout of level ${id.value} marks star spots, so it takes no star count`);
   const keys = Object.entries(contents.keys).map(([symbol, { restores, material }]) =>
     Key.at(one(symbol), Area.of(cells.map((cell) => cell.at).filter(restores)), material),
   );
-  const definition = {
+  const boulderSpots = where('O');
+  const definition = (boulders: readonly Boulder[]) => ({
     id,
     scenery,
     stones: where('o').map(Stone.at),
     keys,
     door: Door.closedAt(door),
     hero: { position: one('H'), facing: Direction.Up },
-    ...(gate ? { gate: SwingGate.closedAt(gate) } : {}),
-    boulders: where('O').map(Boulder.at),
+    ...(gate ? { gate: SwingGate.closedAt(gate, inColumn ? Direction.Left : Direction.Down) } : {}),
+    ...(plates[0] ? { plate: plates[0] } : {}),
+    boulders,
     obstacles: check2dObstacles,
+  });
+  const build = (boulders: readonly Boulder[]): Level => {
+    if (contents.starCount) return Level.withScatteredStars(definition(boulders), contents.starCount, shuffle);
+    return starSpots.length > 0
+      ? Level.withStarsAmong(definition(boulders), starSpots, shuffle)
+      : Level.create(definition(boulders));
   };
-  if (contents.starCount) return Level.withScatteredStars(definition, contents.starCount, shuffle);
-  return starSpots.length > 0 ? Level.withStarsAmong(definition, starSpots, shuffle) : Level.create(definition);
+  // The spots mark where the one boulder may start, and every spot must make a sound level, not only the one the shuffle picks.
+  for (const spot of boulderSpots) build([Boulder.at(spot)]);
+  return build(shuffle(boulderSpots).slice(0, 1).map(Boulder.at));
 }

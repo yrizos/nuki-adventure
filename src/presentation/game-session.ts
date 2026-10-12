@@ -9,6 +9,9 @@ import {
   StarCollected,
   SwingGateClosingStarted,
   SwingGateOpeningStarted,
+  SwingGateStuck,
+  PlatePressed,
+  PlateReleased,
 } from '../domain/level/level-events';
 import { Direction } from '../domain/level/position';
 import { Playthrough, PlayTime } from '../domain/progress/playthrough';
@@ -19,6 +22,7 @@ import {
   appearing,
   arrivalLength,
   closingLevel,
+  gateSwingLength,
   restoringKey,
   type Phase,
   phaseAfterFrame,
@@ -35,11 +39,12 @@ import { doorOpeningLength, restorationLength } from './world-transition';
 export const messages = {
   someColorsBack: 'ΜΠΡΑΒΟ! ΜΕΝΕΙ ΑΚΟΜΑ ΕΝΑ ΚΛΕΙΔΙ!',
   colorsBack: 'ΜΠΡΑΒΟ! ΤΑ ΧΡΩΜΑΤΑ ΕΠΕΣΤΡΕΨΑΝ!',
+  gateStuck: 'Η ΠΟΡΤΑ ΔΕΝ ΑΝΟΙΓΕΙ!',
 } as const;
 
 const humReach = 4;
 
-const buttonFor: Readonly<Record<LevelAction, 'a' | 'b'>> = { operate: 'a', push: 'a', pull: 'b' };
+const buttonFor: Readonly<Record<LevelAction, 'a' | 'b'>> = { operate: 'a', grip: 'a' };
 
 export function humVolume(level: LevelView): number {
   const hero = level.hero.position;
@@ -67,6 +72,7 @@ interface LevelRun {
   readonly messageBox: MessageBox;
   readonly startFrame: number;
   restored: readonly Area[];
+  plateSwingSince: number | undefined;
 }
 
 export class GameSession {
@@ -79,7 +85,7 @@ export class GameSession {
     private readonly controls: Pick<Controls, 'takePress' | 'isHeld' | 'heading'>,
     private readonly sound: Pick<
       Sound,
-      'star' | 'key' | 'hum' | 'door' | 'footstep' | 'restoring' | 'arrival' | 'gate'
+      'star' | 'key' | 'hum' | 'door' | 'footstep' | 'restoring' | 'arrival' | 'gate' | 'plate'
     >,
     private readonly progress: Pick<ManageProgress, 'reach' | 'complete'>,
     private readonly report: SessionReport,
@@ -99,8 +105,7 @@ export class GameSession {
     const available: readonly LevelAction[] = [
       // The prompt only invites her to open the gate, so it does not nag her to close it once she walks through.
       ...(level.canOperateGate && level.gate?.state === 'closed' ? (['operate'] as const) : []),
-      ...(level.canPush ? (['push'] as const) : []),
-      ...(level.canPull ? (['pull'] as const) : []),
+      ...(level.canGrip ? (['grip'] as const) : []),
     ];
     return available.some((action) => buttonFor[action] === button);
   }
@@ -118,24 +123,29 @@ export class GameSession {
     const pressedA = this.controls.takePress('a');
     this.controls.takePress('b');
     const { messageBox, id, play } = this.run;
+    const operated = pressedA && this.phase.name === 'playing' ? play.operateGate(id) : [];
+    if (operated.some((event) => event instanceof SwingGateStuck)) messageBox.show(messages.gateStuck, this.frame);
     if (
-      pressedA &&
-      this.phase.name === 'playing' &&
-      play
-        .operateGate(id)
-        .some((event) => event instanceof SwingGateOpeningStarted || event instanceof SwingGateClosingStarted)
+      operated.some((event) => event instanceof SwingGateOpeningStarted || event instanceof SwingGateClosingStarted)
     ) {
       this.sound.gate();
       this.transitionTo(swingingGate(this.frame));
     } else if (this.phase.name === 'playing' || this.phase.name === 'restoring') {
-      // Each slide ends on a whole tile, so a held button starts the next one and a released button lets it rest there.
-      if (this.phase.name === 'playing') {
-        if (this.controls.isHeld('a')) play.push(id);
-        else if (this.controls.isHeld('b')) play.pull(id);
-      }
+      // Holding A keeps her attached to the boulder, and the joystick then moves it one whole tile at a time.
+      if (!this.controls.isHeld('a')) play.release(id);
+      else if (this.phase.name === 'playing') play.grip(id);
       const events = play.advance(id, this.controls.heading());
       for (const event of events) {
-        if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
+        // A plate swings the gate while she keeps walking, because stepping on and off it must never freeze her.
+        if (event instanceof SwingGateOpeningStarted || event instanceof SwingGateClosingStarted) {
+          this.sound.gate();
+          // A swing turned back halfway starts from the leaf's current angle instead of jumping to the far end.
+          const since = this.run.plateSwingSince;
+          const swung = since === undefined ? gateSwingLength - 1 : this.frame - since;
+          this.run.plateSwingSince = this.frame - Math.max(0, gateSwingLength - 1 - swung);
+        } else if (event instanceof PlatePressed || event instanceof PlateReleased)
+          this.sound.plate(event instanceof PlatePressed);
+        else if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
         else if (event instanceof KeyCollected) {
           this.sound.key(play.view(id).keys.length === 0);
           messageBox.show(play.view(id).keys.length > 0 ? messages.someColorsBack : messages.colorsBack, this.frame);
@@ -152,9 +162,15 @@ export class GameSession {
           this.transitionTo(closingLevel(this.frame));
         }
       }
-      const restorationMessage = messageBox.text === messages.colorsBack || messageBox.text === messages.someColorsBack;
-      if (this.phase.name === 'playing' && restorationMessage && play.view(id).hero.isWalking)
-        messageBox.hide(this.frame);
+      const walkAwayMessage = [messages.colorsBack, messages.someColorsBack, messages.gateStuck].some(
+        (message) => messageBox.text === message,
+      );
+      if (this.phase.name === 'playing' && walkAwayMessage && play.view(id).hero.isWalking) messageBox.hide(this.frame);
+    }
+    const { plateSwingSince } = this.run;
+    if (plateSwingSince !== undefined && this.frame - plateSwingSince >= gateSwingLength - 1) {
+      play.finishGate(id);
+      this.run.plateSwingSince = undefined;
     }
     if (this.phase.name === 'restoring') {
       const level = play.view(id);
@@ -185,10 +201,12 @@ export class GameSession {
     const scene = {
       level,
       frame: this.frame,
-      // The push art faces north, so it fits only a gate swinging open away from her or a boulder pushed north.
+      // The push art faces north, so it fits only a gate she swings open north, away from her, or a boulder pushed north.
       hero:
         this.phase.name === 'swinging-gate' &&
         level.gate?.state === 'opening' &&
+        !level.plate &&
+        level.gate.swing === Direction.Up &&
         level.hero.position.row > level.gate.position.row
           ? pushingPose(this.frame - this.phase.since)
           : sliding?.heading === Direction.Up && level.hero.facing === Direction.Up
@@ -196,6 +214,7 @@ export class GameSession {
             : this.run.animator.pose(level.hero, this.frame),
       ...(this.phase.name === 'appearing' ? { arrival: this.frame - this.phase.since } : {}),
       ...(this.phase.name === 'swinging-gate' ? { gateAge: this.frame - this.phase.since } : {}),
+      ...(this.run.plateSwingSince === undefined ? {} : { gateAge: this.frame - this.run.plateSwingSince }),
     };
     if (this.phase.name === 'restoring') {
       this.run.painter.paintRestoring(picture, scene, this.phase.origin, this.frame - this.phase.since, restored, [
@@ -232,6 +251,7 @@ export class GameSession {
       // Play time starts on the first playable frame, so the arrival never counts toward it.
       startFrame: this.frame + (arrives ? arrivalLength : 0),
       restored: [],
+      plateSwingSince: undefined,
     };
   }
 }

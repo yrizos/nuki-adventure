@@ -15,7 +15,7 @@ export class Boulder {
     return new Boulder(position, null, 0);
   }
 
-  readonly actions: readonly LevelAction[] = ['push', 'pull'];
+  readonly actions: readonly LevelAction[] = ['grip'];
 
   get isSliding(): boolean {
     return this.heading !== null;

@@ -121,12 +121,12 @@ Panel pixels.
 
 - A and B are circles on a lip. A pressed button sinks into its lip and the lip disappears.
 - The right half of the panel is their touch area. A touch presses the button whose center is nearest.
-- In a level, A is enabled only when the level holds a [swing gate](glossary.md#swing-gate) or a [boulder](glossary.md#boulder), and B only with a boulder. A disabled button is dimmed and ignores touch and keys. Both are enabled on the start screen and level picker.
+- In a level, A is enabled only when the level holds a [swing gate](glossary.md#swing-gate) or a [boulder](glossary.md#boulder). B is never enabled in a level. A disabled button is dimmed and ignores touch and keys. Both are enabled on the start screen and level picker.
 - Hint wobble: while the hero can act, that button wobbles. No prompt is drawn in the game view.
 
 | Wobble property | Value |
 | --- | --- |
-| Triggers | A: open a closed swing gate, push a boulder. B: pull a boulder |
+| Triggers | A: open a closed swing gate, grip a boulder she is not gripping yet |
 | Offset | Sine, 12 frame period, inside a sine envelope, at most one panel pixel |
 | Burst | 24 frames, easing in and out, starting the frame the hint begins |
 | Repeat | Every 60 frames |

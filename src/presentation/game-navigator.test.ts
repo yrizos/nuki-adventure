@@ -41,6 +41,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
     restoring: vi.fn(),
     arrival: vi.fn(),
     gate: vi.fn(),
+    plate: vi.fn(),
   };
   const progress = new ManageProgress(new LocalProgressRepository(memoryStorage()), [
     LevelId.of('one'),

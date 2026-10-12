@@ -111,6 +111,15 @@ export class Sound {
     this.notes([147, 131, 110, 82], 0.06, 'triangle', 0.18);
   }
 
+  // A square chirp over a stone thud sets the plate apart from the wooden gate creak and the bright chimes of stars and keys.
+  plate(pressed: boolean): void {
+    if (pressed) {
+      this.buzz(40);
+      this.note(73, 0, 0.08, 'triangle', 0.2);
+      this.notes([392, 523, 784], 0.05, 'square', 0.06);
+    } else this.notes([523, 330], 0.05, 'square', 0.04);
+  }
+
   door(): void {
     this.buzz([45, 50, 45, 50, 120]);
     this.notes([784, 659, 523, 392], 0.15, 'square', 0.1);

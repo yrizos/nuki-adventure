@@ -13,6 +13,9 @@ The `Level` constructor (`src/domain/level/level.ts`), `Scenery.of` (`src/domain
 - The door stands beside a reachable tile.
 - The door stands in a fence or is framed by woodland. No canopy covers its opening. (unchecked)
 - The hero start is reachable, not hidden, at least seven rows below the door and facing up.
+- All eight tiles around the hero start are walkable, with no stone or flower, and no tree, woodland or door canopy covers them.
+- The hero start lies one visibly free row above the bottom boundary. No open ground that a canopy leaves visible lies more than one row below it.
+- The hero start lies within two tiles, counting diagonals, of a path end: a path tile with exactly one path tile beside it on an edge. The start itself counts as a path tile.
 
 ### Keys
 
@@ -43,18 +46,26 @@ The `Level` constructor (`src/domain/level/level.ts`), `Scenery.of` (`src/domain
 ### Swing Gates
 
 - A level MAY hold one [swing gate](glossary.md#swing-gate), marked `G`.
-- The gate stands on path ground between a fence directly west and a fence directly east.
-- The gate tile and the tiles north and south of it are open ground with no stone.
-- The tile south of the gate is reachable with the gate closed. Walking into the gate never opens it.
+- The gate stands on path ground in a fence row, between a fence directly west and a fence directly east, or in a fence column, between a fence directly north and a fence directly south.
+- A gate in a row is approached from the south and swings north. A gate in a column is approached from the west and swings east.
+- The gate tile, its approach tile and the tile it swings into are open ground with no stone.
+- The approach tile is reachable with the gate closed. Walking into the gate never opens it.
 - With the gate closed, no movement reaches the far side through fences, woodland or a diagonal.
 - The gate blocks its whole tile until it finishes opening, and again from the moment it starts closing.
 
 ### Boulders
 
-- A level MAY hold [boulders](glossary.md#boulder), each marked `O`.
-- Each boulder stands on its own open ground, never on a stone, the door, the gate tile or the tiles north and south of the gate.
+- A level MAY hold one [boulder](glossary.md#boulder). Each `O` marks a spot where it may start, and each play picks one spot at random.
+- Every spot satisfies every boulder rule.
+- The boulder stands on its own open ground, never on a stone, the door, the gate tile, its approach tile or the tile it swings into.
 - No key or star spot shares a boulder's tile. (unchecked for keys)
-- No push or pull leaves a boulder where the hero can no longer move it out of the way of a key or the door. (unchecked)
+- No move of a gripped boulder leaves it where the hero can no longer move it out of the way of a key or the door. (unchecked)
+
+### Pressure Plates
+
+- A level with a swing gate MAY hold one [pressure plate](glossary.md#pressure-plate), marked `P`, on path ground.
+- The plate stands on open ground with no stone, never on the door.
+- The plate stands at least two tiles, counting diagonals, from the gate tile and from the tile the gate swings into.
 
 ### Magical Arrival
 

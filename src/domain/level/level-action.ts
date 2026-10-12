@@ -1,1 +1,1 @@
-export type LevelAction = 'operate' | 'push' | 'pull';
+export type LevelAction = 'operate' | 'grip';

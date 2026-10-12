@@ -68,6 +68,7 @@ function gameSession(
     restoring: vi.fn(),
     arrival: vi.fn(),
     gate: vi.fn(),
+    plate: vi.fn(),
   };
   const progress = { reach: vi.fn<(level: LevelId) => void>(), complete: vi.fn() };
   let play: PlayLevel;
@@ -335,6 +336,7 @@ function gatedSession(arrives = false) {
     restoring: vi.fn(),
     arrival: vi.fn(),
     gate: vi.fn(),
+    plate: vi.fn(),
   };
   const level = levelFromLayout(id, ['.DDD.', '..K..', '.....', 'WFGFW', '..H..', '.....'], keepOrder, {
     keys: { K: { restores: () => true } },
@@ -491,6 +493,7 @@ describe('the second level in the game session', () => {
       restoring: vi.fn(),
       arrival: vi.fn(),
       gate: vi.fn(),
+      plate: vi.fn(),
     };
     const report = { completed: vi.fn() };
     const session = new GameSession(
@@ -1150,10 +1153,11 @@ describe('a boulder in the game session', () => {
   function boulderSession() {
     const id = LevelId.of('bouldered');
     const held = new Set<'a' | 'b'>();
+    let heading: Heading | null = null;
     const controls = {
       takePress: vi.fn((_button: 'a' | 'b') => false),
       isHeld: vi.fn((button: 'a' | 'b') => held.has(button)),
-      heading: vi.fn<() => Heading | null>(() => null),
+      heading: vi.fn<() => Heading | null>(() => heading),
     };
     const sound = {
       star: vi.fn(),
@@ -1164,6 +1168,7 @@ describe('a boulder in the game session', () => {
       restoring: vi.fn(),
       arrival: vi.fn(),
       gate: vi.fn(),
+      plate: vi.fn(),
     };
     const level = levelFromLayout(id, ['.DDD.', 'K....', '.....', '..O..', '..H..', '.....'], keepOrder, {
       keys: { K: { restores: () => true } },
@@ -1178,47 +1183,224 @@ describe('a boulder in the game session', () => {
     return {
       session,
       held,
+      walk(direction: Direction | null): void {
+        heading = direction && Heading.of(direction);
+      },
       tick(count: number): void {
         for (let frame = 0; frame < count; frame++) session.tick();
       },
     };
   }
 
-  test('enables A and B only in a level with a boulder', () => {
-    expect(boulderSession().session.uses('b')).toBe(true);
+  test('enables only A in a level with a boulder', () => {
     expect(boulderSession().session.uses('a')).toBe(true);
-    expect(gatedSession().session.uses('b')).toBe(false);
+    expect(boulderSession().session.uses('b')).toBe(false);
   });
 
-  test('keeps pushing while A is held and rests on a whole tile once it is let go', () => {
+  test('holding A alone only grips the boulder and moves nothing', () => {
     const subject = boulderSession();
     subject.held.add('a');
-    subject.tick(20);
-    subject.held.delete('a');
     subject.tick(40);
-    expect(subject.session.level.boulders[0]?.position).toEqual(TilePosition.at(2, 1));
+    expect(subject.session.level.isGripping).toBe(true);
+    expect(subject.session.level.boulders[0]?.position).toEqual(TilePosition.at(2, 3));
+    expect(subject.session.level.hero.position).toEqual(TilePosition.at(2, 4));
+  });
+
+  test('moves the gripped boulder whichever way she walks, one whole tile at a time', () => {
+    const subject = boulderSession();
+    subject.held.add('a');
+    subject.walk(Direction.Up);
+    subject.tick(16);
+    subject.walk(null);
+    subject.tick(20);
+    expect(subject.session.level.boulders[0]?.position).toEqual(TilePosition.at(2, 2));
+    subject.walk(Direction.Left);
+    subject.tick(16);
+    subject.walk(null);
+    subject.tick(20);
+    expect(subject.session.level.boulders[0]?.position).toEqual(TilePosition.at(1, 2));
+    expect(subject.session.level.hero.position).toEqual(TilePosition.at(1, 3));
+    subject.walk(Direction.Down);
+    subject.tick(16);
+    subject.walk(null);
+    subject.tick(20);
+    expect(subject.session.level.boulders[0]?.position).toEqual(TilePosition.at(1, 3));
     expect(subject.session.level.boulders[0]?.isSliding).toBe(false);
   });
 
-  test('asks A and B to wobble only while she faces the boulder from beside it', () => {
+  test('keeps the boulder and her moving without a pause between tiles while she holds A and a direction', () => {
+    const subject = boulderSession();
+    subject.held.add('a');
+    subject.walk(Direction.Up);
+    const walking: boolean[] = [];
+    for (let frame = 0; frame < 32; frame++) {
+      subject.tick(1);
+      walking.push(subject.session.level.hero.isWalking);
+    }
+    expect(walking.every(Boolean)).toBe(true);
+    expect(subject.session.level.boulders[0]?.position).toEqual(TilePosition.at(2, 1));
+  });
+
+  test('lets go as soon as A is released, even while the colors come back', () => {
+    const id = LevelId.of('gripped');
+    let heldA = true;
+    let heading: Heading | null = Heading.of(Direction.Down);
+    const level = levelFromLayout(id, ['.DDD.', '.....', '.....', '..O..', '..H..', '..K..', '.....'], keepOrder, {
+      keys: { K: { restores: () => true } },
+    });
+    const session = new GameSession(
+      { id, start: () => new PlayLevel(new InMemoryLevelRepository([level])) },
+      {
+        takePress: vi.fn(() => false),
+        isHeld: vi.fn((button: 'a' | 'b') => button === 'a' && heldA),
+        heading: vi.fn(() => heading),
+      },
+      {
+        star: vi.fn(),
+        key: vi.fn(),
+        hum: vi.fn(),
+        door: vi.fn(),
+        footstep: vi.fn(),
+        restoring: vi.fn(),
+        arrival: vi.fn(),
+        gate: vi.fn(),
+        plate: vi.fn(),
+      },
+      { reach: vi.fn(), complete: vi.fn() },
+      { completed: vi.fn() },
+    );
+    for (let frame = 0; frame < 16; frame++) session.tick();
+    expect(session.level.keys).toHaveLength(0);
+    heldA = false;
+    session.tick();
+    expect(session.level.isGripping).toBe(false);
+    const boulder = session.level.boulders[0]?.position;
+    for (let frame = 0; frame < 40; frame++) session.tick();
+    expect(session.level.boulders[0]?.position).toEqual(boulder);
+  });
+
+  test('lets go once A is released, so walking leaves the boulder behind', () => {
+    const subject = boulderSession();
+    subject.held.add('a');
+    subject.tick(1);
+    subject.held.delete('a');
+    subject.walk(Direction.Down);
+    subject.tick(20);
+    expect(subject.session.level.isGripping).toBe(false);
+    expect(subject.session.level.boulders[0]?.position).toEqual(TilePosition.at(2, 3));
+  });
+
+  test('asks A to wobble only while she faces the boulder from beside it and has not gripped it', () => {
     const subject = boulderSession();
     expect(subject.session.prompts('a')).toBe(true);
-    expect(subject.session.prompts('b')).toBe(true);
+    expect(subject.session.prompts('b')).toBe(false);
     subject.held.add('a');
     subject.tick(1);
     expect(subject.session.prompts('a')).toBe(false);
-    expect(subject.session.prompts('b')).toBe(false);
     subject.held.delete('a');
-    subject.tick(15);
+    subject.tick(1);
     expect(subject.session.prompts('a')).toBe(true);
-    expect(gameSession().session.prompts('b')).toBe(false);
+  });
+});
+
+describe('a pressure plate in the game session', () => {
+  const besideGate = ['.DDDWW', '....F.', '..P.G.', '..OHFK', '....FF', '......'];
+  const belowBoulder = ['.DDDWW', '....F.', '..P.G.', '..O.FK', '..H.FF', '......'];
+  const besidePlate = ['.DDDWW', '....F.', '..PHG.', '..O.FK', '....FF', '......'];
+
+  function platedSession(rows: readonly string[]) {
+    const id = LevelId.of('plated');
+    let heading: Heading | null = null;
+    const pressed = new Set<'a' | 'b'>();
+    const held = new Set<'a' | 'b'>();
+    const controls = {
+      takePress: vi.fn((button: 'a' | 'b') => pressed.delete(button)),
+      isHeld: vi.fn((button: 'a' | 'b') => held.has(button)),
+      heading: vi.fn<() => Heading | null>(() => heading),
+    };
+    const sound = {
+      star: vi.fn(),
+      key: vi.fn(),
+      hum: vi.fn(),
+      door: vi.fn(),
+      footstep: vi.fn(),
+      restoring: vi.fn(),
+      arrival: vi.fn(),
+      gate: vi.fn(),
+      plate: vi.fn(),
+    };
+    const level = levelFromLayout(id, rows, keepOrder, {
+      keys: { K: { restores: () => true } },
+    });
+    const session = new GameSession(
+      { id, start: () => new PlayLevel(new InMemoryLevelRepository([level])) },
+      controls,
+      sound,
+      { reach: vi.fn(), complete: vi.fn() },
+      { completed: vi.fn() },
+    );
+    return {
+      session,
+      sound,
+      pressed,
+      held,
+      walk(direction: Direction | null): void {
+        heading = direction && Heading.of(direction);
+      },
+      tick(count: number): void {
+        for (let frame = 0; frame < count; frame++) session.tick();
+      },
+    };
+  }
+
+  test('tells her the gate does not open when she tries it while the plate is empty', () => {
+    const subject = platedSession(besideGate);
+    subject.pressed.add('a');
+    subject.tick(1);
+    expect(subject.session.messageText).toBe(messages.gateStuck);
+    expect(subject.session.level.gate?.state).toBe('closed');
+    expect(subject.sound.gate).not.toHaveBeenCalled();
   });
 
-  test('pulls while B is held', () => {
-    const subject = boulderSession();
-    subject.held.add('b');
-    subject.tick(16);
-    subject.held.delete('b');
-    expect(subject.session.level.boulders[0]?.position).toEqual(TilePosition.at(2, 4));
+  test('swings the gate open by itself once she pushes the boulder onto the plate', () => {
+    const subject = platedSession(belowBoulder);
+    subject.held.add('a');
+    subject.walk(Direction.Up);
+    subject.tick(1);
+    subject.walk(null);
+    subject.tick(20);
+    subject.held.delete('a');
+    expect(subject.sound.gate).toHaveBeenCalledOnce();
+    subject.tick(gateSwingLength);
+    expect(subject.session.level.gate?.state).toBe('open');
+  });
+
+  test('never closes the gate onto her when she steps on the plate and straight back off toward the gate', () => {
+    const subject = platedSession(besidePlate);
+    subject.walk(Direction.Left);
+    for (let tick = 0; tick < 40 && subject.session.level.gate?.state === 'closed'; tick++) subject.tick(1);
+    subject.walk(Direction.Right);
+    subject.tick(3 * gateSwingLength);
+    const { gate, hero } = subject.session.level;
+    expect(gate?.state).toBe('closed');
+    expect(hero.position).toEqual(TilePosition.at(3, 2));
+  });
+
+  test('clicks as she steps on and off the plate and swings the gate while she keeps walking', () => {
+    const subject = platedSession(besidePlate);
+    subject.walk(Direction.Left);
+    subject.tick(20);
+    subject.walk(null);
+    expect(subject.sound.plate).toHaveBeenCalledExactlyOnceWith(true);
+    expect(subject.sound.gate).toHaveBeenCalledOnce();
+    expect(subject.session.level.gate?.state).toBe('opening');
+    subject.tick(gateSwingLength);
+    expect(subject.session.level.gate?.state).toBe('open');
+    subject.walk(Direction.Right);
+    subject.tick(20);
+    expect(subject.sound.plate).toHaveBeenLastCalledWith(false);
+    expect(subject.session.level.hero.position).toEqual(TilePosition.at(3, 2));
+    subject.tick(gateSwingLength);
+    expect(subject.session.level.gate?.state).toBe('closed');
   });
 });

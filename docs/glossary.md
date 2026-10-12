@@ -32,11 +32,15 @@ Definitions only. Rules that use these terms live in [Level Design](level-design
 
 ### Swing Gate
 
-A single wooden leaf hinged in a fence. Pressing A on any of the three tiles directly south or north of it opens it, in any facing. Pressing A again from those tiles closes it. It never completes the level. Once open, the hero can pass it.
+A single wooden leaf hinged in a fence. In a fence row, pressing A on any of the three tiles directly south or north of it opens it, in any facing. In a fence column, the same holds for the three tiles directly west or east of it. Pressing A again from those tiles closes it. It never completes the level. Once open, the hero can pass it.
 
 ### Boulder
 
-A large gray rock covering one tile. The hero moves it one tile at a time from the adjacent tile while facing it. Holding A pushes it away, and she follows into the tile it left. Holding B pulls it, and she steps back while it follows. It never enters woodland, water, a fence, a tree, a stone, the gate or the door. It rolls over stars and keys, which the hero collects as she steps onto their tiles.
+A large gray rock covering one tile. Holding A while she stands on the adjacent tile facing it, or presses against it from that side, grips it. Gripping alone moves nothing. While she grips it, walking in any direction moves the boulder and her together one tile that way, and she keeps facing it. A move happens only when both the boulder and she have room. Releasing A lets go. It never enters woodland, water, a fence, a tree, a stone, the gate or the door. It rolls over stars and keys, which the hero collects as she steps onto their tiles.
+
+### Pressure Plate
+
+A flat stone set into the ground that holds the swing gate shut. The hero standing on it or a boulder on it presses it. The gate opens by itself while the plate is pressed and closes by itself once nothing presses it. A sound plays when the plate is pressed and a different one when it is released. While the plate holds the gate shut, pressing A beside the gate shows a message that the door does not open.
 
 ### Reachable
 

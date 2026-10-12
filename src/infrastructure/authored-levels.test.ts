@@ -4,6 +4,7 @@ import { Direction, Heading, TilePosition } from '../domain/level/position';
 import { Ground } from '../domain/level/scenery';
 import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
 import { follow, pathTo } from '../test-support/walk-level';
+import { fifthLevel } from './fifth-level';
 import { firstLevel } from './first-level';
 import { secondLevel } from './second-level';
 import { fourthLevel } from './fourth-level';
@@ -14,6 +15,7 @@ const authoredLevels = [
   { name: 'second', create: secondLevel },
   { name: 'third', create: thirdLevel },
   { name: 'fourth', create: fourthLevel },
+  { name: 'fifth', create: fifthLevel },
 ];
 
 for (const { name, create } of authoredLevels) {
@@ -29,6 +31,46 @@ for (const { name, create } of authoredLevels) {
       Math.min(...level.door.footprint.map((tile) => start.row - tile.row)),
       'the exit must stay beyond the seven-row minimum game view from the entry',
     ).toBeGreaterThanOrEqual(7);
+  });
+
+  // The woodland canopy covers the open row above the woodland, so only what is drawn counts as free ground.
+  test(`the ${name} level starts on visibly free ground, one tile from the bottom boundary, near where a path begins`, () => {
+    const level = create(keepOrder);
+    const start = level.hero.position;
+    const { columns, rows } = level.scenery.size;
+    const tiles = Array.from({ length: columns * rows }, (_, index) =>
+      TilePosition.at(index % columns, Math.floor(index / columns)),
+    );
+    const covered = (tile: TilePosition): boolean =>
+      level.scenery.trees.some((tree) => tree.hides(tile)) || level.scenery.hides(tile) || level.door.hides(tile);
+    const visiblyOpen = (tile: TilePosition): boolean => level.scenery.isWalkable(tile) && !covered(tile);
+    const ring = tiles.filter(
+      (tile) => !tile.equals(start) && Math.abs(tile.column - start.column) <= 1 && Math.abs(tile.row - start.row) <= 1,
+    );
+    const blockedRing = ring
+      .filter(
+        (tile) =>
+          !visiblyOpen(tile) ||
+          level.stones.some((stone) => stone.position.equals(tile)) ||
+          level.scenery.flowers.some((flower) => flower.position.equals(tile)),
+      )
+      .map((tile) => `${tile.column}, ${tile.row}`);
+    expect(blockedRing, 'every tile around the start must be drawn as free open ground').toEqual([]);
+    const lowestVisibleRow = Math.max(...tiles.filter(visiblyOpen).map((tile) => tile.row));
+    expect(lowestVisibleRow - start.row, 'one visibly free row, then the bottom boundary').toBe(1);
+    const isPath = (tile: TilePosition): boolean =>
+      level.scenery.size.contains(tile) && level.scenery.groundAt(tile).equals(Ground.Path);
+    const pathEnds = tiles.filter(
+      (tile) =>
+        isPath(tile) &&
+        [Direction.Up, Direction.Down, Direction.Left, Direction.Right].filter((direction) =>
+          isPath(tile.neighbor(direction)),
+        ).length === 1,
+    );
+    expect(
+      Math.min(...pathEnds.map((end) => Math.max(Math.abs(end.column - start.column), Math.abs(end.row - start.row)))),
+      'the start lies within two tiles of where a path ends',
+    ).toBeLessThanOrEqual(2);
   });
 }
 
@@ -75,12 +117,14 @@ test('the fourth level is finished by pushing the boulder out of the gap to the 
     level,
     pathTo(level, (tile) => tile.equals(TilePosition.at(6, 11)))!,
   );
-  for (let tick = 0; tick < 20 && !level.canPush; tick++) level.tick(Heading.of(Direction.Up));
+  for (let tick = 0; tick < 20 && !level.canGrip; tick++) level.tick(Heading.of(Direction.Up));
+  expect(level.canGrip).toBe(true);
+  level.grip();
   for (let push = 0; push < 2; push++) {
-    expect(level.canPush).toBe(true);
-    level.push();
+    level.tick(Heading.of(Direction.Up));
     for (let tick = 0; tick < 16; tick++) level.tick(null);
   }
+  level.release();
   const toKey = pathTo(level, (tile) => tile.equals(key));
   expect(toKey, 'the key must open up once the boulder is pushed into the glade').toBeDefined();
   expect(follow(level, toKey!).some((event) => event instanceof KeyCollected)).toBe(true);

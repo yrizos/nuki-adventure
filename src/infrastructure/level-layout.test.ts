@@ -154,6 +154,23 @@ describe('a gate in a layout', () => {
     expect(level.scenery.groundAt(at(2, 2))).toBe(Ground.Grass);
   });
 
+  test('hangs a gate between fences above and below it as one approached from the west', () => {
+    const level = gated(['.DDD..', '...F..', '.P.G.K', '...F..', '..H...']);
+    expect(level.gate?.equals(SwingGate.closedAt(at(3, 2), Direction.Left))).toBe(true);
+    expect(level.plate).toEqual(at(1, 2));
+  });
+
+  test('starts the one boulder on the spot the shuffle picks among its symbols', () => {
+    const rows = ['.DDD.', '.K...', '.O.O.', '..H..'];
+    const reversed = (positions: readonly TilePosition[]) => [...positions].reverse();
+    const level = levelFromLayout(LevelId.of('spots'), rows, reversed, { keys: { K: { restores: () => true } } });
+    expect(level.boulders).toEqual([Boulder.at(at(3, 2))]);
+  });
+
+  test('rejects boulder spots where any one of them would break the level', () => {
+    expect(() => gated(['.DDD.', '.K...', 'WFGFW', '.OO..', '...H.'])).toThrow('boulder');
+  });
+
   test.each([
     ['two gates', ['.DDD.', '.K...', 'FGFGF', '..H..'], 'at most one gate'],
     ['a gate without a fence on one side', ['.DDD.', '.K...', 'W.GFW', '..H..'], 'between two fences'],

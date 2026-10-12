@@ -7,6 +7,7 @@ import type { LevelId } from '../domain/shared/level-id';
 import type { LevelAction } from '../domain/level/level-action';
 import type { Outline } from '../domain/level/obstacles';
 import type { Scenery } from '../domain/level/scenery';
+import type { TilePosition } from '../domain/level/position';
 import type { SwingGate } from '../domain/level/swing-gate';
 
 export interface LevelView {
@@ -18,9 +19,10 @@ export interface LevelView {
   readonly collected: readonly Star[];
   readonly door: Door;
   readonly gate: SwingGate | undefined;
+  readonly plate: TilePosition | undefined;
   readonly canOperateGate: boolean;
-  readonly canPush: boolean;
-  readonly canPull: boolean;
+  readonly canGrip: boolean;
+  readonly isGripping: boolean;
   readonly boulders: readonly Boulder[];
   readonly actions: readonly LevelAction[];
   readonly hero: HeroState;
@@ -38,9 +40,10 @@ export function levelView(level: Level): LevelView {
     collected: [...level.collected],
     door: level.door,
     gate: level.gate,
+    plate: level.plate,
     canOperateGate: level.canOperateGate,
-    canPush: level.canPush,
-    canPull: level.canPull,
+    canGrip: level.canGrip,
+    isGripping: level.isGripping,
     boulders: [...level.boulders],
     actions: level.actions,
     hero: level.hero,

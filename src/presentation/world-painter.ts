@@ -13,6 +13,8 @@ import {
   flowerFrameLength,
   fruitTreeArt,
   gateArt,
+  plateArt,
+  sideGateArt,
   grassArt,
   groundShadow,
   lightMote,
@@ -363,6 +365,7 @@ export class WorldPainter {
       const sway = Math.floor((frame + (column * 11 + row * 17) * 7) / flowerFrameLength) % 2;
       draw(flowerArt[this.flowerChoices[index]!]![sway]!, column * tileSize, row * tileSize);
     });
+    if (level.plate) draw(plateArt, level.plate.column * tileSize, level.plate.row * tileSize);
 
     const objects: { base: number; paint: () => void; shadow: () => void }[] = [];
     const shadow =
@@ -428,11 +431,10 @@ export class WorldPainter {
     const { gate } = level;
     if (gate) {
       const { column, row } = gate.position;
-      const swung = Math.min(Math.floor((scene.gateAge ?? 0) / framesPerGateFrame), gateArt.opening.length - 1);
+      const { opening, open } = gate.swing === Direction.Up ? gateArt : sideGateArt;
+      const swung = Math.min(Math.floor((scene.gateAge ?? 0) / framesPerGateFrame), opening.length - 1);
       const art =
-        gate.state === 'open'
-          ? gateArt.open
-          : gateArt.opening[gate.state === 'closing' ? gateArt.opening.length - 1 - swung : swung]!;
+        gate.state === 'open' ? open : opening[gate.state === 'closing' ? opening.length - 1 - swung : swung]!;
       const base = (row + 1) * tileSize;
       objects.push({
         base,

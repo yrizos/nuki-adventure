@@ -49,6 +49,27 @@ export class SwingGateClosed {
   ) {}
 }
 
+export class SwingGateStuck {
+  constructor(
+    readonly levelId: LevelId,
+    readonly position: TilePosition,
+  ) {}
+}
+
+export class PlatePressed {
+  constructor(
+    readonly levelId: LevelId,
+    readonly position: TilePosition,
+  ) {}
+}
+
+export class PlateReleased {
+  constructor(
+    readonly levelId: LevelId,
+    readonly position: TilePosition,
+  ) {}
+}
+
 export type LevelEvent =
   | KeyCollected
   | StarCollected
@@ -56,4 +77,7 @@ export type LevelEvent =
   | SwingGateOpeningStarted
   | SwingGateOpened
   | SwingGateClosingStarted
-  | SwingGateClosed;
+  | SwingGateClosed
+  | SwingGateStuck
+  | PlatePressed
+  | PlateReleased;

@@ -209,6 +209,22 @@ test('the fence gate frames share one 32 by 64 size and park open apart from the
   expect(sprites.fence!.frames['gate-open']!.rows).not.toEqual(sprites.fence!.frames['gate-7']!.rows);
 });
 
+test('the side gate frames cover the gate tile, the tile east of it and the two tiles north', () => {
+  const gate = Object.entries(sprites.fence!.frames).filter(([name]) => name.startsWith('side-gate-'));
+  expect(gate.map(([name]) => name)).toEqual([
+    ...Array.from({ length: 8 }, (_, step) => `side-gate-${step}`),
+    'side-gate-open',
+  ]);
+  for (const [, art] of gate) expect([sprite(art).width, sprite(art).height]).toEqual([64, 64]);
+  expect(sprites.fence!.animations['side-opening']!.frames).toEqual(gate.slice(0, 8).map(([, art]) => art));
+});
+
+test('the pressure plate is one 32 by 32 frame', () => {
+  expect(Object.keys(sprites.plate!.frames)).toEqual(['plate']);
+  const art = sprites.plate!.frames.plate!;
+  expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
+});
+
 test('the hero push frames are 32 by 32', () => {
   for (const art of sprites.hero!.animations['up-push']!.frames) {
     expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);

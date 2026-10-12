@@ -17,6 +17,7 @@ import { randomShuffle } from '../infrastructure/random-shuffle';
 import { secondLevel } from '../infrastructure/second-level';
 import { thirdLevel } from '../infrastructure/third-level';
 import { fourthLevel } from '../infrastructure/fourth-level';
+import { fifthLevel } from '../infrastructure/fifth-level';
 import { pixelDifference } from '../test-support/pictures';
 import type { Art } from './art/art';
 import * as library from './sprite-library';
@@ -192,6 +193,7 @@ test.each([
   { name: 'second', create: secondLevel },
   { name: 'third', create: thirdLevel },
   { name: 'fourth', create: fourthLevel },
+  { name: 'fifth', create: fifthLevel },
 ])('the $name level has ground art for every place where terrains meet and paints', ({ create }) => {
   const level = levelView(create(randomShuffle));
   expect(() =>
@@ -1441,7 +1443,8 @@ test.each([
     keys: { K: { restores: () => true } },
   });
   const item = itemRow.endsWith('+') ? library.starArt : library.keyArt.gold;
-  level.push();
+  level.grip();
+  level.tick(Heading.of(Direction.Up));
   for (const ticks of [8, 8]) {
     for (let tick = 0; tick < ticks; tick++) level.tick(null);
     const view = levelView(level);

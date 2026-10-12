@@ -32,15 +32,15 @@ export class PlayLevel {
     return events;
   }
 
-  push(id: LevelId): void {
+  grip(id: LevelId): void {
     const level = this.levels.load(id);
-    level.push();
+    level.grip();
     this.levels.save(level);
   }
 
-  pull(id: LevelId): void {
+  release(id: LevelId): void {
     const level = this.levels.load(id);
-    level.pull();
+    level.release();
     this.levels.save(level);
   }
 
