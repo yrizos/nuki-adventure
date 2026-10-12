@@ -34,7 +34,7 @@ test('the first level is an orchard clearing with one key that restores the whol
   ]);
   expect(level.scenery.trees).toHaveLength(26);
   expect(level.scenery.flowers).toHaveLength(27);
-  expect(level.scenery.woodland.tiles).toHaveLength(163);
+  expect(level.scenery.woodland.tiles).toHaveLength(161);
 });
 
 test('the first level holds a small pond in its southwestern orchard', () => {
@@ -64,7 +64,7 @@ test('the first level marks twenty star spots and lets the shuffle choose its st
     at(12, 1),
     at(10, 2),
     at(17, 2),
-    at(2, 4),
+    at(2, 5),
     at(23, 6),
     at(1, 8),
     at(14, 8),
@@ -103,7 +103,7 @@ test('the first level leaves no open ground cut off from where the hero starts',
     }
   }
   expect(tiles.filter((tile) => open(tile) && !reached.has(`${tile.column},${tile.row}`))).toEqual([]);
-  expect(reached.size).toBe(386);
+  expect(reached.size).toBe(388);
 });
 
 test('the first level lets the hero materialize with every surrounding tile free', () => {

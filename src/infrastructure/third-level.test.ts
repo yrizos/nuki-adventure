@@ -10,32 +10,34 @@ import { follow, openGate, pathTo } from '../test-support/walk-level';
 import { thirdLevel, thirdLevelId } from './third-level';
 
 const at = TilePosition.at;
-const tiles = Array.from({ length: 30 * 30 }, (_, index) => at(index % 30, Math.floor(index / 30)));
-const goldKey = at(7, 9);
-const silverKey = at(22, 10);
-const islandLink = at(21, 12);
-const orchardSpots = [at(7, 7), at(5, 11), at(10, 11)];
-const otherSpots = [
-  at(17, 2),
-  at(7, 4),
-  at(20, 4),
-  at(3, 8),
-  at(25, 7),
-  at(26, 9),
-  at(19, 10),
-  at(3, 13),
-  at(26, 13),
-  at(4, 18),
-  at(11, 18),
+const tiles = Array.from({ length: 25 * 25 }, (_, index) => at(index % 25, Math.floor(index / 25)));
+const goldKey = at(7, 10);
+const islandSpot = at(18, 9);
+const islandLink = at(18, 11);
+const starSpots = [
+  at(16, 2),
+  at(4, 3),
+  at(1, 6),
+  at(10, 3),
+  at(20, 5),
+  at(22, 8),
+  islandSpot,
+  at(14, 10),
+  at(2, 11),
+  at(22, 11),
+  at(22, 14),
+  at(2, 15),
+  at(9, 16),
+  at(15, 17),
   at(19, 18),
-  at(26, 19),
+  at(3, 20),
   at(6, 21),
-  at(23, 23),
-  at(10, 25),
-  at(18, 27),
+  at(20, 21),
+  at(16, 22),
+  at(9, 22),
 ];
 const inOrchard = (tile: TilePosition): boolean =>
-  tile.column >= 5 && tile.column <= 10 && tile.row >= 7 && tile.row <= 11;
+  tile.column >= 5 && tile.column <= 9 && tile.row >= 8 && tile.row <= 11;
 
 function reachedFromStart(level: Level, gateOpen: boolean, blocked?: TilePosition): readonly TilePosition[] {
   const open = (tile: TilePosition): boolean =>
@@ -75,42 +77,32 @@ function leaveThroughDoor(level: Level): void {
   expect(level.tick(Heading.of(Direction.Up))).toEqual([]);
 }
 
-function expectDoorShut(level: Level): void {
-  expect(level.keys).toHaveLength(1);
-  expect(level.door.isOpen).toBe(false);
-  expect(() => level.openDoor()).toThrow();
-  expect(pathTo(level, (tile) => level.door.covers(tile))).toBeUndefined();
-}
-
-test('the third level is a 30 by 30 map with a top door, an orchard gate, a gold key and a silver key', () => {
+test('the third level is a 25 by 25 map with a top door, an orchard gate and one gold key', () => {
   const level = thirdLevel(keepOrder);
   expect(level.id).toBe(thirdLevelId);
-  expect(level.scenery.size).toEqual({ columns: 30, rows: 30 });
-  expect(level.hero.position).toEqual(at(14, 26));
+  expect(level.scenery.size).toEqual({ columns: 25, rows: 25 });
+  expect(level.hero.position).toEqual(at(12, 21));
   expect(level.hero.facing).toBe(Direction.Up);
-  expect(level.door.equals(Door.closedAt(at(13, 1)))).toBe(true);
-  expect(level.door.footprint).toEqual([at(13, 1), at(14, 1), at(15, 1)]);
-  expect(level.gate?.equals(SwingGate.closedAt(at(8, 12)))).toBe(true);
-  expect(level.keys.map((key) => [key.position, key.material])).toEqual([
-    [goldKey, KeyMaterial.Gold],
-    [silverKey, KeyMaterial.Silver],
-  ]);
+  expect(level.door.equals(Door.closedAt(at(11, 1)))).toBe(true);
+  expect(level.door.footprint).toEqual([at(11, 1), at(12, 1), at(13, 1)]);
+  expect(level.gate?.equals(SwingGate.closedAt(at(7, 12)))).toBe(true);
+  expect(level.keys.map((key) => [key.position, key.material])).toEqual([[goldKey, KeyMaterial.Gold]]);
 });
 
 test('the third level marks twenty star spots and lets the shuffle choose its stars', () => {
   const spots = starSpotsOf(thirdLevel);
   expect(spots).toHaveLength(20);
-  expect(spots).toEqual(expect.arrayContaining([...orchardSpots, ...otherSpots]));
+  expect(spots).toEqual(expect.arrayContaining(starSpots));
+  expect(spots.filter(inOrchard)).toEqual([]);
   expect(thirdLevel(reverseOrder).stars.map((star) => star.position)).toEqual([...spots].reverse().slice(0, 5));
 });
 
-test('the third level keeps the orchard, its key and its star spots shut until the gate opens', () => {
+test('the third level keeps the orchard and its key shut until the gate opens', () => {
   const level = thirdLevel(keepOrder);
   const reachable = covered(reachedFromStart(level, false));
   expect(reachable(level.gate!.approach)).toBe(true);
   expect(tiles.filter((tile) => inOrchard(tile) && reachable(tile))).toEqual([]);
-  expect(reachable(silverKey)).toBe(true);
-  expect(otherSpots.filter((spot) => !reachable(spot))).toEqual([]);
+  expect(starSpots.filter((spot) => !reachable(spot))).toEqual([]);
   expect(pathTo(level, (tile) => inOrchard(tile))).toBeUndefined();
 });
 
@@ -122,51 +114,20 @@ test('the third level leaves no open ground cut off once the gate opens', () => 
     !level.stones.some((stone) => stone.position.equals(tile)) &&
     !level.door.covers(tile);
   expect(tiles.filter((tile) => open(tile) && !reachable(tile))).toEqual([]);
-  expect([goldKey, ...orchardSpots].filter((tile) => !reachable(tile))).toEqual([]);
+  expect(reachable(goldKey)).toBe(true);
 });
 
-test('the third level joins its pond island to the shore by a single path tile', () => {
+test('the third level joins its pond island, which holds a star spot, to the shore by a single path tile', () => {
   const level = thirdLevel(keepOrder);
-  expect(covered(reachedFromStart(level, true))(silverKey)).toBe(true);
-  expect(covered(reachedFromStart(level, true, islandLink))(silverKey)).toBe(false);
+  expect(starSpotsOf(thirdLevel)).toContainEqual(islandSpot);
+  expect(covered(reachedFromStart(level, true))(islandSpot)).toBe(true);
+  expect(covered(reachedFromStart(level, true, islandLink))(islandSpot)).toBe(false);
 });
 
-test('the third level splits its 900 tiles between the orchard key and the pond key', () => {
-  const level = thirdLevel(keepOrder);
-  const [gold, silver] = level.keys.map((key) => key.restores);
-  expect(gold!.tiles).toHaveLength(452);
-  expect(silver!.tiles).toHaveLength(448);
-  expect(tiles.filter((tile) => gold!.covers(tile) === silver!.covers(tile))).toEqual([]);
-  expect(gold!.covers(goldKey)).toBe(true);
-  expect(silver!.covers(silverKey)).toBe(true);
-  expect(tiles.filter(inOrchard).filter((tile) => !gold!.covers(tile))).toEqual([]);
-});
-
-test('the third level is played gold first: through the gate, to the island and out of the door', () => {
+test('the third level is played through the gate, to the key and out of the door', () => {
   const level = thirdLevel(keepOrder);
   expect(pathTo(level, (tile) => tile.equals(goldKey))).toBeUndefined();
   openGate(level);
-  collect(level, goldKey);
-  expectDoorShut(level);
-  collect(level, silverKey);
-  leaveThroughDoor(level);
-});
-
-test('the third level is played silver first: to the island, then through the gate and out of the door', () => {
-  const level = thirdLevel(keepOrder);
-  collect(level, silverKey);
-  expectDoorShut(level);
-  expect(pathTo(level, (tile) => tile.equals(goldKey))).toBeUndefined();
-  openGate(level);
-  collect(level, goldKey);
-  leaveThroughDoor(level);
-});
-
-test('the third level can open its gate before either key and still take the silver key first', () => {
-  const level = thirdLevel(keepOrder);
-  openGate(level);
-  collect(level, silverKey);
-  expectDoorShut(level);
   collect(level, goldKey);
   leaveThroughDoor(level);
 });

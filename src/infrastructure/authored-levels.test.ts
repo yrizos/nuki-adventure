@@ -3,7 +3,7 @@ import { LevelCompleted, KeyCollected } from '../domain/level/level-events';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
 import { Ground } from '../domain/level/scenery';
 import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
-import { follow, openGate, pathTo } from '../test-support/walk-level';
+import { follow, pathTo } from '../test-support/walk-level';
 import { firstLevel } from './first-level';
 import { secondLevel } from './second-level';
 import { fourthLevel } from './fourth-level';
@@ -14,8 +14,7 @@ const authoredLevels = [
   { name: 'second', create: secondLevel },
   { name: 'third', create: thirdLevel },
   { name: 'fourth', create: fourthLevel },
-].map((authored) => ({ ...authored, keyCount: authored.create(keepOrder).keys.length }));
-const multiKeyLevels = authoredLevels.filter(({ keyCount }) => keyCount > 1);
+];
 
 for (const { name, create } of authoredLevels) {
   test(`the ${name} level starts in view, facing inward and far from the exit`, () => {
@@ -63,46 +62,6 @@ test.each(authoredLevels)('the $name level marks at least fifteen star spots', (
 test.each(authoredLevels)('the $name level holds different stars under a different shuffle', ({ create }) => {
   const stars = (shuffle: typeof keepOrder) => create(shuffle).stars.map((star) => star.position);
   expect(stars(reverseOrder)).not.toEqual(stars(keepOrder));
-});
-
-test.each(
-  multiKeyLevels.flatMap(({ name, create, keyCount }) =>
-    [
-      Array.from({ length: keyCount }, (_, index) => index),
-      Array.from({ length: keyCount }, (_, index) => keyCount - 1 - index),
-    ].map((order) => ({
-      name,
-      create,
-      order,
-      label: order.join(' then '),
-    })),
-  ),
-)('the $name level completes at its door after its keys are collected $label', ({ create, order }) => {
-  const level = create(keepOrder);
-  const keys = order.map((index) => level.keys[index]!);
-  if (level.gate) openGate(level);
-  for (const [collected, key] of keys.entries()) {
-    const path = pathTo(level, (position) => position.equals(key.position));
-    expect(path, 'the key must be reachable from where she stands').toBeDefined();
-    const events = follow(level, path!).filter((event) => event instanceof KeyCollected);
-    expect(
-      events.map((event) => event.position),
-      'walking to a key must collect only that key',
-    ).toEqual([key.position]);
-    expect(level.keys).toHaveLength(keys.length - collected - 1);
-    expect(level.door.isOpen).toBe(false);
-    if (collected < keys.length - 1) {
-      expect(() => level.openDoor(), 'the door must refuse to open while a key remains').toThrow();
-      expect(level.door.isOpen).toBe(false);
-    }
-    expect(level.isComplete).toBe(false);
-  }
-  level.openDoor();
-  expect(level.door.isOpen, 'the last key must allow the door to open').toBe(true);
-  const toDoor = pathTo(level, (position) => level.door.covers(position));
-  expect(toDoor, 'the open door must be reachable').toBeDefined();
-  expect(follow(level, toDoor!).some((event) => event instanceof LevelCompleted)).toBe(true);
-  expect(level.isComplete).toBe(true);
 });
 
 test('the fourth level is finished by pushing the boulder out of the gap to the glade', () => {

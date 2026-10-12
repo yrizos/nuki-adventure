@@ -166,18 +166,18 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    await expectChecksum(picture, '935f69e4ec29e520c1ee566ffac371fa8f45ae48fa2e6e9d766f3485daf8e118');
+    await expectChecksum(picture, '29af94bf954bd5099f15e95d6b0253598a8ac1742fc6cdbad974a0e823a925eb');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     // The key lies outside the frame, so the wave starts from her start to stop partway across the frame.
     painter.paintRestoring(picture, scene, level.hero.position, 20, [], [key.restores]);
-    await expectChecksum(picture, '2d36ba691fba45d6503a6f05703e195faef7fc2108051b5d5e48171312b6a9e8');
+    await expectChecksum(picture, 'eba04be42a1b55c13e7965ba9287b3b4400b162ace7096451616ab912be9704d');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [key.restores]);
-    await expectChecksum(picture, 'c0be47159a6fc5fbd4613eaa2c81f2482df70919cee5eb210fc653b5b736d943');
+    await expectChecksum(picture, '6042ef581603be3c4931bd965a61747d7749a26d5c8d2277fab728c83c079d16');
   });
 });
 
@@ -712,8 +712,32 @@ test('the seam follows the restored set, whatever was painted before it', () => 
   ).toBeUndefined();
 });
 
-test('the jagged seam between the two areas of the third level keeps clear tiles pure and mixes both pictures near the seam', () => {
-  const level = thirdLevel((positions) => positions);
+test('a jagged seam between two areas keeps clear tiles pure and mixes both pictures near the seam', () => {
+  const inRed = (position: TilePosition) => position.column + (position.row % 4 < 2 ? 0 : 1) < 6;
+  const level = levelFromLayout(
+    LevelId.of('jagged'),
+    [
+      'WWWWDDDWWWWW',
+      '............',
+      '..K.........',
+      '...Lt.......',
+      '.........*..',
+      '............',
+      '.......Nt...',
+      '............',
+      '.........S..',
+      '..*.........',
+      '.....H......',
+      '............',
+    ],
+    (positions) => positions,
+    {
+      keys: {
+        K: { restores: inRed },
+        S: { restores: (position) => !inRed(position), material: KeyMaterial.Silver },
+      },
+    },
+  );
   const [red, blue] = level.keys.map((key) => key.restores) as [Area, Area];
   const { columns, rows } = level.scenery.size;
   const side = columns * tileSize;
