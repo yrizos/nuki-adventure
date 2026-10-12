@@ -34,6 +34,8 @@ Invariants are checked exhaustively over enumerated inputs with `test.each`, not
 
 Each test collects its violations with plain comparisons and asserts once on the list, because an assertion per input dominates the run time.
 
+- Every [level design hard constraint](level-design.md#hard-constraints) added gets a deterministic test over every authored level.
+- In every authored level, every tile that touches a fenced area from outside, corners included, is open ground with no stone or woodland.
 - In every authored level, the hero starts on each walkable tile of the playable area and moves in each of the eight directions. She never ends inside an obstacle or outside the level. The door stays closed until every key is collected.
 - In each woodland-bounded level, woodland is impassable and every open tile is reachable from the start. The first, second and third level test files check this per level. No shared sweep exists.
 - In every authored level with a swing gate, the sweep runs twice: with the gate closed from every tile on the hero's side, where she never enters a tile beyond the gate, and with the gate open from every tile.

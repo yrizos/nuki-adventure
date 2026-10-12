@@ -17,7 +17,7 @@ const layout = [
   'WW.....##.WWW.##=~..~.WWW',
   'WW=##..#..WWW.#O..***.+WW',
   'WW..####.WWW..##FFFFFF.WW',
-  'WWW...#..WWWW.OPF....FWWW',
+  'WWW...#..WWWW.OPF....F.WW',
   'WWW+..#...WWW..#F..LtF.WW',
   'WW..Tt#...WW..*#G#K..F.+W',
   'WWTt.##..WWW.**.F....F..W',

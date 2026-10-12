@@ -6,6 +6,8 @@ Terms follow the [glossary](glossary.md). A level that breaks a hard constraint 
 
 The `Level` constructor (`src/domain/level/level.ts`), `Scenery.of` (`src/domain/level/scenery.ts`), `levelFromLayout` (`src/infrastructure/level-layout.ts`) and the authored-level tests enforce most rules. Rules marked (unchecked) have no validator, so the designer checks them.
 
+Every new hard constraint comes with a deterministic test that checks it in every authored level.
+
 ### Hero and Door
 
 - Exactly one hero start and exactly one door. The door is three tiles wide, on open ground.
@@ -38,6 +40,10 @@ The `Level` constructor (`src/domain/level/level.ts`), `Scenery.of` (`src/domain
 - Woodland is impassable and blocks its whole tile.
 - In a woodland-bounded level, every tile the hero cannot reach is woodland, water, the door or covered by a prop. No unreachable grass or path tile exists.
 - Woodland drawn beyond the map edges is decoration and never adds playable space. (unchecked)
+
+### Fenced Areas
+
+- Nuki can walk a complete loop around the outside of every fenced area. Every tile that touches the fence from outside, corners included, is open ground with no stone or woodland.
 
 ### Path Tiles
 

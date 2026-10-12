@@ -93,6 +93,37 @@ test.each(authoredLevels)('every path tile of the $name level shares an edge wit
   expect(alone).toEqual([]);
 });
 
+test.each(authoredLevels)('she can walk a full loop around every fenced area of the $name level', ({ create }) => {
+  const level = create(keepOrder);
+  const posts = [...level.scenery.fences.map((fence) => fence.position), ...(level.gate ? [level.gate.position] : [])];
+  const blocked: string[] = [];
+  for (const start of posts) {
+    const group = [start];
+    for (let index = 0; index < group.length; index++) {
+      for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
+        const neighbor = group[index]!.neighbor(direction);
+        if (posts.some((post) => post.equals(neighbor)) && !group.some((tile) => tile.equals(neighbor)))
+          group.push(neighbor);
+      }
+    }
+    // Each fenced area is checked once, from its top-left post.
+    const left = Math.min(...group.map((tile) => tile.column));
+    const right = Math.max(...group.map((tile) => tile.column));
+    const top = Math.min(...group.map((tile) => tile.row));
+    const bottom = Math.max(...group.map((tile) => tile.row));
+    if (!start.equals(TilePosition.at(left, top)) || right - left < 2 || bottom - top < 2) continue;
+    for (let row = top - 1; row <= bottom + 1; row++) {
+      for (let column = left - 1; column <= right + 1; column++) {
+        const tile = TilePosition.at(column, row);
+        const outside = row < top || row > bottom || column < left || column > right;
+        if (outside && (!level.scenery.isWalkable(tile) || level.stones.some((stone) => stone.position.equals(tile))))
+          blocked.push(`${column}, ${row}`);
+      }
+    }
+  }
+  expect(blocked).toEqual([]);
+});
+
 test.each(authoredLevels)('the $name level holds exactly five stars', ({ create }) => {
   expect(create(keepOrder).stars).toHaveLength(5);
 });
