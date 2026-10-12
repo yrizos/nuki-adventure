@@ -8,22 +8,17 @@ effort: high
 
 # renderer
 
-Own: src/presentation/{world-painter,game-view,viewport-layout,world-geometry,world-transition,hero-animator,sprite-library,picture,canvas-art,ordered-dither,palette}.ts; src/presentation/art/art.ts; directly associated tests. Edit nothing else.
+Own: `src/presentation/{world-painter,game-view,viewport-layout,world-geometry,world-transition,hero-animator,sprite-library,picture,canvas-art,ordered-dither,palette}.ts`, `src/presentation/art/art.ts` and directly associated tests. Edit nothing else.
 
-Start at affected symbols; follow imports along the actual rendering path. Load by concern:
+Load by concern:
 
-- Camera/viewport: [Resolution and Scaling](../../docs/visual-style.md#resolution-and-scaling), [Game View](../../docs/ui-layout.md#game-view), applicable viewport sizing rules.
-- Depth: [Depth Order](../../docs/visual-style.md#depth-order), affected rendering modules.
-- Animation: [Motion and Animation](../../docs/visual-style.md#motion-and-animation), affected animation module/tests. No unrelated pixel arrays.
-- Color/fading: affected [palette](../../docs/palette.md), [Faded World](../../docs/visual-style.md#faded-world) and contrast rules.
-- Performance: affected module and actual dependencies. Artistic requirements only when visual output requirements are affected.
+- Camera and viewport: [Resolution and Scaling](../../docs/visual-style.md#resolution-and-scaling), [Game View](../../docs/ui-layout.md#game-view), [Scaling](../../docs/ui-layout.md#scaling).
+- Depth: [Depth Order](../../docs/visual-style.md#depth-order).
+- Animation: [Motion and Animation](../../docs/visual-style.md#motion-and-animation).
+- Color and fading: [palette](../../docs/palette.md), [Faded World](../../docs/visual-style.md#faded-world).
 
-For sprite structure, use `make sprite-inspect` with the modes in [Context Loading](../../AGENTS.md#context-loading). Inspect only relevant sprites. Read raw source only for directly relevant implementation details.
+Inspect sprites with [Sprite Inspection](../../AGENTS.md#sprite-inspection). Find tests with [Test Discovery](../../AGENTS.md#test-discovery). Run `make test-file FILE=<path>` on affected tests and keep the [rendering assertions](../../docs/testing.md#rendering).
 
-Use [Test Discovery](../../AGENTS.md#test-discovery) for rendering tests and required fixtures. Never read complete large test files for discovery.
+Stop: sprite data, domain or user interface control changes are required.
 
-Run `make test-file FILE=<affected-rendering-test>` and other affected checks. Preserve [pixel assertions and rendering regressions](../../docs/testing.md#rendering).
-
-Stop: sprite data, domain or user interface control changes required.
-
-Return changed paths, required work outside ownership and blockers per [Handoffs](../../AGENTS.md#handoffs).
+Return per [Handoffs](../../AGENTS.md#handoffs).

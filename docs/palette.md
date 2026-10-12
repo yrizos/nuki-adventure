@@ -1,213 +1,73 @@
 # Color Palette
 
+Hex values and the faded mapping live in [`src/presentation/sprites/palette.js`](../src/presentation/sprites/palette.js). [`src/presentation/palette.ts`](../src/presentation/palette.ts) defines the valid codes and the ramp order. This file assigns codes to elements.
+
 ## Principles
 
-- Each ramp shifts hue as it changes brightness, with shadows leaning toward blue or teal and highlights toward yellow
-- Flowers use soft light steps
-- Ink is the single outline color for everything the player interacts with: the hero, stars, keys, stones and floor triggers
-- Pure black is used only for the desktop background outside the game column; pure white is not used
-- A new hue is added as a full ramp of four steps, never as a single color
+- Ramp steps run darkest to lightest. Shadows lean toward blue or teal, highlights toward yellow.
+- A new hue is added as a full four-step ramp, never as a single color.
+- Ink is the outline color for everything the player interacts with: the hero, stars, keys and stones. Ink has no lighter ramp step.
+- Pure white is never used. Pure black is only the desktop background outside the game column.
 
-## Ramps
+## Codes
 
-Steps run from darkest to lightest.
-
-### Neutrals
-
-| Code | Hex |
+| Ramp | Codes |
 | --- | --- |
-| Ink | `#1C1A2E` |
-| N1 | `#34344F` |
-| N2 | `#565875` |
-| N3 | `#8A8CA6` |
-| N4 | `#C4C6D6` |
-| Paper | `#F5F2E9` |
-
-### Greens
-
-| Code | Hex |
-| --- | --- |
-| G0 | `#1F4A3F` |
-| G1 | `#2F7A4A` |
-| G2 | `#5AA845` |
-| G3 | `#9BD35A` |
-| G4 | `#D8EE8C` |
-
-### Earth
-
-| Code | Hex |
-| --- | --- |
-| E0 | `#3A2622` |
-| E1 | `#6E4430` |
-| E2 | `#A8703F` |
-| E3 | `#D9B072` |
-| E4 | `#F0DDA6` |
-
-### Water
-
-| Code | Hex |
-| --- | --- |
-| W0 | `#1E3A6E` |
-| W1 | `#2F67B8` |
-| W2 | `#4FA0E3` |
-| W3 | `#9AD7F5` |
-| W4 | `#E6F7FF` |
-
-### Gold
-
-| Code | Hex |
-| --- | --- |
-| Y0 | `#9A5A12` |
-| Y1 | `#E3961C` |
-| Y2 | `#FFC93A` |
-| Y3 | `#FFF0A0` |
-
-### Red
-
-| Code | Hex |
-| --- | --- |
-| R0 | `#6E1C33` |
-| R1 | `#C2303E` |
-| R2 | `#F0604F` |
-| R3 | `#FFB3A3` |
-
-### Violet
-
-| Code | Hex |
-| --- | --- |
-| V0 | `#3F2466` |
-| V0a | `#482A74` |
-| V1 | `#7A45BF` |
-| V2 | `#B47EF0` |
-| V3 | `#E8C9FF` |
-
-### Teal
-
-| Code | Hex |
-| --- | --- |
-| T0 | `#134A52` |
-| T1 | `#1F8A8A` |
-| T2 | `#3CC8B4` |
-| T3 | `#A6F0DE` |
-
-### Pink
-
-| Code | Hex |
-| --- | --- |
-| P0 | `#6B1F4F` |
-| P1 | `#C23A7E` |
-| P2 | `#F27AB0` |
-| P3 | `#FFC2DD` |
-
-### Skin
-
-| Code | Hex |
-| --- | --- |
-| S0 | `#7A4A38` |
-| S1 | `#C08262` |
-| S2 | `#E8B896` |
-| S3 | `#FFE0C7` |
+| Neutrals | Ink, N1, N2, N3, N4, Paper |
+| Greens | G0 to G4 |
+| Earth | E0 to E4 |
+| Water | W0 to W4 |
+| Gold | Y0 to Y3 |
+| Red | R0 to R3 |
+| Violet | V0, V0a, V1, V2, V3 |
+| Teal | T0 to T3 |
+| Pink | P0 to P3 |
+| Skin | S0 to S3 |
 
 ## World
 
 | Element | Colors |
 | --- | --- |
-| Hero | E3 hair, E2 hair shading, E4 hair highlights, E1 eyes, Paper eye catchlights, S2 skin, S1 skin shading, S3 skin highlights, P2 t-shirt, P1 t-shirt shading, P3 t-shirt highlights, W1 jeans, W0 jeans shading, E1 shoes |
+| Hero | E3 hair, E2 hair shading, E4 hair highlights, E1 eyes, Paper catchlights, S2 skin, S1 skin shading, S3 skin highlights, P2 t-shirt, P1 t-shirt shading, P3 t-shirt highlights, W1 jeans, W0 jeans shading, E1 shoes |
 | Grass | G2 base, G3 tufts, G1 shading |
 | Trees | G1 canopy, G0 shadow, G3 leaf highlights, E1 trunk, E0 trunk shadow |
 | Water | W1 body, W0 deep edges, W2 ripples, W4 foam |
 | Paths | E3 base, E4 highlights, E2 edges |
 | Flowers | R3, V3, W3 or Paper petals, Y3 centers, G1 stems |
-| Stars | Y2 body, Y1 shading, Y3 sparkle |
+| Stars | Y2 body, Y1 shading, Y3 shine |
+| Keys | Y2 core, Y1 shading, Y3 shine. Silver keys use N3, N4 and W4 on the same pixels |
 | Stones | N3 base, N2 shading, N4 highlight |
-| Floor triggers | N2 plate, N1 inset, Y3 inset when activated |
 | Fences | E1 wood, E2 highlight, E0 shading |
 | Door | E1 frame, E2 frame highlights, E0 frame shading and grain, E2 planks, E0 plank lines and handles, E0 doorway when open |
 | Light motes | Paper |
 
-### Keys
-
-| Element | Shading | Core | Shine |
-| --- | --- | --- | --- |
-| Key | Y1 | Y2 | Y3 |
-
-## Future Elements
-
-- Stone walls and paved floors use N2 to N4
-- Wooden buildings use E0 to E2
-- Roofs use R0 to R1, V0 to V1 or W0 to W1
-
 ## UI
 
-UI colors map onto Material 3 color roles.
+| Element | Colors |
+| --- | --- |
+| Control panel | V0 background, V0a grip dots, an Ink row then a V1 row along the top edge |
+| Joystick | V2 ring edge, Ink well with a V1 bottom right wall, V2 arrows (P3 while held) |
+| Joystick knob | P2 face, P3 highlight, P1 shading, P1 thumb dimple, P0 lip, Ink outline |
+| A button | R2 face, R3 highlight, R1 shading, R0 lip, Ink outline and letter |
+| B button | W2 face, W3 highlight, W1 shading, W0 lip, Ink outline and letter |
+| Pressed button | Face, highlight and shading drop one step (A to R1, B to W1). Letter turns Paper |
+| Framed box (message box, switches, level cards) | Ink outline, V1 inner edge, V0 fill, Paper text and symbols |
+| Start screen and level picker | Ink background with no texture. Buttons use the A button colors, pressed state included |
+| Game name | Paper, with ΠΟΛΥΧΡΩΜΗ letters cycling through V2, T2 and R2, and ΝΟΥΚΙ in Y2 |
+| Level card clock | Paper face, N4 shading, Ink outline, marks and hands |
+| Level card star | Same as the world star |
+| Locked level card | The whole card through the faded mapping |
 
-| Material role | Element | Color |
-| --- | --- | --- |
-| Surface container | Control panel background | V0 |
-| Surface container | Control panel grip dots | V0a |
-| Outline | Control panel top edge | Ink row, then a V1 row |
-| Outline | Joystick ring edge | V2 |
-| Surface container lowest | Joystick well | Ink, with a V1 bottom right wall |
-| Outline | Joystick direction arrows | V2, P3 while held |
-| On surface variant | Joystick knob | P2, with a P3 highlight, P1 shading, a P1 thumb dimple and a P0 lip, matching the hero's t-shirt |
-| Primary | A button | R2, with an R3 highlight, R1 shading, an R0 lip and an Ink letter |
-| Secondary | B button | W2, with a W3 highlight, W1 shading, a W0 lip and an Ink letter |
-| Outline | Knob and button outlines | Ink |
-| Surface container | Message box fill | V0 |
-| Outline | Message box edge | Ink outline, then a V1 inner edge |
-| On surface | Message box text | Paper |
-| Surface container | Sound, full screen and menu switch fill | V0 |
-| Outline | Sound, full screen and menu switch edge | Ink outline, then a V1 inner edge |
-| On surface | Sound switch speaker, full screen switch corners and menu switch bars | Paper |
-| Surface | Start screen and level picker background | Ink, with no texture |
-| On surface | Start screen game name | Paper, with ΠΟΛΥΧΡΩΜΗ letters cycling through V2, T2 and R2, and ΝΟΥΚΙ in Y2 |
-| Primary | Start screen and level picker buttons | Match the A button, including its pressed state |
-| Surface container | Level card fill | V0 |
-| Outline | Level card edge | Ink outline, then a V1 inner edge |
-| On surface | Level card numbers, times and stars | Paper |
-| On surface | Level card clock | Paper face, N4 shading, Ink outline, marks and hands |
-| On surface | Level card star | Matches the star in the game world |
-| Surface variant | Locked level card | The whole card through the faded world's neutral mapping |
+## Contrast
 
-### Pressed State
-
-- A pressed button drops one step on its face, highlight and shading, so A becomes R1 and B becomes W1
-- The letter on a pressed button switches to Paper
-- A pressed button sinks into its lip, so the lip is no longer visible
-- Touch and keyboard presses use the same pressed state
-
-## Accessibility
-
-### Contrast
-
-Text targets the Web Content Accessibility Guidelines (WCAG) minimum of 4.5:1, and controls target the 3:1 minimum for non-text elements.
+Text needs at least 4.5:1. Controls need at least 3:1. Pairs closest to those limits:
 
 | Pair | Ratio |
 | --- | --- |
-| Ink on R2, A letter | 5.2:1 |
-| Ink on W2, B letter | 6.0:1 |
-| Paper on R1, pressed A letter | 5.0:1 |
-| Paper on W1, pressed B letter | 5.0:1 |
-| R2 on V0, A button | 3.9:1 |
-| W2 on V0, B button | 4.5:1 |
-| V2 on V0, joystick ring | 4.3:1 |
-| P2 on V0, joystick knob | 4.9:1 |
-| V2 on Ink, joystick arrows | 5.8:1 |
-| P3 on Ink, lit joystick arrows | 11.3:1 |
-| Paper on V0, level card text | 11.3:1 |
-| Paper on Ink, start screen game name | 15.2:1 |
-| Y2 on Ink, ΝΟΥΚΙ in the start screen game name | 11.1:1 |
-| T2 on Ink, start screen game name | 8.2:1 |
-| V2 on Ink, start screen game name | 5.8:1 |
-| R2 on Ink, start screen game name and menu buttons | 5.2:1 |
 | R1 on Ink, pressed menu buttons | 3.1:1 |
-| Paper on N1, locked level card number | 10.7:1 |
-| Paper on V0, message text | 11.3:1 |
-| Paper on V0, sound and full screen switch symbols | 11.3:1 |
+| R2 on V0, A button | 3.9:1 |
+| V2 on V0, joystick ring | 4.3:1 |
+| W2 on V0, B button | 4.5:1 |
+| Paper on R1 or W1, pressed letters | 5.0:1 |
 
-### Collectibles
-
-- Stars reach only 1.3:1 brightness contrast against paths and 1.9:1 against grass, so the Ink outline on stars is required
-- Keys share the star ramp, so the Ink outline on keys is required for the same reason
-- Ink outlines reach 5.8:1 against grass and 8.4:1 against paths
-- Keys and stars share colors, so they differ by silhouette alone
+Stars and keys reach only 1.3:1 against paths and 1.9:1 against grass, so their Ink outline is required. It reaches 5.8:1 against grass and 8.4:1 against paths. Keys and stars share colors and differ by silhouette alone.

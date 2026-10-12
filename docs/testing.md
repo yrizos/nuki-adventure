@@ -5,7 +5,7 @@ Unit tests must catch every behavior regression on a local machine within second
 ## Speed
 
 - A slow test is fixed by profiling it and removing the cost it measures, not by moving it out of the default run. There is no fast subset, no separately run slow suite and no raised timeout.
-- A behavior-preserving speed-up in production code is preferred when the cost is the same in the game, such as a repeated list scan or an object rebuilt every frame.
+- Prefer a behavior-preserving production speed-up when the game pays the same cost, such as a repeated list scan or an object rebuilt every frame.
 - No test asserts on its own duration, because timing depends on the machine.
 - A whole-level playthrough runs once. A level's own test file does not repeat a scenario that the shared authored-level tests already cover for every level.
 
@@ -26,7 +26,7 @@ Unit tests must catch every behavior regression on a local machine within second
 ## Determinism
 
 - Time advances only through explicit frames. Randomness comes only from an injected shuffle.
-- Tests run in shuffled order, and mocks and stubbed globals are restored after each test, so no test may depend on another.
+- No test depends on another. `vite.config.mjs` shuffles order and restores mocks and globals.
 
 ## Invariants
 
@@ -35,7 +35,7 @@ Invariants are checked exhaustively over enumerated inputs with `test.each`, not
 Each test collects its violations with plain comparisons and asserts once on the list, because an assertion per input dominates the run time.
 
 - In every authored level, the hero starts on each walkable tile of the playable area and moves in each of the eight directions. She never ends inside an obstacle or outside the level. The door stays closed until every key is collected.
-- In every authored level bounded by woodland, every woodland tile is impassable and every open tile is reachable from the start.
+- In each woodland-bounded level, woodland is impassable and every open tile is reachable from the start. The first, second and third level test files check this per level. No shared sweep exists.
 - In every authored level with a swing gate, the sweep runs twice: with the gate closed from every tile on the hero's side, where she never enters a tile beyond the gate, and with the gate open from every tile.
 - A swing gate only moves forward from closed to opening to open. Repeated operations change nothing and emit no event, and nothing closes it. It blocks its whole tile through the last of its sixteen frames and lets the hero through on the next frame.
 - The magical arrival advances only through explicit frames. Through its last frame the hero does not move, collect anything or complete the level, and its frames add no play time. A held direction moves her on the first playable frame.
@@ -52,12 +52,9 @@ Each test collects its violations with plain comparisons and asserts once on the
 ## When Tests Are Written
 
 - Bug fix: a regression test that fails for the reported reason comes before the fix.
-- New or changed behavior: tests land with the change.
-- Refactoring: the existing behavior tests pass unchanged before and after.
 - Timing rules: one frame before, at and after each boundary.
 
 ## What Is Not Tested
 
 - Private state and call order.
-- A test file per source file, when a public entry point already covers the behavior.
-- Coverage percentages, or tests added only to raise a count.
+- A test file per source file when a public entry point already covers the behavior.

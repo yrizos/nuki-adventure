@@ -1,8 +1,6 @@
 # UI Layout
 
-The screen is divided vertically into two areas.
-
-Landscape orientation is not supported.
+Portrait only. Colors are set in [Color Palette](palette.md#ui).
 
 ```text
 ┌────────────────────────┐
@@ -14,99 +12,65 @@ Landscape orientation is not supported.
 └────────────────────────┘
 ```
 
-## Sizing
-
-- Sizes and spacing follow Material Design
-- Margins and gaps follow the Material spacing grid
-- Every control meets the Material minimum touch target size
+Every control's touch area meets the Material Design minimum touch target, even where the drawn control is smaller.
 
 ## Desktop
 
-- The layout is a centered column instead of spanning the full window width
-- The background outside the column is pitch black
+- The layout is a centered column on a pitch black background.
 
 ## Game View
 
-- Top of the screen
-- Full screen width on phones and full column width on desktop
-- Takes all space above the control panel
-- Shows the game world
+- Top of the screen, full width on phones and full column width on desktop, taking all space above the control panel.
 
 ### Level Entry
 
-- The game view shows the level as soon as it starts, with no loading screen or overlay
-- The control panel stays visible
-- WHEN a level opens with the [magical arrival](visual-style.md#magical-arrival), movement starts after its 48 frames with no button press
-- The menu switch works throughout the arrival
+- The level shows at once, with no loading screen or overlay. The control panel stays visible.
+- With the [magical arrival](visual-style.md#magical-arrival), movement starts when it ends, with no button press. The menu switch works throughout.
 
 ### Message Box
 
-- Messages appear in a box inside the game view, aligned to its bottom edge
-- The box spans the game view with an 8 pixel margin on the left, right and bottom, measured in game pixels
-- The box has a one pixel Ink outline with clipped corners, a one pixel V1 inner edge and a V0 fill, matching the control panel's top edge
-- Text is Paper, set in a 5 × 9 pixel font with one pixel strokes and 2 pixels between letters, with 10 pixels of padding and 16 pixel lines, and wraps between words
-- Messages are written in Greek capitals without accent marks
-- The box appears and disappears through the ordered 4 × 4 dither, one threshold per game frame, so it never uses transparency
-- A hidden live region repeats the shown text for screen readers
+- Aligned to the bottom of the game view, with an 8 game pixel margin on the left, right and bottom.
+- Framed box: one pixel outline with clipped corners and a one pixel inner edge, matching the control panel's top edge.
+- Text uses a 5 × 9 pixel font with one pixel strokes, 2 pixels between letters, 10 pixels of padding and 16 pixel lines. It wraps between words.
+- Messages are Greek capitals without accent marks.
+- The box appears and disappears through the ordered 4 × 4 dither, one threshold per game frame, never transparency.
+- A hidden live region repeats the text for screen readers.
 
-### Sound Switch
+### Switches
 
-- A sound switch sits in the top right corner of the game view, 8 panel pixels from the top and right edges, below the top safe-area inset
-- It is 19 × 19 panel pixels and uses the message box frame: a one pixel Ink outline with clipped corners, a one pixel V1 inner edge and a V0 fill
-- A Paper speaker sits at its center, with two sound waves while sound is on and a cross in place of the waves while sound is off
-- Its touch area never shrinks below the Material minimum touch target, even when the drawn switch is smaller
-- It turns the music and every sound effect on or off together
-- The game remembers the choice for the next visit
+All three switches sit in a row in the top right corner of the game view. Each is 19 × 19 panel pixels with the message box frame and a symbol at its center.
 
-### Full Screen Switch
-
-- A full screen switch sits just left of the sound switch, with the same size and frame
-- The gap between the two switches is 4 panel pixels, widened where needed so their touch areas meet without overlapping
-- A Paper symbol of four corners sits at its center, pointing outward while the page is not full screen and inward while it is
-- It shows the whole page full screen or returns it to normal
-- It appears only in browsers that can show a page full screen, so it is hidden on iPhone
-
-### Menu Switch
-
-- A menu switch sits just left of the full screen switch, or just left of the sound switch where full screen is hidden, with the same size, frame and gap
-- A Paper symbol of three stacked bars sits at its center
-- It leaves the level in progress at once and opens the start screen, and the level starts afresh when chosen again
+| Switch | Position | Symbol | Behavior |
+| --- | --- | --- | --- |
+| Sound | 8 panel pixels from the top and right edges, below the top safe-area inset | Speaker with two waves when on, a cross when off | Turns music and all sound effects on or off. Remembered across visits |
+| Full screen | Left of the sound switch, 4 panel pixel gap, widened so touch areas meet without overlapping | Four corners, outward when not full screen, inward when full screen | Toggles full screen. Shown only where the browser supports it, so hidden on iPhone |
+| Menu | Left of the full screen switch, or of the sound switch when full screen is hidden, same gap | Three stacked bars | Leaves the level at once and opens the start screen. The level starts afresh when chosen again |
 
 ## Start Screen
 
-- The start screen covers the whole page, including the control panel, whenever the game opens and whenever the menu switch is pressed
-- It is pixel art on the panel pixel grid, on a plain Ink background with no scenery
-- The game name, Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ ΤΗΣ ΝΟΥΚΙ, sits at the top in the message box font, over two centered lines, in the colors set in the palette
-- Each time the start screen opens, the game name appears through the ordered 4 × 4 dither, one threshold every 2 game frames, and then stays still. The buttons work from the first frame
-- Below it sit two buttons in the A button colors with a lip, each sinking into its lip while pressed: ΝΕΟ ΠΑΙΧΝΙΔΙ starts the first level and ΕΠΙΛΟΓΗ ΕΠΙΠΕΔΟΥ opens the level picker
-- Starting the first level from ΝΕΟ ΠΑΙΧΝΙΔΙ keeps every unlocked level and every last playthrough
-- Nuki stands at the bottom of the screen facing the player, at one panel pixel per hero pixel, breathing and blinking as she does when idle in a level
-- Her idle animation runs on the game's frame clock from the moment the start screen opens, and the screen owns no timer of its own
-- Arrow keys move keyboard focus between the buttons, and A or B chooses the focused one
-- The start screen scrolls when its contents do not fit
+- Covers the whole page, control panel included, when the game opens and when the menu switch is pressed.
+- Pixel art on the panel pixel grid, on a plain background with no scenery.
+- The game name, Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ ΤΗΣ ΝΟΥΚΙ, sits at the top in the message box font over two centered lines. On each opening it appears through the ordered 4 × 4 dither, one threshold every 2 game frames, then stays still.
+- Below it, two buttons styled like the A button, sinking into their lips while pressed: ΝΕΟ ΠΑΙΧΝΙΔΙ starts the first level and keeps all progress. ΕΠΙΛΟΓΗ ΕΠΙΠΕΔΟΥ opens the level picker. Buttons work from the first frame.
+- Nuki stands at the bottom facing the player, at one panel pixel per hero pixel, with her idle breathing and blinking on the game's frame clock. The screen owns no timer.
+- The screen scrolls when its contents do not fit.
 
 ## Level Picker
 
-- The level picker covers the whole page like the start screen, on the same background
-- It lists every level of the game in order, one card per level, above a ΠΙΣΩ button in the A button colors that returns to the start screen
-- Each card is a window in the message box frame, and every card has the same size whatever its statistics, so the cards line up
-- The top of a card shows the level number in Paper at twice the font size
-- The bottom of a completed level's card shows a clock drawing beside the last play time, as minutes and seconds, and a star drawing beside the last stars out of all stars
-- The numbers are Paper, in the message box font
-- Time and stars appear only on level cards
-- An unlocked level that has no completed playthrough shows its number only, with no time, stars, dash or label
-- A locked level's card is drawn through the faded world's neutral palette mapping, shows its number only and cannot be focused or chosen
-- Tapping an unlocked card starts that level, and a locked level never starts, whatever chose it
-- Arrow keys move keyboard focus between the cards and ΠΙΣΩ, and A or B chooses the focused one
-- No button or card ever shows an outline, focused or not
-- The cards are spaced so each touch area stays above the Material minimum touch target
-- Screen readers hear each card as the level number, then the last time and stars in words, or that it is locked
-- The level picker scrolls when its contents do not fit
+- Covers the whole page on the start screen background and scrolls when needed.
+- One card per level in order, above a ΠΙΣΩ button styled like the A button that returns to the start screen.
+- Each card uses the message box frame. All cards share one size and are spaced so each touch area meets the minimum.
+- A card shows the level number at twice the font size. A completed level adds a clock drawing with the last play time in minutes and seconds, and a star drawing with the last stars out of all stars. An unlocked level with no completed playthrough shows only its number.
+- A locked card is drawn through the faded mapping, shows only its number and cannot be focused or chosen. A locked level never starts by any route.
+- Tapping an unlocked card starts that level.
+- Screen readers hear the level number, then the last time and stars in words, or that it is locked.
+
+## Menus
+
+- On the start screen and the level picker, arrow keys move focus and A or B chooses the focused item.
+- No button or card ever shows a focus outline.
 
 ## Control Panel
-
-- Bottom of the screen
-- Holds the movement and action controls
 
 ```text
 ┌────────────────────────┐
@@ -115,73 +79,73 @@ Landscape orientation is not supported.
 └────────────────────────┘
 ```
 
-- Left side: a virtual joystick for movement
-- Right side: an A button and a B button for actions, placed on a diagonal with A at the top right and B at the bottom left
-- The joystick ring fills the height inside the padding
-- Each control is centered with its lip, so a face and its lip sit centered together
+- Left: the virtual joystick. Right: A and B on a diagonal, A top right and B bottom left.
+- The joystick ring fills the height inside the padding. Each control is centered together with its lip.
+- The space between the joystick and the buttons absorbs width left after rounding.
 
 ### Pixel Art
 
-- The control panel is pixel art drawn from palette codes, like the game world, so the two areas read as one game
-- The panel is measured in panel pixels, and each panel pixel is a whole number of device pixels, so the art stays crisp at every width
-- A panel pixel is the largest whole number of device pixels that fits 180 panel pixels across the column, and never less than one device pixel
-- The knob and the buttons have a one pixel Ink outline, and every control takes its light from the top left
-- The panel is deep violet in V0, which sits between the red A and the blue B, with an Ink row and then a V1 row along its top edge where it meets the game view
-- The panel surface has a grip texture of 2 × 2 dots, spaced 8 pixels apart, with every other row of dots shifted by 4 pixels
-- The space between the joystick and the action buttons absorbs any width left after rounding
+- Drawn from palette codes and measured in panel pixels.
+- A panel pixel is the largest whole number of device pixels that fits 180 panel pixels across the column, at least one.
+- The knob and buttons have a one pixel outline. Light comes from the top left.
+- Grip texture: 2 × 2 dots spaced 8 pixels apart, every other row shifted by 4 pixels.
 
 ### Scaling
 
-- The column never narrows below 320 pixels to fit the window height, and the page scrolls instead
-- The action button touch area covers half the panel, so it stays above the Material minimum touch target at every width
+- The column never narrows below 320 pixels to fit the window height. The page scrolls instead.
 
 ### Measurements
 
-All values are in panel pixels.
+Panel pixels.
 
 | Element | Size |
 | --- | --- |
 | Padding on all four sides | 16 |
 | Panel height | 92 |
-| Joystick ring | 60 across, with a 3 pixel rim |
+| Joystick ring | 60 across, 3 pixel rim |
 | Joystick knob | 28 across |
 | Direction arrows | 8 × 4, 3 pixels inside the rim |
 | A and B buttons | 28 across |
 | Gap between the A and B positions | 4 |
 | Button and knob lip | 2 |
-| Button letters | 8 × 9, with 2 pixel strokes |
+| Button letters | 8 × 9, 2 pixel strokes |
 
 ### Joystick
 
-- The ring is large enough for a thumb to land on reliably
-- The knob matches the size of the action buttons
-- The knob never travels beyond the inner edge of the rim, so it never covers the rim
-- The knob moves in whole panel pixels
-- Four arrows inside the ring point up, right, down and left, and an arrow lights up while the thumb leans more than 22.5 degrees toward it
-- The knob sits on a lip below it, and while the joystick is held the knob sinks into its lip, so the lip disappears
-- The knob has a thumb dimple at its center
-- The hero starts walking once the knob travels 30 percent of its reach and stops when it falls back below 25 percent, so a resting thumb neither moves her nor starts and stops her
-- The hero walks along the exact angle of the thumb
+- The knob never passes the inner edge of the rim and moves in whole panel pixels.
+- Four arrows inside the ring point up, right, down and left. An arrow lights while the thumb leans more than 22.5 degrees toward it.
+- The knob has a center thumb dimple and sits on a lip. While held, it sinks into the lip and the lip disappears.
+- The hero starts walking at 30 percent of the knob's reach and stops below 25 percent. She walks along the exact angle of the thumb.
 
 ### Action Buttons
 
-- A and B are circles that sit on a lip below them
-- A pressed button sinks into its lip, so the lip disappears
-- The right half of the control panel is the touch area for the action buttons, and a touch anywhere in it presses the button whose center is nearest
-- In a level, A is enabled only when the level holds a [swing gate](glossary.md#swing-gate) or a [boulder](glossary.md#boulder), and B only when it holds a boulder. A disabled button is dimmed and ignores touch and keys
-- While the hero can perform an action, the button for that action wobbles left and right as a hint, with a soft two-note chime at the start of each burst. A answers opening a closed swing gate and pushing a boulder. B answers pulling a boulder. The offset is a sine with a 12 frame period inside a sine envelope, at most one panel pixel, so each 24 frame burst eases in and out. Bursts start the frame the hint begins and repeat every 60 frames. Two buttons that burst on the same frame share one chime. The wobble and chime stop on the frame the action starts, and never run during the magical arrival. No prompt is drawn in the game view
-- A and B are enabled on the start screen and the level picker, where they choose items
+- A and B are circles on a lip. A pressed button sinks into its lip and the lip disappears.
+- The right half of the panel is their touch area. A touch presses the button whose center is nearest.
+- In a level, A is enabled only when the level holds a [swing gate](glossary.md#swing-gate) or a [boulder](glossary.md#boulder), and B only with a boulder. A disabled button is dimmed and ignores touch and keys. Both are enabled on the start screen and level picker.
+- Hint wobble: while the hero can act, that button wobbles. No prompt is drawn in the game view.
+
+| Wobble property | Value |
+| --- | --- |
+| Triggers | A: open a closed swing gate, push a boulder. B: pull a boulder |
+| Offset | Sine, 12 frame period, inside a sine envelope, at most one panel pixel |
+| Burst | 24 frames, easing in and out, starting the frame the hint begins |
+| Repeat | Every 60 frames |
+| Sound | Soft two-note chime per burst, one shared chime when both buttons burst together |
+| Stops | The frame the action starts. Never during the magical arrival |
 
 ## Browser Behavior
 
-- Holding a finger on the control panel never opens a context menu or a callout
-- Touches on the control panel never zoom the page
-- Dragging down never reloads the page
+- Holding a finger on the control panel never opens a context menu or callout.
+- Touches on the control panel never zoom the page.
+- Dragging down never reloads the page.
 
 ## Keyboard
 
-- Arrow keys move the hero
-- A, Z or Space presses A
-- B, X or Enter presses B
-- Escape opens the start screen, like the menu switch
-- A key press shows the matching action button as pressed
+| Key | Action |
+| --- | --- |
+| Arrows | Move the hero |
+| A, Z, Space | Press A |
+| B, X, Enter | Press B |
+| Escape | Open the start screen |
+
+A key press shows the matching button as pressed.
