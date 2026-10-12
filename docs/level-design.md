@@ -56,6 +56,12 @@ The `Level` constructor in `src/domain/level/level.ts`, `Scenery.of` in `src/dom
 - With the gate closed, no movement reaches the far side through the fences, woodland or a diagonal.
 - The gate blocks its whole tile until it finishes opening, and again from the moment it starts closing.
 
+### Boulders
+
+- A level MAY hold boulders, each marked `O` in its layout. Level 4 holds one.
+- Each boulder stands on open ground of its own, never on a stone, the door, the gate tile or the tiles directly north and south of the gate.
+- Keys, star spots and the door are checked as [reachable](glossary.md#reachable) with every boulder moved aside. No key or star spot shares a boulder's tile.
+
 ### Magical Arrival
 
 - A level MAY open with the [magical arrival](visual-style.md#magical-arrival). Level 1 does.
@@ -98,6 +104,8 @@ An intentional dead end holds a payoff, usually a star spot but sometimes anothe
 ### Required Objects
 
 Keys and other mandatory objectives never depend on accidental discovery. Beyond the checked rules, they never look like scenery and never rely on color alone to show their meaning. Key discovery relies on landmarks, the terrain layout and the key's proximity hum.
+
+No push or pull leaves a boulder where the hero can no longer move it out of the way of a key or the door.
 
 ### Exploration
 

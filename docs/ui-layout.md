@@ -168,8 +168,8 @@ All values are in panel pixels.
 - A and B are circles that sit on a lip below them
 - A pressed button sinks into its lip, so the lip disappears
 - The right half of the control panel is the touch area for the action buttons, and a touch anywhere in it presses the button whose center is nearest
-- B is disabled while a level is played, because no level uses it. A is enabled only in a level with a [swing gate](glossary.md#swing-gate), and disabled in every other level. A disabled button is dimmed and ignores touch and keys
-- While the hero can open a swing gate, the A button wobbles left and right as a hint, with a soft two-note chime at the start of each burst. The offset is a sine with a 12 frame period inside a sine envelope, at most one panel pixel, so each 24 frame burst eases in and out. Bursts start the frame the hint begins and repeat every 60 frames. The wobble and chime stop on the frame the gate starts opening, and never run during the magical arrival. No prompt is drawn in the game view
+- In a level, A is enabled only when the level holds a [swing gate](glossary.md#swing-gate) or a [boulder](glossary.md#boulder), and B only when it holds a boulder. A disabled button is dimmed and ignores touch and keys
+- While the hero can perform an action, the button for that action wobbles left and right as a hint, with a soft two-note chime at the start of each burst. A answers opening a closed swing gate and pushing a boulder. B answers pulling a boulder. The offset is a sine with a 12 frame period inside a sine envelope, at most one panel pixel, so each 24 frame burst eases in and out. Bursts start the frame the hint begins and repeat every 60 frames. Two buttons that burst on the same frame share one chime. The wobble and chime stop on the frame the action starts, and never run during the magical arrival. No prompt is drawn in the game view
 - A and B are enabled on the start screen and the level picker, where they choose items
 
 ## Browser Behavior

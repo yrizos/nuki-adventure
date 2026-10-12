@@ -20,6 +20,7 @@ import {
   pathArt,
   starArt,
   stoneVariants,
+  boulderArt,
   terrainArt,
   treeArt,
   treeFrameLength,
@@ -408,6 +409,14 @@ export class WorldPainter {
         paint: () => draw(stoneVariants[this.stoneChoices[index]!]!, column * tileSize, row * tileSize),
       });
     });
+    level.boulders.forEach((boulder) => {
+      const { x, y } = boulder.place;
+      objects.push({
+        base: y + tileSize,
+        shadow: shadow(14, boulder.position, x + 9, y + 27),
+        paint: () => draw(boulderArt, x, y),
+      });
+    });
     level.scenery.fences.forEach((fence, index) => {
       const { column, row } = fence.position;
       objects.push({
@@ -449,11 +458,13 @@ export class WorldPainter {
         }
       },
     });
+    // A boulder rolls over stars and keys, so one under a boulder is drawn before everything else and stays hidden.
+    const underBoulder = (tile: TilePosition): boolean => level.boulders.some((boulder) => boulder.covers(tile));
     for (const key of level.keys) {
       const { column, row } = key.position;
       const offset = keyOffset(frame);
       objects.push({
-        base: (row + 1) * tileSize,
+        base: underBoulder(key.position) ? -Infinity : (row + 1) * tileSize,
         shadow: shadow(12, key.position, column * tileSize + 10, row * tileSize + 27),
         paint: () =>
           draw(keyArt[key.material.name], column * tileSize + 4 + offset.x, row * tileSize + 4 + offset.y, 'colored'),
@@ -463,7 +474,7 @@ export class WorldPainter {
       const { column, row } = star.position;
       const bob = starBob[Math.floor(frame / 10) % starBob.length]!;
       objects.push({
-        base: (row + 1) * tileSize,
+        base: underBoulder(star.position) ? -Infinity : (row + 1) * tileSize,
         shadow: shadow(12, star.position, column * tileSize + 10, row * tileSize + 27),
         paint: () => draw(starArt, column * tileSize + 4, row * tileSize + 4 + bob, 'colored'),
       });

@@ -1,3 +1,4 @@
+import type { Boulder } from './boulder';
 import { type Key, Star } from './collectibles';
 import { StarCount } from '../shared/star-count';
 import type { Door } from './door';
@@ -13,6 +14,7 @@ import {
   SwingGateOpeningStarted,
 } from './level-events';
 import type { LevelId } from '../shared/level-id';
+import type { LevelAction } from './level-action';
 import { type Obstacles, Outline, type PlaceObstacles } from './obstacles';
 import { Direction, type Heading, TilePosition, TilePositions, WorldPosition } from './position';
 import type { Scenery } from './scenery';
@@ -46,6 +48,7 @@ export interface LevelDefinition {
   readonly hero: { readonly position: TilePosition; readonly facing: Direction };
   readonly stars?: readonly Star[];
   readonly gate?: SwingGate;
+  readonly boulders?: readonly Boulder[];
   readonly obstacles: PlaceObstacles;
 }
 
@@ -54,6 +57,8 @@ export class Level {
   private remainingKeys: readonly Key[];
   private currentDoor: Door;
   private currentGate: SwingGate | undefined;
+  private currentBoulders: readonly Boulder[];
+  private carried: { readonly from: WorldPosition; readonly to: WorldPosition } | undefined;
   private completed = false;
   private remainingStars: readonly Star[];
   private collectedStars: readonly Star[] = [];
@@ -65,7 +70,18 @@ export class Level {
   readonly scenery: Scenery;
   readonly stones: readonly Stone[];
 
-  private constructor({ id, scenery, stones, keys, door, hero, stars = [], gate, obstacles }: LevelDefinition) {
+  private constructor({
+    id,
+    scenery,
+    stones,
+    keys,
+    door,
+    hero,
+    stars = [],
+    gate,
+    boulders = [],
+    obstacles,
+  }: LevelDefinition) {
     this.id = id;
     this.scenery = scenery;
     this.stones = stones;
@@ -90,6 +106,21 @@ export class Level {
     ) {
       throw new RangeError('The gate needs open ground on its tile and on both sides of it');
     }
+    this.currentBoulders = boulders;
+    boulders.forEach((boulder, index) => {
+      if (
+        !scenery.isWalkable(boulder.position) ||
+        stones.some((stone) => stone.position.equals(boulder.position)) ||
+        boulders.findIndex((other) => other.covers(boulder.position)) !== index ||
+        door.covers(boulder.position) ||
+        (gate &&
+          [gate.position, gate.approach, gate.position.neighbor(Direction.Up)].some((tile) => boulder.covers(tile)))
+      ) {
+        throw new RangeError(
+          `A boulder needs open ground of its own, away from the door and the gate, at ${boulder.position.column}, ${boulder.position.row}`,
+        );
+      }
+    });
     if (keys.length === 0) throw new RangeError('A level needs at least one key to open its door');
     for (let row = 0; row < scenery.size.rows; row++) {
       for (let column = 0; column < scenery.size.columns; column++) {
@@ -113,7 +144,7 @@ export class Level {
     if (gate && !this.reachableTiles(false).some((tile) => gate.operableFrom(tile))) {
       throw new RangeError('The gate must be operable from where the hero can reach before it opens');
     }
-    // What lies behind a gate still counts, because the hero can always open the gate and walk through.
+    // What lies behind a gate or a boulder still counts, because the hero can always open the gate or move the boulder.
     const reachable = this.reachableTiles(true);
     if (reachable.some((tile) => tile.row < door.left.row)) {
       throw new RangeError('The door must stand on the top edge of the playable area');
@@ -140,6 +171,7 @@ export class Level {
       if (
         keys.some((key) => key.position.equals(star.position)) ||
         star.position.equals(hero.position) ||
+        boulders.some((boulder) => boulder.covers(star.position)) ||
         stars.findIndex((other) => other.equals(star)) !== index
       ) {
         throw new RangeError(`A star needs a tile of its own, at ${star.position.column}, ${star.position.row}`);
@@ -165,7 +197,11 @@ export class Level {
     const spots = empty
       .reachableTiles(true)
       .filter(
-        (tile) => !empty.hides(tile) && !keys.some((key) => key.position.equals(tile)) && !tile.equals(hero.position),
+        (tile) =>
+          !empty.hides(tile) &&
+          !keys.some((key) => key.position.equals(tile)) &&
+          !tile.equals(hero.position) &&
+          !(definition.boulders ?? []).some((boulder) => boulder.covers(tile)),
       );
     if (spots.length < starCount.value) {
       throw new RangeError(`The level has room for ${spots.length} visible, reachable stars, not ${starCount.value}`);
@@ -251,6 +287,38 @@ export class Level {
     return [];
   }
 
+  get boulders(): readonly Boulder[] {
+    return this.currentBoulders;
+  }
+
+  get actions(): readonly LevelAction[] {
+    return [...(this.currentGate?.actions ?? []), ...this.currentBoulders.flatMap((boulder) => boulder.actions)];
+  }
+
+  get canPush(): boolean {
+    const boulder = this.boulderAhead();
+    return boulder !== undefined && this.canHoldBoulder(boulder.position.neighbor(this.hero.facing));
+  }
+
+  get canPull(): boolean {
+    const behind = this.hero.position.neighbor(this.hero.facing.opposite);
+    return this.boulderAhead() !== undefined && this.canHoldBoulder(behind) && this.canHoldBoulder(this.hero.position);
+  }
+
+  push(): void {
+    const boulder = this.boulderAhead();
+    if (!boulder || !this.canPush) return;
+    this.replaceBoulder(boulder, boulder.slide(this.hero.facing));
+    this.carried = { from: this.hero.feet, to: Hero.feetOn(boulder.position) };
+  }
+
+  pull(): void {
+    const boulder = this.boulderAhead();
+    if (!boulder || !this.canPull) return;
+    this.replaceBoulder(boulder, boulder.slide(this.hero.facing.opposite));
+    this.carried = { from: this.hero.feet, to: Hero.feetOn(this.hero.position.neighbor(this.hero.facing.opposite)) };
+  }
+
   get isComplete(): boolean {
     return this.completed;
   }
@@ -265,7 +333,9 @@ export class Level {
   tick(heading: Heading | null): readonly LevelEvent[] {
     if (this.completed) return [];
     const before = this.heroEntity.position;
-    this.heroEntity.steer(heading, this.obstacles);
+    const sliding = this.currentBoulders.find((boulder) => boulder.isSliding);
+    if (sliding && this.carried) this.slideBoulder(sliding, this.carried);
+    else this.heroEntity.steer(heading, this.obstacles);
     const tile = this.heroEntity.position;
     const events: LevelEvent[] = [];
     if (tile.equals(before)) return events;
@@ -288,6 +358,33 @@ export class Level {
     return events;
   }
 
+  // She ends each slide on the tile the boulder left when pushing, or the tile behind her when pulling.
+  private slideBoulder(boulder: Boulder, { from, to }: { from: WorldPosition; to: WorldPosition }): void {
+    const advanced = boulder.advance();
+    this.replaceBoulder(boulder, advanced);
+    const progress = advanced.isSliding ? advanced.progress : 1;
+    this.heroEntity.carry(WorldPosition.at(from.x + (to.x - from.x) * progress, from.y + (to.y - from.y) * progress));
+    if (!advanced.isSliding) {
+      this.carried = undefined;
+      this.obstacles = this.placedObstacles();
+    }
+  }
+
+  private replaceBoulder(previous: Boulder, next: Boulder): void {
+    this.currentBoulders = this.currentBoulders.map((boulder) => (boulder === previous ? next : boulder));
+  }
+
+  // One boulder moves at a time, because she walks along with it.
+  private boulderAhead(): Boulder | undefined {
+    if (this.completed || this.currentBoulders.some((boulder) => boulder.isSliding)) return undefined;
+    const ahead = this.hero.position.neighbor(this.hero.facing);
+    return this.currentBoulders.find((boulder) => boulder.position.equals(ahead));
+  }
+
+  private canHoldBoulder(tile: TilePosition): boolean {
+    return this.canEnter(tile) && !this.currentDoor.covers(tile) && !(this.currentGate?.covers(tile) ?? false);
+  }
+
   private placedObstacles(): Obstacles {
     const door = this.currentDoor;
     const gate = this.currentGate;
@@ -296,13 +393,14 @@ export class Level {
       ...this.stones.map((stone) => stone.obstacle),
       ...(door.isOpen ? [] : [door.obstacle]),
       ...(gate?.obstacles ?? []),
+      ...this.currentBoulders.map((boulder) => boulder.obstacle),
     ];
     return this.placeObstacles(this.obstacleOutlines);
   }
 
   // Every obstacle stays inside the tile it blocks, so whole open tiles always leave room for her feet to cross between them.
   // The door counts as closed because stepping onto it ends the level.
-  private reachableTiles(gateOpen: boolean): readonly TilePosition[] {
+  private reachableTiles(cleared: boolean): readonly TilePosition[] {
     // Growing the reached tiles one ring at a time keeps the order of a plain breadth-first search.
     let reached = TilePositions.of([this.heroEntity.position]);
     let ring: readonly TilePosition[] = reached.tiles;
@@ -314,7 +412,10 @@ export class Level {
           if (
             !reached.covers(neighbor) &&
             !next.some((other) => other.equals(neighbor)) &&
-            (this.canEnter(neighbor) || (gateOpen && (this.currentGate?.covers(neighbor) ?? false))) &&
+            (this.canEnter(neighbor) ||
+              (cleared &&
+                ((this.currentGate?.covers(neighbor) ?? false) ||
+                  this.currentBoulders.some((boulder) => boulder.covers(neighbor))))) &&
             !this.currentDoor.covers(neighbor)
           )
             next.push(neighbor);
@@ -341,6 +442,7 @@ export class Level {
     return (
       this.scenery.isWalkable(position) &&
       !this.stones.some((stone) => stone.position.equals(position)) &&
+      !this.currentBoulders.some((boulder) => boulder.covers(position)) &&
       (this.currentDoor.isOpen || !this.currentDoor.covers(position)) &&
       (!this.currentGate || this.currentGate.isOpen || !this.currentGate.covers(position))
     );

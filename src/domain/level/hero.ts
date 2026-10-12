@@ -98,6 +98,14 @@ export class Hero {
     this.walking = true;
   }
 
+  // A boulder sets her pace while she moves it, so she keeps her facing and goes where it takes her.
+  carry(to: WorldPosition): void {
+    this.previousFeet = this.currentFeet;
+    this.currentFeet = to;
+    this.walking = true;
+    this.turnPause = null;
+  }
+
   private facingFor(heading: Heading): Direction {
     if (heading.alignment(this.currentFacing) > facingTolerance) return this.currentFacing;
     if (Math.abs(heading.x) > Math.abs(heading.y)) return heading.x > 0 ? Direction.Right : Direction.Left;

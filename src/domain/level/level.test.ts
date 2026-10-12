@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { Boulder } from './boulder';
 import { Area, Key, Star } from './collectibles';
 import { StarCount } from '../shared/star-count';
 import { Door } from './door';
@@ -14,6 +15,7 @@ import {
   SwingGateOpeningStarted,
 } from './level-events';
 import { LevelId } from '../shared/level-id';
+import { Hero } from './hero';
 import { Direction, Heading, TilePosition } from './position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree, TreeVariant } from './scenery';
 import { SwingGate } from './swing-gate';
@@ -784,5 +786,129 @@ describe('a swing gate', () => {
       return positions;
     });
     expect(scattered.stars).toHaveLength(1);
+  });
+});
+
+describe('a boulder', () => {
+  const open = ['.....', '.....', '..O..', '.....', '.....'];
+
+  function bouldered(
+    given: readonly string[] = open,
+    start = at(2, 3),
+    facing = Direction.Up,
+    key = at(0, 0),
+    stars: readonly TilePosition[] = [],
+  ): Level {
+    const { scenery, where } = parse(given);
+    return Level.create({
+      id: LevelId.of('test'),
+      scenery,
+      stones: where('o').map(Stone.at),
+      keys: [Key.at(key, everywhere)],
+      door: Door.closedAt(where('D')[0]!),
+      hero: { position: start, facing },
+      boulders: where('O').map(Boulder.at),
+      stars: stars.map(Star.at),
+      obstacles: check2dObstacles,
+    });
+  }
+
+  function slide(subject: Level): void {
+    for (let tick = 0; tick < 16; tick++) subject.tick(null);
+  }
+
+  test('slides one tile away from her when pushed, with her following', () => {
+    const subject = bouldered();
+    subject.push();
+    subject.tick(null);
+    expect(subject.boulders[0]?.isSliding).toBe(true);
+    slide(subject);
+    expect(subject.boulders).toEqual([Boulder.at(at(2, 1))]);
+    expect(subject.hero.feet).toEqual(Hero.feetOn(at(2, 2)));
+    expect(subject.hero.facing).toBe(Direction.Up);
+  });
+
+  test('follows her one tile when pulled', () => {
+    const subject = bouldered();
+    subject.pull();
+    slide(subject);
+    expect(subject.boulders).toEqual([Boulder.at(at(2, 3))]);
+    expect(subject.hero.feet).toEqual(Hero.feetOn(at(2, 4)));
+    expect(subject.hero.facing).toBe(Direction.Up);
+  });
+
+  test('rests after one tile until it is moved again', () => {
+    const subject = bouldered();
+    subject.push();
+    slide(subject);
+    slide(subject);
+    expect(subject.boulders).toEqual([Boulder.at(at(2, 1))]);
+    subject.push();
+    slide(subject);
+    expect(subject.boulders).toEqual([Boulder.at(at(2, 0))]);
+  });
+
+  test('ignores her while she does not face it from the next tile', () => {
+    expect(bouldered(open, at(2, 3), Direction.Left).canPush).toBe(false);
+    expect(bouldered(open, at(2, 4)).canPush).toBe(false);
+    expect(bouldered(open, at(2, 4)).canPull).toBe(false);
+  });
+
+  test('cannot be pushed into a stone', () => {
+    expect(bouldered(['.....', '..o..', '..O..', '.....', '.....']).canPush).toBe(false);
+  });
+
+  test('rolls over a star and a key, which she collects as she follows it', () => {
+    const subject = bouldered(open, at(2, 3), Direction.Up, at(2, 0), [at(2, 1)]);
+    const events: LevelEvent[] = [];
+    for (let push = 0; push < 2; push++) {
+      expect(subject.canPush).toBe(true);
+      subject.push();
+      for (let tick = 0; tick < 16; tick++) events.push(...subject.tick(null));
+    }
+    expect(events.some((event) => event instanceof StarCollected)).toBe(true);
+    expect(subject.canPush).toBe(false);
+    subject.pull();
+    for (let tick = 0; tick < 16; tick++) events.push(...subject.tick(null));
+    expect(subject.boulders).toEqual([Boulder.at(at(2, 1))]);
+  });
+
+  test('lets her collect a star or a key she steps back onto while pulling', () => {
+    const subject = bouldered(open, at(2, 3), Direction.Up, at(2, 4));
+    expect(subject.canPull).toBe(true);
+    subject.pull();
+    const events: LevelEvent[] = [];
+    for (let tick = 0; tick < 16; tick++) events.push(...subject.tick(null));
+    expect(events.some((event) => event instanceof KeyCollected)).toBe(true);
+  });
+
+  test('cannot be pulled while the tile behind her is blocked', () => {
+    const subject = bouldered(['.....', '.....', '..O..', '.....', '..o..']);
+    expect(subject.canPull).toBe(false);
+    subject.pull();
+    slide(subject);
+    expect(subject.boulders).toEqual([Boulder.at(at(2, 2))]);
+  });
+
+  test('blocks her on the tile it moved to', () => {
+    const subject = bouldered();
+    subject.push();
+    slide(subject);
+    for (let tick = 0; tick < 40; tick++) subject.tick(Heading.of(Direction.Up));
+    expect(subject.hero.position).toEqual(at(2, 2));
+  });
+
+  test('lets a key lie behind it, out of reach until it moves', () => {
+    const pocket = ['.....', '~~~..', '...O.', '~~~..', '.....'];
+    const subject = bouldered(pocket, at(3, 3), Direction.Up, at(0, 2));
+    expect(pathTo(subject, (tile) => tile.equals(at(0, 2)))).toBeUndefined();
+    subject.push();
+    slide(subject);
+    expect(pathTo(subject, (tile) => tile.equals(at(0, 2)))).toBeDefined();
+  });
+
+  test('needs open ground of its own', () => {
+    expect(() => bouldered(open, at(2, 3), Direction.Up, at(2, 2))).toThrow('Every key must lie');
+    expect(() => bouldered(open, at(2, 3), Direction.Up, at(0, 0), [at(2, 2)])).toThrow('A star needs a tile');
   });
 });

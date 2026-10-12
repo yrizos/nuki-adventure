@@ -7,7 +7,7 @@ export interface Screens {
   readonly showStartScreen: () => void;
   readonly animateStartScreen: (framesOpen: number) => void;
   readonly showLevelPicker: () => void;
-  readonly showLevel: (usesA: boolean) => void;
+  readonly showLevel: (usesA: boolean, usesB: boolean) => void;
 }
 
 type Screen =
@@ -67,7 +67,7 @@ export class GameNavigator {
         else this.openStartScreen();
       },
     });
-    this.screens.showLevel(session.usesA);
+    this.screens.showLevel(session.uses('a'), session.uses('b'));
     this.screen = { name: 'playing', session };
   }
 }

@@ -27,7 +27,11 @@ const everywhere = Area.of(Array.from({ length: 15 }, (_, index) => TilePosition
 function navigator(first: string | null = 'one', { secondUnlocked = first === 'two' } = {}) {
   const pressed = new Set<'a' | 'b'>();
   let heading: Heading | null = null;
-  const controls = { takePress: (button: 'a' | 'b') => pressed.delete(button), heading: () => heading };
+  const controls = {
+    takePress: (button: 'a' | 'b') => pressed.delete(button),
+    isHeld: () => false,
+    heading: () => heading,
+  };
   const sound = {
     star: vi.fn(),
     key: vi.fn(),
@@ -127,7 +131,7 @@ describe('the game navigator', () => {
 
   test('shows the level when it plays an unlocked level, with A disabled where the level has no gate', () => {
     const subject = navigator();
-    expect(subject.screens.showLevel).toHaveBeenCalledExactlyOnceWith(false);
+    expect(subject.screens.showLevel).toHaveBeenCalledExactlyOnceWith(false, false);
   });
 
   test('opens the level picker', () => {

@@ -23,7 +23,7 @@ import { memoryStorage } from '../test-support/memory-storage';
 import { pixelDifference } from '../test-support/pictures';
 import type { Art } from './art/art';
 import { artUrl } from './canvas-art';
-import { aButtonWobble, startGame, wobbleEvery } from './game';
+import { buttonWobble, startGame, wobbleEvery } from './game';
 import { arrivalLength, gateSwingLength } from './game-phase';
 import { Sound } from './sound';
 import { GameLoop } from './game-loop';
@@ -56,6 +56,7 @@ function gameSession(
   const pressed = new Set<'a' | 'b'>();
   const controls = {
     takePress: vi.fn((button: 'a' | 'b') => pressed.delete(button)),
+    isHeld: vi.fn((_button: 'a' | 'b') => false),
     heading: vi.fn<() => Heading | null>(() => null),
   };
   const sound = {
@@ -322,6 +323,7 @@ function gatedSession(arrives = false) {
   const pressed = new Set<'a' | 'b'>();
   const controls = {
     takePress: vi.fn((button: 'a' | 'b') => pressed.delete(button)),
+    isHeld: vi.fn((_button: 'a' | 'b') => false),
     heading: vi.fn<() => Heading | null>(() => null),
   };
   const sound = {
@@ -364,8 +366,8 @@ function gatedSession(arrives = false) {
 
 describe('a swing gate in the game session', () => {
   test('enables A only in a level with a gate', () => {
-    expect(gatedSession().session.usesA).toBe(true);
-    expect(gameSession().session.usesA).toBe(false);
+    expect(gatedSession().session.uses('a')).toBe(true);
+    expect(gameSession().session.uses('a')).toBe(false);
   });
 
   test('starts opening with its sound when A is pressed from below, whichever way the hero faces', () => {
@@ -415,7 +417,7 @@ describe('a swing gate in the game session', () => {
     subject.hold(null);
     subject.tick();
     expect(subject.session.level.hero.position.row).toBe(2);
-    expect(subject.session.promptsA).toBe(false);
+    expect(subject.session.prompts('a')).toBe(false);
     subject.press('a');
     expect(subject.sound.gate).toHaveBeenCalledTimes(2);
     expect(subject.session.level.gate?.state).toBe('closing');
@@ -442,23 +444,23 @@ describe('a swing gate in the game session', () => {
 
   test('asks the A button to wobble only while the hero can open the gate', () => {
     const subject = gatedSession(true);
-    expect(subject.session.promptsA).toBe(false);
+    expect(subject.session.prompts('a')).toBe(false);
     subject.tick(arrivalLength);
-    expect(subject.session.promptsA).toBe(true);
+    expect(subject.session.prompts('a')).toBe(true);
     subject.press('a');
-    expect(subject.session.promptsA).toBe(false);
+    expect(subject.session.prompts('a')).toBe(false);
     subject.tick(gateSwingLength);
-    expect(subject.session.promptsA).toBe(false);
-    expect(gameSession().session.promptsA).toBe(false);
+    expect(subject.session.prompts('a')).toBe(false);
+    expect(gameSession().session.prompts('a')).toBe(false);
   });
 
-  test('wobbles the A button smoothly within one panel pixel in bursts that start still and rest between', () => {
-    const offsets = Array.from({ length: wobbleEvery }, (_, age) => aButtonWobble(age));
+  test('wobbles a button smoothly within one panel pixel in bursts that start still and rest between', () => {
+    const offsets = Array.from({ length: wobbleEvery }, (_, age) => buttonWobble(age));
     expect(offsets[0]).toBe(0);
     expect(offsets.every((offset) => Math.abs(offset) <= 1)).toBe(true);
     expect(offsets.slice(1).some((offset, index) => Math.abs(offset - offsets[index]!) > 0.5)).toBe(false);
     expect(offsets.slice(24).every((offset) => offset === 0)).toBe(true);
-    expect(aButtonWobble(wobbleEvery + 3)).toBe(offsets[3]);
+    expect(buttonWobble(wobbleEvery + 3)).toBe(offsets[3]);
   });
 
   test('ignores A during the magical arrival', () => {
@@ -475,7 +477,11 @@ describe('the second level in the game session', () => {
   test('is played from the arrival through the gate, to the key and out of the door into the next level', () => {
     const pressed = new Set<'a' | 'b'>();
     let heading: Heading | null = null;
-    const controls = { takePress: (button: 'a' | 'b') => pressed.delete(button), heading: () => heading };
+    const controls = {
+      takePress: (button: 'a' | 'b') => pressed.delete(button),
+      isHeld: () => false,
+      heading: () => heading,
+    };
     const sound = {
       star: vi.fn(),
       key: vi.fn(),
@@ -1138,4 +1144,81 @@ test.each([
 
 test('no key left means no hum', () => {
   expect(humVolume({ keys: [], hero: { position: TilePosition.at(0, 0) } } as unknown as LevelView)).toBe(0);
+});
+
+describe('a boulder in the game session', () => {
+  function boulderSession() {
+    const id = LevelId.of('bouldered');
+    const held = new Set<'a' | 'b'>();
+    const controls = {
+      takePress: vi.fn((_button: 'a' | 'b') => false),
+      isHeld: vi.fn((button: 'a' | 'b') => held.has(button)),
+      heading: vi.fn<() => Heading | null>(() => null),
+    };
+    const sound = {
+      star: vi.fn(),
+      key: vi.fn(),
+      hum: vi.fn(),
+      door: vi.fn(),
+      footstep: vi.fn(),
+      restoring: vi.fn(),
+      arrival: vi.fn(),
+      gate: vi.fn(),
+    };
+    const level = levelFromLayout(id, ['.DDD.', 'K....', '.....', '..O..', '..H..', '.....'], keepOrder, {
+      keys: { K: { restores: () => true } },
+    });
+    const session = new GameSession(
+      { id, start: () => new PlayLevel(new InMemoryLevelRepository([level])) },
+      controls,
+      sound,
+      { reach: vi.fn(), complete: vi.fn() },
+      { completed: vi.fn() },
+    );
+    return {
+      session,
+      held,
+      tick(count: number): void {
+        for (let frame = 0; frame < count; frame++) session.tick();
+      },
+    };
+  }
+
+  test('enables A and B only in a level with a boulder', () => {
+    expect(boulderSession().session.uses('b')).toBe(true);
+    expect(boulderSession().session.uses('a')).toBe(true);
+    expect(gatedSession().session.uses('b')).toBe(false);
+  });
+
+  test('keeps pushing while A is held and rests on a whole tile once it is let go', () => {
+    const subject = boulderSession();
+    subject.held.add('a');
+    subject.tick(20);
+    subject.held.delete('a');
+    subject.tick(40);
+    expect(subject.session.level.boulders[0]?.position).toEqual(TilePosition.at(2, 1));
+    expect(subject.session.level.boulders[0]?.isSliding).toBe(false);
+  });
+
+  test('asks A and B to wobble only while she faces the boulder from beside it', () => {
+    const subject = boulderSession();
+    expect(subject.session.prompts('a')).toBe(true);
+    expect(subject.session.prompts('b')).toBe(true);
+    subject.held.add('a');
+    subject.tick(1);
+    expect(subject.session.prompts('a')).toBe(false);
+    expect(subject.session.prompts('b')).toBe(false);
+    subject.held.delete('a');
+    subject.tick(15);
+    expect(subject.session.prompts('a')).toBe(true);
+    expect(gameSession().session.prompts('b')).toBe(false);
+  });
+
+  test('pulls while B is held', () => {
+    const subject = boulderSession();
+    subject.held.add('b');
+    subject.tick(16);
+    subject.held.delete('b');
+    expect(subject.session.level.boulders[0]?.position).toEqual(TilePosition.at(2, 4));
+  });
 });

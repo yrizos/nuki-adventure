@@ -296,6 +296,7 @@ body {
   --art: var(--art-button-b);
 
   grid-area: 2 / 1;
+  translate: calc(var(--wobble, 0) * var(--pixel)) 0;
 }
 
 .action-cross button:disabled {

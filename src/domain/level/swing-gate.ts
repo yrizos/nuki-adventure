@@ -1,3 +1,4 @@
+import type { LevelAction } from './level-action';
 import { Outline, wholeTile } from './obstacles';
 import { Direction, type TilePosition, tileSize } from './position';
 
@@ -11,6 +12,8 @@ export class SwingGate {
     readonly position: TilePosition,
     readonly state: SwingGateState,
   ) {}
+
+  readonly actions: readonly LevelAction[] = ['operate'];
 
   static closedAt(position: TilePosition): SwingGate {
     return new SwingGate(position, 'closed');

@@ -27,6 +27,8 @@ export class Controls {
   private joystickHeld = false;
   private readonly freshPresses = new Set<'a' | 'b'>();
   readonly advance: () => void;
+  readonly isHeld: (button: 'a' | 'b') => boolean;
+  readonly releaseButtons: () => void;
 
   constructor(
     panel: HTMLElement,
@@ -74,8 +76,18 @@ export class Controls {
         : this.keyboardDirection();
       joystick.dataset.direction = lit?.name ?? '';
     };
+    this.isHeld = (button) => heldKeys[button].size + heldPointers[button].size > 0;
     const updateButton = (button: 'a' | 'b'): void => {
-      buttons[button].classList.toggle('pressed', heldKeys[button].size + heldPointers[button].size > 0);
+      buttons[button].classList.toggle('pressed', this.isHeld(button));
+    };
+    this.releaseButtons = (): void => {
+      for (const button of ['a', 'b'] as const) {
+        heldKeys[button].clear();
+        heldPointers[button].clear();
+        this.freshPresses.delete(button);
+        updateButton(button);
+      }
+      pointerButtons.clear();
     };
     const updateKeyboardJoystick = (): void => {
       if (this.joystickHeld) return;
@@ -124,12 +136,7 @@ export class Controls {
       this.joystickHeld = false;
       this.joystickHeading = null;
       updateKeyboardJoystick();
-      for (const button of ['a', 'b'] as const) {
-        heldKeys[button].clear();
-        heldPointers[button].clear();
-        updateButton(button);
-      }
-      pointerButtons.clear();
+      this.releaseButtons();
     });
 
     const nearestButton = (event: { clientX: number; clientY: number }): 'a' | 'b' => {
@@ -145,7 +152,14 @@ export class Controls {
     // Children often miss small targets, so the whole right half of the panel presses the nearest button.
     panel.addEventListener('pointerdown', (event) => {
       const bounds = panel.getBoundingClientRect();
-      if (event.clientX < bounds.left + bounds.width / 2) return;
+      const ring = joystick.getBoundingClientRect();
+      // The ring can reach past the middle, and a touch there steers the hero, so it must never also press a button.
+      const onJoystick =
+        event.clientX >= ring.left &&
+        event.clientX <= ring.left + ring.width &&
+        event.clientY >= ring.top &&
+        event.clientY <= ring.top + ring.height;
+      if (event.clientX < bounds.left + bounds.width / 2 || onJoystick) return;
       const name = nearestButton(event);
       if (buttons[name].disabled) return;
       panel.setPointerCapture(event.pointerId);

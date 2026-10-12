@@ -1,3 +1,4 @@
+import { Boulder } from '../domain/level/boulder';
 import { Area, Key, type KeyMaterial } from '../domain/level/collectibles';
 import type { StarCount } from '../domain/shared/star-count';
 import { Door } from '../domain/level/door';
@@ -89,6 +90,7 @@ export function levelFromLayout(
     door: Door.closedAt(door),
     hero: { position: one('H'), facing: Direction.Up },
     ...(gate ? { gate: SwingGate.closedAt(gate) } : {}),
+    boulders: where('O').map(Boulder.at),
     obstacles: check2dObstacles,
   };
   if (contents.starCount) return Level.withScatteredStars(definition, contents.starCount, shuffle);

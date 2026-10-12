@@ -110,9 +110,13 @@ The exit of a level. It opens once the hero has picked up every key in the level
 
 A single wooden leaf hinged in a fence. The hero opens it by pressing A while she stands on any of the three tiles directly south or directly north of it, facing any direction. Pressing A again from one of those tiles closes it. Unlike the door, it never completes the level, and unlike a fence, it can be passed once open.
 
+### Boulder
+
+A large gray rock covering one tile. The hero moves it one tile at a time while she stands on the tile next to it and faces it. Holding A pushes it away from her, and she follows into the tile it left. Holding B pulls it, and she steps back while it follows into the tile she left. It never enters woodland, water, a fence, a tree, a stone, the gate or the door. It rolls over stars and keys, and the hero collects them as she steps onto their tiles.
+
 ### Reachable
 
-Describes a tile the hero can walk to from her start tile without stepping into the door. In a level with a swing gate, a tile beyond the closed gate counts as reachable, because she can always open the gate and walk through.
+Describes a tile the hero can walk to from her start tile without stepping into the door. In a level with a swing gate, a tile beyond the closed gate counts as reachable, because she can always open the gate and walk through. In a level with boulders, a tile behind a boulder counts as reachable, because she can always push or pull the boulder aside.
 
 ### Hidden
 

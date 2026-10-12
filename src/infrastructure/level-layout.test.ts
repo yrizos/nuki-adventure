@@ -8,13 +8,14 @@ import { Direction, TilePosition } from '../domain/level/position';
 import { Fence, Flower, FlowerVariant, Ground, LevelSize, Scenery, Tree, TreeVariant } from '../domain/level/scenery';
 import { levelFromLayout } from './level-layout';
 import { SwingGate } from '../domain/level/swing-gate';
+import { Boulder } from '../domain/level/boulder';
 
 const at = TilePosition.at;
 const keepOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => positions;
-const layout = ['.DDD..', 'Tt...F', '#H*o~.', 'O....R'];
+const layout = ['.DDD..', 'Tt...F', '#H*o~.', 'Y....R'];
 const contents = {
   keys: {
-    O: { restores: (position: TilePosition) => position.column < 3 },
+    Y: { restores: (position: TilePosition) => position.column < 3 },
     R: { restores: (position: TilePosition) => position.column >= 3 },
   },
   starCount: StarCount.of(2),
@@ -95,17 +96,17 @@ describe('a level built from a layout', () => {
   });
 
   test.each([
-    ['no hero', ['.DDD..', 'Tt...F', '#.*o~.', 'O....R'], 'The layout of level layout needs exactly one "H"'],
-    ['two heroes', ['.DDD..', 'Tt...F', '#H*o~.', 'OH...R'], 'The layout of level layout needs exactly one "H"'],
-    ['no door', ['......', 'Tt...F', '#H*o~.', 'O....R'], 'The layout of level layout needs exactly one door'],
-    ['a split door', ['.DD.D.', 'Tt...F', '#H*o~.', 'O....R'], 'The layout of level layout needs exactly one door'],
-    ['two doors', ['DDDDDD', '......', '#H*o~.', 'O....R'], 'The layout of level layout needs exactly one door'],
+    ['no hero', ['.DDD..', 'Tt...F', '#.*o~.', 'Y....R'], 'The layout of level layout needs exactly one "H"'],
+    ['two heroes', ['.DDD..', 'Tt...F', '#H*o~.', 'YH...R'], 'The layout of level layout needs exactly one "H"'],
+    ['no door', ['......', 'Tt...F', '#H*o~.', 'Y....R'], 'The layout of level layout needs exactly one door'],
+    ['a split door', ['.DD.D.', 'Tt...F', '#H*o~.', 'Y....R'], 'The layout of level layout needs exactly one door'],
+    ['two doors', ['DDDDDD', '......', '#H*o~.', 'Y....R'], 'The layout of level layout needs exactly one door'],
     [
       'star spots and a star count',
-      ['.DDD..', 'Tt...F', '#H*o~.', 'O.+..R'],
+      ['.DDD..', 'Tt...F', '#H*o~.', 'Y.+..R'],
       'The layout of level layout marks star spots, so it takes no star count',
     ],
-    ['a missing key', ['.DDD..', 'Tt...F', '#H*o~.', '.....R'], 'The layout of level layout needs exactly one "O"'],
+    ['a missing key', ['.DDD..', 'Tt...F', '#H*o~.', '.....R'], 'The layout of level layout needs exactly one "Y"'],
   ])('rejects a layout with %s', (_, given, message) => {
     expect(() => levelFromLayout(LevelId.of('layout'), given, keepOrder, contents)).toThrow(message);
   });
@@ -145,6 +146,12 @@ describe('a gate in a layout', () => {
 
   test('leaves a layout without a gate symbol ungated', () => {
     expect(gated(['.DDD.', '.K...', '.....', '..H..']).gate).toBeUndefined();
+  });
+
+  test('places a boulder on grass under each boulder symbol', () => {
+    const level = gated(['.DDD.', '.K...', '..O..', '..H..']);
+    expect(level.boulders).toEqual([Boulder.at(at(2, 2))]);
+    expect(level.scenery.groundAt(at(2, 2))).toBe(Ground.Grass);
   });
 
   test.each([

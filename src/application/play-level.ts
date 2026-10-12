@@ -32,6 +32,18 @@ export class PlayLevel {
     return events;
   }
 
+  push(id: LevelId): void {
+    const level = this.levels.load(id);
+    level.push();
+    this.levels.save(level);
+  }
+
+  pull(id: LevelId): void {
+    const level = this.levels.load(id);
+    level.pull();
+    this.levels.save(level);
+  }
+
   openDoor(id: LevelId): void {
     const level = this.levels.load(id);
     level.openDoor();

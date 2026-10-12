@@ -2,6 +2,7 @@ import type { LevelView } from '../application/level-view';
 import type { ManageProgress } from '../application/manage-progress';
 import type { PlayLevel } from '../application/play-level';
 import type { Area } from '../domain/level/collectibles';
+import type { LevelAction } from '../domain/level/level-action';
 import {
   LevelCompleted,
   KeyCollected,
@@ -9,6 +10,7 @@ import {
   SwingGateClosingStarted,
   SwingGateOpeningStarted,
 } from '../domain/level/level-events';
+import { Direction } from '../domain/level/position';
 import { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import type { LevelId } from '../domain/shared/level-id';
 import { StarCount } from '../domain/shared/star-count';
@@ -36,6 +38,8 @@ export const messages = {
 } as const;
 
 const humReach = 4;
+
+const buttonFor: Readonly<Record<LevelAction, 'a' | 'b'>> = { operate: 'a', push: 'a', pull: 'b' };
 
 export function humVolume(level: LevelView): number {
   const hero = level.hero.position;
@@ -72,7 +76,7 @@ export class GameSession {
 
   constructor(
     level: PlayableLevel,
-    private readonly controls: Pick<Controls, 'takePress' | 'heading'>,
+    private readonly controls: Pick<Controls, 'takePress' | 'isHeld' | 'heading'>,
     private readonly sound: Pick<
       Sound,
       'star' | 'key' | 'hum' | 'door' | 'footstep' | 'restoring' | 'arrival' | 'gate'
@@ -89,13 +93,20 @@ export class GameSession {
     return this.run.play.view(this.run.id);
   }
 
-  get promptsA(): boolean {
-    // The prompt only invites her to open the gate, so it does not nag her to close it once she walks through.
-    return this.phase.name === 'playing' && this.level.canOperateGate && this.level.gate?.state === 'closed';
+  prompts(button: 'a' | 'b'): boolean {
+    if (this.phase.name !== 'playing') return false;
+    const level = this.level;
+    const available: readonly LevelAction[] = [
+      // The prompt only invites her to open the gate, so it does not nag her to close it once she walks through.
+      ...(level.canOperateGate && level.gate?.state === 'closed' ? (['operate'] as const) : []),
+      ...(level.canPush ? (['push'] as const) : []),
+      ...(level.canPull ? (['pull'] as const) : []),
+    ];
+    return available.some((action) => buttonFor[action] === button);
   }
 
-  get usesA(): boolean {
-    return this.level.gate !== undefined;
+  uses(button: 'a' | 'b'): boolean {
+    return this.level.actions.some((action) => buttonFor[action] === button);
   }
 
   get messageText(): string {
@@ -117,6 +128,11 @@ export class GameSession {
       this.sound.gate();
       this.transitionTo(swingingGate(this.frame));
     } else if (this.phase.name === 'playing' || this.phase.name === 'restoring') {
+      // Each slide ends on a whole tile, so a held button starts the next one and a released button lets it rest there.
+      if (this.phase.name === 'playing') {
+        if (this.controls.isHeld('a')) play.push(id);
+        else if (this.controls.isHeld('b')) play.pull(id);
+      }
       const events = play.advance(id, this.controls.heading());
       for (const event of events) {
         if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
@@ -165,16 +181,19 @@ export class GameSession {
     const { restored } = this.run;
     const current = this.run.play.view(this.run.id);
     const level = { ...current, hero: current.hero.between(tickProgress) };
+    const sliding = level.boulders.find((boulder) => boulder.isSliding);
     const scene = {
       level,
       frame: this.frame,
-      // The push art faces north, so it fits only a gate swinging open away from her while she stands south of it.
+      // The push art faces north, so it fits only a gate swinging open away from her or a boulder pushed north.
       hero:
         this.phase.name === 'swinging-gate' &&
         level.gate?.state === 'opening' &&
         level.hero.position.row > level.gate.position.row
           ? pushingPose(this.frame - this.phase.since)
-          : this.run.animator.pose(level.hero, this.frame),
+          : sliding?.heading === Direction.Up && level.hero.facing === Direction.Up
+            ? pushingPose(sliding.travelled / 2)
+            : this.run.animator.pose(level.hero, this.frame),
       ...(this.phase.name === 'appearing' ? { arrival: this.frame - this.phase.since } : {}),
       ...(this.phase.name === 'swinging-gate' ? { gateAge: this.frame - this.phase.since } : {}),
     };

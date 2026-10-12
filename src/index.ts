@@ -8,6 +8,7 @@ import type { Shuffle } from './infrastructure/level-layout';
 import { LocalProgressRepository } from './infrastructure/local-progress-repository';
 import { randomShuffle } from './infrastructure/random-shuffle';
 import { secondLevel, secondLevelId } from './infrastructure/second-level';
+import { fourthLevel, fourthLevelId } from './infrastructure/fourth-level';
 import { thirdLevel, thirdLevelId } from './infrastructure/third-level';
 import { startGame } from './presentation/game';
 
@@ -18,6 +19,7 @@ const levels = [
   { id: firstLevelId, start: playing(firstLevel), arrives: true },
   { id: secondLevelId, start: playing(secondLevel), arrives: true },
   { id: thirdLevelId, start: playing(thirdLevel) },
+  { id: fourthLevelId, start: playing(fourthLevel) },
 ];
 
 startGame(

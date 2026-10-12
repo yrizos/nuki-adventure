@@ -229,6 +229,28 @@ test.each([
   expect(knob.style.transform).toBe('');
 });
 
+test('a touch on the joystick never presses an action button, even past the middle of the panel', () => {
+  const { panel, joystick, controls, pointer } = setup();
+  joystick.bounds = { left: 120, top: 0, width: 120, height: 120 };
+  pointer('pointerdown', 230, 60, 1, panel);
+  expect(controls.isHeld('a')).toBe(false);
+  expect(controls.isHeld('b')).toBe(false);
+});
+
+test('releasing the buttons forgets keys and touches that are still down', () => {
+  const { panel, controls, key, pointer } = setup();
+  key('keydown', 'x');
+  pointer('pointerdown', 300, 60, 1, panel);
+  controls.releaseButtons();
+  expect(controls.isHeld('a')).toBe(false);
+  expect(controls.isHeld('b')).toBe(false);
+  expect(controls.takePress('a')).toBe(false);
+  expect(controls.takePress('b')).toBe(false);
+  pointer('pointerup', 0, 0, 1, panel);
+  key('keyup', 'x');
+  expect(controls.isHeld('b')).toBe(false);
+});
+
 test('a disabled action button ignores its keys', () => {
   const { buttons, controls, key } = setup();
   buttons.a.disabled = true;

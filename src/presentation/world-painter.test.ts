@@ -16,6 +16,7 @@ import { levelFromLayout } from '../infrastructure/level-layout';
 import { randomShuffle } from '../infrastructure/random-shuffle';
 import { secondLevel } from '../infrastructure/second-level';
 import { thirdLevel } from '../infrastructure/third-level';
+import { fourthLevel } from '../infrastructure/fourth-level';
 import { pixelDifference } from '../test-support/pictures';
 import type { Art } from './art/art';
 import * as library from './sprite-library';
@@ -190,8 +191,12 @@ test.each([
   { name: 'first', create: firstLevel },
   { name: 'second', create: secondLevel },
   { name: 'third', create: thirdLevel },
-])('the $name level has ground art for every place where terrains meet', ({ create }) => {
-  expect(() => new WorldPainter(create(randomShuffle))).not.toThrow();
+  { name: 'fourth', create: fourthLevel },
+])('the $name level has ground art for every place where terrains meet and paints', ({ create }) => {
+  const level = levelView(create(randomShuffle));
+  expect(() =>
+    new WorldPainter(level).paint(new Picture(224, 448), { level, frame: 0, hero: sprites.heroArt.up.stand }, []),
+  ).not.toThrow();
 });
 
 test('native terrain grids cover all 81 three-terrain corner combinations', () => {
@@ -1400,4 +1405,26 @@ describe('a swing gate', () => {
     expect(shown).toContain(library.fenceArt[0b0001]);
     expect(shown).toContain(library.fenceArt[0b0010]);
   });
+});
+
+test.each([
+  ['star', 'K..', '..+'],
+  ['key', '...', '..K'],
+])('a boulder hides the %s it rolls onto, while sliding and once it rests', (_, keyRow, itemRow) => {
+  // A level needs fifteen star spots, so rows of spare spots sit below the ones under test.
+  const layout = ['.DDD.', `${keyRow}..`, `${itemRow}..`, '..O..', '..H..', '.....', '+++++', '+++++', '+++++'];
+  const level = levelFromLayout(LevelId.of('rolled'), layout, (spots) => spots, {
+    keys: { K: { restores: () => true } },
+  });
+  const item = itemRow.endsWith('+') ? library.starArt : library.keyArt.gold;
+  level.push();
+  for (const ticks of [8, 8]) {
+    for (let tick = 0; tick < ticks; tick++) level.tick(null);
+    const view = levelView(level);
+    const picture = new Picture(224, 224);
+    const draw = vi.spyOn(picture, 'draw');
+    new WorldPainter(view).paint(picture, { level: view, frame: 0, hero: library.heroArt.up.stand }, []);
+    const drawn = draw.mock.calls.map(([art]) => art);
+    expect(drawn.indexOf(library.boulderArt)).toBeGreaterThan(drawn.indexOf(item));
+  }
 });

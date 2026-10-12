@@ -137,6 +137,7 @@ export const flowerArt = animatedVariants('flowers');
 export const flowerFrameLength = frameLength('flowers');
 
 export const stoneVariants = variants('stone');
+export const boulderArt = frame('boulder', 'variant-0');
 // A fence piece is chosen by a four bit mask of its joined neighbors, so the pieces are looked up by number rather than by file order.
 export const fenceArt = Array.from({ length: 16 }, (_, piece) => frame('fence', `piece-${piece}`));
 export const gateArt = {

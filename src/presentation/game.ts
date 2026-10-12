@@ -20,7 +20,7 @@ const wobbleBurst = 24;
 export const wobbleEvery = 60;
 
 // A sine swing inside a sine envelope eases in and out, and the rests between bursts keep it a hint instead of a buzz.
-export function aButtonWobble(age: number): number {
+export function buttonWobble(age: number): number {
   const frame = age % wobbleEvery;
   if (frame >= wobbleBurst) return 0;
   return Math.sin((2 * Math.PI * frame) / wobbleSwing) * Math.sin((Math.PI * frame) / wobbleBurst);
@@ -73,15 +73,14 @@ export function startGame(
         setActionButtonsEnabled(true);
         levelPicker.show(progress.view().levels);
       },
-      showLevel: (usesA) => {
+      showLevel: (usesA, usesB) => {
         startScreen.hide();
         levelPicker.hide();
-        // Only a gate answers A and nothing in a level answers B, so a button stays disabled where pressing it does nothing.
+        // A button stays disabled in a level where pressing it does nothing.
         actionButtons.a.disabled = !usesA;
-        actionButtons.b.disabled = true;
-        // A press that chose the level must not also act inside it.
-        controls.takePress('a');
-        controls.takePress('b');
+        actionButtons.b.disabled = !usesB;
+        // A press that chose the level must not also act inside it, nor count as held there.
+        controls.releaseButtons();
       },
     },
   );
@@ -96,13 +95,18 @@ export function startGame(
   navigator.openStartScreen();
 
   // Counting from when the prompt starts makes every burst, and its chime, begin at once instead of mid-cycle.
-  let promptAge: number | null = null;
+  const promptAges: Record<'a' | 'b', number | null> = { a: null, b: null };
   const tick = (): void => {
     controls.advance();
     navigator.tick();
-    promptAge = navigator.session?.promptsA ? (promptAge ?? -1) + 1 : null;
-    if (promptAge !== null && promptAge % wobbleEvery === 0) sound.hint(promptAge === 0);
-    actionButtons.a.style.setProperty('--wobble', String(promptAge === null ? 0 : aButtonWobble(promptAge)));
+    for (const button of ['a', 'b'] as const) {
+      const age = navigator.session?.prompts(button) ? (promptAges[button] ?? -1) + 1 : null;
+      promptAges[button] = age;
+      actionButtons[button].style.setProperty('--wobble', String(age === null ? 0 : buttonWobble(age)));
+    }
+    // Both buttons can start a burst on the same frame, so they share one chime.
+    const bursts = Object.values(promptAges).filter((age) => age !== null && age % wobbleEvery === 0);
+    if (bursts.length > 0) sound.hint(bursts.includes(0));
     // Completing a level replaces the session during its own tick, so the message comes from whichever level is now open.
     const spoken = navigator.session?.messageText ?? '';
     if (announcement.textContent !== spoken) announcement.textContent = spoken;

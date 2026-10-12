@@ -1,17 +1,19 @@
 import { expect, test } from 'vitest';
 import { LevelCompleted, KeyCollected } from '../domain/level/level-events';
-import { Direction, TilePosition } from '../domain/level/position';
+import { Direction, Heading, TilePosition } from '../domain/level/position';
 import { Ground } from '../domain/level/scenery';
 import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
 import { follow, openGate, pathTo } from '../test-support/walk-level';
 import { firstLevel } from './first-level';
 import { secondLevel } from './second-level';
+import { fourthLevel } from './fourth-level';
 import { thirdLevel } from './third-level';
 
 const authoredLevels = [
   { name: 'first', create: firstLevel },
   { name: 'second', create: secondLevel },
   { name: 'third', create: thirdLevel },
+  { name: 'fourth', create: fourthLevel },
 ].map((authored) => ({ ...authored, keyCount: authored.create(keepOrder).keys.length }));
 const multiKeyLevels = authoredLevels.filter(({ keyCount }) => keyCount > 1);
 
@@ -101,4 +103,30 @@ test.each(
   expect(toDoor, 'the open door must be reachable').toBeDefined();
   expect(follow(level, toDoor!).some((event) => event instanceof LevelCompleted)).toBe(true);
   expect(level.isComplete).toBe(true);
+});
+
+test('the fourth level is finished by pushing the boulder out of the gap to the glade', () => {
+  const level = fourthLevel(keepOrder);
+  const key = level.keys[0]!.position;
+  expect(
+    pathTo(level, (tile) => tile.equals(key)),
+    'the boulder must close the only way to the key',
+  ).toBeUndefined();
+  follow(
+    level,
+    pathTo(level, (tile) => tile.equals(TilePosition.at(6, 11)))!,
+  );
+  for (let tick = 0; tick < 20 && !level.canPush; tick++) level.tick(Heading.of(Direction.Up));
+  for (let push = 0; push < 2; push++) {
+    expect(level.canPush).toBe(true);
+    level.push();
+    for (let tick = 0; tick < 16; tick++) level.tick(null);
+  }
+  const toKey = pathTo(level, (tile) => tile.equals(key));
+  expect(toKey, 'the key must open up once the boulder is pushed into the glade').toBeDefined();
+  expect(follow(level, toKey!).some((event) => event instanceof KeyCollected)).toBe(true);
+  level.openDoor();
+  const toDoor = pathTo(level, (tile) => level.door.covers(tile));
+  expect(toDoor, 'the door must stay reachable with the boulder in the glade').toBeDefined();
+  expect(follow(level, toDoor!).some((event) => event instanceof LevelCompleted)).toBe(true);
 });

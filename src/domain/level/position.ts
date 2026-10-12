@@ -21,6 +21,19 @@ export class Direction {
     return horizontal === Direction.Left ? Direction.DownLeft : Direction.DownRight;
   }
 
+  get opposite(): Direction {
+    return [
+      Direction.Up,
+      Direction.Down,
+      Direction.Left,
+      Direction.Right,
+      Direction.UpLeft,
+      Direction.UpRight,
+      Direction.DownLeft,
+      Direction.DownRight,
+    ].find((other) => other.columnStep === -this.columnStep && other.rowStep === -this.rowStep)!;
+  }
+
   get horizontal(): Direction | null {
     return this.columnStep < 0 ? Direction.Left : this.columnStep > 0 ? Direction.Right : null;
   }

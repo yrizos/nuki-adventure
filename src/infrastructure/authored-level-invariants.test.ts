@@ -6,6 +6,7 @@ import { SwingGate } from '../domain/level/swing-gate';
 import { check2dObstacles } from './check2d-obstacles';
 import { firstLevel } from './first-level';
 import { secondLevel } from './second-level';
+import { fourthLevel } from './fourth-level';
 import { thirdLevel } from './third-level';
 
 const keepOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => positions;
@@ -53,6 +54,7 @@ const passes = [
   { name: 'first', authored: firstLevel(keepOrder) },
   { name: 'second', authored: secondLevel(keepOrder) },
   { name: 'third', authored: thirdLevel(keepOrder) },
+  { name: 'fourth', authored: fourthLevel(keepOrder) },
 ].flatMap(({ name, authored }): Pass[] => {
   const gate = authored.gate;
   if (!gate) return [{ name, authored, gate, region: undefined, beyond: undefined }];
