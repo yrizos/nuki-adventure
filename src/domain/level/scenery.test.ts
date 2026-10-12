@@ -1,5 +1,8 @@
+import { isDeepStrictEqual } from 'node:util';
 import { describe, expect, test } from 'vitest';
+import { Door } from './door';
 import { Outline } from './obstacles';
+import { SwingGate } from './swing-gate';
 import { Direction, TilePosition } from './position';
 import { Fence, Flower, FlowerVariant, Ground, LevelSize, Scenery, Tree, TreeVariant } from './scenery';
 
@@ -104,7 +107,7 @@ describe('scenery', () => {
     expect(subject.isWalkable(at(1, 0))).toBe(false);
     expect(subject.isWalkable(at(1, 1))).toBe(false);
     expect(subject.isWalkable(at(0, 0))).toBe(true);
-    expect(subject.obstacles(() => false)).toContainEqual(Outline.spanning(at(1, 1), 0, 0, 32, 32));
+    expect(subject.obstacles(Door.closedAt(at(0, 0)))).toContainEqual(Outline.spanning(at(1, 1), 0, 0, 32, 32));
   });
 
   test('hides exactly the tile above each woodland tile', () => {
@@ -117,17 +120,49 @@ describe('scenery', () => {
   });
 
   test('joins neighboring fences with rails reaching toward each other only', () => {
-    const outlines = scenery(['...'], [], [], [Fence.at(at(0, 0)), Fence.at(at(1, 0))]).obstacles(() => false);
-    expect(outlines).toContainEqual(Outline.spanning(at(0, 0), 12, 17, 32, 32));
-    expect(outlines).toContainEqual(Outline.spanning(at(1, 0), 0, 17, 20, 32));
-    expect(outlines).not.toContainEqual(Outline.spanning(at(1, 0), 12, 17, 32, 32));
+    const outlines = scenery(['...', '...'], [], [], [Fence.at(at(0, 1)), Fence.at(at(1, 1))]).obstacles(
+      Door.closedAt(at(0, 0)),
+    );
+    expect(outlines).toContainEqual(Outline.spanning(at(0, 1), 12, 17, 32, 32));
+    expect(outlines).toContainEqual(Outline.spanning(at(1, 1), 0, 17, 20, 32));
+    expect(outlines).not.toContainEqual(Outline.spanning(at(1, 1), 12, 17, 32, 32));
   });
 
-  test('joins a fence to a neighbor it is told to join', () => {
-    const outlines = scenery(['..']).obstacles(() => false);
-    const joined = scenery(['..'], [], [], [Fence.at(at(0, 0))]).obstacles((position) => position.equals(at(1, 0)));
-    expect(outlines).not.toContainEqual(Outline.spanning(at(0, 0), 12, 17, 32, 32));
-    expect(joined).toContainEqual(Outline.spanning(at(0, 0), 12, 17, 32, 32));
+  test('joins a fence to the door and gate in every state', () => {
+    const subject = scenery(['......'], [], [], [Fence.at(at(3, 0))]);
+    const door = Door.closedAt(at(0, 0));
+    const closed = SwingGate.closedAt(at(4, 0));
+    const opening = closed.requestOpen();
+    const open = opening.finishOpening();
+    const failures: string[] = [];
+    const rails = [Outline.spanning(at(3, 0), 0, 17, 20, 32), Outline.spanning(at(3, 0), 12, 17, 32, 32)];
+    for (const exit of [door, door.opened()]) {
+      for (const gate of [closed, opening, open, open.requestClose()]) {
+        const outlines = subject.obstacles(exit, gate);
+        if (!rails.every((rail) => outlines.some((outline) => isDeepStrictEqual(outline, rail))))
+          failures.push(`door open: ${exit.isOpen}, gate: ${gate.state}`);
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+
+  test('connects only to fence, door and gate tiles from every direction', () => {
+    const door = Door.closedAt(at(0, 0));
+    const gate = SwingGate.closedAt(at(4, 2));
+    const subject = scenery(['......', '......', '......', '......'], [], [], [Fence.at(at(2, 2))]);
+    const joined = new Set(['0,0', '1,0', '2,0', '2,2', '4,2']);
+    const failures: string[] = [];
+    for (let row = 0; row < 4; row++) {
+      for (let column = 0; column < 6; column++) {
+        for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
+          const neighbor = at(column, row).neighbor(direction);
+          const expected = joined.has(`${neighbor.column},${neighbor.row}`);
+          if (subject.joinsFence(neighbor, door, gate) !== expected)
+            failures.push(`${column},${row} toward ${direction.name}`);
+        }
+      }
+    }
+    expect(failures).toEqual([]);
   });
 });
 

@@ -293,10 +293,7 @@ export class WorldPainter {
       level.scenery.flowers.map((flower) => [flower.position]),
       level.scenery.flowerVariants.length,
     ).map((choice) => FlowerVariant.All.indexOf(level.scenery.flowerVariants[choice]!));
-    const joins = (position: TilePosition): boolean =>
-      level.door.covers(position) ||
-      (level.gate?.covers(position) ?? false) ||
-      level.scenery.fences.some((fence) => fence.position.equals(position));
+    const joins = (position: TilePosition): boolean => level.scenery.joinsFence(position, level.door, level.gate);
     this.fencePieces = level.scenery.fences.map(({ position }) =>
       [Direction.Up, Direction.Down, Direction.Left, Direction.Right].reduce(
         (piece, direction) => (piece << 1) | (joins(position.neighbor(direction)) ? 1 : 0),

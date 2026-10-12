@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { LevelView } from '../application/level-view';
 import { PlayLevel } from '../application/play-level';
 import { Area, Key, Star } from '../domain/level/collectibles';
@@ -733,6 +733,14 @@ function gamePage({ secondUnlocked = false, arrives = false } = {}) {
 }
 
 describe('the game page', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   test('starts level one from ΝΕΟ ΠΑΙΧΝΙΔΙ', () => {
     const page = gamePage({ secondUnlocked: true });
     expect(page.startScreen.hidden).toBe(false);

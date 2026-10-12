@@ -1,4 +1,6 @@
+import type { Door } from './door';
 import { Outline, wholeTile } from './obstacles';
+import type { SwingGate } from './swing-gate';
 import { Direction, TilePosition, TilePositions, tileSize, WorldPosition } from './position';
 
 export class Ground {
@@ -253,7 +255,15 @@ export class Scenery {
     return this.ground[position.row]![position.column]!;
   }
 
-  obstacles(joinsFence: (position: TilePosition) => boolean): readonly Outline[] {
+  joinsFence(position: TilePosition, door: Door, gate?: SwingGate): boolean {
+    return (
+      door.covers(position) ||
+      (gate?.covers(position) ?? false) ||
+      this.fences.some((fence) => fence.position.equals(position))
+    );
+  }
+
+  obstacles(door: Door, gate?: SwingGate): readonly Outline[] {
     const { columns, rows } = this.size;
     const width = columns * tileSize;
     const height = rows * tileSize;
@@ -264,10 +274,8 @@ export class Scenery {
         if (!this.groundAt(tile).isWalkable || this.woodland.covers(tile)) solid.push(wholeTile(tile));
       }
     }
-    const joins = (fence: Fence) => (direction: Direction) => {
-      const neighbor = fence.position.neighbor(direction);
-      return joinsFence(neighbor) || this.fences.some((other) => other.position.equals(neighbor));
-    };
+    const joins = (fence: Fence) => (direction: Direction) =>
+      this.joinsFence(fence.position.neighbor(direction), door, gate);
     return [
       Outline.box(WorldPosition.at(-tileSize / 2, height / 2), tileSize, height + 2 * tileSize),
       Outline.box(WorldPosition.at(width + tileSize / 2, height / 2), tileSize, height + 2 * tileSize),

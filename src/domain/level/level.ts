@@ -477,7 +477,7 @@ export class Level {
     const door = this.currentDoor;
     const gate = this.currentGate;
     this.obstacleOutlines = [
-      ...this.scenery.obstacles((position) => door.covers(position) || (gate?.covers(position) ?? false)),
+      ...this.scenery.obstacles(door, gate),
       ...this.stones.map((stone) => stone.obstacle),
       ...(door.isOpen ? [] : [door.obstacle]),
       ...(gate?.obstacles ?? []),
