@@ -42,6 +42,7 @@ Hex values and the faded mapping live in [`src/presentation/sprites/palette.js`]
 | Boulder | N4 base, N3 shading and crack, Paper highlight, one step lighter than stones so it reads as movable |
 | Pressure plate | O2 base, O1 shading and groove, O3 highlight. Its faded grays are darker than the boulder's, so the two stay apart before restoration |
 | Fences | E1 wood, E2 highlight, E0 shading |
+| Gate | E0 wood and shading, E1 highlight |
 | Door | E1 frame, E2 frame highlights, E0 frame shading and grain, E2 planks, E0 plank lines and handles, E0 doorway when open |
 | Light motes | Paper |
 

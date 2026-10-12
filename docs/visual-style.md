@@ -133,7 +133,7 @@ A new element uses the smallest size that fits its shape.
 
 ### Swing Gate
 
-- One wooden leaf in the fence colors, hinged on the post at its west side.
+- One wooden leaf one ramp step darker than the fences, hinged on the post at its west side.
 - Frames are 32 × 64 pixels with their bottom on the gate tile, so the swung leaf rises into the tile north of it. The hinge sits on the same pixel in every frame.
 - Eight authored frames rotate the leaf north around the hinge, two game frames each, sixteen in total. A ninth frame parks the leaf at about 90 degrees along the west side of the passage.
 - The swing uses authored frames only. The leaf never slides, shrinks, fades, or is rotated or scaled at runtime.
