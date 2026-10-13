@@ -11,6 +11,10 @@ class StubAudioNode {
     return target;
   }
 
+  disconnect(): void {
+    this.outputs.length = 0;
+  }
+
   reachesSpeakers(): boolean {
     return this === this.context.destination || this.outputs.some((output) => output.reachesSpeakers());
   }
@@ -24,6 +28,10 @@ class StubAudioParam {
   }
 
   exponentialRampToValueAtTime(): void {}
+
+  linearRampToValueAtTime(value: number): void {
+    this.value = value;
+  }
 
   setTargetAtTime(value: number): void {
     this.value = value;

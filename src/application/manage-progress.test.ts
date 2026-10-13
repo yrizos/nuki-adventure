@@ -25,7 +25,8 @@ function subject(levels = [one, two]) {
 test('shows the levels of the game by number, with only the first unlocked at first', () => {
   const { manage } = subject();
   expect(manage.view()).toEqual({
-    continueLevel: one,
+    continueLevel: null,
+    hasProgress: false,
     levels: [
       { id: one, number: 1, isUnlocked: true, lastPlaythrough: null },
       { id: two, number: 2, isUnlocked: false, lastPlaythrough: null },
@@ -41,6 +42,7 @@ test('saves reaching a level and completing one', () => {
   expect(saves()).toBe(2);
   const view = manage.view();
   expect(view.continueLevel).toBe(two);
+  expect(view.hasProgress).toBe(true);
   expect(view.levels.map((level) => level.isUnlocked)).toEqual([true, true]);
   expect(view.levels[0]!.lastPlaythrough).toEqual(playthrough);
 });
@@ -53,4 +55,12 @@ test('completing a level saves the next level of the configured order as unlocke
     [two, true],
     [one, true],
   ]);
+});
+
+test('resetting saves fresh progress', () => {
+  const { manage } = subject();
+  manage.reach(two);
+  manage.reset();
+  expect(manage.view()).toMatchObject({ continueLevel: null, hasProgress: false });
+  expect(manage.view().levels.map((level) => level.isUnlocked)).toEqual([true, false]);
 });

@@ -15,6 +15,7 @@ import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repos
 import { LocalProgressRepository } from '../infrastructure/local-progress-repository';
 import { memoryStorage } from '../test-support/memory-storage';
 import { pixelDifference } from '../test-support/pictures';
+import { endScreenFadeLength } from './end-screen';
 import { GameNavigator } from './game-navigator';
 import { GameSession } from './game-session';
 import { HeroAnimator } from './hero-animator';
@@ -55,6 +56,8 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
     showStartScreen: vi.fn(),
     animateStartScreen: vi.fn(),
     showLevelPicker: vi.fn(),
+    showEndScreen: vi.fn(),
+    animateEndScreen: vi.fn(),
     showLevel: vi.fn(),
   };
   const { showStartScreen } = screens;
@@ -202,6 +205,40 @@ describe('the game navigator', () => {
     subject.navigator.tick();
     expect(subject.current().hero.feet).not.toEqual(before);
     expect(subject.screens.animateStartScreen).not.toHaveBeenCalled();
+  });
+
+  test('finishing the last level opens the end screen, which stays 2 seconds and then fades to the start screen', () => {
+    const subject = navigator();
+    subject.complete();
+    subject.complete();
+    expect(subject.navigator.state).toBe('end-screen');
+    expect(subject.screens.showEndScreen).toHaveBeenCalledOnce();
+    for (let frame = 1; frame < 120; frame++) subject.navigator.tick();
+    expect(vi.mocked(subject.screens.animateEndScreen).mock.calls.at(-1)).toEqual([119, 0]);
+    for (let frame = 0; frame < endScreenFadeLength; frame++) subject.navigator.tick();
+    expect(vi.mocked(subject.screens.animateEndScreen).mock.calls.at(-1)).toEqual([
+      119 + endScreenFadeLength,
+      endScreenFadeLength - 1,
+    ]);
+    expect(subject.navigator.state).toBe('end-screen');
+    subject.navigator.tick();
+    expect(subject.navigator.state).toBe('start-screen');
+  });
+
+  test('leaving the end screen early starts the fade at once, and a second press does not restart it', () => {
+    const subject = navigator();
+    subject.complete();
+    subject.complete();
+    subject.navigator.tick();
+    subject.navigator.leaveEndScreen();
+    subject.navigator.tick();
+    subject.navigator.leaveEndScreen();
+    subject.navigator.tick();
+    expect(vi.mocked(subject.screens.animateEndScreen).mock.calls.at(-1)).toEqual([3, 2]);
+    for (let frame = 3; frame < endScreenFadeLength; frame++) subject.navigator.tick();
+    expect(subject.navigator.state).toBe('end-screen');
+    subject.navigator.tick();
+    expect(subject.navigator.state).toBe('start-screen');
   });
 
   test('saves each completion once', () => {

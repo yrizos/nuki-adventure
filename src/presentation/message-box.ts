@@ -1,6 +1,6 @@
 import type { Art } from './art/art';
 import { PixelGrid } from './art/art';
-import { glyphHeight, glyphWidth, letterGap, writeText } from './art/font';
+import { glyphHeight, glyphWidth, letterGap, lineHeight, writeText } from './art/font';
 import { ditherSteps, ditherThreshold } from './ordered-dither';
 import type { Picture } from './picture';
 
@@ -8,7 +8,6 @@ const margin = 8;
 const edge = 2;
 const padding = 10;
 const advance = glyphWidth + letterGap;
-const lineHeight = glyphHeight + 7;
 const dissolveLength = ditherSteps;
 
 export function wrap(text: string, boxWidth: number): readonly string[] {

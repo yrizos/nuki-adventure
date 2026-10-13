@@ -113,6 +113,12 @@ export class FakeStyle {
   getPropertyValue(name: string): string {
     return this.properties.get(name) ?? '';
   }
+
+  removeProperty(name: string): string {
+    const value = this.getPropertyValue(name);
+    this.properties.delete(name);
+    return value;
+  }
 }
 
 export class FakeHTMLElement extends FakeElement {

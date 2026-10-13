@@ -4,7 +4,7 @@ Definitions only. Rules that use these terms live in [Level Design](level-design
 
 ## Screen
 
-[UI Layout](ui-layout.md) defines the canonical screen terms: game view, control panel, joystick (ring and knob), action button A and B, action button cross, sound switch, full screen switch, menu switch, start screen and level picker.
+[UI Layout](ui-layout.md) defines the canonical screen terms: game view, control panel, joystick (ring and knob), action button A and B, action button cross, sound switch, full screen switch, menu switch, start screen, confirmation, end screen and level picker.
 
 ## Game World
 

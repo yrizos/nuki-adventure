@@ -48,8 +48,17 @@ export class GameProgress {
     return order.first.equals(level) || this.unlocked.some((unlocked) => unlocked.equals(level));
   }
 
-  continueLevelAmong(order: LevelOrder): LevelId {
-    return this.continueAt && order.includes(this.continueAt) ? this.continueAt : order.first;
+  get hasProgress(): boolean {
+    return this.unlocked.length > 0 || this.last.size > 0;
+  }
+
+  // A saved level that is no longer in the game falls back to the first level, so the player is never left without a way on.
+  // A completed last level means the game is finished, so nothing is left to continue.
+  continueLevelAmong(order: LevelOrder): LevelId | null {
+    if (!this.continueAt) return null;
+    if (!order.includes(this.continueAt)) return order.first;
+    const finished = order.after(this.continueAt) === null && this.lastPlaythroughOf(this.continueAt) !== null;
+    return finished ? null : this.continueAt;
   }
 
   lastPlaythroughOf(level: LevelId): Playthrough | null {

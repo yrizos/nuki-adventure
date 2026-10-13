@@ -112,7 +112,7 @@ describe('saving progress', () => {
     progress.complete(
       LevelId.of('first'),
       Playthrough.of(PlayTime.ofFrames(600), StarCount.of(2), StarCount.of(3)),
-      LevelOrder.of([LevelId.of('first')]),
+      LevelOrder.of([LevelId.of('first'), LevelId.of('second')]),
     );
     repository.save(progress);
     expect(JSON.parse(store.getItem(progressKey)!)).toEqual(saved);

@@ -13,14 +13,16 @@ const glyphs = {
 const dimple = ['.xx.', 'xxxx', 'xxxx', '.xx.'];
 const arrowUp = ['...xx...', '..xxxx..', '.xxxxxx.', 'xxxxxxxx'];
 const switchSize = 19;
+const continueText = 'ΣΥΝΕΧΕΙΑ';
+const pickLevelText = 'ΕΠΙΠΕΔΑ';
 const newGameText = 'ΝΕΟ ΠΑΙΧΝΙΔΙ';
-const pickLevelText = 'ΕΠΙΛΟΓΗ ΕΠΙΠΕΔΟΥ';
+const yesText = 'ΝΑΙ';
+const noText = 'ΟΧΙ';
 const backText = 'ΠΙΣΩ';
 const textButtonPadding = 12;
 const textButtonFaceHeight = 23;
 const textButtonWidth = (text: string): number => textWidth(text) + 2 * textButtonPadding;
-export const newGameWidth = textButtonWidth(newGameText);
-export const pickLevelWidth = textButtonWidth(pickLevelText);
+export const menuButtonWidth = Math.max(...[continueText, pickLevelText, newGameText].map(textButtonWidth));
 export const backWidth = textButtonWidth(backText);
 export const textButtonHeight = textButtonFaceHeight + lipHeight;
 const speakerOn = [
@@ -149,13 +151,12 @@ function control(colors: ControlColors, pressed: boolean, mark: readonly string[
   return grid.build(controlLegend(colors));
 }
 
-function textButton(text: string, colors: ControlColors, pressed: boolean): Art {
-  const width = textButtonWidth(text);
+function textButton(text: string, colors: ControlColors, pressed: boolean, width = textButtonWidth(text)): Art {
   const inside = (column: number, row: number): boolean =>
     inRoundedRectangle(width, textButtonFaceHeight, 6, column, row);
   const grid = pressable(width, textButtonFaceHeight, inside, pressed);
   const top = (pressed ? lipHeight : 0) + Math.floor((textButtonFaceHeight - glyphHeight) / 2);
-  writeText(grid, text, textButtonPadding, top, 'm');
+  writeText(grid, text, Math.floor((width - textWidth(text)) / 2), top, 'm');
   return grid.build(controlLegend(colors));
 }
 
@@ -263,11 +264,18 @@ export const panelArt: Readonly<Record<string, Art>> = {
   'sound-off': switchArt(speakerOff),
   'full-screen-enter': switchArt(enterFullScreen),
   'full-screen-leave': switchArt(leaveFullScreen),
-  // ΣΥΝΕΧΕΙΑ wears the A button colors, so the way forward looks like the button that already means yes.
-  'new-game': textButton(newGameText, buttonA, false),
-  'new-game-pressed': textButton(newGameText, buttonAPressed, true),
-  'pick-level': textButton(pickLevelText, buttonA, false),
-  'pick-level-pressed': textButton(pickLevelText, buttonAPressed, true),
+  // The menu buttons wear the A button colors, so the way forward looks like the button that already means yes.
+  continue: textButton(continueText, buttonA, false, menuButtonWidth),
+  'continue-pressed': textButton(continueText, buttonAPressed, true, menuButtonWidth),
+  'pick-level': textButton(pickLevelText, buttonA, false, menuButtonWidth),
+  'pick-level-pressed': textButton(pickLevelText, buttonAPressed, true, menuButtonWidth),
+  'new-game': textButton(newGameText, buttonA, false, menuButtonWidth),
+  'new-game-pressed': textButton(newGameText, buttonAPressed, true, menuButtonWidth),
+  yes: textButton(yesText, buttonA, false, menuButtonWidth),
+  'yes-pressed': textButton(yesText, buttonAPressed, true, menuButtonWidth),
+  // ΟΧΙ is the safe answer, so it wears the calm B button colors and leaves the warning red to ΝΑΙ.
+  no: textButton(noText, buttonB, false, menuButtonWidth),
+  'no-pressed': textButton(noText, buttonBPressed, true, menuButtonWidth),
   back: textButton(backText, buttonA, false),
   'back-pressed': textButton(backText, buttonAPressed, true),
   menu: switchArt(menu),

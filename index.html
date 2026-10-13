@@ -15,11 +15,23 @@
       </div>
       <section class="start-screen" role="dialog" aria-modal="true" aria-label="ΝΟΥΚΙ" hidden>
         <h1 class="start-title" aria-label="Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ ΤΗΣ ΝΟΥΚΙ"></h1>
+        <button class="menu-button start-continue" type="button">ΣΥΝΕΧΕΙΑ</button>
+        <button class="menu-button start-pick-level" type="button">ΕΠΙΠΕΔΑ</button>
         <button class="menu-button start-new-game" type="button">ΝΕΟ ΠΑΙΧΝΙΔΙ</button>
-        <button class="menu-button start-pick-level" type="button">ΕΠΙΛΟΓΗ ΕΠΙΠΕΔΟΥ</button>
         <div class="start-hero" aria-hidden="true"></div>
       </section>
-      <section class="level-picker-screen" role="dialog" aria-modal="true" aria-label="ΕΠΙΛΟΓΗ ΕΠΙΠΕΔΟΥ" hidden>
+      <section class="confirm-modal" role="alertdialog" aria-modal="true" aria-label="ΝΕΟ ΠΑΙΧΝΙΔΙ" hidden>
+        <div class="confirm-box">
+          <p class="confirm-text">ΝΕΟ ΠΑΙΧΝΙΔΙ; Η ΠΡΟΟΔΟΣ ΘΑ ΧΑΘΕΙ.</p>
+          <button class="menu-button confirm-yes" type="button">ΝΑΙ</button>
+          <button class="menu-button confirm-no" type="button">ΟΧΙ</button>
+        </div>
+      </section>
+      <section class="end-screen" role="dialog" aria-modal="true" aria-label="ΣΥΓΧΑΡΗΤΗΡΙΑ!" hidden>
+        <h1 class="end-title" aria-label="ΣΥΓΧΑΡΗΤΗΡΙΑ!"></h1>
+        <div class="end-hero" aria-hidden="true"></div>
+      </section>
+      <section class="level-picker-screen" role="dialog" aria-modal="true" aria-label="ΕΠΙΠΕΔΑ" hidden>
         <ol class="level-picker"></ol>
         <button class="menu-button level-picker-back" type="button">ΠΙΣΩ</button>
       </section>

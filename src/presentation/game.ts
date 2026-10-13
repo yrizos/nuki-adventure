@@ -3,6 +3,7 @@ import { panelArt } from './art/panel';
 import { artUrl } from './canvas-art';
 import { Controls } from './controls';
 import { element } from './dom';
+import { EndScreen } from './end-screen';
 import { GameLoop } from './game-loop';
 import { GameNavigator } from './game-navigator';
 import { GameSession, type PlayableLevel } from './game-session';
@@ -29,7 +30,7 @@ export function buttonWobble(age: number): number {
 export function startGame(
   root: Document,
   levels: readonly PlayableLevel[],
-  progress: Pick<ManageProgress, 'view' | 'reach' | 'complete'>,
+  progress: Pick<ManageProgress, 'view' | 'reach' | 'complete' | 'reset'>,
   random: () => number,
 ): void {
   const screen = element<HTMLElement>(root, '.screen');
@@ -57,6 +58,7 @@ export function startGame(
   const sound = new Sound(window);
   const startScreen = new StartScreen(root);
   const levelPicker = new LevelPicker(root);
+  const endScreen = new EndScreen(root);
   const navigator = new GameNavigator(
     levels,
     progress,
@@ -64,19 +66,36 @@ export function startGame(
     {
       showStartScreen: () => {
         levelPicker.hide();
+        endScreen.hide();
         announcement.textContent = '';
         setActionButtonsEnabled(true);
-        startScreen.show();
+        const view = progress.view();
+        startScreen.show({ canContinue: view.continueLevel !== null, hasProgress: view.hasProgress });
+        screen.classList.add('menu-open');
+        sound.music(null);
       },
       animateStartScreen: (framesOpen) => startScreen.animate(framesOpen),
       showLevelPicker: () => {
         startScreen.hide();
+        screen.classList.add('menu-open');
         setActionButtonsEnabled(true);
         levelPicker.show(progress.view().levels);
+        sound.music(null);
       },
+      showEndScreen: () => {
+        announcement.textContent = '';
+        endScreen.show();
+        screen.classList.remove('menu-open');
+        sound.hum(0);
+        sound.music('end');
+      },
+      animateEndScreen: (framesOpen, framesLeaving) => endScreen.animate(framesOpen, framesLeaving),
       showLevel: (usesA, usesB) => {
         startScreen.hide();
         levelPicker.hide();
+        endScreen.hide();
+        screen.classList.remove('menu-open');
+        sound.music('game');
         // A button stays disabled in a level where pressing it does nothing.
         actionButtons.a.disabled = !usesA;
         actionButtons.b.disabled = !usesB;
@@ -85,11 +104,21 @@ export function startGame(
       },
     },
   );
-  startScreen.whenNewGame(() => navigator.play(levels[0]!.id));
+  startScreen.whenContinuing(() => {
+    const level = progress.view().continueLevel;
+    if (level) navigator.play(level);
+  });
+  startScreen.whenNewGame(() => {
+    progress.reset();
+    navigator.play(levels[0]!.id);
+  });
+  endScreen.whenLeaving(() => navigator.leaveEndScreen());
   startScreen.whenPickingLevel(() => navigator.openLevelPicker());
   levelPicker.whenChosen((level) => navigator.play(level));
   levelPicker.whenBack(() => navigator.openStartScreen());
   connectGameSwitches(root, sound, () => {
+    // Escape is one of the keys that leave the end screen, so it leaves through the same fade.
+    if (navigator.state === 'end-screen') return;
     sound.hum(0);
     navigator.openStartScreen();
   });

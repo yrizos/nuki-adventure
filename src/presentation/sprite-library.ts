@@ -114,6 +114,7 @@ export const heroArt: HeroArt = {
   left: heroDirection('left'),
   right: heroDirection('right'),
 };
+export const heroDanceArt = animation('hero', 'down-dance').frames;
 export const heroWalkFrameLength = frameLength('hero');
 
 export const grassArt = variants('grass');

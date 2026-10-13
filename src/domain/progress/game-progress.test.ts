@@ -25,9 +25,10 @@ describe('a playthrough', () => {
 });
 
 describe('game progress', () => {
-  test('starts at the first level with only the first level unlocked', () => {
+  test('starts with nothing to continue, no progress and only the first level unlocked', () => {
     const progress = GameProgress.fresh();
-    expect(progress.continueLevelAmong(order)).toBe(one);
+    expect(progress.continueLevelAmong(order)).toBeNull();
+    expect(progress.hasProgress).toBe(false);
     expect(levels.map((level) => progress.isUnlocked(level, order))).toEqual([true, false, false]);
   });
 
@@ -68,6 +69,29 @@ describe('game progress', () => {
     expect(progress.isUnlocked(two, order)).toBe(true);
     expect(progress.unlockedLevels).toEqual([two]);
     expect(progress.continueLevel).toBeNull();
+  });
+
+  test('reaching a level counts as progress', () => {
+    const progress = GameProgress.fresh();
+    progress.reach(one);
+    expect(progress.hasProgress).toBe(true);
+  });
+
+  test('completing the last level leaves nothing to continue but keeps the progress', () => {
+    const progress = GameProgress.fresh();
+    progress.reach(three);
+    progress.complete(three, playthrough(500, 3), order);
+    expect(progress.continueLevelAmong(order)).toBeNull();
+    expect(progress.hasProgress).toBe(true);
+  });
+
+  test('a save that already finished the game leaves nothing to continue', () => {
+    const progress = GameProgress.restore({
+      continueLevel: three,
+      unlockedLevels: [two, three],
+      lastPlaythroughs: [{ level: three, playthrough: playthrough(300, 1) }],
+    });
+    expect(progress.continueLevelAmong(order)).toBeNull();
   });
 
   test('completing the last level unlocks nothing', () => {

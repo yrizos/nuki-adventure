@@ -3,8 +3,8 @@ import { Hero } from '../domain/level/hero';
 import type { Obstacles } from '../domain/level/obstacles';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
 import type { Art } from './art/art';
-import { heroArt } from './sprite-library';
-import { HeroAnimator, idleHeroPose, pushingPose } from './hero-animator';
+import { heroArt, heroDanceArt } from './sprite-library';
+import { dancingHeroPose, HeroAnimator, idleHeroPose, pushingPose } from './hero-animator';
 
 const openGround: Obstacles = { walk: (_, to) => to };
 const down = Heading.of(Direction.Down);
@@ -92,4 +92,11 @@ test('pushes through both pushing frames across the sixteen frames of a gate swi
   const shown = Array.from({ length: 18 }, (_, age) => pushingPose(age));
   expect(shown.slice(0, 8).every((art) => art === heroArt.up.push[0])).toBe(true);
   expect(shown.slice(8).every((art) => art === heroArt.up.push[1])).toBe(true);
+});
+
+test('dances through cheer, left, cheer and right poses for sixteen frames each and loops every 64 frames', () => {
+  const [cheer, , left, , , , right] = heroDanceArt;
+  const frames = [0, 15, 16, 31, 32, 48, 63, 64];
+  expect(frames.map(dancingHeroPose)).toEqual([cheer, cheer, left, left, cheer, right, right, cheer]);
+  expect(new Set([cheer, left, right]).size).toBe(3);
 });

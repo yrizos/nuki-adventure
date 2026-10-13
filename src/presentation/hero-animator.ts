@@ -1,6 +1,6 @@
 import type { HeroState } from '../domain/level/hero';
 import type { Art, HeroArt } from './art/art';
-import { heroArt, heroWalkFrameLength } from './sprite-library';
+import { heroArt, heroDanceArt, heroWalkFrameLength } from './sprite-library';
 
 const ticksPerWalkFrame = heroWalkFrameLength;
 const settleTicks = 8;
@@ -14,6 +14,10 @@ export function idleHeroPose(facing: keyof HeroArt, frame: number): Art {
   const art = heroArt[facing];
   if (art.blink && frame >= blinkEvery && frame % blinkEvery < blinkFrames) return art.blink;
   return Math.floor(frame / breathEvery) % 2 === 1 ? art.breathe : art.stand;
+}
+
+export function dancingHeroPose(frame: number): Art {
+  return heroDanceArt[Math.floor(frame / heroWalkFrameLength) % heroDanceArt.length]!;
 }
 
 export function pushingPose(age: number): Art {

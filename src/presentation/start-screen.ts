@@ -1,11 +1,12 @@
 import { PixelGrid, type Art } from './art/art';
-import { glyphHeight, glyphWidth, letterGap, textWidth, writeText } from './art/font';
-import { textButtonHeight, newGameWidth, pickLevelWidth } from './art/panel';
+import { glyphHeight, glyphWidth, letterGap, lineHeight, textWidth, writeText } from './art/font';
+import { menuButtonWidth, textButtonHeight } from './art/panel';
 import { artUrl } from './canvas-art';
+import { ConfirmModal } from './confirm-modal';
 import { element } from './dom';
 import { idleHeroPose } from './hero-animator';
-import { takeMenuKeys } from './menu-keys';
-import { ditherSteps, ditherThreshold } from './ordered-dither';
+import { menuChoices, takeMenuKeys } from './menu-keys';
+import { ditheredArt, ditherSteps } from './ordered-dither';
 
 // ΠΟΛΥΧΡΩΜΗ means colorful, so its letters take violet, teal and red in turn, and the hero's name takes the gold of the stars.
 const gameName = [
@@ -13,8 +14,12 @@ const gameName = [
   { text: 'ΤΗΣ ΝΟΥΚΙ', colors: 'pppp' + 'yyyyy' },
 ];
 const gameNameLegend = { p: 'Paper', v: 'V2', t: 'T2', r: 'R2', y: 'Y2' } as const;
-const lineHeight = 16;
 const framesPerTitleThreshold = 2;
+
+export interface StartChoices {
+  readonly canContinue: boolean;
+  readonly hasProgress: boolean;
+}
 
 export function titleArt(): Art {
   const width = Math.max(...gameName.map(({ text }) => textWidth(text)));
@@ -30,8 +35,11 @@ export function titleArt(): Art {
 
 export class StartScreen {
   private readonly screen: HTMLElement;
-  private readonly newGameButton: HTMLButtonElement;
+  private readonly continueButton: HTMLButtonElement;
   private readonly pickLevelButton: HTMLButtonElement;
+  private readonly newGameButton: HTMLButtonElement;
+  private readonly confirm: ConfirmModal;
+  private choices: StartChoices = { canContinue: false, hasProgress: false };
   private readonly hero: HTMLElement;
   private readonly title: HTMLElement;
   private readonly titleUrls: string[];
@@ -41,32 +49,45 @@ export class StartScreen {
 
   constructor(private readonly root: Document) {
     this.screen = element(root, '.start-screen');
-    this.newGameButton = element(root, '.start-new-game');
+    this.continueButton = element(root, '.start-continue');
     this.pickLevelButton = element(root, '.start-pick-level');
+    this.newGameButton = element(root, '.start-new-game');
+    this.confirm = new ConfirmModal(root);
     this.hero = element(root, '.start-hero');
     this.title = element(root, '.start-title');
     const art = titleArt();
     // Each reveal step is drawn once here, so replaying the reveal on every visit builds no new images.
-    this.titleUrls = Array.from({ length: ditherSteps + 1 }, (_, shown) => {
-      const rows = art.rows.map((row, y) =>
-        [...row].map((symbol, x) => (ditherThreshold(x, y) < shown ? symbol : '.')).join(''),
-      );
-      return `url(${artUrl(root, { legend: art.legend, rows })})`;
-    });
+    this.titleUrls = Array.from(
+      { length: ditherSteps + 1 },
+      (_, shown) => `url(${artUrl(root, ditheredArt(art, shown))})`,
+    );
     this.title.style.setProperty('--art-width', String(art.rows[0]!.length));
     this.title.style.setProperty('--art-height', String(art.rows.length));
-    for (const [button, width] of [
-      [this.newGameButton, newGameWidth],
-      [this.pickLevelButton, pickLevelWidth],
-    ] as const) {
-      button.style.setProperty('--art-width', String(width));
+    for (const button of [this.continueButton, this.pickLevelButton, this.newGameButton]) {
+      button.style.setProperty('--art-width', String(menuButtonWidth));
       button.style.setProperty('--art-height', String(textButtonHeight));
     }
+    this.newGameButton.addEventListener('click', () => {
+      if (this.choices.hasProgress) this.confirm.open();
+    });
+    this.confirm.whenNo(() => {
+      this.confirm.close();
+      this.newGameButton.focus({ preventScroll: true });
+    });
+    // The modal sits over the start screen and was built first, so its key listener runs first while it is open.
     takeMenuKeys(root, this.screen);
   }
 
+  whenContinuing(listener: () => void): void {
+    this.continueButton.addEventListener('click', listener);
+  }
+
+  // Starting afresh deletes saved progress, so with progress saved it waits for ΝΑΙ.
   whenNewGame(listener: () => void): void {
-    this.newGameButton.addEventListener('click', listener);
+    this.newGameButton.addEventListener('click', () => {
+      if (!this.choices.hasProgress) listener();
+    });
+    this.confirm.whenYes(listener);
   }
 
   whenPickingLevel(listener: () => void): void {
@@ -74,6 +95,7 @@ export class StartScreen {
   }
 
   animate(framesOpen: number): void {
+    this.confirm.advance();
     const shown = Math.min(ditherSteps, Math.floor(framesOpen / framesPerTitleThreshold));
     if (shown !== this.titleShown) {
       this.titleShown = shown;
@@ -92,12 +114,17 @@ export class StartScreen {
     this.hero.style.setProperty('--art-height', String(pose.rows.length));
   }
 
-  show(): void {
+  show(choices: StartChoices): void {
+    this.choices = choices;
+    this.continueButton.disabled = !choices.canContinue;
+    this.pickLevelButton.disabled = !choices.hasProgress;
+    this.confirm.dismiss();
     this.screen.hidden = false;
-    this.newGameButton.focus({ preventScroll: true });
+    menuChoices(this.screen)[0]?.focus({ preventScroll: true });
   }
 
   hide(): void {
     this.screen.hidden = true;
+    this.confirm.dismiss();
   }
 }

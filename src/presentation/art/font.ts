@@ -3,6 +3,9 @@ import type { PixelGrid } from './art';
 export const glyphWidth = 5;
 export const glyphHeight = 9;
 export const letterGap = 2;
+// Young readers lose their place between tight lines, so each line takes 2.2 times the letter height,
+// rounded because art lands on whole pixels.
+export const lineHeight = Math.round(2.2 * glyphHeight);
 
 // Greek written in capitals drops its accent marks, so the capitals alone cover every message.
 export const glyphs: Readonly<Record<string, readonly string[]>> = {
@@ -12,6 +15,8 @@ export const glyphs: Readonly<Record<string, readonly string[]>> = {
   ',': ['.....', '.....', '.....', '.....', '.....', '.....', '.....', '..#..', '.#...'],
   '-': ['.....', '.....', '.....', '.....', '#####', '.....', '.....', '.....', '.....'],
   ':': ['.....', '.....', '..#..', '.....', '.....', '.....', '..#..', '.....', '.....'],
+  // Greek asks questions with a semicolon, so the dots sit where the colon's do.
+  ';': ['.....', '.....', '..#..', '.....', '.....', '.....', '..#..', '.#...', '.....'],
   '/': ['....#', '....#', '...#.', '...#.', '..#..', '.#...', '.#...', '#....', '#....'],
   // The zero carries a center dot, so it never reads as the letter Ο.
   '0': ['.###.', '#...#', '#...#', '#...#', '#.#.#', '#...#', '#...#', '#...#', '.###.'],

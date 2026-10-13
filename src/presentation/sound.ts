@@ -1,7 +1,35 @@
-type Wave = 'square' | 'triangle';
+type Wave = 'square' | 'triangle' | 'sine';
+export type Track = 'end' | 'game';
 
-const melody = [523, 659, 784, 659, 587, 698, 880, 698, 523, 659, 784, 1047, 988, 784, 659, 587];
-const melodyNoteLength = 0.25;
+interface Tune {
+  readonly notes: readonly number[];
+  readonly spacing: number;
+  readonly length: number;
+  readonly attack: number;
+  readonly wave: Wave;
+  readonly volume: number;
+}
+
+// The end tune is slow sine notes that swell in and ring past the next one, so it flows where the game tune bounces.
+const tunes: Readonly<Record<Track, Tune>> = {
+  game: {
+    notes: [523, 659, 784, 659, 587, 698, 880, 698, 523, 659, 784, 1047, 988, 784, 659, 587],
+    spacing: 0.25,
+    length: 0.225,
+    attack: 0,
+    wave: 'triangle',
+    volume: 0.05,
+  },
+  end: {
+    notes: [262, 330, 392, 440, 392, 330, 294, 330, 220, 262, 330, 392, 330, 294, 262, 196],
+    spacing: 1,
+    length: 2.5,
+    attack: 0.4,
+    wave: 'sine',
+    volume: 0.06,
+  },
+};
+const tuneFade = 1;
 const storageKey = 'sound';
 // Two close pitches beat against each other, so the steady tone buzzes without a second modulating oscillator.
 const humPitches = [440, 446];
@@ -26,6 +54,9 @@ export class Sound {
   private context: AudioContext | null = null;
   private output: GainNode | null = null;
   private humGain: GainNode | null = null;
+  private track: Track | null = null;
+  private tuneGain: GainNode | null = null;
+  private tuneTimer: ReturnType<typeof setTimeout> | undefined;
   private enabled: boolean;
   private readonly root: Window;
 
@@ -40,11 +71,18 @@ export class Sound {
         // The music keeps its schedule while muted, so turning sound back on resumes the tune in time instead of restarting it.
         this.output = new GainNode(this.context, { gain: this.enabled ? 1 : 0 });
         this.output.connect(this.context.destination);
-        this.music(this.context.currentTime);
+        this.playTune();
       }
       void this.context.resume().then(() => unlockEvents.forEach((type) => root.removeEventListener(type, unlock)));
     };
     unlockEvents.forEach((type) => root.addEventListener(type, unlock));
+  }
+
+  // Without a track the music fades to silence.
+  music(track: Track | null): void {
+    if (track === this.track) return;
+    this.track = track;
+    this.playTune();
   }
 
   get on(): boolean {
@@ -130,21 +168,44 @@ export class Sound {
     this.root.navigator.vibrate?.(pattern);
   }
 
-  private music(start: number): void {
+  // The old tune fades out while the new one fades in, so changing screens never cuts a note off.
+  private playTune(): void {
     const context = this.context;
-    if (!context) return;
-    melody.forEach((frequency, index) =>
-      this.note(
-        frequency,
-        start - context.currentTime + index * melodyNoteLength,
-        melodyNoteLength * 0.9,
-        'triangle',
-        0.05,
-      ),
-    );
-    const end = start + melody.length * melodyNoteLength;
+    const output = this.output;
+    if (!context || !output) return;
+    clearTimeout(this.tuneTimer);
+    const now = context.currentTime;
+    const old = this.tuneGain;
+    if (old) {
+      old.gain.setValueAtTime(old.gain.value, now);
+      old.gain.linearRampToValueAtTime(0, now + tuneFade);
+      setTimeout(() => old.disconnect(), tuneFade * 1000);
+    }
+    this.tuneGain = null;
+    if (!this.track) return;
+    const gain = new GainNode(context, { gain: 0 });
+    gain.gain.linearRampToValueAtTime(1, now + tuneFade);
+    gain.connect(output);
+    this.tuneGain = gain;
+    this.loopTune(gain, tunes[this.track], now);
+  }
+
+  private loopTune(gain: GainNode, tune: Tune, start: number): void {
+    const context = gain.context;
+    tune.notes.forEach((frequency, index) => {
+      const begin = start + index * tune.spacing;
+      const oscillator = new OscillatorNode(context, { type: tune.wave, frequency });
+      const envelope = new GainNode(context, { gain: tune.attack ? 0.0001 : tune.volume });
+      if (tune.attack) envelope.gain.setValueAtTime(0.0001, begin);
+      envelope.gain.linearRampToValueAtTime(tune.volume, begin + tune.attack);
+      envelope.gain.exponentialRampToValueAtTime(0.001, begin + tune.length);
+      oscillator.connect(envelope).connect(gain);
+      oscillator.start(begin);
+      oscillator.stop(begin + tune.length);
+    });
+    const end = start + tune.notes.length * tune.spacing;
     // Scheduling the next pass ahead of time keeps the loop seamless even when the timer fires late.
-    setTimeout(() => this.music(end), (end - context.currentTime - 1) * 1000);
+    this.tuneTimer = setTimeout(() => this.loopTune(gain, tune, end), (end - context.currentTime - 1) * 1000);
   }
 
   private notes(frequencies: readonly number[], length: number, wave: Wave, volume: number): void {

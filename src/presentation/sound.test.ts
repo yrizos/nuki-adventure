@@ -105,3 +105,49 @@ test('the plate thuds and chirps when pressed, clicks softly when released, and 
   ).toEqual([523, 330]);
   expect(page.vibrate).toHaveBeenCalledOnce();
 });
+
+const endTune = [262, 330, 392, 440, 392, 330, 294, 330, 220, 262, 330, 392, 330, 294, 262, 196];
+const gameTune = [523, 659, 784, 659, 587, 698, 880, 698, 523, 659, 784, 1047, 988, 784, 659, 587];
+
+test('no music plays until a tune is chosen', () => {
+  const page = audioWindow();
+  new Sound(page.root);
+  page.interact();
+  vi.advanceTimersByTime(60_000);
+  expect(page.audio()!.heard()).toEqual([]);
+});
+
+test('switching tunes fades the old tune out for good', () => {
+  const page = audioWindow();
+  const sound = new Sound(page.root);
+  page.interact();
+  sound.music('game');
+  expect(page.audio()!.heard()).toEqual(gameTune);
+  sound.music('end');
+  expect(page.audio()!.heard()).toEqual([...gameTune, ...endTune]);
+  vi.advanceTimersByTime(60_000);
+  const later = page
+    .audio()!
+    .heard()
+    .slice(gameTune.length + endTune.length);
+  expect(later.length).toBeGreaterThan(0);
+  expect(later.every((frequency) => endTune.includes(frequency))).toBe(true);
+});
+
+test('silence stops the music for good', () => {
+  const page = audioWindow();
+  const sound = new Sound(page.root);
+  page.interact();
+  sound.music('game');
+  sound.music(null);
+  vi.advanceTimersByTime(60_000);
+  expect(page.audio()!.heard()).toEqual(gameTune);
+});
+
+test('a tune chosen before the first interaction is the one that starts', () => {
+  const page = audioWindow();
+  const sound = new Sound(page.root);
+  sound.music('game');
+  page.interact();
+  expect(page.audio()!.heard()).toEqual(gameTune);
+});

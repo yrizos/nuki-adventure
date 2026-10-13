@@ -1,17 +1,24 @@
 import type { ManageProgress } from '../application/manage-progress';
 import { LevelOrder } from '../domain/progress/level-order';
 import type { LevelId } from '../domain/shared/level-id';
+import { endScreenFadeLength } from './end-screen';
 import type { GameSession, PlayableLevel, SessionReport } from './game-session';
 
 export interface Screens {
   readonly showStartScreen: () => void;
   readonly animateStartScreen: (framesOpen: number) => void;
   readonly showLevelPicker: () => void;
+  readonly showEndScreen: () => void;
+  readonly animateEndScreen: (framesOpen: number, framesLeaving: number) => void;
   readonly showLevel: (usesA: boolean, usesB: boolean) => void;
 }
 
 type Screen =
-  { readonly name: 'start-screen' | 'level-picker' } | { readonly name: 'playing'; readonly session: GameSession };
+  | { readonly name: 'start-screen' | 'level-picker' }
+  | { readonly name: 'end-screen'; leavingFrom: number | null }
+  | { readonly name: 'playing'; readonly session: GameSession };
+
+const endScreenStay = 120;
 
 export class GameNavigator {
   private screen: Screen = { name: 'start-screen' };
@@ -49,10 +56,28 @@ export class GameNavigator {
     this.screens.showLevelPicker();
   }
 
+  openEndScreen(): void {
+    this.screen = { name: 'end-screen', leavingFrom: null };
+    this.framesOpen = 0;
+    this.screens.showEndScreen();
+    this.screens.animateEndScreen(0, 0);
+  }
+
+  leaveEndScreen(): void {
+    if (this.screen.name === 'end-screen') this.screen.leavingFrom ??= this.framesOpen;
+  }
+
   // Menus animate on the same frames as gameplay, so their timing is as deterministic as a level's.
   tick(): void {
     if ('session' in this.screen) this.screen.session.tick();
     else if (this.screen.name === 'start-screen') this.screens.animateStartScreen(this.framesOpen++);
+    else if (this.screen.name === 'end-screen') {
+      this.framesOpen++;
+      if (this.framesOpen >= endScreenStay) this.leaveEndScreen();
+      const leaving = this.screen.leavingFrom === null ? 0 : this.framesOpen - this.screen.leavingFrom;
+      if (leaving >= endScreenFadeLength) this.openStartScreen();
+      else this.screens.animateEndScreen(this.framesOpen, leaving);
+    }
   }
 
   // A disabled row is the only thing keeping a locked level out of reach on the page, so the choice is checked here too.
@@ -64,7 +89,7 @@ export class GameNavigator {
       completed: () => {
         const next = this.order.after(level.id);
         if (next) this.play(next);
-        else this.openStartScreen();
+        else this.openEndScreen();
       },
     });
     this.screens.showLevel(session.uses('a'), session.uses('b'));

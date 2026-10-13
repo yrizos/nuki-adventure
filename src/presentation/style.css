@@ -129,6 +129,12 @@ body {
   --art: var(--art-full-screen-leave);
 }
 
+/* The menus cover the game view, so these two switches are lifted above them. The menu switch stays below, because it only opens the start screen. */
+.menu-open .sound-switch,
+.menu-open .full-screen-switch {
+  z-index: 2;
+}
+
 /* A drawn switch is smaller than a finger at narrow widths, so an invisible margin keeps the touch area at the Material minimum. */
 .sound-switch::before,
 .full-screen-switch::before,
@@ -143,6 +149,8 @@ body {
 .game-view,
 .control-panel,
 .start-screen,
+.confirm-modal,
+.end-screen,
 .level-picker-screen {
   --pixel: max(var(--device-pixel), round(down, 100cqi / 180, var(--device-pixel)));
 }
@@ -169,6 +177,10 @@ body {
 .menu-switch,
 .start-title,
 .start-hero,
+.confirm-box,
+.confirm-text,
+.end-title,
+.end-hero,
 .menu-button,
 .level-row,
 .joystick,
@@ -299,7 +311,8 @@ body {
   translate: calc(var(--wobble, 0) * var(--pixel)) 0;
 }
 
-.action-cross button:disabled {
+.action-cross button:disabled,
+.menu-button:disabled {
   filter: grayscale(1) opacity(0.4);
   cursor: default;
 }
@@ -314,6 +327,7 @@ body {
 
 /* The menus cover the control panel too, because nothing on the panel acts until a level starts. */
 .start-screen,
+.end-screen,
 .level-picker-screen {
   position: absolute;
   inset: 0;
@@ -330,15 +344,74 @@ body {
   background: var(--ink);
 }
 
+/* The switches sit in a band above these menus. A border is outside the scrolling area, so scrolled content never slides under them. */
+.start-screen,
+.level-picker-screen {
+  border-top: calc(env(safe-area-inset-top) + 31 * var(--pixel)) solid var(--ink);
+  padding-top: calc(8 * var(--pixel));
+}
+
 .start-screen[hidden],
+.confirm-modal[hidden],
+.end-screen[hidden],
 .level-picker-screen[hidden] {
   display: none;
+}
+
+/* The end screen has no buttons below, so its contents sit in the middle. */
+.end-screen {
+  justify-content: center;
+}
+
+/* The modal covers the switches too, so nothing but its answers can be pressed. An ordered dither of Ink dims the start screen behind it, because the game never uses transparency. */
+.confirm-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--art) 0 0 / calc(4 * var(--pixel)) calc(4 * var(--pixel)) repeat;
+  image-rendering: pixelated;
+}
+
+/* Custom properties inherit, so the question area would otherwise draw the whole box again. */
+.confirm-text {
+  --art: none;
+}
+
+.confirm-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--box-button-gap) * var(--pixel));
+  box-sizing: border-box;
+  padding: calc(var(--box-padding) * var(--pixel));
+}
+
+/* The question sits further from the answers than they sit from each other, so the two answers read as one pair. */
+.confirm-box .confirm-text {
+  margin-bottom: calc((var(--box-text-gap) - var(--box-button-gap)) * var(--pixel));
+}
+
+.end-screen {
+  cursor: pointer;
 }
 
 /* The empty space above pushes Nuki to the bottom, so the title and buttons stay the focal point. */
 .start-hero {
   flex: none;
   margin-top: auto;
+}
+
+.confirm-box,
+.confirm-text,
+.end-title,
+.end-hero {
+  flex: none;
+  margin: 0;
+  color: transparent;
+  font-size: 0;
 }
 
 .start-title {
@@ -350,6 +423,10 @@ body {
 
 .start-title,
 .start-hero,
+.confirm-box,
+.confirm-text,
+.end-title,
+.end-hero,
 .menu-button,
 .level-row {
   width: calc(var(--art-width) * var(--pixel));
@@ -396,6 +473,30 @@ body {
 
 .start-new-game:active {
   --art: var(--art-new-game-pressed);
+}
+
+.start-continue {
+  --art: var(--art-continue);
+}
+
+.start-continue:active {
+  --art: var(--art-continue-pressed);
+}
+
+.confirm-yes {
+  --art: var(--art-yes);
+}
+
+.confirm-yes:active {
+  --art: var(--art-yes-pressed);
+}
+
+.confirm-no {
+  --art: var(--art-no);
+}
+
+.confirm-no:active {
+  --art: var(--art-no-pressed);
 }
 
 /* The cards are smaller than a finger at narrow widths, so the gap keeps each card's touch area at the Material minimum. */
