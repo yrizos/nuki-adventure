@@ -14,74 +14,80 @@ test('the first level selects only white-coral and blue-violet flowers', () => {
   expect(firstLevel(keepOrder).scenery.flowerVariants).toEqual([FlowerVariant.WhiteCoral, FlowerVariant.BlueViolet]);
 });
 
-test('the first level is an orchard clearing with one key that restores the whole level', () => {
+test('the first level winds through a forest, a lake, an orchard and two gardens to one key that restores the whole level', () => {
   const level = firstLevel(keepOrder);
   expect(level.id).toBe(firstLevelId);
   expect(level.scenery.size).toEqual({ columns: 25, rows: 25 });
   expect(level.hero.position).toEqual(at(12, 21));
-  expect(level.door).toEqual(Door.closedAt(at(6, 1)));
-  expect(level.keys.map((key) => key.position)).toEqual([at(19, 4)]);
+  expect(level.door).toEqual(Door.closedAt(at(11, 1)));
+  expect(level.keys.map((key) => key.position)).toEqual([at(21, 4)]);
   expect(level.keys[0]!.restores.tiles).toHaveLength(25 * 25);
-  expect(level.stones.map((stone) => stone.position)).toEqual([
-    at(16, 5),
-    at(7, 6),
-    at(16, 6),
-    at(20, 16),
-    at(9, 18),
-    at(10, 18),
-    at(5, 19),
-  ]);
-  expect(level.scenery.trees).toHaveLength(26);
+  expect(level.stones.map((stone) => stone.position)).toEqual([at(7, 9), at(8, 9), at(17, 19), at(5, 20), at(6, 20)]);
+  expect(level.scenery.trees).toHaveLength(8);
   expect(level.scenery.flowers).toHaveLength(27);
-  expect(level.scenery.woodland.tiles).toHaveLength(161);
+  expect(level.scenery.woodland.tiles).toHaveLength(239);
 });
 
-test('the first level holds a small pond in its southwestern orchard', () => {
+test('the first level holds a lake around a point reaching in from its south shore and a small pond in the south east', () => {
   const { scenery } = firstLevel(keepOrder);
-  const pond = tiles.filter((tile) => scenery.groundAt(tile).equals(Ground.Water));
-  expect(pond).toEqual([
-    at(7, 15),
-    at(8, 15),
-    at(6, 16),
-    at(7, 16),
-    at(8, 16),
-    at(9, 16),
-    at(5, 17),
-    at(6, 17),
-    at(7, 17),
-    at(8, 17),
-    at(9, 17),
-    at(6, 18),
-    at(7, 18),
-    at(8, 18),
+  const water = tiles.filter((tile) => scenery.groundAt(tile).equals(Ground.Water));
+  expect(water).toEqual([
+    at(5, 10),
+    at(6, 10),
+    at(7, 10),
+    at(3, 11),
+    at(4, 11),
+    at(5, 11),
+    at(6, 11),
+    at(7, 11),
+    at(8, 11),
+    at(9, 11),
+    at(3, 12),
+    at(4, 12),
+    at(5, 12),
+    at(6, 12),
+    at(8, 12),
+    at(9, 12),
+    at(10, 12),
+    at(5, 13),
+    at(6, 13),
+    at(8, 13),
+    at(9, 13),
+    at(19, 18),
+    at(20, 18),
+    at(18, 19),
+    at(19, 19),
+    at(20, 19),
   ]);
 });
 
-test('the first level marks twenty star spots and lets the shuffle choose its stars', () => {
+test('the first level always holds stars on the tip of the lake point and in the south-west flower bed and lets the shuffle choose three of its eighteen other spots', () => {
   const spots = starSpotsOf(firstLevel);
   expect(spots).toEqual([
-    at(12, 1),
-    at(10, 2),
-    at(17, 2),
-    at(2, 5),
-    at(23, 6),
-    at(1, 8),
-    at(14, 8),
-    at(4, 9),
+    at(20, 2),
+    at(6, 3),
+    at(7, 5),
+    at(22, 6),
+    at(2, 7),
+    at(18, 10),
     at(22, 10),
-    at(18, 12),
-    at(22, 13),
-    at(9, 14),
-    at(1, 15),
-    at(16, 16),
-    at(22, 18),
-    at(7, 19),
-    at(2, 21),
-    at(18, 21),
-    at(10, 22),
-    at(21, 22),
+    at(2, 11),
+    at(19, 12),
+    at(3, 13),
+    at(10, 14),
+    at(7, 15),
+    at(18, 16),
+    at(21, 17),
+    at(10, 19),
+    at(22, 19),
+    at(4, 21),
+    at(20, 21),
   ]);
-  expect(firstLevel(reverseOrder).stars.map((star) => star.position)).toEqual([...spots].reverse().slice(0, 5));
+  expect(firstLevel(reverseOrder).stars.map((star) => star.position)).toEqual([
+    at(7, 12),
+    at(4, 19),
+    ...[...spots].reverse().slice(0, 3),
+  ]);
 });
 
 test('the first level places its key in an exploration area at least six tiles from the exit', () => {

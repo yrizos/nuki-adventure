@@ -1,11 +1,12 @@
 .DEFAULT_GOAL := help
 
-.PHONY: sprite-inspect help tools dependencies install dev build test test-file test-watch typecheck lint format fix markdown audit check check-push hooks
+.PHONY: sprite-inspect level-map help tools dependencies install dev build test test-file test-watch typecheck lint format fix markdown audit check check-push hooks
 
 help:
 	@printf '%-20s %s\n' \
 		'make help' 'List available targets' \
 		'make sprite-inspect MODE=list' 'Inspect sprites (summary, frames, frame, animations, animation, palette)' \
+		'make level-map LEVEL=id' 'Write the level picker card map of a level, or all, to test-output/level-maps' \
 		'make tools' 'Check Node.js and npm versions' \
 		'make dependencies' 'Check and install dependencies' \
 		'make install' 'Check dependencies and install Git hooks' \
@@ -50,6 +51,10 @@ test-file: dependencies
 	@test -f "$(FILE)" || { echo "Test file not found: $(FILE)"; exit 2; }
 	@case "$(FILE)" in src/*.test.ts) ;; *) echo "Expected a test file under src/ ending in .test.ts"; exit 2;; esac
 	npm test -- "$(FILE)"
+
+level-map: dependencies
+	@test -n "$(LEVEL)" || { echo "Usage: make level-map LEVEL=<level id|all>"; exit 2; }
+	LEVEL_MAP="$(LEVEL)" npm test -- src/presentation/level-map.render.test.ts
 
 test-watch: dependencies
 	npm run test:watch

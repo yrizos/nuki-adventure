@@ -81,7 +81,8 @@ export function levelFromLayout(
   const plates = where('P');
   if (plates.length > 1) throw new Error(`The layout of level ${id.value} holds at most one pressure plate`);
   const starSpots = cells.filter((cell) => '+='.includes(cell.symbol)).map((cell) => cell.at);
-  if (starSpots.length > 0 && contents.starCount)
+  const permanentStars = where('@');
+  if ((starSpots.length > 0 || permanentStars.length > 0) && contents.starCount)
     throw new Error(`The layout of level ${id.value} marks star spots, so it takes no star count`);
   const keys = Object.entries(contents.keys).map(([symbol, { restores, material }]) =>
     Key.at(one(symbol), Area.of(cells.map((cell) => cell.at).filter(restores)), material),
@@ -101,8 +102,8 @@ export function levelFromLayout(
   });
   const build = (boulders: readonly Boulder[]): Level => {
     if (contents.starCount) return Level.withScatteredStars(definition(boulders), contents.starCount, shuffle);
-    return starSpots.length > 0
-      ? Level.withStarsAmong(definition(boulders), starSpots, shuffle)
+    return starSpots.length > 0 || permanentStars.length > 0
+      ? Level.withStarsAmong(definition(boulders), starSpots, shuffle, permanentStars)
       : Level.create(definition(boulders));
   };
   // The spots mark where the one boulder may start, and every spot must make a sound level, not only the one the shuffle picks.

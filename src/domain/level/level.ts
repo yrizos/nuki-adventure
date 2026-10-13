@@ -237,16 +237,24 @@ export class Level {
     return new Level({ ...definition, stars: shuffle(spots).slice(0, starCount.value).map(Star.at) });
   }
 
+  // A permanent spot holds a star every time the level starts and takes one of the five from the shuffle.
   static withStarsAmong(
     definition: Omit<LevelDefinition, 'stars'>,
     spots: readonly TilePosition[],
     shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[],
+    permanent: readonly TilePosition[] = [],
   ): Level {
-    if (spots.length < minimumStarSpots.value)
-      throw new RangeError(`A level needs at least ${minimumStarSpots.value} star spots, not ${spots.length}`);
-    // Every spot must be able to hold a star, not only the five the shuffle happens to pick.
-    new Level({ ...definition, stars: spots.map(Star.at) });
-    return new Level({ ...definition, stars: shuffle(spots).slice(0, starsAmongSpots.value).map(Star.at) });
+    const marked = spots.length + permanent.length;
+    if (marked < minimumStarSpots.value)
+      throw new RangeError(`A level needs at least ${minimumStarSpots.value} star spots, not ${marked}`);
+    if (permanent.length >= starsAmongSpots.value)
+      throw new RangeError(
+        `A level needs fewer than ${starsAmongSpots.value} permanent star spots, not ${permanent.length}`,
+      );
+    // Every spot must be able to hold a star, not only the ones the shuffle happens to pick.
+    new Level({ ...definition, stars: [...permanent, ...spots].map(Star.at) });
+    const drawn = shuffle(spots).slice(0, starsAmongSpots.value - permanent.length);
+    return new Level({ ...definition, stars: [...permanent, ...drawn].map(Star.at) });
   }
 
   get hero(): HeroState {

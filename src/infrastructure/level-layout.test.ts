@@ -111,6 +111,18 @@ describe('a level built from a layout', () => {
     expect(() => levelFromLayout(LevelId.of('layout'), given, keepOrder, contents)).toThrow(message);
   });
 
+  test('always places a star on each permanent spot and lets the shuffle choose the rest of the five', () => {
+    const offered: TilePosition[][] = [];
+    const rows = ['.DDD.....', '@.+++++++', '+++++++++', 'K...H....'];
+    const level = levelFromLayout(LevelId.of('permanent'), rows, (spots) => (offered.push([...spots]), spots), {
+      keys: { K: { restores: () => true } },
+    });
+    const stars = offered.at(-1)!;
+    expect(stars).toHaveLength(16);
+    expect(stars).not.toContainEqual(at(0, 1));
+    expect(level.stars.map((star) => star.position)).toEqual([at(0, 1), ...stars.slice(0, 4)]);
+  });
+
   test('offers the star spots it marks on grass and on paths and lets the shuffle choose five', () => {
     const { starCount: _, ...unscattered } = contents;
     const marked = [...layout, '++++++', '+++===', '===...'];

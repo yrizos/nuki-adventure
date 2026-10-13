@@ -2,6 +2,7 @@ import { expect, test } from 'vitest';
 import { LevelCompleted, KeyCollected } from '../domain/level/level-events';
 import { Direction, Heading, TilePosition, tileKey } from '../domain/level/position';
 import { Ground } from '../domain/level/scenery';
+import { explorationArea, mandatoryRoute } from '../test-support/routes';
 import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
 import { follow, pathTo } from '../test-support/walk-level';
 import { fifthLevel } from './fifth-level';
@@ -152,6 +153,187 @@ test.each(authoredLevels)('she can walk a full loop around every fenced area of 
     }
   }
   expect(blocked).toEqual([]);
+});
+
+test('the first level keeps star spots off the mandatory route and at least half in exploration areas', () => {
+  const level = firstLevel(keepOrder);
+  // A shuffle that offers nothing leaves only the permanent stars, which count as star spots too.
+  const permanent = firstLevel(() => []).stars.map((star) => star.position);
+  const spots = [...permanent, ...starSpotsOf(firstLevel)];
+  const route = mandatoryRoute(level);
+  const exploration = explorationArea(level);
+  expect(spots.filter((spot) => route.covers(spot)).map((spot) => `${spot.column}, ${spot.row}`)).toEqual([]);
+  expect(2 * spots.filter((spot) => exploration.covers(spot)).length).toBeGreaterThanOrEqual(spots.length);
+});
+
+// Following blocking tiles from outside the map, corners included, reaches every obstacle the boundary joins.
+test('the first level lets her walk a full loop around every obstacle, which never joins the boundary', () => {
+  const level = firstLevel(keepOrder);
+  const { columns, rows } = level.scenery.size;
+  const inside = (tile: TilePosition): boolean => level.scenery.size.contains(tile);
+  const stone = (tile: TilePosition): boolean => level.stones.some((each) => each.position.equals(tile));
+  const blocking = (tile: TilePosition): boolean =>
+    !inside(tile) || !level.scenery.isWalkable(tile) || stone(tile) || level.door.covers(tile);
+  const obstacle = (tile: TilePosition): boolean =>
+    inside(tile) &&
+    (level.scenery.groundAt(tile).equals(Ground.Water) ||
+      level.scenery.trees.some((tree) => tree.covers(tile)) ||
+      level.scenery.fences.some((fence) => fence.position.equals(tile)) ||
+      stone(tile));
+  const outside = [
+    ...Array.from({ length: columns + 2 }, (_, index) => [
+      TilePosition.at(index - 1, -1),
+      TilePosition.at(index - 1, rows),
+    ]),
+    ...Array.from({ length: rows }, (_, index) => [TilePosition.at(-1, index), TilePosition.at(columns, index)]),
+  ].flat();
+  const seen = new Set(outside.map(tileKey));
+  const reached = [...outside];
+  const joined: string[] = [];
+  for (let index = 0; index < reached.length; index++) {
+    for (const row of [-1, 0, 1]) {
+      for (const column of [-1, 0, 1]) {
+        const next = TilePosition.at(reached[index]!.column + column, reached[index]!.row + row);
+        if (!inside(next) || seen.has(tileKey(next)) || !blocking(next)) continue;
+        seen.add(tileKey(next));
+        reached.push(next);
+        if (obstacle(next)) joined.push(`${next.column}, ${next.row}`);
+      }
+    }
+  }
+  expect(joined).toEqual([]);
+});
+
+test('the first level leaves no diagonal gap between two blocking tiles that meet only at a corner', () => {
+  const level = firstLevel(keepOrder);
+  const { columns, rows } = level.scenery.size;
+  const blocking = (column: number, row: number): boolean => {
+    const tile = TilePosition.at(column, row);
+    return (
+      !level.scenery.isWalkable(tile) ||
+      level.stones.some((stone) => stone.position.equals(tile)) ||
+      level.door.covers(tile)
+    );
+  };
+  const gaps: string[] = [];
+  for (let row = 0; row < rows - 1; row++) {
+    for (let column = 0; column < columns - 1; column++) {
+      const [topLeft, topRight, bottomLeft, bottomRight] = [
+        blocking(column, row),
+        blocking(column + 1, row),
+        blocking(column, row + 1),
+        blocking(column + 1, row + 1),
+      ];
+      if (topLeft === bottomRight && topRight === bottomLeft && topLeft !== topRight) gaps.push(`${column}, ${row}`);
+    }
+  }
+  expect(gaps).toEqual([]);
+});
+
+test('the first level hides no usable item under a tree canopy', () => {
+  const level = firstLevel(keepOrder);
+  const permanent = firstLevel(() => []).stars.map((star) => star.position);
+  const items = [
+    ...permanent,
+    ...starSpotsOf(firstLevel),
+    ...level.keys.map((key) => key.position),
+    ...level.boulders.map((boulder) => boulder.position),
+    ...(level.plate ? [level.plate] : []),
+    ...(level.gate ? [level.gate.position, level.gate.approach] : []),
+  ];
+  const hidden = items.filter((item) => level.scenery.trees.some((tree) => tree.hides(item)));
+  expect(hidden.map((item) => `${item.column}, ${item.row}`)).toEqual([]);
+});
+
+test('the first level keeps every star spot clearly visible, with no canopy above it or on both sides', () => {
+  const level = firstLevel(keepOrder);
+  const permanent = firstLevel(() => []).stars.map((star) => star.position);
+  const canopy = (column: number, row: number): boolean => {
+    const tile = TilePosition.at(column, row);
+    return level.scenery.woodland.covers(tile) || level.scenery.trees.some((tree) => tree.covers(tile));
+  };
+  const crowded = [...permanent, ...starSpotsOf(firstLevel)].filter(
+    ({ column, row }) =>
+      canopy(column - 1, row - 1) ||
+      canopy(column, row - 1) ||
+      canopy(column + 1, row - 1) ||
+      (canopy(column - 1, row) && canopy(column + 1, row)),
+  );
+  expect(crowded.map(({ column, row }) => `${column}, ${row}`)).toEqual([]);
+});
+
+function canopyHides(level: ReturnType<typeof firstLevel>, tile: TilePosition): boolean {
+  return level.scenery.hides(tile) || level.scenery.trees.some((tree) => tree.hides(tile));
+}
+
+test('the first level lets her reach every key, star spot and the door without stepping on a hidden tile', () => {
+  const level = firstLevel(keepOrder);
+  const open = (tile: TilePosition): boolean =>
+    level.scenery.isWalkable(tile) &&
+    !level.stones.some((stone) => stone.position.equals(tile)) &&
+    !level.door.covers(tile) &&
+    !canopyHides(level, tile);
+  const reached = [level.hero.position];
+  const seen = new Set([tileKey(level.hero.position)]);
+  for (let index = 0; index < reached.length; index++) {
+    for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
+      const neighbor = reached[index]!.neighbor(direction);
+      if (seen.has(tileKey(neighbor)) || !open(neighbor)) continue;
+      seen.add(tileKey(neighbor));
+      reached.push(neighbor);
+    }
+  }
+  const permanent = firstLevel(() => []).stars.map((star) => star.position);
+  const objectives = [
+    ...level.keys.map((key) => key.position),
+    ...permanent,
+    ...starSpotsOf(firstLevel),
+    ...level.door.footprint.map((tile) => tile.neighbor(Direction.Down)),
+  ];
+  const cutOff = objectives.filter((tile) => !seen.has(tileKey(tile)));
+  expect(cutOff.map((tile) => `${tile.column}, ${tile.row}`)).toEqual([]);
+});
+
+// Counting hidden tiles as blocking, an obstacle joined to the boundary has no loop around it on visible ground.
+test('the first level lets her walk a full loop around every obstacle without stepping on a hidden tile', () => {
+  const level = firstLevel(keepOrder);
+  const { columns, rows } = level.scenery.size;
+  const inside = (tile: TilePosition): boolean => level.scenery.size.contains(tile);
+  const stone = (tile: TilePosition): boolean => level.stones.some((each) => each.position.equals(tile));
+  const blocking = (tile: TilePosition): boolean =>
+    !inside(tile) ||
+    !level.scenery.isWalkable(tile) ||
+    stone(tile) ||
+    level.door.covers(tile) ||
+    canopyHides(level, tile);
+  const obstacle = (tile: TilePosition): boolean =>
+    inside(tile) &&
+    (level.scenery.groundAt(tile).equals(Ground.Water) ||
+      level.scenery.trees.some((tree) => tree.covers(tile)) ||
+      level.scenery.fences.some((fence) => fence.position.equals(tile)) ||
+      stone(tile));
+  const outside = [
+    ...Array.from({ length: columns + 2 }, (_, index) => [
+      TilePosition.at(index - 1, -1),
+      TilePosition.at(index - 1, rows),
+    ]),
+    ...Array.from({ length: rows }, (_, index) => [TilePosition.at(-1, index), TilePosition.at(columns, index)]),
+  ].flat();
+  const seen = new Set(outside.map(tileKey));
+  const reached = [...outside];
+  const joined: string[] = [];
+  for (let index = 0; index < reached.length; index++) {
+    for (const row of [-1, 0, 1]) {
+      for (const column of [-1, 0, 1]) {
+        const next = TilePosition.at(reached[index]!.column + column, reached[index]!.row + row);
+        if (!inside(next) || seen.has(tileKey(next)) || !blocking(next)) continue;
+        seen.add(tileKey(next));
+        reached.push(next);
+        if (obstacle(next)) joined.push(`${next.column}, ${next.row}`);
+      }
+    }
+  }
+  expect(joined).toEqual([]);
 });
 
 test.each(authoredLevels)('the $name level holds exactly five stars', ({ create }) => {

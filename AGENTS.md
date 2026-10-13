@@ -9,6 +9,7 @@ Scope: every task. Docs linked below override this file on their own subject.
 - After all edits: `make check` once.
 - Markdown edits: `make markdown`.
 - `make test` (full unit suite) runs only when the user requests it or before a push.
+- Level picker card maps: `make level-map LEVEL=<level id|all>` writes PNGs to `test-output/level-maps/`.
 
 ## Check Failures
 

@@ -20,6 +20,7 @@ Definitions only. Rules that use these terms live in [Level Design](level-design
 | Door | The level exit. It opens once every key is collected and color has returned to the whole door. Stepping into it completes the level. |
 | Hidden | Describes a tile that a tree canopy, a woodland canopy or the door is drawn over. |
 | Star Spot | A tile in a level's layout that can hold a star. Each level start picks the stars from these spots. |
+| Permanent Star Spot | A star spot that holds a star every time the level starts. Each one takes a star from the five the level start picks. |
 | Star Count | The number of stars a level holds. Stars go to the star spots, or to random reachable tiles that are not hidden. |
 | Key | A collectible that floats, buzzes and hums when the hero is near. Each restores color to its own area. Gold by default. A level may make its keys silver, which changes only the color. |
 | Stone | A static gray obstacle that is never part of a level boundary. |
@@ -28,6 +29,8 @@ Definitions only. Rules that use these terms live in [Level Design](level-design
 | Tree Variant | A tree's fruit: none, oranges, apples or lemons. |
 | Flower Variant | A flower cluster's petal colors and arrangement. Each level chooses its variants. |
 | Tree Cluster | Trees whose footprints touch, including at a corner. |
+| Mandatory Route | The tiles of every shortest walk from the hero start through every key to the door. |
+| Exploration Area | Reachable tiles at least three steps away from the mandatory route. |
 | Ground Shadow | The shadow directly below an object, drawn in the shading step of the surface beneath it. |
 
 ### Swing Gate

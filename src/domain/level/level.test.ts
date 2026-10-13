@@ -521,6 +521,7 @@ describe('stars chosen among star spots', () => {
   const among = (
     spots: readonly TilePosition[],
     shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[] = (positions) => positions,
+    permanent: readonly TilePosition[] = [],
   ): Level => {
     const { scenery, where } = parse(open);
     return Level.withStarsAmong(
@@ -535,6 +536,7 @@ describe('stars chosen among star spots', () => {
       },
       spots,
       shuffle,
+      permanent,
     );
   };
 
@@ -553,6 +555,25 @@ describe('stars chosen among star spots', () => {
     const spots = free.slice(0, 15);
     const subject = among(spots, (positions) => [...positions].reverse());
     expect(subject.stars.map((star) => star.position)).toEqual([...spots].reverse().slice(0, 5));
+  });
+
+  test('holds every permanent spot and fills the rest of the five from the shuffled spots', () => {
+    const spots = free.slice(0, 14);
+    const permanent = free.slice(14, 15);
+    const subject = among(spots, (positions) => [...positions].reverse(), permanent);
+    expect(subject.stars.map((star) => star.position)).toEqual([...permanent, ...[...spots].reverse().slice(0, 4)]);
+  });
+
+  test('rejects five permanent spots, which leave the shuffle nothing to choose', () => {
+    expect(() => among(free.slice(0, 15), undefined, free.slice(15, 20))).toThrow(RangeError);
+  });
+
+  test('rejects a permanent spot that is also a shuffled spot', () => {
+    expect(() => among(free.slice(0, 15), undefined, free.slice(0, 1))).toThrow(RangeError);
+  });
+
+  test('rejects an invalid permanent spot', () => {
+    expect(() => among(free.slice(0, 15), undefined, [hero])).toThrow(RangeError);
   });
 });
 

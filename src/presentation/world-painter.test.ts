@@ -1,6 +1,5 @@
 /// <reference types="node" />
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { crc32, deflateSync } from 'node:zlib';
 import { describe, expect, test, vi } from 'vitest';
 import { levelView } from '../application/level-view';
 import { Area, Key, KeyMaterial } from '../domain/level/collectibles';
@@ -19,6 +18,7 @@ import { thirdLevel } from '../infrastructure/third-level';
 import { fourthLevel } from '../infrastructure/fourth-level';
 import { fifthLevel } from '../infrastructure/fifth-level';
 import { pixelDifference } from '../test-support/pictures';
+import { png } from '../test-support/png';
 import { settleGate } from '../test-support/walk-level';
 import type { Art } from './art/art';
 import * as library from './sprite-library';
@@ -119,31 +119,6 @@ async function checksum(picture: Picture): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function png(picture: Picture): Buffer {
-  const chunk = (type: string, data: Buffer): Buffer => {
-    const typed = Buffer.concat([Buffer.from(type, 'ascii'), data]);
-    const framed = Buffer.alloc(typed.length + 8);
-    framed.writeUInt32BE(data.length, 0);
-    typed.copy(framed, 4);
-    framed.writeUInt32BE(crc32(typed), typed.length + 4);
-    return framed;
-  };
-  const header = Buffer.alloc(13);
-  header.writeUInt32BE(picture.width, 0);
-  header.writeUInt32BE(picture.height, 4);
-  header.set([8, 6, 0, 0, 0], 8);
-  const stride = picture.width * 4;
-  const rows = Buffer.alloc((stride + 1) * picture.height);
-  for (let row = 0; row < picture.height; row++)
-    rows.set(picture.pixels.subarray(row * stride, (row + 1) * stride), row * (stride + 1) + 1);
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk('IHDR', header),
-    chunk('IDAT', deflateSync(rows)),
-    chunk('IEND', Buffer.alloc(0)),
-  ]);
-}
-
 // A hash alone cannot show what changed, so a mismatch leaves the actual frame behind for inspection.
 async function expectChecksum(picture: Picture, expected: string): Promise<void> {
   const actual = await checksum(picture);
@@ -170,18 +145,18 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    await expectChecksum(picture, '29af94bf954bd5099f15e95d6b0253598a8ac1742fc6cdbad974a0e823a925eb');
+    await expectChecksum(picture, '38663301244e11386a3d169685e7e065814d2c7c376593cc94f03832a1544acb');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     // The key lies outside the frame, so the wave starts from her start to stop partway across the frame.
     painter.paintRestoring(picture, scene, level.hero.position, 20, [], [key.restores]);
-    await expectChecksum(picture, 'eba04be42a1b55c13e7965ba9287b3b4400b162ace7096451616ab912be9704d');
+    await expectChecksum(picture, '736fdf9fbf6d5c42d2c8aceae8ca0289bac1b6b4c822bf4157385cdcc8fcbf8d');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [key.restores]);
-    await expectChecksum(picture, '6042ef581603be3c4931bd965a61747d7749a26d5c8d2277fab728c83c079d16');
+    await expectChecksum(picture, 'd17378e3dd63abb9b53694df4e2f58d8ce60edda65653e4800e13a6dbaffccc3');
   });
 });
 

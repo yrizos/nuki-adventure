@@ -6,7 +6,7 @@ Terms follow the [glossary](glossary.md). A level that breaks a hard constraint 
 
 The `Level` constructor (`src/domain/level/level.ts`), `Scenery.of` (`src/domain/level/scenery.ts`), `levelFromLayout` (`src/infrastructure/level-layout.ts`) and the authored-level tests enforce most rules. Rules marked (unchecked) have no validator, so the designer checks them.
 
-Every new hard constraint comes with a deterministic test that checks it in every authored level.
+Every new hard constraint comes with a deterministic test that checks it in every authored level it applies to.
 
 ### Hero and Door
 
@@ -19,6 +19,10 @@ Every new hard constraint comes with a deterministic test that checks it in ever
 - The hero start lies one visibly free row above the bottom boundary. No open ground that a canopy leaves visible lies more than one row below it.
 - The hero start lies within two tiles, counting diagonals, of a path end: a path tile with exactly one path tile beside it on an edge. The start itself counts as a path tile.
 
+### Usable Items
+
+- No tree canopy hides a usable item: a star spot, a key, a boulder spot, a pressure plate, a swing gate or the tile from which a gate is approached.
+
 ### Keys
 
 - At least one key. Every key is reachable, has its own tile and is not hidden.
@@ -26,7 +30,10 @@ Every new hard constraint comes with a deterministic test that checks it in ever
 ### Stars
 
 - A layout marks exactly twenty star spots, and five hold stars each time the level starts. The code accepts fifteen or more, so twenty is checked only by level tests.
-- Every star spot is reachable and not hidden. No star spot shares a tile with a key, the hero start or another star spot.
+- A layout MAY mark up to four [permanent star spots](glossary.md#game-world) with `@`. They count toward the twenty. Each holds a star every time, and the level start picks the rest of the five from the other spots.
+- Every star spot is reachable and not hidden. No star spot shares a tile with a key, the hero start or another star spot. Permanent star spots count as star spots.
+- Every star spot is clearly visible. No woodland or tree stands on the tile directly above it or on either tile diagonally above it, and woodland or trees never stand both directly left and directly right of it. Bad example: a star spot in a one-tile bay of the woodland edge, with canopy above it and beside it, reads as hidden even though no canopy covers its tile.
+- No star spot lies on the [mandatory route](glossary.md#game-world), and at least half of the star spots lie in [exploration areas](glossary.md#game-world). `src/test-support/routes.ts` computes both.
 - A layout marks star spots or gives a star count, never both. Authored levels always mark star spots.
 
 ### Trees
@@ -41,9 +48,26 @@ Every new hard constraint comes with a deterministic test that checks it in ever
 - In a woodland-bounded level, every tile the hero cannot reach is woodland, water, the door or covered by a prop. No unreachable grass or path tile exists.
 - Woodland drawn beyond the map edges is decoration and never adds playable space. (unchecked)
 
+### Canopies
+
+A canopy is the part of woodland or a tree drawn over the tile above it. A hidden tile is one a canopy covers.
+
+- The hero MAY walk on hidden tiles.
+- Every key, every star spot and the tile in front of the door are reachable from the hero start without stepping on a hidden tile.
+- The hero can walk a complete loop around every obstacle without stepping on a hidden tile. Obstacles are water, fenced areas, trees and stones. Bad example: a lake whose only shore passage on one side is a strip under the woodland canopy.
+
 ### Fenced Areas
 
 - Nuki can walk a complete loop around the outside of every fenced area. Every tile that touches the fence from outside, corners included, is open ground with no stone or woodland.
+
+### Free Movement
+
+- Nuki can walk a complete loop around every obstacle inside the level: water, fenced areas, trees and stones.
+- No such obstacle touches the level boundary, corners included, either directly or through a chain of other obstacles that touch each other. The boundary is the woodland, the door and the map edge.
+
+### Diagonal Gaps
+
+- No two blocking tiles meet only at a corner while the two tiles on the other diagonal are open ground. The drawing shows a passage there that she cannot walk through. Blocking tiles are woodland, water, trees, fences, stones and the door.
 
 ### Path Tiles
 
@@ -90,13 +114,12 @@ Every new hard constraint comes with a deterministic test that checks it in ever
 
 - Purpose: define what a level is for before building it. Only one mechanic per level is new.
 - Mechanics: each one appears in four stages across levels: introduce, practice, vary, combine. It first appears where no other new mechanic must be solved at the same time.
-- Landmarks: every meaningful navigation decision has a recognizable landmark, such as a tree group, shoreline shape, structure, unusual path or the door. Place landmarks at junctions, not as decoration.
-- Star spots: choose by hand and spread them so any five still cover the map. Place them on optional dead ends, side routes, scenic spots and places visible before they are reachable. Never on the mandatory route. Stars are never required.
+- Star spots: choose by hand and concentrate them in exploration areas, which exist to reward curiosity. Place them on optional dead ends, side routes, scenic spots and places visible before they are reachable. Never on the mandatory route. Stars are never required.
 - Dead ends: an intentional dead end holds a payoff, usually a star spot. Not every one needs a star.
-- Required objects: keys never depend on accidental discovery, never look like scenery and never rely on color alone. Players find keys through landmarks, terrain and the proximity hum.
+- Required objects: keys never depend on accidental discovery, never look like scenery and never rely on color alone. Players find keys through terrain and the proximity hum.
 - Exploration: a level holds meaningful space outside the mandatory route. Optional branches lead to distinct places. A larger map adds navigable space, not decoration.
 - Areas: each area is a recognizable place, such as a forest, lake, garden, courtyard, ruins or island. Boundaries follow those places, never a straight split. The restoration seam is a gradient about three tiles wide. Put it where it reads as a change of place, such as a shoreline, tree line or track. Never use color to show a route.
-- Returning to the door: the player knows where the door is before the last key. Backtracking is fine when the space has changed through color, a new route, a landmark or a shortcut. Avoid long returns through unchanged space.
+- Returning to the door: the player knows where the door is before the last key. Backtracking is fine when the space has changed through color, a new route or a shortcut. Avoid long returns through unchanged space.
 - Difficulty dimensions: map size, mandatory travel, objective count, route choices, mechanics combined, backtracking, similarity between places, obstacle density, memory load, strength of navigation cues. When a level is harder than the previous one, name the dimension that increased. Do not raise several at once.
 
 ## Natural Layouts
@@ -105,7 +128,7 @@ Guidance only. Never overrides a hard constraint or the readability of the manda
 
 | Place | Do | Never |
 | --- | --- | --- |
-| Orchards | Planting groups, rows staggered, interrupted or unevenly spaced, open grass between groups. A gap in a row is a landmark. | A symmetrical maze. Fruit trees as a perimeter wall. |
+| Orchards | Planting groups, rows staggered, interrupted or unevenly spaced, open grass between groups. | A symmetrical maze. Fruit trees as a perimeter wall. |
 | Woodland edges | Irregular, with projections and recesses. Fill inaccessible land outside a clearing with woodland. | Straight continuous tree walls. Empty inaccessible ground. |
 | Forests | Irregular clusters of varying density with clearings, thinning toward the edge. | Straight bands of trees. |
 | Lakes and shores | Uneven outlines with bays and points. A distinctive shoreline shape. | Plain rectangles. |
@@ -113,7 +136,7 @@ Guidance only. Never overrides a hard constraint or the readability of the manda
 | Paths | Winding, branching worn tracks. Turns and slants step through a full corner tile. Straight paths only in built places, such as a courtyard or the door approach. | Diagonal staircases of single tiles. |
 | Flowers | Beds, patches, or along fences, woodland and paths. | Single tiles spread evenly over open ground. |
 | Stones | Small groups, or along shores and paths. Varied silhouettes from the five stone variants. | A boundary or continuous chain. Identical variants touching. |
-| Tree variants | One or two in a small level, more in larger ones. Different variants for distinct clusters to mark landmarks. | Mixed variants within one cluster. |
+| Tree variants | One or two in a small level, more in larger ones. Different variants for distinct clusters. | Mixed variants within one cluster. |
 
 ## Playtesting
 
