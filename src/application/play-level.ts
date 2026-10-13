@@ -25,13 +25,6 @@ export class PlayLevel {
     return events;
   }
 
-  finishGate(id: LevelId): readonly LevelEvent[] {
-    const level = this.levels.load(id);
-    const events = level.finishGate();
-    this.levels.save(level);
-    return events;
-  }
-
   grip(id: LevelId): void {
     const level = this.levels.load(id);
     level.grip();

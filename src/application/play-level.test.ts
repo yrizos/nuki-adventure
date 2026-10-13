@@ -11,6 +11,8 @@ import { SwingGate } from '../domain/level/swing-gate';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { PlayLevel } from './play-level';
 
+const gateSwingLength = 16;
+
 const levelId = LevelId.of('play');
 const right = Heading.of(Direction.Right);
 
@@ -57,10 +59,12 @@ describe('playing a level', () => {
       scenery: subject.level.scenery,
       stones: [],
       keys: subject.level.keys,
+      restored: [],
       stars: [Star.at(TilePosition.at(1, 0))],
       collected: [],
       door: subject.level.door,
       gate: undefined,
+      isPlateDown: false,
       canOperateGate: false,
       canGrip: false,
       isGripping: false,
@@ -101,8 +105,9 @@ describe('playing a level', () => {
     expect(subject.play.view(levelId).canOperateGate).toBe(true);
     expect(subject.play.operateGate(levelId)).toEqual([new SwingGateOpeningStarted(levelId, TilePosition.at(2, 2))]);
     expect(subject.play.view(levelId).gate?.state).toBe('opening');
-    expect(subject.play.finishGate(levelId)).toEqual([new SwingGateOpened(levelId, TilePosition.at(2, 2))]);
+    for (let tick = 1; tick < gateSwingLength; tick++) subject.play.advance(levelId, null);
+    expect(subject.play.advance(levelId, null)).toEqual([new SwingGateOpened(levelId, TilePosition.at(2, 2))]);
     expect(subject.play.view(levelId).gate?.state).toBe('open');
-    expect(subject.saved).toHaveLength(2);
+    expect(subject.saved).toHaveLength(1 + gateSwingLength);
   });
 });

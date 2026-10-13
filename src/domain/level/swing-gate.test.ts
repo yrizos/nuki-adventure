@@ -3,6 +3,9 @@ import { feet } from './hero';
 import { Outline, wholeTile } from './obstacles';
 import { Direction, TilePosition, WorldPosition } from './position';
 import { SwingGate } from './swing-gate';
+import { swungThrough } from '../../test-support/walk-level';
+
+const gateSwingLength = 16;
 
 const at = TilePosition.at;
 
@@ -16,27 +19,43 @@ test('starts closed with its approach on the tile to the south', () => {
 
 test('only moves forward from closed to opening to open', () => {
   const closed = SwingGate.closedAt(at(3, 2));
-  expect(closed.finishOpening()).toBe(closed);
+  expect(closed.swingOn()).toBe(closed);
   const opening = closed.requestOpen();
   expect(opening.state).toBe('opening');
   expect(opening.requestOpen()).toBe(opening);
-  const open = opening.finishOpening();
+  const open = swungThrough(opening);
   expect(open.state).toBe('open');
   expect(open.requestOpen()).toBe(open);
-  expect(open.finishOpening()).toBe(open);
+  expect(open.swingOn()).toBe(open);
 });
 
 test('closes only from open, through closing, back to closed', () => {
   const closed = SwingGate.closedAt(at(3, 2));
   expect(closed.requestClose()).toBe(closed);
-  const open = closed.requestOpen().finishOpening();
-  expect(open.finishClosing()).toBe(open);
+  const open = swungThrough(closed.requestOpen());
   const closing = open.requestClose();
   expect(closing.state).toBe('closing');
   expect(closing.requestOpen()).toBe(closing);
   expect(closing.requestClose()).toBe(closing);
   expect(closing.obstacles).toEqual([wholeTile(at(3, 2))]);
-  expect(closing.finishClosing().state).toBe('closed');
+  expect(swungThrough(closing).state).toBe('closed');
+});
+
+test('finishes its swing on the last of its frames', () => {
+  let gate = SwingGate.closedAt(at(3, 2)).requestOpen();
+  for (let frame = 1; frame < gateSwingLength; frame++) gate = gate.swingOn();
+  expect(gate.state).toBe('opening');
+  expect(gate.swung).toBe(gateSwingLength - 1);
+  expect(gate.swingOn().state).toBe('open');
+  expect(gate.swingOn().swung).toBe(0);
+});
+
+test('turns back from the angle the leaf has reached', () => {
+  const opening = SwingGate.closedAt(at(3, 2)).requestOpen().swingOn().swingOn().swingOn();
+  const closing = opening.reverse();
+  expect(closing.state).toBe('closing');
+  expect(closing.swung).toBe(gateSwingLength - 1 - 3);
+  expect(closing.reverse().swung).toBe(3);
 });
 
 test('is operable from the three tiles on either side of its passage', () => {
@@ -58,7 +77,7 @@ test('in a column of fence is approached from the west and swings east along the
     expect(gate.operableFrom(at(4, row))).toBe(true);
   }
   for (const tile of [at(3, 1), at(3, 3), at(5, 2), at(2, 4)]) expect(gate.operableFrom(tile)).toBe(false);
-  expect(gate.requestOpen().finishOpening().obstacles).toEqual([
+  expect(swungThrough(gate.requestOpen()).obstacles).toEqual([
     Outline.spanning(at(3, 2), 16, 0, 32, 3),
     Outline.spanning(at(4, 2), 0, 0, 16, 3),
   ]);
@@ -77,7 +96,7 @@ test('blocks its whole tile until it has finished opening', () => {
 });
 
 test('leaves the middle of the passage clear once open, with the leaf along its west side', () => {
-  const open = SwingGate.closedAt(at(3, 2)).requestOpen().finishOpening();
+  const open = swungThrough(SwingGate.closedAt(at(3, 2)).requestOpen());
   expect(open.obstacles).toEqual([Outline.spanning(at(3, 2), 0, 0, 3, 22), Outline.spanning(at(3, 1), 0, 12, 3, 32)]);
 });
 
@@ -96,6 +115,6 @@ test('turns back halfway through a swing and stays put when not swinging', () =>
   expect(closed.requestOpen().reverse().state).toBe('closing');
   expect(closed.requestOpen().reverse().reverse().state).toBe('opening');
   expect(closed.reverse()).toBe(closed);
-  const open = closed.requestOpen().finishOpening();
+  const open = swungThrough(closed.requestOpen());
   expect(open.reverse()).toBe(open);
 });

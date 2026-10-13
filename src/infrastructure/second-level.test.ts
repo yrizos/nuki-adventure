@@ -6,7 +6,7 @@ import { Direction, Heading, TilePosition } from '../domain/level/position';
 import { Ground } from '../domain/level/scenery';
 import { SwingGate } from '../domain/level/swing-gate';
 import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
-import { follow, pathTo } from '../test-support/walk-level';
+import { follow, pathTo, settleGate } from '../test-support/walk-level';
 import { secondLevel, secondLevelId } from './second-level';
 
 const at = TilePosition.at;
@@ -60,7 +60,7 @@ function openGate(level: Level): void {
   level.tick(Heading.of(Direction.Up));
   level.tick(null);
   level.operateGate();
-  level.finishGate();
+  settleGate(level);
 }
 
 test('the second level holds a lakeside behind a swing gate and one key that restores the whole level', () => {

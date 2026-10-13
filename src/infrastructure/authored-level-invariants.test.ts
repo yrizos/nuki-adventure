@@ -3,6 +3,7 @@ import { feet } from '../domain/level/hero';
 import { Level } from '../domain/level/level';
 import { Direction, Heading, TilePosition, TilePositions, WorldPosition, tileSize } from '../domain/level/position';
 import { SwingGate } from '../domain/level/swing-gate';
+import { swungThrough } from '../test-support/walk-level';
 import { check2dObstacles } from './check2d-obstacles';
 import { fifthLevel } from './fifth-level';
 import { firstLevel } from './first-level';
@@ -71,7 +72,7 @@ const passes = [
     {
       name: `${name} (gate open)`,
       authored,
-      gate: SwingGate.closedAt(gate.position, gate.approachSide).requestOpen().finishOpening(),
+      gate: swungThrough(SwingGate.closedAt(gate.position, gate.approachSide).requestOpen()),
       region: undefined,
       beyond: undefined,
     },

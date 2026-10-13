@@ -1,6 +1,7 @@
 import { expect } from 'vitest';
 import { feet } from '../domain/level/hero';
 import type { Level } from '../domain/level/level';
+import type { SwingGate } from '../domain/level/swing-gate';
 import type { LevelEvent } from '../domain/level/level-events';
 import { Direction, Heading, type TilePosition, type WorldPosition, tileSize } from '../domain/level/position';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
@@ -66,5 +67,17 @@ export function openGate(level: Level): void {
   expect(path, 'the gate approach must be reachable').toBeDefined();
   follow(level, path!);
   expect(level.operateGate(), 'she must be able to operate the gate from its approach').not.toEqual([]);
-  level.finishGate();
+  settleGate(level);
+}
+
+export function settleGate(level: Level): readonly LevelEvent[] {
+  const events: LevelEvent[] = [];
+  while (level.gate?.isSwinging) events.push(...level.tick(null));
+  return events;
+}
+
+export function swungThrough(gate: SwingGate): SwingGate {
+  let swung = gate;
+  while (swung.isSwinging) swung = swung.swingOn();
+  return swung;
 }

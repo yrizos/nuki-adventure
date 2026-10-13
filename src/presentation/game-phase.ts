@@ -19,8 +19,6 @@ export function appearing(frame: number): Phase {
   return { name: 'appearing', since: frame };
 }
 
-export const gateSwingLength = 16;
-
 export function swingingGate(frame: number): Phase {
   return { name: 'swinging-gate', since: frame };
 }
@@ -36,9 +34,10 @@ export function closingLevel(frame: number): Phase {
 interface FrameEnd {
   readonly frame: number;
   readonly restorationLength: (origin: TilePosition) => number;
+  readonly gateSwinging: boolean;
 }
 
-export function phaseAfterFrame(phase: Phase, { frame, restorationLength }: FrameEnd): Phase {
+export function phaseAfterFrame(phase: Phase, { frame, restorationLength, gateSwinging }: FrameEnd): Phase {
   switch (phase.name) {
     // The phase is checked at the end of a frame, so leaving it after the last arrival frame lets the next frame play.
     case 'appearing':
@@ -46,7 +45,7 @@ export function phaseAfterFrame(phase: Phase, { frame, restorationLength }: Fram
     case 'playing':
       return phase;
     case 'swinging-gate':
-      return frame - phase.since >= gateSwingLength - 1 ? playing : phase;
+      return gateSwinging ? phase : playing;
     case 'restoring':
       return frame - phase.since >= restorationLength(phase.origin) ? playing : phase;
     case 'closing':

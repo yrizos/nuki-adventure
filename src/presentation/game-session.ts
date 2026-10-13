@@ -1,7 +1,6 @@
 import type { LevelView } from '../application/level-view';
 import type { ManageProgress } from '../application/manage-progress';
 import type { PlayLevel } from '../application/play-level';
-import type { Area } from '../domain/level/collectibles';
 import type { LevelAction } from '../domain/level/level-action';
 import {
   LevelCompleted,
@@ -22,7 +21,6 @@ import {
   appearing,
   arrivalLength,
   closingLevel,
-  gateSwingLength,
   restoringKey,
   type Phase,
   phaseAfterFrame,
@@ -71,9 +69,6 @@ interface LevelRun {
   readonly animator: HeroAnimator;
   readonly messageBox: MessageBox;
   readonly startFrame: number;
-  restored: readonly Area[];
-  plateSwingSince: number | undefined;
-  plateDown: boolean;
   plateDepth: number;
 }
 
@@ -133,23 +128,19 @@ export class GameSession {
     ) {
       this.sound.gate();
       this.transitionTo(swingingGate(this.frame));
-    } else if (this.phase.name === 'playing' || this.phase.name === 'restoring') {
+    }
+    if (this.phase.name === 'swinging-gate') play.advance(id, null);
+    else if (this.phase.name === 'playing' || this.phase.name === 'restoring') {
       // Holding A keeps her attached to the boulder, and the joystick then moves it one whole tile at a time.
       if (!this.controls.isHeld('a')) play.release(id);
       else if (this.phase.name === 'playing') play.grip(id);
       const events = play.advance(id, this.controls.heading());
       for (const event of events) {
         // A plate swings the gate while she keeps walking, because stepping on and off it must never freeze her.
-        if (event instanceof SwingGateOpeningStarted || event instanceof SwingGateClosingStarted) {
-          this.sound.gate();
-          // A swing turned back halfway starts from the leaf's current angle instead of jumping to the far end.
-          const since = this.run.plateSwingSince;
-          const swung = since === undefined ? gateSwingLength - 1 : this.frame - since;
-          this.run.plateSwingSince = this.frame - Math.max(0, gateSwingLength - 1 - swung);
-        } else if (event instanceof PlatePressed || event instanceof PlateReleased) {
-          this.run.plateDown = event instanceof PlatePressed;
-          this.sound.plate(this.run.plateDown);
-        } else if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
+        if (event instanceof SwingGateOpeningStarted || event instanceof SwingGateClosingStarted) this.sound.gate();
+        else if (event instanceof PlatePressed || event instanceof PlateReleased)
+          this.sound.plate(event instanceof PlatePressed);
+        else if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
         else if (event instanceof KeyCollected) {
           this.sound.key(play.view(id).keys.length === 0);
           messageBox.show(play.view(id).keys.length > 0 ? messages.someColorsBack : messages.colorsBack, this.frame);
@@ -172,12 +163,10 @@ export class GameSession {
       if (this.phase.name === 'playing' && walkAwayMessage && play.view(id).hero.isWalking) messageBox.hide(this.frame);
     }
     // Depth steps one frame at a time, so a plate released halfway down rises from where it is.
-    this.run.plateDepth = Math.min(Math.max(this.run.plateDepth + (this.run.plateDown ? 1 : -1), 0), plateSinkLength);
-    const { plateSwingSince } = this.run;
-    if (plateSwingSince !== undefined && this.frame - plateSwingSince >= gateSwingLength - 1) {
-      play.finishGate(id);
-      this.run.plateSwingSince = undefined;
-    }
+    this.run.plateDepth = Math.min(
+      Math.max(this.run.plateDepth + (play.view(id).isPlateDown ? 1 : -1), 0),
+      plateSinkLength,
+    );
     if (this.phase.name === 'restoring') {
       const level = play.view(id);
       const doorShown =
@@ -188,6 +177,7 @@ export class GameSession {
       phaseAfterFrame(this.phase, {
         frame: this.frame,
         restorationLength: (origin) => restorationLength(play.view(id).scenery.size, origin),
+        gateSwinging: play.view(id).gate?.isSwinging ?? false,
       }),
     );
     // She stands still while the gate swings, so her last stride must not keep her walking or stepping.
@@ -200,7 +190,6 @@ export class GameSession {
   }
 
   paint(picture: Picture, tickProgress = 1): void {
-    const { restored } = this.run;
     const current = this.run.play.view(this.run.id);
     const level = { ...current, hero: current.hero.between(tickProgress) };
     const sliding = level.boulders.find((boulder) => boulder.isSliding);
@@ -220,28 +209,25 @@ export class GameSession {
             : this.run.animator.pose(level.hero, this.frame),
       plateDepth: this.run.plateDepth,
       ...(this.phase.name === 'appearing' ? { arrival: this.frame - this.phase.since } : {}),
-      ...(this.phase.name === 'swinging-gate' ? { gateAge: this.frame - this.phase.since } : {}),
-      ...(this.run.plateSwingSince === undefined ? {} : { gateAge: this.frame - this.run.plateSwingSince }),
     };
     if (this.phase.name === 'restoring') {
-      this.run.painter.paintRestoring(picture, scene, this.phase.origin, this.frame - this.phase.since, restored, [
-        ...restored,
-        this.phase.restores,
+      const { restores } = this.phase;
+      const before = level.restored.filter((area) => area !== restores);
+      this.run.painter.paintRestoring(picture, scene, this.phase.origin, this.frame - this.phase.since, before, [
+        ...before,
+        restores,
       ]);
     } else if (this.phase.name === 'closing')
       this.run.painter.paintClosing(picture, scene, this.frame - this.phase.since);
     else if (this.phase.name === 'ended') picture.fill('Ink');
-    else this.run.painter.paint(picture, scene, restored);
+    else this.run.painter.paint(picture, scene, level.restored);
     if (this.phase.name !== 'closing' && this.phase.name !== 'ended') this.run.messageBox.paint(picture, this.frame);
   }
 
   private transitionTo(next: Phase): void {
     const previous = this.phase;
     if (next === previous) return;
-    if (previous.name === 'restoring' && (next.name === 'playing' || next.name === 'restoring'))
-      this.run.restored = [...this.run.restored, previous.restores];
     this.phase = next;
-    if (previous.name === 'swinging-gate') this.run.play.finishGate(this.run.id);
     if (next.name === 'restoring') this.sound.restoring();
     if (previous.name === 'closing' && next.name === 'ended') this.report.completed();
   }
@@ -257,9 +243,6 @@ export class GameSession {
       messageBox: new MessageBox(),
       // Play time starts on the first playable frame, so the arrival never counts toward it.
       startFrame: this.frame + (arrives ? arrivalLength : 0),
-      restored: [],
-      plateSwingSince: undefined,
-      plateDown: false,
       plateDepth: 0,
     };
   }

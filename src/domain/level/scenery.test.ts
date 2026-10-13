@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import { Door } from './door';
 import { Outline } from './obstacles';
 import { SwingGate } from './swing-gate';
+import { swungThrough } from '../../test-support/walk-level';
 import { Direction, TilePosition } from './position';
 import { Fence, Flower, FlowerVariant, Ground, LevelSize, Scenery, Tree, TreeVariant } from './scenery';
 
@@ -133,7 +134,7 @@ describe('scenery', () => {
     const door = Door.closedAt(at(0, 0));
     const closed = SwingGate.closedAt(at(4, 0));
     const opening = closed.requestOpen();
-    const open = opening.finishOpening();
+    const open = swungThrough(opening);
     const failures: string[] = [];
     const rails = [Outline.spanning(at(3, 0), 0, 17, 20, 32), Outline.spanning(at(3, 0), 12, 17, 32, 32)];
     for (const exit of [door, door.opened()]) {

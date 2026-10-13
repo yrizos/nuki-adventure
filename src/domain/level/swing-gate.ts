@@ -7,11 +7,14 @@ type SwingGateState = 'closed' | 'opening' | 'open' | 'closing';
 // A leaf always swings away from the side she approaches, hinged on its west post in a row of fence or its north post in a column, so only the approach is configured.
 const leafThickness = 3;
 
+const gateSwingLength = 16;
+
 export class SwingGate {
   private constructor(
     readonly position: TilePosition,
     readonly state: SwingGateState,
     readonly approachSide: Direction,
+    readonly swung = 0,
   ) {}
 
   readonly actions: readonly LevelAction[] = ['operate'];
@@ -66,16 +69,19 @@ export class SwingGate {
     return this.state === 'closed' ? this.with('opening') : this;
   }
 
-  finishOpening(): SwingGate {
-    return this.state === 'opening' ? this.with('open') : this;
-  }
-
   requestClose(): SwingGate {
     return this.state === 'open' ? this.with('closing') : this;
   }
 
-  finishClosing(): SwingGate {
-    return this.state === 'closing' ? this.with('closed') : this;
+  get isSwinging(): boolean {
+    return this.state === 'opening' || this.state === 'closing';
+  }
+
+  // The frame the swing starts on counts as its first, so a swing lasts exactly gateSwingLength frames.
+  swingOn(): SwingGate {
+    if (!this.isSwinging) return this;
+    if (this.swung + 1 < gateSwingLength) return this.with(this.state, this.swung + 1);
+    return this.with(this.state === 'opening' ? 'open' : 'closed');
   }
 
   // The leaf keeps the passage shut until it has finished opening, and from the moment it starts closing, so the crossing never looks shut while it lets her through.
@@ -97,13 +103,14 @@ export class SwingGate {
   }
 
   // A swing turned back halfway keeps the passage shut, because the leaf blocks it while opening and while closing.
+  // Turning back starts from the leaf's current angle instead of jumping to the far end.
   reverse(): SwingGate {
-    if (this.state === 'opening') return this.with('closing');
-    if (this.state === 'closing') return this.with('opening');
+    if (this.state === 'opening') return this.with('closing', gateSwingLength - 1 - this.swung);
+    if (this.state === 'closing') return this.with('opening', gateSwingLength - 1 - this.swung);
     return this;
   }
 
-  private with(state: SwingGateState): SwingGate {
-    return new SwingGate(this.position, state, this.approachSide);
+  private with(state: SwingGateState, swung = 0): SwingGate {
+    return new SwingGate(this.position, state, this.approachSide, swung);
   }
 }

@@ -6,7 +6,7 @@ import { KeyCollected, LevelCompleted, SwingGateStuck } from '../domain/level/le
 import { Direction, Heading, TilePosition, tileKey } from '../domain/level/position';
 import { SwingGate } from '../domain/level/swing-gate';
 import { reverseOrder, starSpotsOf } from '../test-support/star-spots';
-import { follow, pathTo } from '../test-support/walk-level';
+import { follow, pathTo, settleGate } from '../test-support/walk-level';
 import { fifthLevel, fifthLevelId } from './fifth-level';
 
 type Shuffle = (positions: readonly TilePosition[]) => readonly TilePosition[];
@@ -227,13 +227,12 @@ test('the fifth level keeps the garden and its key shut until the boulder rests 
     pathTo(level, (tile) => tile.equals(plate))!,
   );
   expect(level.gate!.state, 'her own weight on the plate swings the gate open').toBe('opening');
-  level.finishGate();
+  settleGate(level);
   follow(
     level,
     pathTo(level, (tile) => tile.equals(level.gate!.approach))!,
   );
-  expect(level.gate!.state, 'stepping off the plate lets the gate swing shut').toBe('closing');
-  level.finishGate();
+  expect(level.gate!.state, 'stepping off the plate lets the gate swing shut').toBe('closed');
   expect(level.operateGate()).toEqual([new SwingGateStuck(fifthLevelId, gate)]);
   expect(level.gate!.state).toBe('closed');
 });
@@ -246,8 +245,8 @@ test.each(spots.map((spot) => ({ spot, label: `${spot.column}, ${spot.row}` })))
     for (const move of solved.moves) play(level, move);
     expect(level.boulders[0]!.position).toEqual(plate);
     level.tick(null);
-    expect(level.gate!.state).toBe('opening');
-    level.finishGate();
+    settleGate(level);
+    expect(level.gate!.state).toBe('open');
     const toKey = pathTo(level, (tile) => tile.equals(key));
     expect(toKey, 'the key must open up once the gate swings').toBeDefined();
     expect(follow(level, toKey!).some((event) => event instanceof KeyCollected)).toBe(true);
@@ -263,12 +262,12 @@ test('the fifth level shuts the gate again once the boulder leaves the plate', (
   const solved = boulderStates(level).find((state) => state.boulder.equals(plate))!;
   for (const move of solved.moves) play(level, move);
   level.tick(null);
-  level.finishGate();
+  settleGate(level);
   expect(level.gate!.isOpen).toBe(true);
   const last = solved.moves.at(-1)!;
   play(level, { stand: plate.neighbor(last.facing.opposite), facing: last.facing, direction: last.facing.opposite });
   expect(level.gate!.state).toBe('closing');
-  level.finishGate();
+  settleGate(level);
   expect(level.gate!.state).toBe('closed');
   expect(pathTo(level, (tile) => inGarden(tile))).toBeUndefined();
 });

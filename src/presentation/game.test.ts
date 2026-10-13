@@ -24,7 +24,7 @@ import { pixelDifference } from '../test-support/pictures';
 import type { Art } from './art/art';
 import { artUrl } from './canvas-art';
 import { buttonWobble, startGame, wobbleEvery } from './game';
-import { arrivalLength, gateSwingLength } from './game-phase';
+import { arrivalLength } from './game-phase';
 import { Sound } from './sound';
 import { GameLoop } from './game-loop';
 import { GameSession, humVolume, messages } from './game-session';
@@ -36,6 +36,8 @@ import { heroArt } from './sprite-library';
 import { cameraPosition, heroPixels } from './world-geometry';
 import { WorldPainter } from './world-painter';
 import { closingLength, doorOpeningLength, restorationLength } from './world-transition';
+
+const gateSwingLength = 16;
 
 const area = (keep: (position: TilePosition) => boolean): Area =>
   Area.of(Array.from({ length: 1600 }, (_, index) => TilePosition.at(index % 40, Math.floor(index / 40))).filter(keep));

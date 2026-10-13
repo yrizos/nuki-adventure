@@ -1,5 +1,5 @@
 import type { Boulder } from './boulder';
-import { type Key, Star } from './collectibles';
+import { type Area, type Key, Star } from './collectibles';
 import { StarCount } from '../shared/star-count';
 import type { Door } from './door';
 import { feet, Hero, type HeroState } from './hero';
@@ -59,6 +59,7 @@ export interface LevelDefinition {
 export class Level {
   private readonly heroEntity: Hero;
   private remainingKeys: readonly Key[];
+  private collectedKeys: readonly Key[] = [];
   private currentDoor: Door;
   private currentGate: SwingGate | undefined;
   private currentBoulders: readonly Boulder[];
@@ -264,6 +265,14 @@ export class Level {
     return this.remainingKeys;
   }
 
+  get restored(): readonly Area[] {
+    return this.collectedKeys.map((key) => key.restores);
+  }
+
+  get isPlateDown(): boolean {
+    return this.plateDown;
+  }
+
   get outlines(): readonly Outline[] {
     return this.obstacleOutlines;
   }
@@ -302,17 +311,15 @@ export class Level {
   }
 
   // The crossing stays shut until the swing has been seen to finish.
-  finishGate(): readonly LevelEvent[] {
+  private swingGate(): readonly LevelEvent[] {
     const gate = this.currentGate;
-    if (gate?.state === 'opening') {
-      this.currentGate = gate.finishOpening();
+    if (!gate?.isSwinging) return [];
+    this.currentGate = gate.swingOn();
+    if (this.currentGate.state === 'open') {
       this.obstacles = this.placedObstacles();
       return [new SwingGateOpened(this.id, gate.position)];
     }
-    if (gate?.state === 'closing') {
-      this.currentGate = gate.finishClosing();
-      return [new SwingGateClosed(this.id, gate.position)];
-    }
+    if (this.currentGate.state === 'closed') return [new SwingGateClosed(this.id, gate.position)];
     return [];
   }
 
@@ -354,13 +361,15 @@ export class Level {
 
   tick(heading: Heading | null): readonly LevelEvent[] {
     if (this.completed) return [];
+    // She stands still while she swings a gate by hand, so time passes only for the leaf.
+    if (this.currentGate?.isSwinging && !this.plate) return this.swingGate();
     const before = this.heroEntity.position;
     const sliding = this.currentBoulders.find((boulder) => boulder.isSliding);
     if (sliding && this.carried) this.slideBoulder(sliding, this.carried);
     else if (this.gripping) this.moveGripped(heading);
     else this.heroEntity.steer(heading, this.obstacles);
     const tile = this.heroEntity.position;
-    const events: LevelEvent[] = [...this.followPlate()];
+    const events: LevelEvent[] = [...this.followPlate(), ...this.swingGate()];
     if (tile.equals(before)) return events;
     const star = this.remainingStars.find((candidate) => candidate.position.equals(tile));
     if (star) {
@@ -371,6 +380,7 @@ export class Level {
     const key = this.remainingKeys.find((candidate) => candidate.position.equals(tile));
     if (key) {
       this.remainingKeys = this.remainingKeys.filter((candidate) => candidate !== key);
+      this.collectedKeys = [...this.collectedKeys, key];
       events.push(new KeyCollected(this.id, key.position, key.restores));
     }
     if (this.currentDoor.covers(tile)) {

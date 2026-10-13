@@ -19,6 +19,7 @@ import { thirdLevel } from '../infrastructure/third-level';
 import { fourthLevel } from '../infrastructure/fourth-level';
 import { fifthLevel } from '../infrastructure/fifth-level';
 import { pixelDifference } from '../test-support/pictures';
+import { settleGate } from '../test-support/walk-level';
 import type { Art } from './art/art';
 import * as library from './sprite-library';
 import { faded, lighter, palette, type PaletteCode } from './palette';
@@ -1368,15 +1369,11 @@ describe('a swing gate', () => {
     levelFromLayout(LevelId.of('gated'), ['.DDD.', '..K..', '.....', 'WFGFW', '..H..', '.....'], (spots) => spots, {
       keys: { K: { restores: () => true } },
     });
-  const drawn = (level: Level, gateAge?: number, restored: readonly Area[] = []) => {
+  const drawn = (level: Level, restored: readonly Area[] = []) => {
     const picture = new Picture(160, 192);
     const draw = vi.spyOn(picture, 'draw');
     const view = levelView(level);
-    new WorldPainter(view).paint(
-      picture,
-      { level: view, frame: 0, hero: library.heroArt.up.stand, ...(gateAge === undefined ? {} : { gateAge }) },
-      restored,
-    );
+    new WorldPainter(view).paint(picture, { level: view, frame: 0, hero: library.heroArt.up.stand }, restored);
     return draw.mock.calls.map(([art]) => art);
   };
   const gateFrames = [...library.gateArt.opening, library.gateArt.open];
@@ -1399,17 +1396,18 @@ describe('a swing gate', () => {
   ])('at age %i draws swing frame %i', (age, index) => {
     const level = gated();
     level.operateGate();
-    const shown = drawn(level, age);
+    for (let tick = 0; tick < age; tick++) level.tick(null);
+    const shown = drawn(level);
     expect(shown.filter((art) => gateFrames.includes(art))).toEqual([library.gateArt.opening[index]]);
   });
 
   test('keeps the parked leaf once open, also after color returns', () => {
     const level = gated();
     level.operateGate();
-    level.finishGate();
+    settleGate(level);
     for (const restored of [[], [Area.of([TilePosition.at(0, 0)])], [everywhere]])
       expect(
-        drawn(level, undefined, restored)
+        drawn(level, restored)
           .filter((art) => gateFrames.includes(art))
           .every((art) => art === library.gateArt.open),
       ).toBe(true);

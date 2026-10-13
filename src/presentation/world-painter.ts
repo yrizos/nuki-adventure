@@ -68,7 +68,6 @@ export interface Scene {
   readonly frame: number;
   readonly hero: Art;
   readonly arrival?: number;
-  readonly gateAge?: number;
   readonly plateDepth?: number;
 }
 
@@ -508,7 +507,7 @@ export class WorldPainter {
     if (gate) {
       const { column, row } = gate.position;
       const { opening, open } = gate.swing === Direction.Up ? gateArt : sideGateArt;
-      const swung = Math.min(Math.floor((scene.gateAge ?? 0) / framesPerGateFrame), opening.length - 1);
+      const swung = Math.min(Math.floor(gate.swung / framesPerGateFrame), opening.length - 1);
       const art =
         gate.state === 'open' ? open : opening[gate.state === 'closing' ? opening.length - 1 - swung : swung]!;
       const base = (row + 1) * tileSize;

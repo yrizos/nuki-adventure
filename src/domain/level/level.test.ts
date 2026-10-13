@@ -22,7 +22,9 @@ import { Direction, Heading, TilePosition } from './position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree, TreeVariant } from './scenery';
 import { SwingGate } from './swing-gate';
 import { check2dObstacles } from '../../infrastructure/check2d-obstacles';
-import { follow, pathTo } from '../../test-support/walk-level';
+import { follow, pathTo, settleGate } from '../../test-support/walk-level';
+
+const gateSwingLength = 16;
 
 const at = TilePosition.at;
 const area = (keep: (position: TilePosition) => boolean): Area =>
@@ -585,9 +587,22 @@ describe('a swing gate', () => {
 
   function opened(subject: Level): Level {
     subject.operateGate();
-    subject.finishGate();
+    settleGate(subject);
     return subject;
   }
+
+  test('holds her still while she swings it by hand', () => {
+    const subject = gated();
+    subject.operateGate();
+    const { feet } = subject.hero;
+    for (let tick = 1; tick < gateSwingLength; tick++) subject.tick(Heading.of(Direction.Down));
+    expect(subject.hero.feet).toEqual(feet);
+    expect(subject.gate?.state).toBe('opening');
+    subject.tick(Heading.of(Direction.Down));
+    expect(subject.gate?.state).toBe('open');
+    for (let tick = 0; tick < 4; tick++) subject.tick(Heading.of(Direction.Down));
+    expect(subject.hero.feet).not.toEqual(feet);
+  });
 
   test('lets a key lie behind it, out of reach until it opens', () => {
     const subject = gated();
@@ -597,12 +612,14 @@ describe('a swing gate', () => {
 
   test('lets the hero through both ways once it finishes opening', () => {
     const subject = gated();
-    expect(subject.finishGate()).toEqual([]);
+    expect(settleGate(subject)).toEqual([]);
     subject.operateGate();
     const before = subject.outlines;
-    expect(subject.finishGate()).toEqual([new SwingGateOpened(LevelId.of('test'), at(3, 3))]);
+    for (let tick = 1; tick < gateSwingLength; tick++) expect(subject.tick(null)).toEqual([]);
+    expect(subject.outlines).toEqual(before);
+    expect(subject.tick(null)).toEqual([new SwingGateOpened(LevelId.of('test'), at(3, 3))]);
     expect(subject.outlines).not.toEqual(before);
-    expect(subject.finishGate()).toEqual([]);
+    expect(settleGate(subject)).toEqual([]);
     follow(
       subject,
       pathTo(subject, (tile) => tile.equals(at(3, 2)))!,
@@ -630,7 +647,7 @@ describe('a swing gate', () => {
     expect(subject.outlines).not.toEqual(open);
     expect(subject.canOperateGate).toBe(false);
     expect(subject.operateGate()).toEqual([]);
-    expect(subject.finishGate()).toEqual([new SwingGateClosed(LevelId.of('test'), at(3, 3))]);
+    expect(settleGate(subject)).toEqual([new SwingGateClosed(LevelId.of('test'), at(3, 3))]);
     expect(subject.gate?.state).toBe('closed');
     expect(pathTo(subject, (tile) => tile.equals(at(3, 5)))).toBeUndefined();
     expect(subject.operateGate()).toEqual([new SwingGateOpeningStarted(LevelId.of('test'), at(3, 3))]);
@@ -919,8 +936,8 @@ describe('a pressure plate', () => {
     expect(slide(subject, Direction.Up)).toEqual([
       new PlatePressed(LevelId.of('test'), at(2, 5)),
       new SwingGateOpeningStarted(LevelId.of('test'), at(5, 3)),
+      new SwingGateOpened(LevelId.of('test'), at(5, 3)),
     ]);
-    subject.finishGate();
     expect(subject.gate?.state).toBe('open');
     expect(subject.canOperateGate).toBe(false);
     expect(pathTo(subject, (tile) => tile.equals(at(7, 3)))).toBeDefined();
@@ -929,12 +946,12 @@ describe('a pressure plate', () => {
   test('closes the gate by itself once the boulder leaves it', () => {
     const subject = pressable();
     slide(subject, Direction.Up);
-    subject.finishGate();
+    settleGate(subject);
     expect(slide(subject, Direction.Down)).toEqual([
       new PlateReleased(LevelId.of('test'), at(2, 5)),
       new SwingGateClosingStarted(LevelId.of('test'), at(5, 3)),
     ]);
-    subject.finishGate();
+    settleGate(subject);
     expect(subject.gate?.state).toBe('closed');
   });
 
@@ -986,7 +1003,7 @@ describe('a pressure plate', () => {
   test('stays pressed when she pushes the boulder off it and takes its place', () => {
     const subject = pressable();
     slide(subject, Direction.Up);
-    subject.finishGate();
+    settleGate(subject);
     expect(slide(subject, Direction.Up)).toEqual([]);
     expect(subject.hero.position).toEqual(at(2, 5));
     expect(subject.gate?.state).toBe('open');
