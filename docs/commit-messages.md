@@ -2,7 +2,8 @@
 
 ## Procedure
 
-1. Stage intended paths by name, never `git add .` or `git add -A`. One logical change per commit.
+1. IF the user has staged changes, commit exactly what is staged as one commit. Never split, unstage or restage it, and never add other paths to it.
+   Otherwise, stage intended paths by name, never `git add .` or `git add -A`. One logical change per commit.
 2. Read the complete `git diff --cached` and confirm every change belongs. Never derive the message from the conversation, one file or a filtered summary.
 3. Pick the type from the purpose of the whole change. Accompanying docs or tests never override the code change's type.
 4. Run signed `git commit` with hooks. Never run `pre-commit run --all-files` first and never bypass hooks.
