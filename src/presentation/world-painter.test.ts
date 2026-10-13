@@ -26,7 +26,8 @@ import { faded, lighter, palette, type PaletteCode } from './palette';
 import { lighten, Picture, sprite } from './picture';
 import { cameraPosition, heroPixels, tileSize } from './world-geometry';
 import { arrivalMotes, risingEdge } from './arrival';
-import { keyOffset, propVariants, WorldPainter } from './world-painter';
+import { propVariants } from './world-dressing';
+import { keyOffset, WorldPainter } from './world-painter';
 import { closingLength, crestLength, restorationAge, restorationLength } from './world-transition';
 
 const scenery = {
