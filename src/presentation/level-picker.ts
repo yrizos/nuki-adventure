@@ -1,29 +1,44 @@
-import type { LevelProgressView } from '../application/manage-progress';
+import type { LevelView } from '../application/level-view';
+import type { LevelProgressView, ProgressView } from '../application/manage-progress';
 import type { Playthrough, PlayTime } from '../domain/progress/playthrough';
 import type { LevelId } from '../domain/shared/level-id';
 import { PixelGrid, type Art } from './art/art';
 import { glyphHeight, textWidth, writeText } from './art/font';
-import { backWidth, textButtonHeight } from './art/panel';
-import { artUrl } from './canvas-art';
+import { backWidth, scrollButtonWidth, textButtonHeight } from './art/panel';
+import { artUrl, pictureUrl } from './canvas-art';
+import { DitherModal, modalWidth } from './dither-modal';
 import { element } from './dom';
+import { levelMap } from './level-map';
+import { idleHeroPose } from './hero-animator';
 import { menuChoices, takeMenuKeys } from './menu-keys';
+import { ditherSteps, ditherThreshold } from './ordered-dither';
 import { faded } from './palette';
-import { starArt } from './sprite-library';
+import { Picture } from './picture';
+import { heroArt, padlockArt, starArt } from './sprite-library';
 
 const framesPerSecond = 60;
-const edge = 2;
-const padding = 6;
 const iconSize = 16;
-const iconGap = 8;
 const starArtMargin = 4;
-const columnGap = 10;
 const numberScale = 2;
 const numberHeight = numberScale * glyphHeight;
-const statsTop = edge + padding + numberHeight + padding;
-export const rowHeight = statsTop + iconSize + padding + edge;
-// The widths of the shortest statistics keep a card from shrinking before any level is completed.
-const shortestTime = '0:00';
-const shortestStars = '0/0';
+const edge = 2;
+const inset = 4;
+export const mapSize = 100;
+const boxPadding = 6;
+export const cardWidth = modalWidth - 2 * boxPadding;
+const mapLeft = (cardWidth - mapSize) / 2;
+const mapTop = edge + inset;
+const stripTop = mapTop + mapSize + inset + 1;
+const stripHeight = 22;
+export const cardHeight = stripTop + stripHeight + edge;
+const iconTop = stripTop + (stripHeight - iconSize) / 2;
+const starStep = iconSize + 1;
+const iconGap = 4;
+// The number keeps the padding a frame would have, so it sits as far from the card edge and the map.
+const numberPadding = 2 + 4;
+const pickerTitle = 'ΕΠΙΠΕΔΑ';
+// Most of a screenful per press keeps a card in view across the jump, so the player never loses their place.
+const scrollStep = 0.8;
 
 function clockFace(): readonly string[] {
   const grid = new PixelGrid(iconSize, iconSize);
@@ -124,7 +139,14 @@ export function starsText(playthrough: Playthrough): string {
   return `${playthrough.collectedStars.value}/${playthrough.starCount.value}`;
 }
 
-const lockedLegend = Object.fromEntries(Object.entries(windowLegend).map(([symbol, code]) => [symbol, faded(code)]));
+// A star not collected is drawn through the faded mapping, so the row reads as gold earned against grey still to find.
+const dimStar: Record<string, string> = { a: 'A', b: 'B', c: 'C' };
+const cardLegend = {
+  ...windowLegend,
+  A: faded(windowLegend.a),
+  B: faded(windowLegend.b),
+  C: faded(windowLegend.c),
+} as const;
 
 function putNumber(grid: PixelGrid, number: string, left: number, top: number): void {
   const text = new PixelGrid(textWidth(number), glyphHeight);
@@ -136,50 +158,115 @@ function putNumber(grid: PixelGrid, number: string, left: number, top: number): 
     }
 }
 
-// Every card shares one size and one set of columns, so numbers, times and stars line up down the list.
-export function levelPickerArt(levels: readonly LevelProgressView[]): Art[] {
-  const widest = (texts: readonly string[]): number => Math.max(...texts.map(textWidth));
-  const playthroughs = levels.flatMap(({ lastPlaythrough }) => (lastPlaythrough ? [lastPlaythrough] : []));
-  const numberWidth = numberScale * widest(levels.map(({ number }) => String(number)));
-  const timeWidth = widest([shortestTime, ...playthroughs.map(({ time }) => playTime(time))]);
-  const starWidth = widest([shortestStars, ...playthroughs.map(starsText)]);
-  const left = edge + padding;
-  const starLeft = left + iconSize + iconGap + timeWidth + columnGap;
-  const width = Math.max(left + numberWidth, starLeft + iconSize + iconGap + starWidth) + padding + edge;
-  return levels.map((level) => {
-    const grid = windowFrame(width, rowHeight);
-    const number = String(level.number);
-    putNumber(grid, number, left + numberWidth - numberScale * textWidth(number), edge + padding);
-    if (level.lastPlaythrough) {
-      putClock(grid, left, statsTop);
-      writeText(grid, playTime(level.lastPlaythrough.time), left + iconSize + iconGap, statsTop + iconTextTop, 't');
-      putStar(grid, starLeft, statsTop);
-      writeText(grid, starsText(level.lastPlaythrough), starLeft + iconSize + iconGap, statsTop + iconTextTop, 't');
-    }
-    return grid.build(level.isUnlocked ? windowLegend : lockedLegend);
-  });
+function putStars(grid: PixelGrid, collected: number, count: number): void {
+  for (let index = 0; index < count; index++) {
+    const left = inset + index * starStep;
+    putStar(grid, left, iconTop);
+    if (index < collected) continue;
+    for (let row = 0; row < iconSize; row++)
+      for (let column = 0; column < iconSize; column++) {
+        const dim = dimStar[grid.get(left + column, iconTop + row)];
+        if (dim) grid.put(left + column, iconTop + row, dim);
+      }
+  }
 }
 
-// The rows show pictures and numbers, so screen readers get the same facts in words.
+// The map shows through the window left open above the strip, inside a one pixel Ink border.
+export function levelCardArt(level: LevelProgressView, starCount: number): Art {
+  const grid = windowFrame(cardWidth, cardHeight);
+  grid.rectangle(mapLeft - 1, mapTop - 1, mapSize + 2, mapSize + 2, 'k');
+  grid.rectangle(mapLeft, mapTop, mapSize, mapSize, '.');
+  grid.rectangle(edge, stripTop - 1, cardWidth - 2 * edge, 1, 'e');
+  if (!level.isUnlocked) {
+    for (let row = mapTop; row < mapTop + mapSize; row++)
+      for (let column = mapLeft; column < mapLeft + mapSize; column++)
+        if (ditherThreshold(column, row) < ditherSteps / 2) grid.put(column, row, 'k');
+  }
+  putNumber(grid, String(level.number), inset + numberPadding, inset + 4);
+  const playthrough = level.lastPlaythrough;
+  putStars(grid, playthrough?.collectedStars.value ?? 0, playthrough?.starCount.value ?? starCount);
+  if (playthrough) {
+    const time = playTime(playthrough.time);
+    const timeLeft = cardWidth - edge - inset - textWidth(time);
+    putClock(grid, timeLeft - iconGap - iconSize, iconTop);
+    writeText(grid, time, timeLeft, iconTop + iconTextTop, 't');
+  }
+  return grid.build(cardLegend);
+}
+
+function titleArt(): Art {
+  const grid = new PixelGrid(textWidth(pickerTitle), glyphHeight);
+  writeText(grid, pickerTitle, 0, 0, 't');
+  return grid.build({ t: 'Paper' });
+}
+
+// The text says in words what the card shows in pictures.
 export function levelRowText(level: LevelProgressView): string {
   if (!level.isUnlocked) return `ΕΠΙΠΕΔΟ ${level.number}. ΚΛΕΙΔΩΜΕΝΟ.`;
   if (!level.lastPlaythrough) return `ΕΠΙΠΕΔΟ ${level.number}.`;
   return `ΕΠΙΠΕΔΟ ${level.number}. ΧΡΟΝΟΣ ${playTime(level.lastPlaythrough.time)}. ΑΣΤΕΡΙΑ ${starsText(level.lastPlaythrough)}.`;
 }
 
+export interface PickerLevel {
+  readonly id: LevelId;
+  readonly view: LevelView;
+}
+
 export class LevelPicker {
-  private readonly screen: HTMLElement;
+  private readonly dither: DitherModal;
   private readonly list: HTMLElement;
   private readonly backButton: HTMLButtonElement;
+  private readonly scrollButtons: readonly [HTMLButtonElement, HTMLButtonElement];
+  private readonly maps = new Map<string, Picture>();
+  private readonly hero: HTMLElement;
+  private readonly heroUrls = new Map<Art, string>();
+  private heroPose: Art | null = null;
+  private heroFrame = 0;
   private chosen: (level: LevelId) => void = () => {};
 
-  constructor(private readonly root: Document) {
-    this.screen = element(root, '.level-picker-screen');
+  constructor(
+    private readonly root: Document,
+    private readonly levels: readonly PickerLevel[],
+    private readonly random: () => number,
+  ) {
+    const screen = element<HTMLElement>(root, '.level-picker-screen');
+    const box = element<HTMLElement>(root, '.level-picker-box');
+    this.dither = new DitherModal(
+      root,
+      screen,
+      box,
+      element(root, '.start-screen'),
+      element(root, '.start-pick-level'),
+    );
     this.list = element(root, '.level-picker');
     this.backButton = element(root, '.level-picker-back');
     this.backButton.style.setProperty('--art-width', String(backWidth));
     this.backButton.style.setProperty('--art-height', String(textButtonHeight));
-    takeMenuKeys(root, this.screen);
+    this.scrollButtons = [element(root, '.level-picker-up'), element(root, '.level-picker-down')];
+    this.scrollButtons.forEach((button, index) => {
+      button.style.setProperty('--art-width', String(scrollButtonWidth));
+      button.style.setProperty('--art-height', String(textButtonHeight));
+      const direction = index === 0 ? -1 : 1;
+      button.addEventListener('click', () =>
+        this.list.scrollBy?.({ top: direction * scrollStep * this.list.clientHeight, behavior: 'smooth' }),
+      );
+    });
+    this.list.addEventListener('scroll', () => this.showScrollable());
+    screen.style.setProperty('--modal-width', String(modalWidth));
+    const title = element<HTMLElement>(root, '.level-picker-title');
+    const art = titleArt();
+    title.style.setProperty('--art', `url(${artUrl(root, art)})`);
+    title.style.setProperty('--art-width', String(art.rows[0]!.length));
+    title.style.setProperty('--art-height', String(art.rows.length));
+    this.hero = root.createElement('span');
+    this.hero.className = 'level-hero';
+    this.hero.setAttribute('aria-hidden', 'true');
+    const stand = heroArt.down.stand;
+    this.hero.style.setProperty('--art-width', String(stand.rows[0]!.length));
+    this.hero.style.setProperty('--art-height', String(stand.rows.length));
+    this.hero.style.setProperty('--left', String(mapLeft + (mapSize - stand.rows[0]!.length) / 2));
+    this.hero.style.setProperty('--top', String(mapTop + (mapSize - stand.rows.length) / 2));
+    takeMenuKeys(root, screen);
   }
 
   whenChosen(listener: (level: LevelId) => void): void {
@@ -187,33 +274,113 @@ export class LevelPicker {
   }
 
   whenBack(listener: () => void): void {
-    this.backButton.addEventListener('click', listener);
+    this.backButton.addEventListener('click', () => {
+      if (this.dither.isWhole) listener();
+    });
   }
 
-  show(levels: readonly LevelProgressView[]): void {
-    const arts = levelPickerArt(levels);
+  // The card of the level to continue takes focus and scrolls into view, so the player starts where they left off.
+  show({ continueLevel, levels }: ProgressView): void {
+    const cards = levels.map((level) => {
+      const playable = this.levels.find(({ id }) => id.equals(level.id));
+      const art = levelCardArt(level, playable?.view.stars.length ?? 0);
+      const picture = new Picture(cardWidth, cardHeight);
+      if (playable) {
+        const map = this.map(playable, level.lastPlaythrough !== null);
+        // A level of another size sits centered in the map window and never spills out of it.
+        const left = mapLeft + Math.floor((mapSize - Math.min(map.width, mapSize)) / 2);
+        const top = mapTop + Math.floor((mapSize - Math.min(map.height, mapSize)) / 2);
+        for (let row = 0; row < Math.min(map.height, mapSize); row++)
+          picture.packedPixels.set(
+            map.packedPixels.subarray(row * map.width, row * map.width + Math.min(map.width, mapSize)),
+            (top + row) * cardWidth + left,
+          );
+      }
+      picture.draw(art, 0, 0, 'colored');
+      if (!level.isUnlocked)
+        picture.draw(
+          padlockArt,
+          mapLeft + (mapSize - padlockArt.rows[0]!.length) / 2,
+          mapTop + (mapSize - padlockArt.rows.length) / 2,
+          'colored',
+        );
+      const button = this.root.createElement('button');
+      button.type = 'button';
+      button.className = 'level-row';
+      button.disabled = !level.isUnlocked;
+      button.setAttribute('aria-label', levelRowText(level));
+      button.style.setProperty('--art', `url(${pictureUrl(this.root, picture)})`);
+      button.style.setProperty('--art-width', String(cardWidth));
+      button.style.setProperty('--art-height', String(cardHeight));
+      button.addEventListener('click', () => {
+        if (this.dither.isWhole) this.chosen(level.id);
+      });
+      // Nuki marks the level to continue, centered on the map. She stands on her own layer so she can breathe
+      // and blink like on the start screen without redrawing the card.
+      if (continueLevel !== null && continueLevel.equals(level.id)) button.append(this.hero);
+      return { level, button };
+    });
     this.list.replaceChildren(
-      ...levels.map((level, index) => {
-        const art = arts[index]!;
-        const button = this.root.createElement('button');
-        button.type = 'button';
-        button.className = 'level-row';
-        button.disabled = !level.isUnlocked;
-        button.setAttribute('aria-label', levelRowText(level));
-        button.style.setProperty('--art', `url(${artUrl(this.root, art)})`);
-        button.style.setProperty('--art-width', String(art.rows[0]!.length));
-        button.style.setProperty('--art-height', String(art.rows.length));
-        button.addEventListener('click', () => this.chosen(level.id));
+      ...cards.map(({ button }) => {
         const item = this.root.createElement('li');
         item.append(button);
         return item;
       }),
     );
-    this.screen.hidden = false;
-    menuChoices(this.screen)[0]?.focus({ preventScroll: true });
+    this.heroFrame = 0;
+    this.heroPose = null;
+    this.dither.open();
+    this.animateHero();
+    const focused =
+      cards.find(({ level }) => continueLevel !== null && level.id.equals(continueLevel))?.button ??
+      menuChoices(this.list)[0];
+    focused?.focus({ preventScroll: true });
+    focused?.scrollIntoView?.({ block: 'nearest' });
+    this.showScrollable();
+  }
+
+  // Each scroll button dims once the list has nothing more in its direction.
+  private showScrollable(): void {
+    const { scrollTop, scrollHeight, clientHeight } = this.list;
+    const [up, down] = this.scrollButtons;
+    up.disabled = scrollTop <= 0;
+    down.disabled = scrollTop + clientHeight >= scrollHeight - 1;
+  }
+
+  close(): void {
+    this.dither.close();
+  }
+
+  advance(): void {
+    this.dither.advance();
+    if (!this.dither.isOpen) return;
+    this.heroFrame++;
+    this.animateHero();
+  }
+
+  private animateHero(): void {
+    const pose = idleHeroPose('down', this.heroFrame);
+    if (pose === this.heroPose) return;
+    this.heroPose = pose;
+    let url = this.heroUrls.get(pose);
+    if (!url) {
+      url = `url(${artUrl(this.root, pose)})`;
+      this.heroUrls.set(pose, url);
+    }
+    this.hero.style.setProperty('--art', url);
   }
 
   hide(): void {
-    this.screen.hidden = true;
+    this.dither.dismiss();
+  }
+
+  private map(level: PickerLevel, colored: boolean): Picture {
+    const key = `${level.id.value} ${colored}`;
+    let map = this.maps.get(key);
+    if (!map) {
+      map = levelMap(level.view, colored, this.random);
+      this.maps.set(key, map);
+    }
+    return map;
   }
 }

@@ -8,6 +8,8 @@ export interface Screens {
   readonly showStartScreen: () => void;
   readonly animateStartScreen: (framesOpen: number) => void;
   readonly showLevelPicker: () => void;
+  readonly closeLevelPicker: () => void;
+  readonly animateLevelPicker: () => void;
   readonly showEndScreen: () => void;
   readonly animateEndScreen: (framesOpen: number, framesLeaving: number) => void;
   readonly showLevel: (usesA: boolean, usesB: boolean) => void;
@@ -50,10 +52,17 @@ export class GameNavigator {
     this.framesOpen = 1;
   }
 
+  // The level picker opens over the start screen, which keeps its frame count so closing the picker never
+  // replays the title.
   openLevelPicker(): void {
     this.screen = { name: 'level-picker' };
-    this.framesOpen = 0;
     this.screens.showLevelPicker();
+  }
+
+  closeLevelPicker(): void {
+    if (this.screen.name !== 'level-picker') return;
+    this.screen = { name: 'start-screen' };
+    this.screens.closeLevelPicker();
   }
 
   openEndScreen(): void {
@@ -71,6 +80,7 @@ export class GameNavigator {
   tick(): void {
     if ('session' in this.screen) this.screen.session.tick();
     else if (this.screen.name === 'start-screen') this.screens.animateStartScreen(this.framesOpen++);
+    else if (this.screen.name === 'level-picker') this.screens.animateLevelPicker();
     else if (this.screen.name === 'end-screen') {
       this.framesOpen++;
       if (this.framesOpen >= endScreenStay) this.leaveEndScreen();

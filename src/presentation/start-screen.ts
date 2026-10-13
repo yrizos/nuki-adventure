@@ -52,7 +52,7 @@ export class StartScreen {
     this.continueButton = element(root, '.start-continue');
     this.pickLevelButton = element(root, '.start-pick-level');
     this.newGameButton = element(root, '.start-new-game');
-    this.confirm = new ConfirmModal(root);
+    this.confirm = new ConfirmModal(root, this.screen, this.newGameButton);
     this.hero = element(root, '.start-hero');
     this.title = element(root, '.start-title');
     const art = titleArt();
@@ -70,11 +70,7 @@ export class StartScreen {
     this.newGameButton.addEventListener('click', () => {
       if (this.choices.hasProgress) this.confirm.open();
     });
-    this.confirm.whenNo(() => {
-      this.confirm.close();
-      this.newGameButton.focus({ preventScroll: true });
-    });
-    // The modal sits over the start screen and was built first, so its key listener runs first while it is open.
+    this.confirm.whenNo(() => this.confirm.close());
     takeMenuKeys(root, this.screen);
   }
 

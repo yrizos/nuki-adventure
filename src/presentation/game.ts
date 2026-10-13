@@ -57,7 +57,11 @@ export function startGame(
 
   const sound = new Sound(window);
   const startScreen = new StartScreen(root);
-  const levelPicker = new LevelPicker(root);
+  const levelPicker = new LevelPicker(
+    root,
+    levels.map((level) => ({ id: level.id, view: level.start().view(level.id) })),
+    random,
+  );
   const endScreen = new EndScreen(root);
   const navigator = new GameNavigator(
     levels,
@@ -74,14 +78,19 @@ export function startGame(
         screen.classList.add('menu-open');
         sound.music(null);
       },
-      animateStartScreen: (framesOpen) => startScreen.animate(framesOpen),
+      // The level picker dithers out over the start screen after it closes, so both move on the same frames.
+      animateStartScreen: (framesOpen) => {
+        startScreen.animate(framesOpen);
+        levelPicker.advance();
+      },
       showLevelPicker: () => {
-        startScreen.hide();
         screen.classList.add('menu-open');
         setActionButtonsEnabled(true);
-        levelPicker.show(progress.view().levels);
+        levelPicker.show(progress.view());
         sound.music(null);
       },
+      closeLevelPicker: () => levelPicker.close(),
+      animateLevelPicker: () => levelPicker.advance(),
       showEndScreen: () => {
         announcement.textContent = '';
         endScreen.show();
@@ -114,7 +123,7 @@ export function startGame(
   endScreen.whenLeaving(() => navigator.leaveEndScreen());
   startScreen.whenPickingLevel(() => navigator.openLevelPicker());
   levelPicker.whenChosen((level) => navigator.play(level));
-  levelPicker.whenBack(() => navigator.openStartScreen());
+  levelPicker.whenBack(() => navigator.closeLevelPicker());
   connectGameSwitches(root, sound, () => {
     // Escape is one of the keys that leave the end screen, so it leaves through the same fade.
     if (navigator.state === 'end-screen') return;

@@ -161,6 +161,7 @@ export const keyArt: Readonly<Record<'gold' | 'silver', Art>> = {
   silver: { ...goldKey, legend: { ...goldKey.legend, b: 'N3', a: 'N4', c: 'W4' } },
 };
 export const starArt = frame('star', 'star');
+export const padlockArt = frame('padlock', 'padlock');
 
 export const lightMote = frame('light-mote', 'light-mote');
 

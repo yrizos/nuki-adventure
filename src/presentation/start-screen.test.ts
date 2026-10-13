@@ -202,11 +202,11 @@ test('with saved progress ΝΕΟ ΠΑΙΧΝΙΔΙ dithers a modal in over the st
   expect([screen.hidden, confirmModal.hidden]).toEqual([false, false]);
   expect(root.activeElement).toBe(noButton);
   noButton.click();
-  expect(root.activeElement).toBe(newGameButton);
   for (let frame = 1; frame < ditherFrames; frame++) subject.animate(frame);
   expect(confirmModal.hidden).toBe(false);
   subject.animate(0);
   expect([screen.hidden, confirmModal.hidden]).toEqual([false, true]);
+  expect(root.activeElement).toBe(newGameButton);
   expect(newGame).not.toHaveBeenCalled();
 });
 

@@ -56,6 +56,8 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
     showStartScreen: vi.fn(),
     animateStartScreen: vi.fn(),
     showLevelPicker: vi.fn(),
+    closeLevelPicker: vi.fn(),
+    animateLevelPicker: vi.fn(),
     showEndScreen: vi.fn(),
     animateEndScreen: vi.fn(),
     showLevel: vi.fn(),
@@ -191,11 +193,20 @@ describe('the game navigator', () => {
     }
   });
 
-  test('animates nothing on the level picker', () => {
+  test('animates only the level picker while it is open, and closing it resumes the start screen where it was', () => {
     const subject = navigator(null);
+    subject.navigator.openStartScreen();
+    subject.navigator.tick();
     subject.navigator.openLevelPicker();
     subject.navigator.tick();
-    expect(subject.screens.animateStartScreen).not.toHaveBeenCalled();
+    expect(subject.screens.animateLevelPicker).toHaveBeenCalledOnce();
+    expect(subject.screens.animateStartScreen).toHaveBeenLastCalledWith(1);
+    subject.navigator.closeLevelPicker();
+    expect(subject.navigator.state).toBe('start-screen');
+    expect(subject.screens.closeLevelPicker).toHaveBeenCalledOnce();
+    subject.navigator.tick();
+    expect(subject.screens.animateStartScreen).toHaveBeenLastCalledWith(2);
+    expect(subject.screens.showStartScreen).toHaveBeenCalledOnce();
   });
 
   test('ticks the level session while playing, without animating the start screen', () => {

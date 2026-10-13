@@ -24,6 +24,12 @@ const textButtonFaceHeight = 23;
 const textButtonWidth = (text: string): number => textWidth(text) + 2 * textButtonPadding;
 export const menuButtonWidth = Math.max(...[continueText, pickLevelText, newGameText].map(textButtonWidth));
 export const backWidth = textButtonWidth(backText);
+export const scrollButtonWidth = 28;
+// The scroll arrows are wider than the joystick's, so a finger-sized button reads at a glance.
+const scrollArrow = Array.from(
+  { length: 6 },
+  (_, row) => '.'.repeat(5 - row) + 'x'.repeat(2 * row + 2) + '.'.repeat(5 - row),
+);
 export const textButtonHeight = textButtonFaceHeight + lipHeight;
 const speakerOn = [
   '...x.....x.',
@@ -160,6 +166,21 @@ function textButton(text: string, colors: ControlColors, pressed: boolean, width
   return grid.build(controlLegend(colors));
 }
 
+function markButton(mark: readonly string[], colors: ControlColors, pressed: boolean): Art {
+  const width = scrollButtonWidth;
+  const inside = (column: number, row: number): boolean =>
+    inRoundedRectangle(width, textButtonFaceHeight, 6, column, row);
+  const grid = pressable(width, textButtonFaceHeight, inside, pressed);
+  const top = (pressed ? lipHeight : 0) + Math.floor((textButtonFaceHeight - mark.length) / 2);
+  const left = Math.floor((width - mark[0]!.length) / 2);
+  mark.forEach((line, row) =>
+    [...line].forEach((symbol, column) => {
+      if (symbol === 'x') grid.put(left + column, top + row, 'm');
+    }),
+  );
+  return grid.build(controlLegend(colors));
+}
+
 function ring(): Art {
   const grid = new PixelGrid(ringSize, ringSize);
   const inside = (column: number, row: number): boolean => inDisc(ringSize, column, row);
@@ -276,7 +297,12 @@ export const panelArt: Readonly<Record<string, Art>> = {
   // ΟΧΙ is the safe answer, so it wears the calm B button colors and leaves the warning red to ΝΑΙ.
   no: textButton(noText, buttonB, false, menuButtonWidth),
   'no-pressed': textButton(noText, buttonBPressed, true, menuButtonWidth),
-  back: textButton(backText, buttonA, false),
-  'back-pressed': textButton(backText, buttonAPressed, true),
+  // ΠΙΣΩ only closes the level picker, so it wears the calm B button colors like ΟΧΙ.
+  back: textButton(backText, buttonB, false),
+  'back-pressed': textButton(backText, buttonBPressed, true),
+  'scroll-up': markButton(scrollArrow, buttonA, false),
+  'scroll-up-pressed': markButton(scrollArrow, buttonAPressed, true),
+  'scroll-down': markButton([...scrollArrow].reverse(), buttonA, false),
+  'scroll-down-pressed': markButton([...scrollArrow].reverse(), buttonAPressed, true),
   menu: switchArt(menu),
 };

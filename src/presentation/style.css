@@ -177,6 +177,8 @@ body {
 .menu-switch,
 .start-title,
 .start-hero,
+.level-hero,
+.level-picker-title,
 .confirm-box,
 .confirm-text,
 .end-title,
@@ -327,8 +329,7 @@ body {
 
 /* The menus cover the control panel too, because nothing on the panel acts until a level starts. */
 .start-screen,
-.end-screen,
-.level-picker-screen {
+.end-screen {
   position: absolute;
   inset: 0;
   z-index: 1;
@@ -344,9 +345,8 @@ body {
   background: var(--ink);
 }
 
-/* The switches sit in a band above these menus. A border is outside the scrolling area, so scrolled content never slides under them. */
-.start-screen,
-.level-picker-screen {
+/* The switches sit in a band above the start screen. A border is outside the scrolling area, so scrolled content never slides under them. */
+.start-screen {
   border-top: calc(env(safe-area-inset-top) + 31 * var(--pixel)) solid var(--ink);
   padding-top: calc(8 * var(--pixel));
 }
@@ -363,16 +363,75 @@ body {
   justify-content: center;
 }
 
-/* The modal covers the switches too, so nothing but its answers can be pressed. An ordered dither of Ink dims the start screen behind it, because the game never uses transparency. */
+/* The modal covers the switches too, so nothing but its answers can be pressed. */
 .confirm-modal {
+  z-index: 3;
+}
+
+/* An ordered dither of Ink darkens the page behind a modal, because the game never uses transparency. */
+.confirm-modal,
+.level-picker-screen {
   position: absolute;
   inset: 0;
-  z-index: 3;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--art) 0 0 / calc(4 * var(--pixel)) calc(4 * var(--pixel)) repeat;
+  background: var(--backdrop) 0 0 / calc(4 * var(--pixel)) calc(4 * var(--pixel)) repeat;
   image-rendering: pixelated;
+}
+
+/* The level picker covers the switches too. Padding percentages follow the page width, so the margin above and
+   below the box matches the margin beside it. */
+.level-picker-screen {
+  --margin: calc((100% - var(--modal-width) * var(--pixel)) / 2);
+
+  z-index: 3;
+  box-sizing: border-box;
+  padding: calc(env(safe-area-inset-top) + var(--margin)) 0 calc(env(safe-area-inset-bottom) + var(--margin));
+}
+
+/* The box grows with the page, so its message box frame is drawn by the stylesheet instead of a fixed image. */
+.level-picker-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(8 * var(--pixel));
+  box-sizing: border-box;
+  width: calc(var(--modal-width) * var(--pixel));
+  max-height: 100%;
+  padding: calc(8 * var(--pixel)) calc(6 * var(--pixel)) calc(8 * var(--pixel));
+  background: var(--v0);
+  box-shadow:
+    inset 0 0 0 var(--pixel) var(--ink),
+    inset 0 0 0 calc(2 * var(--pixel)) var(--v1);
+  clip-path: polygon(
+    var(--pixel) 0,
+    calc(100% - var(--pixel)) 0,
+    calc(100% - var(--pixel)) var(--pixel),
+    100% var(--pixel),
+    100% calc(100% - var(--pixel)),
+    calc(100% - var(--pixel)) calc(100% - var(--pixel)),
+    calc(100% - var(--pixel)) 100%,
+    var(--pixel) 100%,
+    var(--pixel) calc(100% - var(--pixel)),
+    0 calc(100% - var(--pixel)),
+    0 var(--pixel),
+    var(--pixel) var(--pixel)
+  );
+}
+
+.level-picker-title {
+  flex: none;
+  margin: calc(2 * var(--pixel)) 0 0;
+  color: transparent;
+  font-size: 0;
+}
+
+/* While a modal dithers in or out, the same dither masks its box. */
+.confirm-box,
+.level-picker-box {
+  mask: var(--mask, none) 0 0 / calc(4 * var(--pixel)) calc(4 * var(--pixel)) repeat;
+  -webkit-mask: var(--mask, none) 0 0 / calc(4 * var(--pixel)) calc(4 * var(--pixel)) repeat;
 }
 
 /* Custom properties inherit, so the question area would otherwise draw the whole box again. */
@@ -423,6 +482,8 @@ body {
 
 .start-title,
 .start-hero,
+.level-hero,
+.level-picker-title,
 .confirm-box,
 .confirm-text,
 .end-title,
@@ -459,8 +520,35 @@ body {
   --art: var(--art-pick-level-pressed);
 }
 
+.level-picker-actions {
+  display: flex;
+  flex: none;
+  gap: calc(4 * var(--pixel));
+  align-items: center;
+  width: 100%;
+}
+
+/* ΠΙΣΩ sits at the far right, away from the scroll arrows, so leaving is never pressed by mistake. */
 .level-picker-back {
   --art: var(--art-back);
+
+  margin-left: auto;
+}
+
+.level-picker-up {
+  --art: var(--art-scroll-up);
+}
+
+.level-picker-up:active {
+  --art: var(--art-scroll-up-pressed);
+}
+
+.level-picker-down {
+  --art: var(--art-scroll-down);
+}
+
+.level-picker-down:active {
+  --art: var(--art-scroll-down-pressed);
 }
 
 .level-picker-back:active {
@@ -499,15 +587,34 @@ body {
   --art: var(--art-no-pressed);
 }
 
-/* The cards are smaller than a finger at narrow widths, so the gap keeps each card's touch area at the Material minimum. */
+/* Only the cards scroll, so the header and ΠΙΣΩ stay in place. A card cut off at the edge shows there is more, so no scrollbar is drawn. */
 .level-picker {
   display: flex;
-  flex: none;
+  flex: 0 1 auto;
   flex-direction: column;
-  gap: max(4 * var(--pixel), 48px - 56 * var(--pixel));
-  margin: calc(4 * var(--pixel)) 0 0;
+  gap: calc(6 * var(--pixel));
+  min-height: 0;
+  margin: 0;
   padding: 0;
+  overflow-y: auto;
   list-style: none;
+  scrollbar-width: none;
+}
+
+.level-picker::-webkit-scrollbar {
+  display: none;
+}
+
+/* Nuki sits on the map of the level to continue. She lets touches through to the card under her. */
+.level-hero {
+  position: absolute;
+  top: calc(var(--top) * var(--pixel));
+  left: calc(var(--left) * var(--pixel));
+  pointer-events: none;
+}
+
+.level-row:active:not(:disabled) {
+  translate: 0 var(--pixel);
 }
 
 .level-row:disabled {

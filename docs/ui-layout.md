@@ -92,12 +92,28 @@ All three switches sit in a row in the top right corner of the game view. Each i
 
 ## Level Picker
 
-- Covers the whole page on the start screen background and scrolls when needed.
-- One card per level in order, above a ΠΙΣΩ button styled like the A button that returns to the start screen.
-- Each card uses the message box frame. All cards share one size and are spaced so each touch area meets the minimum.
-- A card shows the level number at twice the font size. A completed level adds a clock drawing with the last play time in minutes and seconds, and a star drawing with the last stars out of all stars. An unlocked level with no completed playthrough shows only its number.
-- A locked card is drawn through the faded mapping, shows only its number and cannot be focused or chosen. A locked level never starts by any route.
-- Tapping an unlocked card starts that level.
+### Modal
+
+- ΕΠΙΠΕΔΑ opens the level picker as a big modal over the start screen. It appears and disappears like the [confirmation](#confirmation): the same Ink dither darkens the start screen behind it, and the same dither masks the box while it comes and goes. Cards and ΠΙΣΩ act only once the modal is whole.
+- The modal covers the whole page, switches included. It shares the confirmation's width, and the margin above and below the box matches the margin beside it.
+- The box wears the message box frame. Inside it, ΕΠΙΠΕΔΑ sits at the top in the message box font, then the cards, then a row with two scroll buttons on the left and ΠΙΣΩ on the right.
+- The scroll buttons are A-colored with an up and a down arrow. Each press scrolls the cards by most of their visible height. A scroll button is disabled once there is nothing more in its direction. ΠΙΣΩ wears the B button colors at its own text width.
+- Only the cards scroll. The heading and ΠΙΣΩ stay in place, and no scrollbar is drawn, so a card cut off at the edge shows that there is more.
+- On opening, the card of the level ΣΥΝΕΧΕΙΑ would start takes focus and scrolls into view. With nothing to continue, the first unlocked card does.
+- ΠΙΣΩ dithers the modal out and returns focus to ΕΠΙΠΕΔΑ. The start screen behind it does not replay its title. Escape and the menu switch close it at once.
+
+### Cards
+
+- One card per level in order. All cards share one size, wearing the message box frame.
+- The top of a card is a map of the whole level, centered in a one pixel Ink border, so each level is recognized by its layout. Each tile becomes a 4 × 4 pixel block, and each block takes the most common color of its part of the painted world. The stars are left out, because they land on different spots every time a level is built.
+  - A completed level shows its world in color, as its keys restore it.
+  - Any other level shows the faded world it starts with.
+  - The level that ΣΥΝΕΧΕΙΑ would start shows Nuki at her full sprite size, centered on the map, with her idle breathing and blinking on the game's frame clock from the moment the picker opens.
+  - A locked level shows its map under half the ordered dither in Ink, with the 32 × 32 padlock at its center.
+- The level number sits left of the map at twice the font size, with no frame, 10 pixels from the card's left edge and 8 from its top.
+- Below the map, a strip in the message box color shows one star per star in the level, gold for each one collected in the last completed play and drawn through the faded mapping for the rest. A completed level adds the clock and its last play time at the right.
+- A card sinks one pixel while pressed. Tapping an unlocked card starts that level.
+- A locked card cannot be focused or chosen. A locked level never starts by any route.
 - Screen readers hear the level number, then the last time and stars in words, or that it is locked.
 
 ## Menus

@@ -18,7 +18,7 @@ export function takeMenuKeys(root: Document, menu: HTMLElement): void {
   root.addEventListener(
     'keydown',
     (event) => {
-      if (menu.hidden) return;
+      if (menu.hidden || menu.inert) return;
       const choices = menuChoices(menu);
       const focused = choices.findIndex((choice) => choice === root.activeElement);
       if (chooseKeys.has(event.key.length === 1 ? event.key.toLowerCase() : event.key)) {

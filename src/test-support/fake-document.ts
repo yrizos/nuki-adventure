@@ -124,6 +124,7 @@ export class FakeStyle {
 export class FakeHTMLElement extends FakeElement {
   hidden = false;
   disabled = false;
+  inert = false;
   textContent = '';
   type = '';
   bounds = { left: 0, top: 0, width: 0, height: 0 };
@@ -146,7 +147,11 @@ export class FakeHTMLElement extends FakeElement {
     return this.parentElement instanceof FakeHTMLElement && this.parentElement.isContentEditable;
   }
 
+  // A browser refuses focus inside an inert subtree, so the fake does too.
   focus(): void {
+    if (this.inert) return;
+    for (let node = this.parentElement; node; node = node.parentElement)
+      if (node instanceof FakeHTMLElement && node.inert) return;
     if (this.ownerDocument) this.ownerDocument.activeElement = this;
   }
 

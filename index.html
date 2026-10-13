@@ -32,8 +32,15 @@
         <div class="end-hero" aria-hidden="true"></div>
       </section>
       <section class="level-picker-screen" role="dialog" aria-modal="true" aria-label="ΕΠΙΠΕΔΑ" hidden>
-        <ol class="level-picker"></ol>
-        <button class="menu-button level-picker-back" type="button">ΠΙΣΩ</button>
+        <div class="level-picker-box">
+          <h2 class="level-picker-title" aria-label="ΕΠΙΠΕΔΑ"></h2>
+          <ol class="level-picker"></ol>
+          <div class="level-picker-actions">
+            <button class="menu-button level-picker-up" type="button" aria-label="ΠΑΝΩ"></button>
+            <button class="menu-button level-picker-down" type="button" aria-label="ΚΑΤΩ"></button>
+            <button class="menu-button level-picker-back" type="button">ΠΙΣΩ</button>
+          </div>
+        </div>
       </section>
       <p class="announcement" aria-live="polite"></p>
       <div class="control-panel">
