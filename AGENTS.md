@@ -89,7 +89,8 @@ Not triggers on their own: formatting, comments, docs, tests, local presentation
 
 ### Handoffs
 
-- Pass the task, paths and symbols, expected outcome and task-specific constraints. Link requirements instead of copying them.
+- Pass the task, paths and symbols, expected outcome and task-specific constraints. Link requirements instead of copying them. Link the applicable document sections, never whole documents.
+- Before the first review, record `git stash create` output as the snapshot hash. If it prints nothing, the tree is clean and `HEAD` is the snapshot. Re-reviews after fixes pass that hash, the earlier findings and any new untracked paths, so the reviewer reads only the delta. Request a full review again only when the fix rewrote most of the reviewed change.
 - Return changed paths, unresolved integration work, blockers and regression evidence when needed. Reviewers return findings only.
 
 ## Git
