@@ -37,7 +37,6 @@ function boulderSpotsOf(): readonly TilePosition[] {
   return offered.find((positions) => positions.length !== 20) ?? [];
 }
 
-// Ground she or the boulder may take with the gate shut, apart from the boulder itself.
 function openGround(level: Level): (tile: TilePosition) => boolean {
   return (tile) =>
     level.scenery.isWalkable(tile) &&
@@ -82,7 +81,6 @@ function boulderStates(level: Level): readonly State[] {
   return searched.get(start)!;
 }
 
-// Every state she can bring about, keyed by the boulder and the stretch of ground she can walk to around it.
 function searchBoulderStates(level: Level): readonly State[] {
   const open = openGround(level);
   const index = (tile: TilePosition): number => tile.row * size + tile.column;

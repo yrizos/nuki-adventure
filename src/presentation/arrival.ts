@@ -10,7 +10,7 @@ const centerY = 17;
 const turnPerFrame = (2 * Math.PI) / 32;
 const orbitRadius = 11;
 
-// Six steps per frame against four per row moves the edge one and a half rows each frame, so the reveal starts at age 16 and is complete at age 39.
+// Six steps per frame against four per row moves the edge one and a half rows each frame.
 const revealSteps = (age: number): number => 6 * (age - gatherLength + 1);
 
 export function revealed(age: number, spriteX: number, spriteY: number): boolean {

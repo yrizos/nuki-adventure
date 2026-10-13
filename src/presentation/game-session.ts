@@ -117,7 +117,7 @@ export class GameSession {
   }
 
   tick(): void {
-    // Presses nothing answers are dropped instead of waiting for a later screen.
+    // Presses that nothing answers are dropped instead of waiting for a later screen.
     const pressedA = this.controls.takePress('a');
     this.controls.takePress('b');
     const { messageBox, id, play } = this.run;

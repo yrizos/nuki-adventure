@@ -109,7 +109,6 @@ test('opens the door once color covers its art and never later than the whole le
   );
 });
 
-// The ground reaches half a tile past the map, so the margin is a whole tile on three edges, and two tiles above for the door art.
 test.each([
   { side: 'left', margin: 'one tile', size: LevelSize.of(20, 1), origin: at(19, 0), travel: 83 },
   { side: 'right', margin: 'one tile', size: LevelSize.of(20, 1), origin: at(0, 0), travel: 83 },

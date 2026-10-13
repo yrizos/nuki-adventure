@@ -45,7 +45,6 @@ export class SwingGate {
     return this.position.equals(position);
   }
 
-  // The leaf is drawn over its own tile and over the tiles it stands in front of once swung.
   hides(position: TilePosition): boolean {
     const swung = this.position.neighbor(this.swing);
     return [this.position, swung, ...(this.inColumn ? [swung.neighbor(Direction.Up)] : [])].some((tile) =>

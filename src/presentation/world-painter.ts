@@ -220,6 +220,7 @@ export class WorldPainter {
 
     level.scenery.flowers.forEach((flower, index) => {
       const { column, row } = flower.position;
+      // The position offset staggers neighboring flowers, so they never sway in step.
       const sway = Math.floor((frame + (column * 11 + row * 17) * 7) / flowerFrameLength) % 2;
       draw(this.dressing.flowers[index]![sway]!, column * tileSize, row * tileSize);
     });

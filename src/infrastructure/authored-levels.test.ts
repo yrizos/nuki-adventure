@@ -137,7 +137,6 @@ test.each(authoredLevels)('she can walk a full loop around every fenced area of 
           group.push(neighbor);
       }
     }
-    // Each fenced area is checked once, from its top-left post.
     const left = Math.min(...group.map((tile) => tile.column));
     const right = Math.max(...group.map((tile) => tile.column));
     const top = Math.min(...group.map((tile) => tile.row));

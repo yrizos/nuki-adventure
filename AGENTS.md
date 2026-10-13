@@ -101,7 +101,12 @@ Not triggers on their own: formatting, comments, docs, tests, local presentation
 
 ## Code Comments
 
-- Comments state implementation reasons only. Remove comments that describe behavior, repeat names or signatures, or label architecture without a reason.
+- A comment states a reason the code cannot show: a constraint, a tradeoff, an external API quirk or why a constant has its value.
+- Never narrate behavior, restate a name, signature, expression or return value, or label architecture without a reason.
+- Never copy values that code holds. Name the constant instead.
+- State a rationale once, at the code that owns the decision. Tests do not repeat production rationale.
+- Add a reason comment where a magic number or workaround would make a reader ask why.
+- When editing code, update or remove comments the edit made stale.
 
 ## Writing
 

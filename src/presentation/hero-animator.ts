@@ -7,7 +7,6 @@ const settleTicks = 8;
 const blinkEvery = 180;
 const blinkFrames = 6;
 const breathEvery = 90;
-// Each foot lands once per two walk frames.
 const ticksPerFootfall = 2 * ticksPerWalkFrame;
 
 export function idleHeroPose(facing: keyof HeroArt, frame: number): Art {

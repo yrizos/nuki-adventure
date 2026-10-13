@@ -96,7 +96,6 @@ export function startGame(
         endScreen.hide();
         screen.classList.remove('menu-open');
         sound.music('game');
-        // A button stays disabled in a level where pressing it does nothing.
         actionButtons.a.disabled = !usesA;
         actionButtons.b.disabled = !usesB;
         // A press that chose the level must not also act inside it, nor count as held there.

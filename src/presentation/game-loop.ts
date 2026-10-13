@@ -10,7 +10,7 @@ export class GameLoop {
   ) {}
 
   advance(now: number): void {
-    // A frame's timestamp can come from before the loop started, which must not leave the loop owing time.
+    // A frame's timestamp can come from before the loop started, which must not leave the loop owing time. The cap keeps a long pause, such as a background tab, from fast-forwarding the game.
     this.pending = Math.max(0, Math.min(this.pending + now - this.previous, frameLength * 10));
     this.previous = now;
     while (this.pending >= frameLength) {

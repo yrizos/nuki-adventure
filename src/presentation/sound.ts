@@ -78,7 +78,6 @@ export class Sound {
     unlockEvents.forEach((type) => root.addEventListener(type, unlock));
   }
 
-  // Without a track the music fades to silence.
   music(track: Track | null): void {
     if (track === this.track) return;
     this.track = track;
@@ -195,6 +194,7 @@ export class Sound {
     tune.notes.forEach((frequency, index) => {
       const begin = start + index * tune.spacing;
       const oscillator = new OscillatorNode(context, { type: tune.wave, frequency });
+      // Exponential ramps cannot start from or reach zero, so near-silent gains stand in for silence.
       const envelope = new GainNode(context, { gain: tune.attack ? 0.0001 : tune.volume });
       if (tune.attack) envelope.gain.setValueAtTime(0.0001, begin);
       envelope.gain.linearRampToValueAtTime(tune.volume, begin + tune.attack);

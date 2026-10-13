@@ -310,7 +310,6 @@ export class Level {
     return [new SwingGateOpeningStarted(this.id, gate.position)];
   }
 
-  // The crossing stays shut until the swing has been seen to finish.
   private swingGate(): readonly LevelEvent[] {
     const gate = this.currentGate;
     if (!gate?.isSwinging) return [];
@@ -339,7 +338,6 @@ export class Level {
     return this.gripping;
   }
 
-  // Gripping alone moves nothing, it only attaches her to the boulder in front of her.
   grip(): void {
     if (this.boulderAhead()) this.gripping = true;
   }
@@ -446,7 +444,6 @@ export class Level {
     this.slideBoulder(sliding, this.carried);
   }
 
-  // She ends each slide on the tile the boulder left when pushing, or the tile behind her when pulling.
   private slideBoulder(boulder: Boulder, { from, to }: { from: WorldPosition; to: WorldPosition }): void {
     const advanced = boulder.advance();
     this.replaceBoulder(boulder, advanced);

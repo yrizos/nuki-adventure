@@ -108,7 +108,6 @@ function gameSession(
   const advance = (count: number): void => {
     for (let frame = 0; frame < count; frame++) tick();
   };
-  // Walking one tile's width from a tile's middle ends in the middle of the next tile.
   const move = (direction: Direction): void => {
     const start = play.view(levelId).hero.feet;
     const travelled = (): number => {
