@@ -127,9 +127,25 @@ A [dividing fence](glossary.md#game-world) deliberately breaks free movement. It
 - Dead ends: an intentional dead end holds a payoff, usually a star spot. Not every one needs a star.
 - Required objects: keys never depend on accidental discovery, never look like scenery and never rely on color alone. Players find keys through terrain and the proximity hum.
 - Exploration: a level holds meaningful space outside the mandatory route. Optional branches lead to distinct places. A larger map adds navigable space, not decoration.
+- Paths and sections: prefer complex paths that link distinct sections over one track through open ground. Each section is a separate place with its own character, entered through a clear opening. Paths branch, turn and rejoin between sections. Bad example: a single path running straight from the start to the door with scenery on either side.
+- Door position: vary the door's column along the top edge from level to level. Place it toward the left or right as often as near the middle. Bad example: every level with its door at the center of the top edge.
 - Areas: each area is a recognizable place, such as a forest, lake, garden, courtyard, ruins or island. Boundaries follow those places, never a straight split. The restoration seam is a gradient about three tiles wide. Put it where it reads as a change of place, such as a shoreline, tree line or track. Never use color to show a route.
 - Returning to the door: the player knows where the door is before the last key. Backtracking is fine when the space has changed through color, a new route or a shortcut. Avoid long returns through unchanged space.
 - Difficulty dimensions: map size, mandatory travel, objective count, route choices, mechanics combined, backtracking, similarity between places, obstacle density, memory load, strength of navigation cues. When a level is harder than the previous one, name the dimension that increased. Do not raise several at once.
+
+## Level Sequence
+
+Each level introduces exactly one new element. Later levels may reuse it.
+
+| Level | Introduces |
+| --- | --- |
+| 1 | Exploration |
+| 2 | [Dividing fence](glossary.md#game-world) |
+| 3 | [Fenced enclosure](glossary.md#game-world) |
+| 4 | Moving a [boulder](glossary.md#boulder) |
+| 5 | [Pressure plate](glossary.md#pressure-plate) |
+| 6 | Two keys: gold and silver |
+| 7 | Three keys: gold, silver and bronze |
 
 ## Natural Layouts
 
