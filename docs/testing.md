@@ -49,7 +49,7 @@ Invariants are checked exhaustively over enumerated inputs, not with a few examp
 - `test.each` splits only by a small fixed dimension, such as the authored level or the gate state. It never generates a test per tile, per pixel or per step sequence, because per-test overhead then dominates the run time.
 
 - Every [level design hard constraint](level-design.md#hard-constraints) added gets a deterministic test over every authored level.
-- In every authored level, every tile that touches a fenced area from outside, corners included, is open ground with no stone or woodland.
+- In every authored level, every tile that touches a fenced enclosure from outside, corners included, is open ground with no stone or woodland.
 - In every authored level, the hero starts on each walkable tile of the playable area and moves in each of the eight directions. She never ends inside an obstacle or outside the level. The door stays closed until every key is collected.
 - In every authored level, every open tile is reachable from the start, with the gate and any boulder counted as passable.
 - In every authored level, no key or star spot lies on the start or the eight tiles around it.

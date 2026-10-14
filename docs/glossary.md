@@ -24,6 +24,8 @@ Definitions only. Rules that use these terms live in [Level Design](level-design
 | Star Count | The number of stars a level holds. Stars go to the star spots, or to random reachable tiles that are not hidden. |
 | Key | A collectible that floats, buzzes and hums when the hero is near. Each restores color to its own area. Gold by default. A level may make its keys silver, which changes only the color. |
 | Stone | A static gray obstacle that is never part of a level boundary. |
+| Fenced Enclosure | A closed ring of fence standing free inside the level. It may hold a swing gate. |
+| Dividing Fence | A fence line that joins the level boundary at both ends and splits the level in two. Its swing gate is the only passage between the two parts. |
 | Scenery | Everything the player does not interact with: grass, trees, woodland, water, paths, flowers and stones. |
 | Prop | A scenery object standing on the ground, such as a tree, as opposed to a ground tile. |
 | Tree Variant | A tree's fruit: none, oranges, apples or lemons. |

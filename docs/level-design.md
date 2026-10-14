@@ -54,16 +54,25 @@ A canopy is the part of woodland or a tree drawn over the tile above it. A hidde
 
 - The hero MAY walk on hidden tiles.
 - Every key, every star spot and the tile in front of the door are reachable from the hero start without stepping on a hidden tile.
-- The hero can walk a complete loop around every obstacle without stepping on a hidden tile. Obstacles are water, fenced areas, trees and stones. Bad example: a lake whose only shore passage on one side is a strip under the woodland canopy.
+- The hero can walk a complete loop around every obstacle without stepping on a hidden tile. Obstacles are water, [fenced enclosures](glossary.md#game-world), trees and stones. Bad example: a lake whose only shore passage on one side is a strip under the woodland canopy.
 
-### Fenced Areas
+### Fenced Enclosures
 
-- Nuki can walk a complete loop around the outside of every fenced area. Every tile that touches the fence from outside, corners included, is open ground with no stone or woodland.
+- Nuki can walk a complete loop around the outside of every [fenced enclosure](glossary.md#game-world). Every tile that touches the fence from outside, corners included, is open ground with no stone or woodland.
+
+### Dividing Fences
+
+A [dividing fence](glossary.md#game-world) deliberately breaks free movement. It blocks the way until the hero opens its gate, which teaches how gates work.
+
+- A level MAY hold one dividing fence. It is not a fenced enclosure.
+- The dividing fence holds the level's swing gate.
+- The dividing fence is part of the level boundary. The loop rules under Canopies and Free Movement do not apply to it.
+- The rules for diagonal gaps, swing gates and path tiles apply to it in full.
 
 ### Free Movement
 
-- Nuki can walk a complete loop around every obstacle inside the level: water, fenced areas, trees and stones.
-- No such obstacle touches the level boundary, corners included, either directly or through a chain of other obstacles that touch each other. The boundary is the woodland, the door and the map edge.
+- Nuki can walk a complete loop around every obstacle inside the level: water, fenced enclosures, trees and stones.
+- No such obstacle touches the level boundary, corners included, either directly or through a chain of other obstacles that touch each other. The boundary is the woodland, the door, the map edge and any dividing fence.
 
 ### Diagonal Gaps
 

@@ -125,7 +125,7 @@ test.each(authoredLevels)('every path tile of the $name level shares an edge wit
   expect(alone).toEqual([]);
 });
 
-test.each(authoredLevels)('she can walk a full loop around every fenced area of the $name level', ({ create }) => {
+test.each(authoredLevels)('she can walk a full loop around every fenced enclosure of the $name level', ({ create }) => {
   const level = create(keepOrder);
   const posts = [...level.scenery.fences.map((fence) => fence.position), ...(level.gate ? [level.gate.position] : [])];
   const blocked: string[] = [];
