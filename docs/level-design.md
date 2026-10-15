@@ -121,17 +121,20 @@ A [dividing fence](glossary.md#game-world) deliberately breaks free movement. It
 
 ## Design Guidance
 
+- Audience: players are about seven years old. Early levels stay simple. A level that introduces a mechanic only needs to teach it clearly. Nothing new has to happen after the player solves it.
 - Purpose: define what a level is for before building it. Only one mechanic per level is new.
 - Mechanics: each one appears in four stages across levels: introduce, practice, vary, combine. It first appears where no other new mechanic must be solved at the same time.
 - Star spots: choose by hand and concentrate them in exploration areas, which exist to reward curiosity. Place them on optional dead ends, side routes, scenic spots and places visible before they are reachable. Never on the mandatory route. Stars are never required.
 - Dead ends: an intentional dead end holds a payoff, usually a star spot. Not every one needs a star.
 - Required objects: keys never depend on accidental discovery, never look like scenery and never rely on color alone. Players find keys through terrain and the proximity hum.
+- Mandatory route: it is the tour of the level, because young players follow paths and sounds and rarely leave them. It passes most of the level's sections. Exploration areas add stars and places on top of that tour, never in place of it. Bad example: a route that reaches the key through one corner while every other section lies off it.
+- New mechanics: from the tile where the hero approaches the level's new mechanic, a goal it leads to, such as the door or a key, is visible within the minimum view of [Native Resolution](visual-style.md#native-resolution). A sound cue alone never gives the reason to use the mechanic.
 - Exploration: a level holds meaningful space outside the mandatory route. Optional branches lead to distinct places. A larger map adds navigable space, not decoration.
 - Paths and sections: prefer complex paths that link distinct sections over one track through open ground. Each section is a separate place with its own character, entered through a clear opening. Paths branch, turn and rejoin between sections. Bad example: a single path running straight from the start to the door with scenery on either side.
 - Door position: vary the door's column along the top edge from level to level. Place it toward the left or right as often as near the middle. Bad example: every level with its door at the center of the top edge.
 - Areas: each area is a recognizable place, such as a forest, lake, garden, courtyard, ruins or island. Boundaries follow those places, never a straight split. The restoration seam is a gradient about three tiles wide. Put it where it reads as a change of place, such as a shoreline, tree line or track. Never use color to show a route.
 - Returning to the door: the player knows where the door is before the last key. Backtracking is fine when the space has changed through color, a new route or a shortcut. Avoid long returns through unchanged space.
-- Difficulty dimensions: map size, mandatory travel, objective count, route choices, mechanics combined, backtracking, similarity between places, obstacle density, memory load, strength of navigation cues. When a level is harder than the previous one, name the dimension that increased. Do not raise several at once.
+- Difficulty dimensions: map size, mandatory travel, objective count, route choices, mechanics combined, backtracking, similarity between places, obstacle density, memory load, strength of navigation cues. When a level is harder than the previous one, name the dimension that increased. Do not raise several at once. Mandatory travel does not shrink from one level to the next unless the designer decides it should.
 
 ## Level Sequence
 

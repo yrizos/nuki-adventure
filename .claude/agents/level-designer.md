@@ -18,4 +18,9 @@ Own: `src/infrastructure/*-level.ts`, level imports and list in `src/index.ts`, 
 
 Stop: a new domain concept, sprite or validation rule is required.
 
-Return per [Handoffs](../../AGENTS.md#handoffs), plus unmet constraints or guidance, the card map PNG paths and one sentence on how the card reads.
+Return per [Handoffs](../../AGENTS.md#handoffs), plus unmet constraints or guidance, the card map PNG paths and one sentence on how the card reads. Also return these measurements from `src/test-support/routes.ts` and the layout:
+
+- The mandatory route length and the sections it passes.
+- What lies within the minimum view from the approach to the new mechanic.
+- The star spots on the mandatory route and in exploration areas.
+- Any straight woodland edges.
