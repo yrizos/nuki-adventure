@@ -65,7 +65,7 @@ A canopy is the part of woodland or a tree drawn over the tile above it. A hidde
 A [dividing fence](glossary.md#game-world) deliberately breaks free movement. It blocks the way until the hero opens its gate, which teaches how gates work.
 
 - A level MAY hold one dividing fence. It is not a fenced enclosure.
-- The dividing fence holds the level's swing gate.
+- The dividing fence holds one of the level's swing gates.
 - The dividing fence is part of the level boundary. The loop rules under Canopies and Free Movement do not apply to it.
 - The rules for diagonal gaps, swing gates and path tiles apply to it in full.
 
@@ -84,7 +84,8 @@ A [dividing fence](glossary.md#game-world) deliberately breaks free movement. It
 
 ### Swing Gates
 
-- A level MAY hold one [swing gate](glossary.md#swing-gate), marked `G`.
+- A level MAY hold one or two [swing gates](glossary.md#swing-gate), each marked `G`. Each gate opens on its own, and every rule below applies to each one.
+- Two gates never share a tile among their gate tiles, approach tiles and the tiles they swing into. No tile lies beside both gates, so pressing A always works one gate. Bad example: two gates in one fence row with a single fence between them.
 - The gate stands on path ground in a fence row, between a fence directly west and a fence directly east, or in a fence column, between a fence directly north and a fence directly south.
 - A gate in a row is approached from the south and swings north. A gate in a column is approached from the west and swings east.
 - The gate tile, its approach tile and the tile it swings into are open ground with no stone.
@@ -102,7 +103,7 @@ A [dividing fence](glossary.md#game-world) deliberately breaks free movement. It
 
 ### Pressure Plates
 
-- A level with a swing gate MAY hold one [pressure plate](glossary.md#pressure-plate), marked `P`, on path ground.
+- A level with exactly one swing gate MAY hold one [pressure plate](glossary.md#pressure-plate), marked `P`, on path ground.
 - The plate stands on open ground with no stone, never on the door.
 - The plate stands at least two tiles, counting diagonals, from the gate tile and from the tile the gate swings into.
 

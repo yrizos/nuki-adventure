@@ -46,12 +46,12 @@ function regionAround(level: Level, start: TilePosition, enterable: (tile: TileP
 interface Pass {
   readonly name: string;
   readonly authored: Level;
-  readonly gate: SwingGate | undefined;
+  readonly gates: readonly SwingGate[];
   readonly region: TilePositions | undefined;
   readonly beyond: TilePositions | undefined;
 }
 
-// A gated level is swept twice: with the gate shut from every tile it encloses, and with it open from every tile.
+// A gated level is swept with every gate shut from each region the gates divide, and with every gate open from every tile.
 const passes = [
   { name: 'first', authored: firstLevel(keepOrder) },
   { name: 'second', authored: secondLevel(keepOrder) },
@@ -59,27 +59,38 @@ const passes = [
   { name: 'fourth', authored: fourthLevel(keepOrder) },
   { name: 'fifth', authored: fifthLevel(keepOrder) },
 ].flatMap(({ name, authored }): Pass[] => {
-  const gate = authored.gate;
-  if (!gate) return [{ name, authored, gate, region: undefined, beyond: undefined }];
-  const open = (tile: TilePosition): boolean =>
-    authored.scenery.isWalkable(tile) && !authored.stones.some((stone) => stone.position.equals(tile));
-  const near = regionAround(authored, authored.hero.position, (tile) => open(tile) && !gate.covers(tile));
-  const far = regionAround(authored, gate.position.neighbor(gate.swing), (tile) => open(tile) && !gate.covers(tile));
-  // She can close the gate behind her from either side, so a closed gate must hold from both.
+  const gates = authored.gates;
+  if (gates.length === 0) return [{ name, authored, gates, region: undefined, beyond: undefined }];
+  const shut = (tile: TilePosition): boolean =>
+    authored.scenery.isWalkable(tile) &&
+    !authored.stones.some((stone) => stone.position.equals(tile)) &&
+    !gates.some((gate) => gate.covers(tile));
+  const regions: TilePositions[] = [];
+  for (const start of [
+    authored.hero.position,
+    ...gates.flatMap((gate) => [gate.approach, gate.position.neighbor(gate.swing)]),
+  ])
+    if (!regions.some((region) => region.covers(start))) regions.push(regionAround(authored, start, shut));
+  // She can close a gate behind her from either side, so closed gates must hold from every region they divide.
   return [
-    { name: `${name} (gate closed)`, authored, gate, region: near, beyond: far },
-    { name: `${name} (gate closed behind her)`, authored, gate, region: far, beyond: near },
-    {
-      name: `${name} (gate open)`,
+    ...regions.map((region, index) => ({
+      name: `${name} (gates closed, region ${index + 1})`,
       authored,
-      gate: swungThrough(SwingGate.closedAt(gate.position, gate.approachSide).requestOpen()),
+      gates,
+      region,
+      beyond: TilePositions.of(regions.filter((other) => other !== region).flatMap((other) => other.tiles)),
+    })),
+    {
+      name: `${name} (gates open)`,
+      authored,
+      gates: gates.map((gate) => swungThrough(SwingGate.closedAt(gate.position, gate.approachSide).requestOpen())),
       region: undefined,
       beyond: undefined,
     },
   ];
 });
 
-const sweeps = passes.map(({ name, authored, gate, region, beyond }) => {
+const sweeps = passes.map(({ name, authored, gates, region, beyond }) => {
   // Nothing here opens the door or moves the gate, so the obstacles never change and placing them once per pass keeps the suite fast.
   const obstacles = check2dObstacles(
     Level.create({
@@ -89,7 +100,7 @@ const sweeps = passes.map(({ name, authored, gate, region, beyond }) => {
       keys: authored.keys,
       door: authored.door,
       hero: { position: authored.hero.position, facing: Direction.Up },
-      ...(gate ? { gate } : {}),
+      gates,
       obstacles: check2dObstacles,
     }).outlines,
   );
@@ -104,12 +115,12 @@ const sweeps = passes.map(({ name, authored, gate, region, beyond }) => {
         !authored.stones.some((stone) => stone.position.equals(tile)) &&
         (!region || region.covers(tile)),
     );
-  return { name, authored, gate, beyond, obstacles, starts };
+  return { name, authored, gates, beyond, obstacles, starts };
 });
 
 test.each(sweeps)(
   'in the $name level from every tile she stays on open ground inside the level and the door stays closed',
-  ({ authored, gate, beyond, obstacles, starts }) => {
+  ({ authored, gates, beyond, obstacles, starts }) => {
     const violations: string[] = [];
     for (const tile of starts)
       for (const direction of directions) {
@@ -120,7 +131,7 @@ test.each(sweeps)(
           keys: authored.keys,
           door: authored.door,
           hero: { position: tile, facing: Direction.Up },
-          ...(gate ? { gate } : {}),
+          gates,
           obstacles: () => obstacles,
         });
         const width = level.scenery.size.columns * tileSize;

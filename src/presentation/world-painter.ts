@@ -290,8 +290,7 @@ export class WorldPainter {
         paint: () => draw(this.dressing.fences[index]!, column * tileSize, row * tileSize),
       });
     });
-    const { gate } = level;
-    if (gate) {
+    for (const gate of level.gates) {
       const { column, row } = gate.position;
       const { opening, open } = gate.swing === Direction.Up ? gateArt : sideGateArt;
       const swung = Math.min(Math.floor(gate.swung / framesPerGateFrame), opening.length - 1);

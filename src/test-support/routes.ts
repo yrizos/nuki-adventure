@@ -5,7 +5,7 @@ const directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Righ
 // Three steps keep a star out of the view she has while walking the route, so finding it takes a detour.
 const explorationDistance = 3;
 
-// The gate and any boulder count as open, because she can always open the gate and move the boulder.
+// Gates and any boulder count as open, because she can always open the gates and move the boulder.
 function open(level: Level): (tile: TilePosition) => boolean {
   return (tile) =>
     level.scenery.isWalkable(tile) &&

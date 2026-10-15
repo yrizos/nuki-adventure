@@ -395,7 +395,7 @@ describe('a swing gate in the game session', () => {
     expect(subject.session.level.canOperateGate).toBe(true);
     subject.press('a');
     expect(subject.sound.gate).toHaveBeenCalledOnce();
-    expect(subject.session.level.gate?.state).toBe('opening');
+    expect(subject.session.level.gates[0]?.state).toBe('opening');
     expect(subject.session.level.canOperateGate).toBe(false);
   });
 
@@ -405,9 +405,9 @@ describe('a swing gate in the game session', () => {
     subject.hold(Direction.Up);
     subject.press('a');
     subject.tick(gateSwingLength - 2);
-    expect(subject.session.level.gate?.state).toBe('opening');
+    expect(subject.session.level.gates[0]?.state).toBe('opening');
     subject.tick();
-    expect(subject.session.level.gate?.state).toBe('open');
+    expect(subject.session.level.gates[0]?.state).toBe('open');
     expect(subject.session.level.hero.feet).toEqual(start);
     subject.tick();
     expect(subject.session.level.hero.feet.y).toBeLessThan(start.y);
@@ -421,7 +421,7 @@ describe('a swing gate in the game session', () => {
     subject.press('a');
     subject.tick(gateSwingLength - 1);
     expect(subject.sound.gate).toHaveBeenCalledOnce();
-    expect(subject.session.level.gate?.state).toBe('open');
+    expect(subject.session.level.gates[0]?.state).toBe('open');
   });
 
   test('closes with its sound when A is pressed again from the far side', () => {
@@ -436,9 +436,9 @@ describe('a swing gate in the game session', () => {
     expect(subject.session.prompts('a')).toBe(false);
     subject.press('a');
     expect(subject.sound.gate).toHaveBeenCalledTimes(2);
-    expect(subject.session.level.gate?.state).toBe('closing');
+    expect(subject.session.level.gates[0]?.state).toBe('closing');
     subject.tick(gateSwingLength - 1);
-    expect(subject.session.level.gate?.state).toBe('closed');
+    expect(subject.session.level.gates[0]?.state).toBe('closed');
   });
 
   test('never opens for B, for walking into it or from two tiles away', () => {
@@ -455,7 +455,7 @@ describe('a swing gate in the game session', () => {
     expect(subject.session.level.hero.position.row).toBe(5);
     subject.press('a');
     expect(subject.sound.gate).not.toHaveBeenCalled();
-    expect(subject.session.level.gate?.state).toBe('closed');
+    expect(subject.session.level.gates[0]?.state).toBe('closed');
   });
 
   test('asks the A button to wobble only while the hero can open the gate', () => {
@@ -483,9 +483,9 @@ describe('a swing gate in the game session', () => {
     const subject = gatedSession(true);
     subject.press('a');
     subject.tick(arrivalLength - 1);
-    expect(subject.session.level.gate?.state).toBe('closed');
+    expect(subject.session.level.gates[0]?.state).toBe('closed');
     subject.press('a');
-    expect(subject.session.level.gate?.state).toBe('opening');
+    expect(subject.session.level.gates[0]?.state).toBe('opening');
   });
 });
 
@@ -536,7 +536,7 @@ describe('the second level in the game session', () => {
       session.tick();
     };
     for (let frame = 0; frame < arrivalLength; frame++) session.tick();
-    const gate = session.level.gate!;
+    const gate = session.level.gates[0]!;
     walkTo((tile) => tile.equals(gate.approach));
     heading = Heading.of(Direction.Up);
     session.tick();
@@ -545,7 +545,7 @@ describe('the second level in the game session', () => {
     session.tick();
     expect(sound.gate).toHaveBeenCalledOnce();
     for (let frame = 1; frame < gateSwingLength; frame++) session.tick();
-    expect(session.level.gate?.state).toBe('open');
+    expect(session.level.gates[0]?.state).toBe('open');
     walkTo((tile) => tile.equals(TilePosition.at(21, 6)));
     expect(sound.key).toHaveBeenCalledOnce();
     for (let frame = 0; frame < 600 && !session.level.door.isOpen; frame++) session.tick();
@@ -1433,7 +1433,7 @@ describe('a pressure plate in the game session', () => {
     subject.pressed.add('a');
     subject.tick(1);
     expect(subject.session.messageText).toBe(messages.gateStuck);
-    expect(subject.session.level.gate?.state).toBe('closed');
+    expect(subject.session.level.gates[0]?.state).toBe('closed');
     expect(subject.sound.gate).not.toHaveBeenCalled();
   });
 
@@ -1447,17 +1447,17 @@ describe('a pressure plate in the game session', () => {
     subject.held.delete('a');
     expect(subject.sound.gate).toHaveBeenCalledOnce();
     subject.tick(gateSwingLength);
-    expect(subject.session.level.gate?.state).toBe('open');
+    expect(subject.session.level.gates[0]?.state).toBe('open');
   });
 
   test('never closes the gate onto her when she steps on the plate and straight back off toward the gate', () => {
     const subject = platedSession(besidePlate);
     subject.walk(Direction.Left);
-    for (let tick = 0; tick < 40 && subject.session.level.gate?.state === 'closed'; tick++) subject.tick(1);
+    for (let tick = 0; tick < 40 && subject.session.level.gates[0]?.state === 'closed'; tick++) subject.tick(1);
     subject.walk(Direction.Right);
     subject.tick(3 * gateSwingLength);
-    const { gate, hero } = subject.session.level;
-    expect(gate?.state).toBe('closed');
+    const { gates, hero } = subject.session.level;
+    expect(gates[0]?.state).toBe('closed');
     expect(hero.position).toEqual(TilePosition.at(3, 2));
   });
 
@@ -1468,14 +1468,14 @@ describe('a pressure plate in the game session', () => {
     subject.walk(null);
     expect(subject.sound.plate).toHaveBeenCalledExactlyOnceWith(true);
     expect(subject.sound.gate).toHaveBeenCalledOnce();
-    expect(subject.session.level.gate?.state).toBe('opening');
+    expect(subject.session.level.gates[0]?.state).toBe('opening');
     subject.tick(gateSwingLength);
-    expect(subject.session.level.gate?.state).toBe('open');
+    expect(subject.session.level.gates[0]?.state).toBe('open');
     subject.walk(Direction.Right);
     subject.tick(20);
     expect(subject.sound.plate).toHaveBeenLastCalledWith(false);
     expect(subject.session.level.hero.position).toEqual(TilePosition.at(3, 2));
     subject.tick(gateSwingLength);
-    expect(subject.session.level.gate?.state).toBe('closed');
+    expect(subject.session.level.gates[0]?.state).toBe('closed');
   });
 });

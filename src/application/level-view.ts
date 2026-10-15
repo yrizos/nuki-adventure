@@ -19,9 +19,10 @@ export interface LevelView {
   readonly stars: readonly Star[];
   readonly collected: readonly Star[];
   readonly door: Door;
-  readonly gate: SwingGate | undefined;
+  readonly gates: readonly SwingGate[];
   readonly plate: TilePosition | undefined;
   readonly isPlateDown: boolean;
+  readonly operableGate: SwingGate | undefined;
   readonly canOperateGate: boolean;
   readonly canGrip: boolean;
   readonly isGripping: boolean;
@@ -42,9 +43,10 @@ export function levelView(level: Level): LevelView {
     stars: [...level.stars],
     collected: [...level.collected],
     door: level.door,
-    gate: level.gate,
+    gates: level.gates,
     plate: level.plate,
     isPlateDown: level.isPlateDown,
+    operableGate: level.operableGate,
     canOperateGate: level.canOperateGate,
     canGrip: level.canGrip,
     isGripping: level.isGripping,

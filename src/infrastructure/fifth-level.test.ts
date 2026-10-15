@@ -42,7 +42,7 @@ function openGround(level: Level): (tile: TilePosition) => boolean {
     level.scenery.isWalkable(tile) &&
     !level.stones.some((stone) => stone.position.equals(tile)) &&
     !level.door.covers(tile) &&
-    !level.gate!.covers(tile);
+    !level.gates[0]!.covers(tile);
 }
 
 function region(start: TilePosition, enterable: (tile: TilePosition) => boolean): readonly TilePosition[] {
@@ -163,7 +163,7 @@ test('the fifth level is a 25 by 25 map with a top-left door, a side gate held b
   expect(level.scenery.size).toEqual({ columns: 25, rows: 25 });
   expect(level.hero.position).toEqual(at(14, 21));
   expect(level.door).toEqual(Door.closedAt(at(7, 1)));
-  expect(level.gate).toEqual(SwingGate.closedAt(gate, Direction.Left));
+  expect(level.gates).toEqual([SwingGate.closedAt(gate, Direction.Left)]);
   expect(level.plate).toEqual(plate);
   expect(level.keys.map((each) => [each.position, each.material])).toEqual([[key, KeyMaterial.Gold]]);
   expect(level.boulders.map((boulder) => boulder.position)).toEqual([spots[0]]);
@@ -178,7 +178,7 @@ test('the fifth level starts its one boulder within two tiles of the plate', () 
 });
 
 test('the fifth level keeps its plate two tiles clear of the gate and its swing', () => {
-  const swing = fifthLevel(keepOrder).gate!.position.neighbor(Direction.Right);
+  const swing = fifthLevel(keepOrder).gates[0]!.position.neighbor(Direction.Right);
   expect(reach(plate, gate)).toBeGreaterThanOrEqual(2);
   expect(reach(plate, swing)).toBeGreaterThanOrEqual(2);
 });
@@ -217,22 +217,22 @@ test('the fifth level keeps the garden and its key shut until the boulder rests 
   const level = fifthLevel(keepOrder);
   const open = openGround(level);
   const reached = region(level.hero.position, (tile) => open(tile) && !level.boulders[0]!.covers(tile));
-  expect(reached.some((tile) => tile.equals(level.gate!.approach))).toBe(true);
+  expect(reached.some((tile) => tile.equals(level.gates[0]!.approach))).toBe(true);
   expect(reached.filter(inGarden)).toEqual([]);
   expect(pathTo(level, (tile) => inGarden(tile))).toBeUndefined();
   follow(
     level,
     pathTo(level, (tile) => tile.equals(plate))!,
   );
-  expect(level.gate!.state, 'her own weight on the plate swings the gate open').toBe('opening');
+  expect(level.gates[0]!.state, 'her own weight on the plate swings the gate open').toBe('opening');
   settleGate(level);
   follow(
     level,
-    pathTo(level, (tile) => tile.equals(level.gate!.approach))!,
+    pathTo(level, (tile) => tile.equals(level.gates[0]!.approach))!,
   );
-  expect(level.gate!.state, 'stepping off the plate lets the gate swing shut').toBe('closed');
+  expect(level.gates[0]!.state, 'stepping off the plate lets the gate swing shut').toBe('closed');
   expect(level.operateGate()).toEqual([new SwingGateStuck(fifthLevelId, gate)]);
-  expect(level.gate!.state).toBe('closed');
+  expect(level.gates[0]!.state).toBe('closed');
 });
 
 test.each(spots.map((spot) => ({ spot, label: `${spot.column}, ${spot.row}` })))(
@@ -244,7 +244,7 @@ test.each(spots.map((spot) => ({ spot, label: `${spot.column}, ${spot.row}` })))
     expect(level.boulders[0]!.position).toEqual(plate);
     level.tick(null);
     settleGate(level);
-    expect(level.gate!.state).toBe('open');
+    expect(level.gates[0]!.state).toBe('open');
     const toKey = pathTo(level, (tile) => tile.equals(key));
     expect(toKey, 'the key must open up once the gate swings').toBeDefined();
     expect(follow(level, toKey!).some((event) => event instanceof KeyCollected)).toBe(true);
@@ -261,11 +261,11 @@ test('the fifth level shuts the gate again once the boulder leaves the plate', (
   for (const move of solved.moves) play(level, move);
   level.tick(null);
   settleGate(level);
-  expect(level.gate!.isOpen).toBe(true);
+  expect(level.gates[0]!.isOpen).toBe(true);
   const last = solved.moves.at(-1)!;
   play(level, { stand: plate.neighbor(last.facing.opposite), facing: last.facing, direction: last.facing.opposite });
-  expect(level.gate!.state).toBe('closing');
+  expect(level.gates[0]!.state).toBe('closing');
   settleGate(level);
-  expect(level.gate!.state).toBe('closed');
+  expect(level.gates[0]!.state).toBe('closed');
   expect(pathTo(level, (tile) => inGarden(tile))).toBeUndefined();
 });

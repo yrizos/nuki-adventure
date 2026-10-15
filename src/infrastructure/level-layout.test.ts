@@ -9,6 +9,7 @@ import { Fence, Flower, FlowerVariant, Ground, LevelSize, Scenery, Tree, TreeVar
 import { levelFromLayout } from './level-layout';
 import { SwingGate } from '../domain/level/swing-gate';
 import { Boulder } from '../domain/level/boulder';
+import { follow, openGate, pathTo } from '../test-support/walk-level';
 
 const at = TilePosition.at;
 const keepOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => positions;
@@ -152,12 +153,12 @@ describe('a gate in a layout', () => {
 
   test('hangs a closed gate on path ground between two fences', () => {
     const level = gated(['.DDD.', '.K...', 'WFGFW', '..H..']);
-    expect(level.gate).toEqual(SwingGate.closedAt(at(2, 2)));
+    expect(level.gates).toEqual([SwingGate.closedAt(at(2, 2))]);
     expect(level.scenery.groundAt(at(2, 2))).toBe(Ground.Path);
   });
 
   test('leaves a layout without a gate symbol ungated', () => {
-    expect(gated(['.DDD.', '.K...', '.....', '..H..']).gate).toBeUndefined();
+    expect(gated(['.DDD.', '.K...', '.....', '..H..']).gates).toEqual([]);
   });
 
   test('places a boulder on grass under each boulder symbol', () => {
@@ -168,8 +169,33 @@ describe('a gate in a layout', () => {
 
   test('hangs a gate between fences above and below it as one approached from the west', () => {
     const level = gated(['.DDD..', '...F..', '.P.G.K', '...F..', '..H...']);
-    expect(level.gate).toEqual(SwingGate.closedAt(at(3, 2), Direction.Left));
+    expect(level.gates).toEqual([SwingGate.closedAt(at(3, 2), Direction.Left)]);
     expect(level.plate).toEqual(at(1, 2));
+  });
+
+  test('hangs two gates that she opens one at a time, in through one and out through the other', () => {
+    const level = gated([
+      '.DDD....',
+      '........',
+      'FFFFGFF.',
+      'F.....F.',
+      'F....KF.',
+      'FFGFFFF.',
+      '........',
+      '..H.....',
+    ]);
+    const [exit, entry] = level.gates;
+    expect(level.gates).toEqual([SwingGate.closedAt(at(4, 2)), SwingGate.closedAt(at(2, 5))]);
+    expect(pathTo(level, (tile) => tile.equals(at(5, 4)))).toBeUndefined();
+    openGate(level, entry);
+    expect(level.gates.map((gate) => gate.state)).toEqual(['closed', 'open']);
+    follow(
+      level,
+      pathTo(level, (tile) => tile.equals(at(5, 4)))!,
+    );
+    expect(level.keys).toEqual([]);
+    openGate(level, exit);
+    expect(pathTo(level, (tile) => tile.equals(at(4, 1)))).toBeDefined();
   });
 
   test('starts the one boulder on the spot the shuffle picks among its symbols', () => {
@@ -184,7 +210,7 @@ describe('a gate in a layout', () => {
   });
 
   test.each([
-    ['two gates', ['.DDD.', '.K...', 'FGFGF', '..H..'], 'at most one gate'],
+    ['three gates', ['.DDD.....', '.K.......', 'FGFFGFFGF', '.........', '..H......'], 'at most two gates'],
     ['a gate without a fence on one side', ['.DDD.', '.K...', 'W.GFW', '..H..'], 'between two fences'],
   ])('rejects %s', (_, rows, message) => {
     expect(() => gated(rows)).toThrow(message);

@@ -127,7 +127,7 @@ test.each(authoredLevels)('every path tile of the $name level shares an edge wit
 
 test.each(authoredLevels)('she can walk a full loop around every fenced enclosure of the $name level', ({ create }) => {
   const level = create(keepOrder);
-  const posts = [...level.scenery.fences.map((fence) => fence.position), ...(level.gate ? [level.gate.position] : [])];
+  const posts = [...level.scenery.fences.map((fence) => fence.position), ...level.gates.map((gate) => gate.position)];
   const blocked: string[] = [];
   for (const start of posts) {
     const group = [start];
@@ -239,7 +239,7 @@ test('the first level hides no usable item under a tree canopy', () => {
     ...level.keys.map((key) => key.position),
     ...level.boulders.map((boulder) => boulder.position),
     ...(level.plate ? [level.plate] : []),
-    ...(level.gate ? [level.gate.position, level.gate.approach] : []),
+    ...level.gates.flatMap((gate) => [gate.position, gate.approach]),
   ];
   const hidden = items.filter((item) => level.scenery.trees.some((tree) => tree.hides(item)));
   expect(hidden.map((item) => `${item.column}, ${item.row}`)).toEqual([]);

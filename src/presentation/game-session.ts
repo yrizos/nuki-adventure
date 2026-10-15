@@ -102,7 +102,7 @@ export class GameSession {
     const level = this.level;
     const available: readonly LevelAction[] = [
       // The prompt only invites her to open the gate, so it does not nag her to close it once she walks through.
-      ...(level.canOperateGate && level.gate?.state === 'closed' ? (['operate'] as const) : []),
+      ...(level.operableGate?.state === 'closed' ? (['operate'] as const) : []),
       ...(level.canGrip ? (['grip'] as const) : []),
     ];
     return available.some((action) => buttonFor[action] === button);
@@ -177,7 +177,7 @@ export class GameSession {
       phaseAfterFrame(this.phase, {
         frame: this.frame,
         restorationLength: (origin) => restorationLength(play.view(id).scenery.size, origin),
-        gateSwinging: play.view(id).gate?.isSwinging ?? false,
+        gateSwinging: play.view(id).gates.some((gate) => gate.isSwinging),
       }),
     );
     // She stands still while the gate swings, so her last stride must not keep her walking or stepping.
@@ -193,16 +193,17 @@ export class GameSession {
     const current = this.run.play.view(this.run.id);
     const level = { ...current, hero: current.hero.between(tickProgress) };
     const sliding = level.boulders.find((boulder) => boulder.isSliding);
+    const opening = level.gates.find((gate) => gate.state === 'opening');
     const scene = {
       level,
       frame: this.frame,
       // The push art faces north, so it fits only a gate she swings open north, away from her, or a boulder pushed north.
       hero:
         this.phase.name === 'swinging-gate' &&
-        level.gate?.state === 'opening' &&
+        opening !== undefined &&
         !level.plate &&
-        level.gate.swing === Direction.Up &&
-        level.hero.position.row > level.gate.position.row
+        opening.swing === Direction.Up &&
+        level.hero.position.row > opening.position.row
           ? pushingPose(this.frame - this.phase.since)
           : sliding?.heading === Direction.Up && level.hero.facing === Direction.Up
             ? pushingPose(sliding.travelled / 2)

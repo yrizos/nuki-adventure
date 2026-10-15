@@ -41,7 +41,7 @@ function reachedFromStart(level: Level, gateOpen: boolean): readonly TilePositio
     level.scenery.isWalkable(tile) &&
     !level.stones.some((stone) => stone.position.equals(tile)) &&
     !level.door.covers(tile) &&
-    (gateOpen || !level.gate!.covers(tile));
+    (gateOpen || !level.gates[0]!.covers(tile));
   const reached = [level.hero.position];
   for (let index = 0; index < reached.length; index++) {
     for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
@@ -55,7 +55,7 @@ function reachedFromStart(level: Level, gateOpen: boolean): readonly TilePositio
 function openGate(level: Level): void {
   follow(
     level,
-    pathTo(level, (tile) => tile.equals(level.gate!.approach))!,
+    pathTo(level, (tile) => tile.equals(level.gates[0]!.approach))!,
   );
   level.tick(Heading.of(Direction.Up));
   level.tick(null);
@@ -73,7 +73,7 @@ test('the second level fences a lemon garden into its north-east corner with one
   expect(level.scenery.size).toEqual({ columns: 25, rows: 25 });
   expect(level.hero.position).toEqual(at(6, 21));
   expect(level.door).toEqual(Door.closedAt(at(18, 1)));
-  expect(level.gate).toEqual(SwingGate.closedAt(at(19, 7), Direction.Down));
+  expect(level.gates).toEqual([SwingGate.closedAt(at(19, 7), Direction.Down)]);
   expect(level.keys.map((each) => each.position)).toEqual([key]);
   expect(level.keys[0]!.restores.tiles).toHaveLength(25 * 25);
   expect(level.scenery.fences.map((fence) => fence.position)).toEqual([
@@ -140,7 +140,7 @@ test('the second level keeps the walled garden, its key, the door and its star s
   const level = secondLevel(keepOrder);
   const closed = reachedFromStart(level, false);
   const reachable = (tile: TilePosition): boolean => closed.some((other) => other.equals(tile));
-  expect(reachable(level.gate!.approach)).toBe(true);
+  expect(reachable(level.gates[0]!.approach)).toBe(true);
   expect(reachable(key)).toBe(false);
   expect(level.door.footprint.map((tile) => tile.neighbor(Direction.Down)).filter(reachable)).toEqual([]);
   expect(gardenSpots.filter(reachable)).toEqual([]);
@@ -154,7 +154,7 @@ test('the second level is played through the gate, to the key and out of the doo
   const toKey = (tile: TilePosition): boolean => tile.equals(key);
   expect(pathTo(level, toKey)).toBeUndefined();
   openGate(level);
-  expect(level.gate?.state).toBe('open');
+  expect(level.gates[0]?.state).toBe('open');
   expect(follow(level, pathTo(level, toKey)!).some((event) => event instanceof KeyCollected)).toBe(true);
   level.openDoor();
   const events = follow(
@@ -162,7 +162,7 @@ test('the second level is played through the gate, to the key and out of the doo
     pathTo(level, (tile) => level.door.covers(tile))!,
   );
   expect(events).toContainEqual(new LevelCompleted(secondLevelId));
-  expect(level.gate?.state).toBe('open');
+  expect(level.gates[0]?.state).toBe('open');
 });
 
 test.each([

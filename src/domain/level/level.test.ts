@@ -601,7 +601,7 @@ describe('a swing gate', () => {
       keys: [Key.at(key, everywhere)],
       door: Door.closedAt(where('D')[0]!),
       hero: { position: start, facing },
-      gate: SwingGate.closedAt(where('G')[0]!),
+      gates: [SwingGate.closedAt(where('G')[0]!)],
       obstacles: check2dObstacles,
     });
   }
@@ -618,9 +618,9 @@ describe('a swing gate', () => {
     const { feet } = subject.hero;
     for (let tick = 1; tick < gateSwingLength; tick++) subject.tick(Heading.of(Direction.Down));
     expect(subject.hero.feet).toEqual(feet);
-    expect(subject.gate?.state).toBe('opening');
+    expect(subject.gates[0]?.state).toBe('opening');
     subject.tick(Heading.of(Direction.Down));
-    expect(subject.gate?.state).toBe('open');
+    expect(subject.gates[0]?.state).toBe('open');
     for (let tick = 0; tick < 4; tick++) subject.tick(Heading.of(Direction.Down));
     expect(subject.hero.feet).not.toEqual(feet);
   });
@@ -649,7 +649,7 @@ describe('a swing gate', () => {
       subject,
       pathTo(subject, (tile) => tile.equals(at(3, 5)))!,
     );
-    expect(subject.gate?.state).toBe('open');
+    expect(subject.gates[0]?.state).toBe('open');
   });
 
   test('closes again from the far side and shuts the passage as soon as it starts swinging', () => {
@@ -664,12 +664,12 @@ describe('a swing gate', () => {
     expect(subject.canOperateGate).toBe(true);
     const open = subject.outlines;
     expect(subject.operateGate()).toEqual([new SwingGateClosingStarted(LevelId.of('test'), at(3, 3))]);
-    expect(subject.gate?.state).toBe('closing');
+    expect(subject.gates[0]?.state).toBe('closing');
     expect(subject.outlines).not.toEqual(open);
     expect(subject.canOperateGate).toBe(false);
     expect(subject.operateGate()).toEqual([]);
     expect(settleGate(subject)).toEqual([new SwingGateClosed(LevelId.of('test'), at(3, 3))]);
-    expect(subject.gate?.state).toBe('closed');
+    expect(subject.gates[0]?.state).toBe('closed');
     expect(pathTo(subject, (tile) => tile.equals(at(3, 5)))).toBeUndefined();
     expect(subject.operateGate()).toEqual([new SwingGateOpeningStarted(LevelId.of('test'), at(3, 3))]);
   });
@@ -697,7 +697,7 @@ describe('a swing gate', () => {
     );
     expect(subject.canOperateGate).toBe(false);
     expect(subject.operateGate()).toEqual([]);
-    expect(subject.gate?.state).toBe('open');
+    expect(subject.gates[0]?.state).toBe('open');
   });
 
   test('stays open when the key is collected and the door opens', () => {
@@ -708,7 +708,7 @@ describe('a swing gate', () => {
     );
     expect(events.some((event) => event instanceof KeyCollected)).toBe(true);
     subject.openDoor();
-    expect(subject.gate?.state).toBe('open');
+    expect(subject.gates[0]?.state).toBe('open');
   });
 
   test('must be operable from where the hero starts', () => {
@@ -735,7 +735,7 @@ describe('a swing gate', () => {
       keys: [Key.at(at(0, 0), everywhere)],
       door: Door.closedAt(where('D')[0]!),
       hero: { position: at(3, 4), facing: Direction.Up },
-      gate: SwingGate.closedAt(where('G')[0]!),
+      gates: [SwingGate.closedAt(where('G')[0]!)],
       obstacles: check2dObstacles,
     };
     for (const spot of [at(3, 3), at(3, 2)])
@@ -919,6 +919,75 @@ describe('a boulder', () => {
   });
 });
 
+describe('two swing gates', () => {
+  const enclosed = ['.DDD....', '........', 'FFFFGFF.', 'F.....F.', 'F.....F.', 'FFGFFFF.', '........', '..H.....'];
+
+  function twoGated(
+    given: readonly string[] = enclosed,
+    start = at(2, 7),
+    plate?: TilePosition,
+    key = at(5, 4),
+  ): Level {
+    const { scenery, where } = parse(given);
+    return Level.create({
+      id: LevelId.of('test'),
+      scenery,
+      stones: [],
+      keys: [Key.at(key, everywhere)],
+      door: Door.closedAt(where('D')[0]!),
+      hero: { position: start, facing: Direction.Up },
+      gates: where('G').map((gate) => SwingGate.closedAt(gate)),
+      ...(plate ? { plate } : {}),
+      obstacles: check2dObstacles,
+    });
+  }
+
+  test('swings only the gate she stands beside', () => {
+    const subject = twoGated();
+    follow(
+      subject,
+      pathTo(subject, (tile) => tile.equals(at(2, 6)))!,
+    );
+    expect(subject.operateGate()).toEqual([new SwingGateOpeningStarted(LevelId.of('test'), at(2, 5))]);
+    settleGate(subject);
+    expect(subject.gates.map((gate) => gate.state)).toEqual(['closed', 'open']);
+    follow(
+      subject,
+      pathTo(subject, (tile) => tile.equals(at(4, 3)))!,
+    );
+    expect(subject.operateGate()).toEqual([new SwingGateOpeningStarted(LevelId.of('test'), at(4, 2))]);
+    settleGate(subject);
+    expect(subject.gates.map((gate) => gate.state)).toEqual(['open', 'open']);
+  });
+
+  test('rejects a pressure plate, because one plate holds one gate', () => {
+    expect(() => twoGated(enclosed, at(2, 7), at(0, 7))).toThrow('needs exactly one gate');
+  });
+
+  test('rejects a gate she cannot reach even with the other gate open', () => {
+    const sealed = [
+      '.DDD.....',
+      '.........',
+      '.FFFFF...',
+      '.F...F...',
+      '.FFGFF...',
+      '.F...F...',
+      '.FFFFF...',
+      'FFFFFFGFF',
+      '.........',
+      '...H.....',
+    ];
+    expect(() => twoGated(sealed, at(3, 9), undefined, at(0, 0))).toThrow('The gate must be operable');
+  });
+
+  test.each([
+    ['one swinging into the other', ['.DDD...', '.......', 'FFGFF..', 'FFGFF..', '.......', '..H....']],
+    ['one tile beside both', ['.DDD.', '.....', 'FGFGF', '.....', '..H..']],
+  ])('rejects two gates with %s', (_, given) => {
+    expect(() => twoGated(given, at(2, given.length - 1))).toThrow('Two gates need room of their own');
+  });
+});
+
 describe('a pressure plate', () => {
   const plated = [
     '..DDD....',
@@ -940,7 +1009,7 @@ describe('a pressure plate', () => {
       keys: [Key.at(where('K')[0]!, everywhere)],
       door: Door.closedAt(where('D')[0]!),
       hero: { position: start, facing },
-      gate: SwingGate.closedAt(where('G')[0]!, Direction.Left),
+      gates: [SwingGate.closedAt(where('G')[0]!, Direction.Left)],
       boulders: where('O').map(Boulder.at),
       plate: plate ?? where('P')[0]!,
       obstacles: check2dObstacles,
@@ -959,7 +1028,7 @@ describe('a pressure plate', () => {
       new SwingGateOpeningStarted(LevelId.of('test'), at(5, 3)),
       new SwingGateOpened(LevelId.of('test'), at(5, 3)),
     ]);
-    expect(subject.gate?.state).toBe('open');
+    expect(subject.gates[0]?.state).toBe('open');
     expect(subject.canOperateGate).toBe(false);
     expect(pathTo(subject, (tile) => tile.equals(at(7, 3)))).toBeDefined();
   });
@@ -973,10 +1042,10 @@ describe('a pressure plate', () => {
       new SwingGateClosingStarted(LevelId.of('test'), at(5, 3)),
     ]);
     settleGate(subject);
-    expect(subject.gate?.state).toBe('closed');
+    expect(subject.gates[0]?.state).toBe('closed');
   });
 
-  test('needs a gate to open', () => {
+  test('needs exactly one gate to open', () => {
     const { scenery, where } = parse(plated);
     expect(() =>
       Level.create({
@@ -989,7 +1058,7 @@ describe('a pressure plate', () => {
         plate: where('P')[0]!,
         obstacles: check2dObstacles,
       }),
-    ).toThrow('needs a gate');
+    ).toThrow('needs exactly one gate');
   });
 
   test('turns a swing back the moment the plate changes, so the gate never finishes opening with the plate empty', () => {
@@ -998,7 +1067,7 @@ describe('a pressure plate', () => {
       subject,
       pathTo(subject, (tile) => tile.equals(at(2, 5)))!,
     );
-    expect(subject.gate?.state).toBe('opening');
+    expect(subject.gates[0]?.state).toBe('opening');
     expect(
       follow(
         subject,
@@ -1008,7 +1077,7 @@ describe('a pressure plate', () => {
       new PlateReleased(LevelId.of('test'), at(2, 5)),
       new SwingGateClosingStarted(LevelId.of('test'), at(5, 3)),
     ]);
-    expect(subject.gate?.state).toBe('closing');
+    expect(subject.gates[0]?.state).toBe('closing');
     expect(
       follow(
         subject,
@@ -1018,7 +1087,7 @@ describe('a pressure plate', () => {
       new PlatePressed(LevelId.of('test'), at(2, 5)),
       new SwingGateOpeningStarted(LevelId.of('test'), at(5, 3)),
     ]);
-    expect(subject.gate?.state).toBe('opening');
+    expect(subject.gates[0]?.state).toBe('opening');
   });
 
   test('stays pressed when she pushes the boulder off it and takes its place', () => {
@@ -1027,7 +1096,7 @@ describe('a pressure plate', () => {
     settleGate(subject);
     expect(slide(subject, Direction.Up)).toEqual([]);
     expect(subject.hero.position).toEqual(at(2, 5));
-    expect(subject.gate?.state).toBe('open');
+    expect(subject.gates[0]?.state).toBe('open');
   });
 
   test('stands at least two tiles from the gate and from the tile it swings into', () => {

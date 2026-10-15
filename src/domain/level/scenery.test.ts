@@ -139,7 +139,7 @@ describe('scenery', () => {
     const rails = [Outline.spanning(at(3, 0), 0, 17, 20, 32), Outline.spanning(at(3, 0), 12, 17, 32, 32)];
     for (const exit of [door, door.opened()]) {
       for (const gate of [closed, opening, open, open.requestClose()]) {
-        const outlines = subject.obstacles(exit, gate);
+        const outlines = subject.obstacles(exit, [gate]);
         if (!rails.every((rail) => outlines.some((outline) => isDeepStrictEqual(outline, rail))))
           failures.push(`door open: ${exit.isOpen}, gate: ${gate.state}`);
       }
@@ -158,7 +158,7 @@ describe('scenery', () => {
         for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
           const neighbor = at(column, row).neighbor(direction);
           const expected = joined.has(`${neighbor.column},${neighbor.row}`);
-          if (subject.joinsFence(neighbor, door, gate) !== expected)
+          if (subject.joinsFence(neighbor, door, [gate]) !== expected)
             failures.push(`${column},${row} toward ${direction.name}`);
         }
       }

@@ -61,8 +61,7 @@ export function follow(level: Level, path: readonly WorldPosition[]): readonly L
   return events;
 }
 
-export function openGate(level: Level): void {
-  const gate = level.gate!;
+export function openGate(level: Level, gate: SwingGate = level.gates[0]!): void {
   const path = pathTo(level, (tile) => tile.equals(gate.approach));
   expect(path, 'the gate approach must be reachable').toBeDefined();
   follow(level, path!);
@@ -72,7 +71,7 @@ export function openGate(level: Level): void {
 
 export function settleGate(level: Level): readonly LevelEvent[] {
   const events: LevelEvent[] = [];
-  while (level.gate?.isSwinging) events.push(...level.tick(null));
+  while (level.gates.some((gate) => gate.isSwinging)) events.push(...level.tick(null));
   return events;
 }
 

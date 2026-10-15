@@ -71,13 +71,15 @@ export function levelFromLayout(
   const [door, ...doorTiles] = where('D');
   if (!door || doorTiles.length !== 2 || !doorTiles.every((tile) => Door.closedAt(door).covers(tile)))
     throw new Error(`The layout of level ${id.value} needs exactly one door`);
-  const [gate, ...otherGates] = where('G');
-  if (otherGates.length > 0) throw new Error(`The layout of level ${id.value} holds at most one gate`);
   const fenced = (tile: TilePosition): boolean => where('F').some((fence) => fence.equals(tile));
-  const inRow = gate && fenced(gate.neighbor(Direction.Left)) && fenced(gate.neighbor(Direction.Right));
-  const inColumn = gate && fenced(gate.neighbor(Direction.Up)) && fenced(gate.neighbor(Direction.Down));
-  if (gate && inRow === inColumn)
-    throw new Error(`The gate of level ${id.value} must hang between two fences, in a row or in a column`);
+  const gates = where('G').map((gate) => {
+    const inRow = fenced(gate.neighbor(Direction.Left)) && fenced(gate.neighbor(Direction.Right));
+    const inColumn = fenced(gate.neighbor(Direction.Up)) && fenced(gate.neighbor(Direction.Down));
+    if (inRow === inColumn)
+      throw new Error(`The gate of level ${id.value} must hang between two fences, in a row or in a column`);
+    return SwingGate.closedAt(gate, inColumn ? Direction.Left : Direction.Down);
+  });
+  if (gates.length > 2) throw new Error(`The layout of level ${id.value} holds at most two gates`);
   const plates = where('P');
   if (plates.length > 1) throw new Error(`The layout of level ${id.value} holds at most one pressure plate`);
   const starSpots = cells.filter((cell) => '+='.includes(cell.symbol)).map((cell) => cell.at);
@@ -95,7 +97,7 @@ export function levelFromLayout(
     keys,
     door: Door.closedAt(door),
     hero: { position: one('H'), facing: Direction.Up },
-    ...(gate ? { gate: SwingGate.closedAt(gate, inColumn ? Direction.Left : Direction.Down) } : {}),
+    gates,
     ...(plates[0] ? { plate: plates[0] } : {}),
     boulders,
     obstacles: check2dObstacles,

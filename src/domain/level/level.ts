@@ -50,7 +50,7 @@ export interface LevelDefinition {
   readonly door: Door;
   readonly hero: { readonly position: TilePosition; readonly facing: Direction };
   readonly stars?: readonly Star[];
-  readonly gate?: SwingGate;
+  readonly gates?: readonly SwingGate[];
   readonly boulders?: readonly Boulder[];
   readonly plate?: TilePosition;
   readonly obstacles: PlaceObstacles;
@@ -61,7 +61,7 @@ export class Level {
   private remainingKeys: readonly Key[];
   private collectedKeys: readonly Key[] = [];
   private currentDoor: Door;
-  private currentGate: SwingGate | undefined;
+  private currentGates: readonly SwingGate[];
   private currentBoulders: readonly Boulder[];
   readonly plate: TilePosition | undefined;
   private plateDown = false;
@@ -87,7 +87,7 @@ export class Level {
     door,
     hero,
     stars = [],
-    gate,
+    gates = [],
     boulders = [],
     plate,
     obstacles,
@@ -108,18 +108,37 @@ export class Level {
       throw new RangeError('The door needs open ground across its whole width');
     }
     this.currentDoor = door;
-    this.currentGate = gate;
-    if (
-      gate &&
-      [gate.position, gate.approach, gate.position.neighbor(gate.swing)].some(
-        (tile) => !scenery.isWalkable(tile) || stones.some((stone) => stone.position.equals(tile)),
-      )
-    ) {
-      throw new RangeError('The gate needs open ground on its tile and on both sides of it');
+    this.currentGates = gates;
+    for (const gate of gates) {
+      if (
+        [gate.position, gate.approach, gate.position.neighbor(gate.swing)].some(
+          (tile) => !scenery.isWalkable(tile) || stones.some((stone) => stone.position.equals(tile)),
+        )
+      ) {
+        throw new RangeError('The gate needs open ground on its tile and on both sides of it');
+      }
     }
+    // A leaf swinging into another gate, or a tile beside two gates, would leave pressing A working a gate she did not mean.
+    gates.forEach((gate, index) =>
+      gates.slice(index + 1).forEach((other) => {
+        const ground = (each: SwingGate) => [each.position, each.approach, each.position.neighbor(each.swing)];
+        const around = [-1, 0, 1].flatMap((column) =>
+          [-1, 0, 1].map((row) => TilePosition.at(gate.position.column + column, gate.position.row + row)),
+        );
+        if (
+          ground(gate).some((tile) => ground(other).some((each) => each.equals(tile))) ||
+          around.some((tile) => gate.operableFrom(tile) && other.operableFrom(tile))
+        ) {
+          throw new RangeError(
+            `Two gates need room of their own, at ${gate.position.column}, ${gate.position.row} and ${other.position.column}, ${other.position.row}`,
+          );
+        }
+      }),
+    );
     this.currentBoulders = boulders;
     this.plate = plate;
-    if (plate && !gate) throw new RangeError('A pressure plate needs a gate to open');
+    // One plate holds one gate, so a second gate would have nothing to tie it to.
+    if (plate && gates.length !== 1) throw new RangeError('A pressure plate needs exactly one gate to open');
     if (
       plate &&
       (!scenery.isWalkable(plate) || stones.some((stone) => stone.position.equals(plate)) || door.covers(plate))
@@ -131,9 +150,10 @@ export class Level {
     // Every step off the plate then leaves her clear of the leaf, so the gate can shut at once without sweeping through her.
     if (
       plate &&
-      gate &&
-      [gate.position, gate.position.neighbor(gate.swing)].some(
-        (tile) => Math.max(Math.abs(tile.column - plate.column), Math.abs(tile.row - plate.row)) < 2,
+      gates.some((gate) =>
+        [gate.position, gate.position.neighbor(gate.swing)].some(
+          (tile) => Math.max(Math.abs(tile.column - plate.column), Math.abs(tile.row - plate.row)) < 2,
+        ),
       )
     ) {
       throw new RangeError(
@@ -146,8 +166,9 @@ export class Level {
         stones.some((stone) => stone.position.equals(boulder.position)) ||
         boulders.findIndex((other) => other.covers(boulder.position)) !== index ||
         door.covers(boulder.position) ||
-        (gate &&
-          [gate.position, gate.approach, gate.position.neighbor(gate.swing)].some((tile) => boulder.covers(tile)))
+        gates.some((gate) =>
+          [gate.position, gate.approach, gate.position.neighbor(gate.swing)].some((tile) => boulder.covers(tile)),
+        )
       ) {
         throw new RangeError(
           `A boulder needs open ground of its own, away from the door and the gate, at ${boulder.position.column}, ${boulder.position.row}`,
@@ -174,11 +195,14 @@ export class Level {
       }
     });
     if (!this.canEnter(hero.position)) throw new RangeError('The hero must start on open ground');
-    if (gate && !this.reachableTiles(false).tiles.some((tile) => gate.operableFrom(tile))) {
-      throw new RangeError('The gate must be operable from where the hero can reach before it opens');
+    // Gates can be opened one after another, so each must be operable once every other gate stands open.
+    for (const gate of gates) {
+      const shut = this.reachableTiles((tile) => gates.some((other) => other !== gate && other.covers(tile)));
+      if (!shut.tiles.some((tile) => gate.operableFrom(tile))) {
+        throw new RangeError('The gate must be operable from where the hero can reach before it opens');
+      }
     }
-    // What lies behind a gate or a boulder still counts, because the hero can always open the gate or move the boulder.
-    const reachable = this.reachableTiles(true);
+    const reachable = this.reachableTiles((tile) => this.clearable(tile));
     if (reachable.tiles.some((tile) => tile.row < door.left.row)) {
       throw new RangeError('The door must stand on the top edge of the playable area');
     }
@@ -223,7 +247,7 @@ export class Level {
     const { keys, hero } = definition;
     const empty = new Level({ ...definition, stars: [] });
     const spots = empty
-      .reachableTiles(true)
+      .reachableTiles((tile) => empty.clearable(tile))
       .tiles.filter(
         (tile) =>
           !empty.hides(tile) &&
@@ -289,45 +313,55 @@ export class Level {
     return this.currentDoor;
   }
 
-  get gate(): SwingGate | undefined {
-    return this.currentGate;
+  get gates(): readonly SwingGate[] {
+    return this.currentGates;
   }
 
   // A gate held by a plate only answers her when shut, so trying it can tell her it will not open.
-  get canOperateGate(): boolean {
-    const gate = this.currentGate;
-    return (
-      (gate?.state === 'closed' || (gate?.state === 'open' && !this.plate)) &&
-      !this.completed &&
-      gate.operableFrom(this.hero.position) &&
-      gate.clearOf(feet.at(this.hero.feet))
+  get operableGate(): SwingGate | undefined {
+    if (this.completed) return undefined;
+    return this.currentGates.find(
+      (gate) =>
+        (gate.state === 'closed' || (gate.state === 'open' && !this.plate)) &&
+        gate.operableFrom(this.hero.position) &&
+        gate.clearOf(feet.at(this.hero.feet)),
     );
   }
 
+  get canOperateGate(): boolean {
+    return this.operableGate !== undefined;
+  }
+
   operateGate(): readonly LevelEvent[] {
-    const gate = this.currentGate;
-    if (!gate || !this.canOperateGate) return [];
+    const gate = this.operableGate;
+    if (!gate) return [];
     if (this.plate) return [new SwingGateStuck(this.id, gate.position)];
     if (gate.isOpen) {
-      this.currentGate = gate.requestClose();
+      this.replaceGate(gate, gate.requestClose());
       // A closing leaf blocks the passage at once, so she cannot slip in while it swings back.
       this.obstacles = this.placedObstacles();
       return [new SwingGateClosingStarted(this.id, gate.position)];
     }
-    this.currentGate = gate.requestOpen();
+    this.replaceGate(gate, gate.requestOpen());
     return [new SwingGateOpeningStarted(this.id, gate.position)];
   }
 
-  private swingGate(): readonly LevelEvent[] {
-    const gate = this.currentGate;
-    if (!gate?.isSwinging) return [];
-    this.currentGate = gate.swingOn();
-    if (this.currentGate.state === 'open') {
-      this.obstacles = this.placedObstacles();
-      return [new SwingGateOpened(this.id, gate.position)];
-    }
-    if (this.currentGate.state === 'closed') return [new SwingGateClosed(this.id, gate.position)];
-    return [];
+  private replaceGate(previous: SwingGate, next: SwingGate): void {
+    this.currentGates = this.currentGates.map((gate) => (gate === previous ? next : gate));
+  }
+
+  private swingGates(): readonly LevelEvent[] {
+    return this.currentGates.flatMap((gate) => {
+      if (!gate.isSwinging) return [];
+      const swung = gate.swingOn();
+      this.replaceGate(gate, swung);
+      if (swung.state === 'open') {
+        this.obstacles = this.placedObstacles();
+        return [new SwingGateOpened(this.id, gate.position)];
+      }
+      if (swung.state === 'closed') return [new SwingGateClosed(this.id, gate.position)];
+      return [];
+    });
   }
 
   get boulders(): readonly Boulder[] {
@@ -335,7 +369,10 @@ export class Level {
   }
 
   get actions(): readonly LevelAction[] {
-    return [...(this.currentGate?.actions ?? []), ...this.currentBoulders.flatMap((boulder) => boulder.actions)];
+    return [
+      ...this.currentGates.flatMap((gate) => gate.actions),
+      ...this.currentBoulders.flatMap((boulder) => boulder.actions),
+    ];
   }
 
   get canGrip(): boolean {
@@ -368,14 +405,14 @@ export class Level {
   tick(heading: Heading | null): readonly LevelEvent[] {
     if (this.completed) return [];
     // She stands still while she swings a gate by hand, so time passes only for the leaf.
-    if (this.currentGate?.isSwinging && !this.plate) return this.swingGate();
+    if (this.currentGates.some((gate) => gate.isSwinging) && !this.plate) return this.swingGates();
     const before = this.heroEntity.position;
     const sliding = this.currentBoulders.find((boulder) => boulder.isSliding);
     if (sliding && this.carried) this.slideBoulder(sliding, this.carried);
     else if (this.gripping) this.moveGripped(heading);
     else this.heroEntity.steer(heading, this.obstacles);
     const tile = this.heroEntity.position;
-    const events: LevelEvent[] = [...this.followPlate(), ...this.swingGate()];
+    const events: LevelEvent[] = [...this.followPlate(), ...this.swingGates()];
     if (tile.equals(before)) return events;
     const star = this.remainingStars.find((candidate) => candidate.position.equals(tile));
     if (star) {
@@ -399,7 +436,7 @@ export class Level {
 
   // A sliding boulder presses both the tile it leaves and the tile it enters, so moving it on or off with her own weight on the plate never lets the plate spring up for half a slide.
   private followPlate(): readonly LevelEvent[] {
-    const gate = this.currentGate;
+    const [gate] = this.currentGates;
     const plate = this.plate;
     if (!gate || !plate) return [];
     const pressed = this.hero.position.equals(plate) || this.currentBoulders.some((boulder) => boulder.covers(plate));
@@ -410,10 +447,10 @@ export class Level {
     }
     // A swing turns back as soon as the plate changes, so the gate never finishes opening with nothing on the plate and never closes onto her later.
     if (pressed && (gate.state === 'closed' || gate.state === 'closing')) {
-      this.currentGate = gate.state === 'closed' ? gate.requestOpen() : gate.reverse();
+      this.replaceGate(gate, gate.state === 'closed' ? gate.requestOpen() : gate.reverse());
       events.push(new SwingGateOpeningStarted(this.id, gate.position));
     } else if (!pressed && (gate.state === 'open' || gate.state === 'opening')) {
-      this.currentGate = gate.state === 'open' ? gate.requestClose() : gate.reverse();
+      this.replaceGate(gate, gate.state === 'open' ? gate.requestClose() : gate.reverse());
       this.obstacles = this.placedObstacles();
       events.push(new SwingGateClosingStarted(this.id, gate.position));
     }
@@ -485,25 +522,35 @@ export class Level {
   }
 
   private canHoldBoulder(tile: TilePosition): boolean {
-    return this.canEnter(tile) && !this.currentDoor.covers(tile) && !(this.currentGate?.covers(tile) ?? false);
+    return (
+      this.canEnter(tile) && !this.currentDoor.covers(tile) && !this.currentGates.some((gate) => gate.covers(tile))
+    );
   }
 
   private placedObstacles(): Obstacles {
     const door = this.currentDoor;
-    const gate = this.currentGate;
+    const gates = this.currentGates;
     this.obstacleOutlines = [
-      ...this.scenery.obstacles(door, gate),
+      ...this.scenery.obstacles(door, gates),
       ...this.stones.map((stone) => stone.obstacle),
       ...(door.isOpen ? [] : [door.obstacle]),
-      ...(gate?.obstacles ?? []),
+      ...gates.flatMap((gate) => gate.obstacles),
       ...this.currentBoulders.map((boulder) => boulder.obstacle),
     ];
     return this.placeObstacles(this.obstacleOutlines);
   }
 
+  // What lies behind a gate or a boulder still counts, because the hero can always open the gate or move the boulder.
+  private clearable(tile: TilePosition): boolean {
+    return (
+      this.currentGates.some((gate) => gate.covers(tile)) ||
+      this.currentBoulders.some((boulder) => boulder.covers(tile))
+    );
+  }
+
   // Every obstacle stays inside the tile it blocks, so whole open tiles always leave room for her feet to cross between them.
   // The door counts as closed because stepping onto it ends the level.
-  private reachableTiles(cleared: boolean): TilePositions {
+  private reachableTiles(cleared: (tile: TilePosition) => boolean): TilePositions {
     const start = this.heroEntity.position;
     const reached = [start];
     const seen = new Set([tileKey(start)]);
@@ -512,10 +559,7 @@ export class Level {
         const neighbor = reached[index]!.neighbor(direction);
         if (
           !seen.has(tileKey(neighbor)) &&
-          (this.canEnter(neighbor) ||
-            (cleared &&
-              ((this.currentGate?.covers(neighbor) ?? false) ||
-                this.currentBoulders.some((boulder) => boulder.covers(neighbor))))) &&
+          (this.canEnter(neighbor) || cleared(neighbor)) &&
           !this.currentDoor.covers(neighbor)
         ) {
           seen.add(tileKey(neighbor));
@@ -531,7 +575,7 @@ export class Level {
       this.scenery.trees.some((tree) => tree.hides(position)) ||
       this.scenery.hides(position) ||
       this.currentDoor.hides(position) ||
-      (this.currentGate?.hides(position) ?? false)
+      this.currentGates.some((gate) => gate.hides(position))
     );
   }
 
@@ -541,7 +585,7 @@ export class Level {
       !this.stoneTiles.covers(position) &&
       !this.currentBoulders.some((boulder) => boulder.covers(position)) &&
       (this.currentDoor.isOpen || !this.currentDoor.covers(position)) &&
-      (!this.currentGate || this.currentGate.isOpen || !this.currentGate.covers(position))
+      this.currentGates.every((gate) => gate.isOpen || !gate.covers(position))
     );
   }
 }

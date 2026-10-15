@@ -217,7 +217,7 @@ export function dressWorld(level: LevelView, random?: () => number): WorldDressi
     level.scenery.flowers.map((flower) => [flower.position]),
     level.scenery.flowerVariants.length,
   ).map((choice) => flowerArt[FlowerVariant.All.indexOf(level.scenery.flowerVariants[choice]!)]!);
-  const joins = (position: TilePosition): boolean => level.scenery.joinsFence(position, level.door, level.gate);
+  const joins = (position: TilePosition): boolean => level.scenery.joinsFence(position, level.door, level.gates);
   const fences = level.scenery.fences.map(
     ({ position }) =>
       fenceArt[

@@ -33,7 +33,7 @@ function playing(gate?: SwingGate) {
       ? { position: gate.approach, facing: Direction.Up }
       : { position: TilePosition.at(0, 0), facing: Direction.Right },
     stars: [Star.at(TilePosition.at(1, 0))],
-    ...(gate ? { gate } : {}),
+    ...(gate ? { gates: [gate] } : {}),
     obstacles: check2dObstacles,
   });
   const loaded: LevelId[] = [];
@@ -63,8 +63,9 @@ describe('playing a level', () => {
       stars: [Star.at(TilePosition.at(1, 0))],
       collected: [],
       door: subject.level.door,
-      gate: undefined,
+      gates: [],
       isPlateDown: false,
+      operableGate: undefined,
       canOperateGate: false,
       canGrip: false,
       isGripping: false,
@@ -104,10 +105,10 @@ describe('playing a level', () => {
     const subject = playing(SwingGate.closedAt(TilePosition.at(2, 2)));
     expect(subject.play.view(levelId).canOperateGate).toBe(true);
     expect(subject.play.operateGate(levelId)).toEqual([new SwingGateOpeningStarted(levelId, TilePosition.at(2, 2))]);
-    expect(subject.play.view(levelId).gate?.state).toBe('opening');
+    expect(subject.play.view(levelId).gates[0]?.state).toBe('opening');
     for (let tick = 1; tick < gateSwingLength; tick++) subject.play.advance(levelId, null);
     expect(subject.play.advance(levelId, null)).toEqual([new SwingGateOpened(levelId, TilePosition.at(2, 2))]);
-    expect(subject.play.view(levelId).gate?.state).toBe('open');
+    expect(subject.play.view(levelId).gates[0]?.state).toBe('open');
     expect(subject.saved).toHaveLength(1 + gateSwingLength);
   });
 });
