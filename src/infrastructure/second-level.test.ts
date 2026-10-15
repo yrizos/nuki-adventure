@@ -3,37 +3,36 @@ import { Door } from '../domain/level/door';
 import type { Level } from '../domain/level/level';
 import { KeyCollected, LevelCompleted } from '../domain/level/level-events';
 import { Direction, Heading, TilePosition } from '../domain/level/position';
-import { Ground } from '../domain/level/scenery';
+import { FlowerVariant, Ground, TreeVariant } from '../domain/level/scenery';
 import { SwingGate } from '../domain/level/swing-gate';
+import { fitCanvas } from '../presentation/viewport-layout';
+import { cameraPosition, tileSize } from '../presentation/world-geometry';
 import { keepOrder, reverseOrder, starSpotsOf } from '../test-support/star-spots';
 import { follow, pathTo, settleGate } from '../test-support/walk-level';
 import { secondLevel, secondLevelId } from './second-level';
 
 const at = TilePosition.at;
 const tiles = Array.from({ length: 25 * 25 }, (_, index) => at(index % 25, Math.floor(index / 25)));
-const northernSpots = [
-  at(15, 3),
-  at(21, 3),
-  at(5, 4),
-  at(2, 6),
-  at(11, 6),
-  at(19, 6),
-  at(20, 9),
-  at(5, 11),
-  at(10, 11),
-  at(21, 12),
-];
-const southernSpots = [
-  at(13, 14),
-  at(4, 16),
-  at(8, 16),
-  at(22, 17),
-  at(10, 18),
-  at(2, 19),
-  at(15, 19),
-  at(22, 20),
-  at(5, 21),
-  at(18, 22),
+const key = at(19, 7);
+const permanentSpots = [at(3, 6), at(21, 17)];
+const gardenSpots = [at(20, 3), at(22, 9)];
+const outerSpots = [
+  at(7, 3),
+  at(16, 7),
+  at(2, 9),
+  at(15, 9),
+  at(10, 10),
+  at(19, 13),
+  at(2, 14),
+  at(22, 14),
+  at(13, 15),
+  at(17, 17),
+  at(2, 18),
+  at(3, 19),
+  at(22, 19),
+  at(18, 20),
+  at(9, 21),
+  at(16, 21),
 ];
 
 function reachedFromStart(level: Level, gateOpen: boolean): readonly TilePosition[] {
@@ -63,38 +62,95 @@ function openGate(level: Level): void {
   settleGate(level);
 }
 
-test('the second level holds a lakeside behind a swing gate and one key that restores the whole level', () => {
+test('the second level selects only white-violet and coral-blue flowers', () => {
+  expect(secondLevel(keepOrder).scenery.flowerVariants).toEqual([FlowerVariant.WhiteViolet, FlowerVariant.CoralBlue]);
+});
+
+test('the second level fences a lemon garden into its north-east corner with one straight fence, one gate and one key that restores the whole level', () => {
   const level = secondLevel(keepOrder);
   expect(level.id).toBe(secondLevelId);
   expect(level.scenery.size).toEqual({ columns: 25, rows: 25 });
-  expect(level.hero.position).toEqual(at(11, 21));
-  expect(level.gate).toEqual(SwingGate.closedAt(at(17, 13)));
-  expect(level.door).toEqual(Door.closedAt(at(11, 2)));
-  expect(level.keys.map((key) => key.position)).toEqual([at(2, 8)]);
-  expect(level.keys[0]!.restores.tiles).toHaveLength(625);
-  expect(tiles.filter((tile) => level.scenery.groundAt(tile) === Ground.Water)).toHaveLength(28);
+  expect(level.hero.position).toEqual(at(6, 21));
+  expect(level.door).toEqual(Door.closedAt(at(18, 1)));
+  expect(level.gate).toEqual(SwingGate.closedAt(at(17, 4), Direction.Left));
+  expect(level.keys.map((each) => each.position)).toEqual([key]);
+  expect(level.keys[0]!.restores.tiles).toHaveLength(25 * 25);
+  expect(level.scenery.fences.map((fence) => fence.position)).toEqual([
+    at(17, 2),
+    at(17, 3),
+    ...Array.from({ length: 6 }, (_, index) => at(17, 5 + index)),
+  ]);
+  expect(level.stones.map((stone) => stone.position)).toEqual([
+    at(3, 3),
+    at(6, 3),
+    at(4, 5),
+    at(5, 5),
+    at(2, 8),
+    at(5, 8),
+  ]);
+  expect(level.scenery.flowers).toHaveLength(8);
 });
 
-test('the second level marks twenty star spots, ten on each side of the gate, and lets the shuffle choose its stars', () => {
+test('the second level grows lemon trees only in the walled garden and orange trees only in the northern orchard', () => {
+  const { trees } = secondLevel(keepOrder).scenery;
+  expect(trees.filter((tree) => tree.variant.equals(TreeVariant.Lemons)).map((tree) => tree.base)).toEqual([
+    at(21, 4),
+    at(21, 7),
+  ]);
+  expect(trees.filter((tree) => tree.variant.equals(TreeVariant.Oranges)).map((tree) => tree.base)).toEqual([
+    at(13, 6),
+    at(10, 7),
+    at(12, 9),
+  ]);
+  expect(trees).toHaveLength(5);
+});
+
+test('the second level holds one lake beside the western track and no water in the walled garden', () => {
+  const { scenery } = secondLevel(keepOrder);
+  const water = tiles.filter((tile) => scenery.groundAt(tile).equals(Ground.Water));
+  expect(water.filter((tile) => tile.column > 17)).toEqual([]);
+  expect(water).toHaveLength(17);
+  expect(water.every((tile) => tile.column >= 6 && tile.column <= 12 && tile.row >= 13 && tile.row <= 16)).toBe(true);
+});
+
+test('the second level always holds stars in the ruined courtyard and in the forest clearing and lets the shuffle choose three of its eighteen other spots', () => {
   const spots = starSpotsOf(secondLevel);
-  expect(spots).toHaveLength(20);
-  expect(spots).toEqual(expect.arrayContaining([...northernSpots, ...southernSpots]));
-  expect(secondLevel(reverseOrder).stars.map((star) => star.position)).toEqual([...spots].reverse().slice(0, 5));
+  expect(spots).toHaveLength(18);
+  expect(spots).toEqual(expect.arrayContaining([...gardenSpots, ...outerSpots]));
+  expect(secondLevel(reverseOrder).stars.map((star) => star.position)).toEqual([
+    ...permanentSpots,
+    ...[...spots].reverse().slice(0, 3),
+  ]);
 });
 
-test('the second level keeps the lakeside, its key and its star spots out of reach until the gate opens', () => {
+test('the second level places its key at least six tiles from the exit', () => {
+  const level = secondLevel(keepOrder);
+  for (const each of level.keys) {
+    const distance = Math.min(
+      ...level.door.footprint.map(
+        (tile) => Math.abs(tile.column - each.position.column) + Math.abs(tile.row - each.position.row),
+      ),
+    );
+    expect(distance).toBeGreaterThanOrEqual(6);
+  }
+});
+
+test('the second level keeps the walled garden, its key, the door and its star spots out of reach until the gate opens', () => {
   const level = secondLevel(keepOrder);
   const closed = reachedFromStart(level, false);
   const reachable = (tile: TilePosition): boolean => closed.some((other) => other.equals(tile));
   expect(reachable(level.gate!.approach)).toBe(true);
-  expect(reachable(at(2, 8))).toBe(false);
-  expect(northernSpots.filter(reachable)).toEqual([]);
-  expect(southernSpots.filter((spot) => !reachable(spot))).toEqual([]);
+  expect(reachable(key)).toBe(false);
+  expect(level.door.footprint.map((tile) => tile.neighbor(Direction.Down)).filter(reachable)).toEqual([]);
+  expect(gardenSpots.filter(reachable)).toEqual([]);
+  expect([...outerSpots, ...permanentSpots].filter((spot) => !reachable(spot))).toEqual([]);
+  const opened = reachedFromStart(level, true);
+  expect([key, ...gardenSpots].filter((tile) => !opened.some((other) => other.equals(tile)))).toEqual([]);
 });
 
 test('the second level is played through the gate, to the key and out of the door', () => {
   const level = secondLevel(keepOrder);
-  const toKey = (tile: TilePosition): boolean => tile.equals(at(2, 8));
+  const toKey = (tile: TilePosition): boolean => tile.equals(key);
   expect(pathTo(level, toKey)).toBeUndefined();
   openGate(level);
   expect(level.gate?.state).toBe('open');
@@ -107,3 +163,32 @@ test('the second level is played through the gate, to the key and out of the doo
   expect(events).toContainEqual(new LevelCompleted(secondLevelId));
   expect(level.gate?.state).toBe('open');
 });
+
+test.each([
+  ['desktop', 1280, 900, 1],
+  ['desktop', 1280, 900, 2],
+  ['desktop', 1280, 900, 3],
+  ['mobile', 390, 844, 1],
+  ['mobile', 390, 844, 2],
+  ['mobile', 390, 844, 3],
+] as const)(
+  'the second level initially shows no part of its key on %s %sx%s at pixel ratio %s',
+  (_, width, height, ratio) => {
+    const level = secondLevel(keepOrder);
+    const columnWidth = width >= 600 ? Math.max(320, Math.min(width, (height * 360) / 544)) : width;
+    const deviceWidth = Math.floor(columnWidth * ratio);
+    const panelPixel = Math.max(1, Math.floor(deviceWidth / 180));
+    const deviceHeight = height * ratio - 92 * panelPixel;
+    const fit = fitCanvas(deviceWidth, deviceHeight);
+    const camera = cameraPosition(level, fit.width, fit.height);
+    const visibleWidth = deviceWidth / fit.scale;
+    const visibleHeight = deviceHeight / fit.scale;
+    for (const each of level.keys) {
+      const left = each.position.column * tileSize + 4 - camera.x;
+      const top = each.position.row * tileSize + 4 - camera.y;
+      const overlapWidth = Math.max(0, Math.min(left + 24, visibleWidth) - Math.max(left, 0));
+      const overlapHeight = Math.max(0, Math.min(top + 24, visibleHeight) - Math.max(top, 0));
+      expect(overlapWidth * overlapHeight).toBe(0);
+    }
+  },
+);

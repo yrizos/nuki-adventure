@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { defineConfig } from 'vite';
+import { configDefaults } from 'vitest/config';
 
 // GitHub Pages serves the game from a repository subpath, so asset URLs must be relative.
 export default defineConfig({
@@ -37,6 +38,8 @@ export default defineConfig({
   test: {
     // Shuffling exposes tests that only pass because an earlier test left state behind.
     sequence: { shuffle: true },
+    // Agent worktrees under .claude hold stale copies of the suite that would run and fail alongside it.
+    exclude: [...configDefaults.exclude, '.claude/**'],
     restoreMocks: true,
     unstubGlobals: true,
   },
