@@ -132,6 +132,7 @@ A [dividing fence](glossary.md#game-world) deliberately breaks free movement. It
 - New mechanics: from the tile where the hero approaches the level's new mechanic, a goal it leads to, such as the door or a key, is visible within the minimum view of [Native Resolution](visual-style.md#native-resolution). A sound cue alone never gives the reason to use the mechanic.
 - Exploration: a level holds meaningful space outside the mandatory route. Optional branches lead to distinct places. A larger map adds navigable space, not decoration.
 - Paths and sections: prefer complex paths that link distinct sections over one track through open ground. Each section is a separate place with its own character, entered through a clear opening. Paths branch, turn and rejoin between sections. Bad example: a single path running straight from the start to the door with scenery on either side.
+- Woodland outline: every woodland edge that faces open ground, along the map border and inside the level, steps in or out at least every three tiles. Steps vary in depth and spacing, never a regular zigzag. The woodland's thickness varies along the border, so the clearing never reads as a rectangle. A layout with a longer straight woodland edge is not finished. Bad example: open ground running for nine rows beside a one-tile woodland band along the map edge.
 - Door position: vary the door's column along the top edge from level to level. Place it toward the left or right as often as near the middle. Bad example: every level with its door at the center of the top edge.
 - Areas: each area is a recognizable place, such as a forest, lake, garden, courtyard, ruins or island. Boundaries follow those places, never a straight split. The restoration seam is a gradient about three tiles wide. Put it where it reads as a change of place, such as a shoreline, tree line or track. Never use color to show a route.
 - Returning to the door: the player knows where the door is before the last key. Backtracking is fine when the space has changed through color, a new route or a shortcut. Avoid long returns through unchanged space.
@@ -158,7 +159,7 @@ Guidance only. Never overrides a hard constraint or the readability of the manda
 | Place | Do | Never |
 | --- | --- | --- |
 | Orchards | Planting groups, rows staggered, interrupted or unevenly spaced, open grass between groups. | A symmetrical maze. Fruit trees as a perimeter wall. |
-| Woodland edges | Irregular, with projections and recesses. Fill inaccessible land outside a clearing with woodland. | Straight continuous tree walls. Empty inaccessible ground. |
+| Woodland edges | Follow [Woodland outline](#design-guidance). Fill inaccessible land outside a clearing with woodland. | Empty inaccessible ground. |
 | Forests | Irregular clusters of varying density with clearings, thinning toward the edge. | Straight bands of trees. |
 | Lakes and shores | Uneven outlines with bays and points. A distinctive shoreline shape. | Plain rectangles. |
 | Ponds | A self-contained body with an irregular shore, sized to its surroundings. Leaves most space open. | Closing a gap in another boundary. |

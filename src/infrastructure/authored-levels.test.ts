@@ -358,7 +358,7 @@ test('the fourth level is finished by pushing the boulder out of the gap to the 
   ).toBeUndefined();
   follow(
     level,
-    pathTo(level, (tile) => tile.equals(TilePosition.at(6, 11)))!,
+    pathTo(level, (tile) => tile.equals(TilePosition.at(21, 8)))!,
   );
   for (let tick = 0; tick < 20 && !level.canGrip; tick++) level.tick(Heading.of(Direction.Up));
   expect(level.canGrip).toBe(true);
