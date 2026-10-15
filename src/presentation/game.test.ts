@@ -546,7 +546,7 @@ describe('the second level in the game session', () => {
     expect(sound.gate).toHaveBeenCalledOnce();
     for (let frame = 1; frame < gateSwingLength; frame++) session.tick();
     expect(session.level.gate?.state).toBe('open');
-    walkTo((tile) => tile.equals(TilePosition.at(19, 7)));
+    walkTo((tile) => tile.equals(TilePosition.at(21, 6)));
     expect(sound.key).toHaveBeenCalledOnce();
     for (let frame = 0; frame < 600 && !session.level.door.isOpen; frame++) session.tick();
     expect(session.level.door.isOpen).toBe(true);

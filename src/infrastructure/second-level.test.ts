@@ -13,14 +13,15 @@ import { secondLevel, secondLevelId } from './second-level';
 
 const at = TilePosition.at;
 const tiles = Array.from({ length: 25 * 25 }, (_, index) => at(index % 25, Math.floor(index / 25)));
-const key = at(19, 7);
+const key = at(21, 6);
 const permanentSpots = [at(3, 6), at(21, 17)];
-const gardenSpots = [at(20, 3), at(22, 9)];
+const gardenSpots = [at(22, 6)];
 const outerSpots = [
+  at(4, 3),
   at(7, 3),
-  at(16, 7),
   at(2, 9),
-  at(15, 9),
+  at(14, 9),
+  at(22, 9),
   at(10, 10),
   at(19, 13),
   at(2, 14),
@@ -66,19 +67,19 @@ test('the second level selects only white-violet and coral-blue flowers', () => 
   expect(secondLevel(keepOrder).scenery.flowerVariants).toEqual([FlowerVariant.WhiteViolet, FlowerVariant.CoralBlue]);
 });
 
-test('the second level fences a lemon garden into its north-east corner with one straight fence, one gate and one key that restores the whole level', () => {
+test('the second level fences a lemon garden into its north-east corner with one straight horizontal fence, one gate and one key that restores the whole level', () => {
   const level = secondLevel(keepOrder);
   expect(level.id).toBe(secondLevelId);
   expect(level.scenery.size).toEqual({ columns: 25, rows: 25 });
   expect(level.hero.position).toEqual(at(6, 21));
   expect(level.door).toEqual(Door.closedAt(at(18, 1)));
-  expect(level.gate).toEqual(SwingGate.closedAt(at(17, 4), Direction.Left));
+  expect(level.gate).toEqual(SwingGate.closedAt(at(19, 7), Direction.Down));
   expect(level.keys.map((each) => each.position)).toEqual([key]);
   expect(level.keys[0]!.restores.tiles).toHaveLength(25 * 25);
   expect(level.scenery.fences.map((fence) => fence.position)).toEqual([
-    at(17, 2),
-    at(17, 3),
-    ...Array.from({ length: 6 }, (_, index) => at(17, 5 + index)),
+    at(17, 7),
+    at(18, 7),
+    ...Array.from({ length: 4 }, (_, index) => at(20 + index, 7)),
   ]);
   expect(level.stones.map((stone) => stone.position)).toEqual([
     at(3, 3),
@@ -88,14 +89,14 @@ test('the second level fences a lemon garden into its north-east corner with one
     at(2, 8),
     at(5, 8),
   ]);
-  expect(level.scenery.flowers).toHaveLength(8);
+  expect(level.scenery.flowers).toHaveLength(9);
 });
 
 test('the second level grows lemon trees only in the walled garden and orange trees only in the northern orchard', () => {
   const { trees } = secondLevel(keepOrder).scenery;
   expect(trees.filter((tree) => tree.variant.equals(TreeVariant.Lemons)).map((tree) => tree.base)).toEqual([
+    at(19, 4),
     at(21, 4),
-    at(21, 7),
   ]);
   expect(trees.filter((tree) => tree.variant.equals(TreeVariant.Oranges)).map((tree) => tree.base)).toEqual([
     at(13, 6),
