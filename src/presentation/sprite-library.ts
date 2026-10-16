@@ -165,11 +165,6 @@ export const keyArt: Readonly<Record<'gold' | 'silver', Art>> = {
 export const starArt = frame('star', 'star');
 export const padlockArt = frame('padlock', 'padlock');
 
-export const smallHeroArt = {
-  stand: frame('small-hero', 'down-stand'),
-  breathe: frame('small-hero', 'down-breathe'),
-  blink: frame('small-hero', 'down-blink'),
-} as const;
 export const smallPadlockArt = frame('small-padlock', 'padlock');
 
 export const lightMote = frame('light-mote', 'light-mote');

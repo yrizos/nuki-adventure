@@ -30,7 +30,7 @@ import { ditherSteps } from './ordered-dither';
 import { faded, type PaletteCode } from './palette';
 import { sprite } from './picture';
 import { artUrl } from './canvas-art';
-import { smallHeroArt } from './sprite-library';
+import { heroArt } from './sprite-library';
 
 test.each([
   [0, '0:00'],
@@ -151,7 +151,7 @@ test('draws one gold star with the count collected, beside the clock and last pl
   ]).toEqual([1, 0, 1, 1, 1]);
 });
 
-test('draws one dim star with a zero count and no clock on a level without a completed playthrough', () => {
+test('draws no star, count or clock on a level without a completed playthrough', () => {
   for (const view of [level(2, true), level(3, false)]) {
     const shown = card(view);
     expect([
@@ -159,7 +159,7 @@ test('draws one dim star with a zero count and no clock on a level without a com
       count(shown, dimStar),
       count(shown, textPattern('0', 1)),
       count(shown, iconPattern(putClock)),
-    ]).toEqual([0, 1, 1, 0]);
+    ]).toEqual([0, 0, 0, 0]);
   }
 });
 
@@ -329,7 +329,7 @@ test('Nuki stands on the card of the level to continue and breathes and blinks o
   expect(hero.parentElement).toBe(rows[1]);
   const shown = (): string => hero.style.getPropertyValue('--art');
   const url = (art: Art): string => `url(${artUrl(root as unknown as Document, art)})`;
-  expect(shown()).toBe(url(smallHeroArt.stand));
+  expect(shown()).toBe(url(heroArt.down.stand));
   for (let frame = 0; frame < 180; frame++) subject.advance();
-  expect(shown()).toBe(url(smallHeroArt.blink));
+  expect(shown()).toBe(url(heroArt.down.blink!));
 });

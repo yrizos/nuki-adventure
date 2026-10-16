@@ -107,10 +107,10 @@ All three switches sit in a row in the top right corner of the game view. Each i
 - One card per level in order, two to a row. All cards share one size, wearing the message box frame.
 - The top of a card is a map of the whole level, centered in a one pixel Ink border, so each level is recognized by its layout. The level's longer side fills the 60 pixel map, and each map pixel takes the most common color of its part of the painted world. The stars are left out, because they land on different spots every time a level is built.
   - An unlocked level shows its world in color, as its keys restore it, whether or not it was completed.
-  - The level that ΣΥΝΕΧΕΙΑ would start shows the 16 × 16 Nuki, centered on the map, with her idle breathing and blinking on the game's frame clock from the moment the picker opens.
+  - The level that ΣΥΝΕΧΕΙΑ would start shows the 32 × 32 Nuki, centered on the map, with her idle breathing and blinking on the game's frame clock from the moment the picker opens.
   - A locked level shows no map. Its window stays filled with the message box color, with the 16 × 16 padlock at its center.
 - The level number sits over the map's top left corner at the font size, 4 pixels in from the map's edges, with a one pixel Ink outline so it reads on any ground.
-- Below the map, a strip in the message box color shows a 9 × 9 star and the number of stars collected in the last completed play. The star is gold once any star was collected, and drawn through the faded mapping when none was. A completed level adds a 9 × 9 clock and its last play time at the right.
+- Below the map, a strip in the message box color. A completed level shows a 9 × 9 star and the number of stars collected in the last completed play at the left, and a 9 × 9 clock and its last play time at the right. The star is gold once any star was collected, and drawn through the faded mapping when none was. A level without a completed play leaves the strip empty.
 - A card sinks one pixel while pressed. Tapping an unlocked card starts that level.
 - A locked card cannot be focused or chosen. A locked level never starts by any route.
 - Screen readers hear the level number, then the last time and stars in words, or that it is locked.

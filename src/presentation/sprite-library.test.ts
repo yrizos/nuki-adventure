@@ -8,7 +8,6 @@ import {
   fruitTreeArt,
   keyArt,
   readSprite,
-  smallHeroArt,
   smallPadlockArt,
   sprites,
   terrainArt,
@@ -185,10 +184,8 @@ test.each([
   expect(() => readSprite(data)).toThrow();
 });
 
-test('the level picker hero and padlock are 16 by 16', () => {
-  for (const art of [smallHeroArt.stand, smallHeroArt.breathe, smallHeroArt.blink, smallPadlockArt]) {
-    expect([sprite(art).width, sprite(art).height]).toEqual([16, 16]);
-  }
+test('the level picker padlock is 16 by 16', () => {
+  expect([sprite(smallPadlockArt).width, sprite(smallPadlockArt).height]).toEqual([16, 16]);
 });
 
 test('the key is one frame', () => {

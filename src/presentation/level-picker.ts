@@ -13,7 +13,7 @@ import { idlePose } from './hero-animator';
 import { menuChoices, takeMenuKeys } from './menu-keys';
 import { faded } from './palette';
 import { Picture } from './picture';
-import { smallHeroArt, smallPadlockArt } from './sprite-library';
+import { heroArt, smallPadlockArt } from './sprite-library';
 
 const framesPerSecond = 60;
 // Two cards share a row, so the icons shrink to fit a star, its count, the clock and the time on one strip.
@@ -176,8 +176,8 @@ export function levelCardArt(level: LevelProgressView): Art {
   grid.rectangle(edge, stripTop - 1, cardWidth - 2 * edge, 1, 'e');
   putNumber(grid, String(level.number), mapLeft + numberInset, mapTop + numberInset);
   const playthrough = level.lastPlaythrough;
-  putStars(grid, playthrough?.collectedStars.value ?? 0);
   if (playthrough) {
+    putStars(grid, playthrough.collectedStars.value);
     const time = playTime(playthrough.time);
     const timeLeft = cardWidth - edge - inset - textWidth(time);
     putClock(grid, timeLeft - iconGap - iconSize, iconTop);
@@ -253,7 +253,7 @@ export class LevelPicker {
     this.hero = root.createElement('span');
     this.hero.className = 'level-hero';
     this.hero.setAttribute('aria-hidden', 'true');
-    const stand = smallHeroArt.stand;
+    const stand = heroArt.down.stand;
     this.hero.style.setProperty('--art-width', String(stand.rows[0]!.length));
     this.hero.style.setProperty('--art-height', String(stand.rows.length));
     this.hero.style.setProperty('--left', String(mapLeft + (mapSize - stand.rows[0]!.length) / 2));
@@ -351,7 +351,7 @@ export class LevelPicker {
   }
 
   private animateHero(): void {
-    const pose = idlePose(smallHeroArt, this.heroFrame);
+    const pose = idlePose(heroArt.down, this.heroFrame);
     if (pose === this.heroPose) return;
     this.heroPose = pose;
     let url = this.heroUrls.get(pose);
