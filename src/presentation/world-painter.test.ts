@@ -1538,3 +1538,69 @@ describe('birds', () => {
     expect(Math.hypot(place.x - before.x, place.y - before.y)).toBeLessThanOrEqual(3 * tileSize + 8);
   });
 });
+
+describe('frogs', () => {
+  const seeded = (seed: number) => (): number => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const pond = levelView(
+    Level.create({
+      id: LevelId.of('pond'),
+      scenery: Scenery.of(
+        LevelSize.of(12, 12),
+        Array.from({ length: 12 }, (_, row) =>
+          Array.from({ length: 12 }, () => (row < 4 ? Ground.Grass : Ground.Water)),
+        ),
+        [],
+        [],
+        [],
+        FlowerVariant.All,
+      ),
+      stones: [],
+      keys: [Key.at(TilePosition.at(0, 0), everywhere, KeyMaterial.Gold)],
+      door: Door.closedAt(TilePosition.at(9, 0)),
+      hero: { position: TilePosition.at(2, 2), facing: Direction.Down },
+      obstacles: check2dObstacles,
+    }),
+  );
+  const ponds = Array.from({ length: 40 }, (_, seed) => dressWorld(pond, seeded(seed + 1)));
+
+  test('a pond gets no frog, one frog or two frogs at random', () => {
+    expect(new Set(ponds.map(({ frogs }) => frogs.length))).toEqual(new Set([0, 1, 2]));
+  });
+
+  test('frogs rest only on lily pads of their own, leap only to near pads and end each cycle where they began', () => {
+    for (const { lilies, frogs } of ponds) {
+      const pads = lilies.map(({ x, y }) => `${x + tileSize / 2},${y + tileSize / 2}`);
+      const owned = frogs.map((frog) => new Set(frog.legs.map(({ from }) => `${from.x},${from.y}`)));
+      for (const [index, frog] of frogs.entries()) {
+        for (const pad of owned[index]!) expect(pads).toContain(pad);
+        for (const other of owned.slice(index + 1)) for (const pad of other) expect(owned[index]!.has(pad)).toBe(false);
+        frog.legs.forEach((leg, step) => {
+          expect(frog.legs[(step + 1) % frog.legs.length]!.from).toBe(leg.to);
+          if (!leg.dive)
+            expect(Math.hypot(leg.to.x - leg.from.x, leg.to.y - leg.from.y)).toBeLessThanOrEqual(2 * tileSize);
+        });
+      }
+    }
+  });
+
+  test('frogs are drawn in color and never in the faded world', () => {
+    const seed = ponds.findIndex(({ frogs }) => frogs.length > 0) + 1;
+    const frog = dressWorld(pond, seeded(seed)).frogs[0]!;
+    const frame = frog.cycle - frog.phase;
+    const frogArts = new Set<Art>(
+      Object.values(library.frogArt).flatMap(({ sit, croak, leap }) => [...sit, ...croak, ...leap]),
+    );
+    const drawnFrogs = (restored: readonly Area[]): number => {
+      const picture = new Picture(12 * tileSize, 12 * tileSize);
+      const draw = vi.spyOn(picture, 'draw');
+      new WorldPainter(pond, seeded(seed)).paint(
+        picture,
+        { level: pond, frame, hero: sprites.heroArt.down.stand },
+        restored,
+      );
+      return draw.mock.calls.filter(([art]) => frogArts.has(art)).length;
+    };
+    expect(drawnFrogs([everywhere])).toBeGreaterThan(0);
+    expect(drawnFrogs([])).toBe(0);
+  });
+});

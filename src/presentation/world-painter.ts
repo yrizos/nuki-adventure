@@ -12,6 +12,9 @@ import {
   butterflyFrameLength,
   doorArt,
   flowerFrameLength,
+  frogArt,
+  frogFrameLength,
+  frogRipple,
   gateArt,
   plateArt,
   plateFrameLength,
@@ -24,7 +27,15 @@ import {
   treeFrameLength,
   waterFrameLength,
 } from './sprite-library';
-import { type Butterfly, type ButterflyLeg, dressWorld, type WorldDressing } from './world-dressing';
+import {
+  type Butterfly,
+  type ButterflyLeg,
+  dressWorld,
+  type Frog,
+  frogDiveLength,
+  frogLeapLength,
+  type WorldDressing,
+} from './world-dressing';
 import { cameraPosition, clamp, heroPixels, tileSize } from './world-geometry';
 import { crestLength, isDarkened, restorationAge } from './world-transition';
 
@@ -73,6 +84,52 @@ export function butterflyPlace(
   }
   const first = butterfly.legs[0]!.from;
   return { x: first.x, y: first.y, flying: false };
+}
+
+const frogLeapArc = 6;
+// A frog blinks for one beat out of this many frames, so its resting pose reads as alive without flickering.
+const frogBlinkEvery = 150;
+const frogCroakPuffs = 2;
+const frogCroakLength = frogArt.right.croak.length * frogFrameLength * frogCroakPuffs;
+const frogRippleLength = frogRipple.length * frogFrameLength;
+
+export interface FrogPlace {
+  readonly x: number;
+  readonly y: number;
+  readonly art: Art;
+}
+
+const frogFrame = (art: readonly Art[], since: number): Art => art[Math.floor(since / frogFrameLength) % art.length]!;
+
+// A diving frog leaves a ripple where it goes under and another where it comes up, and is hidden in between.
+export function frogPlace(frog: Frog, frame: number): FrogPlace | undefined {
+  let time = (frame + frog.phase) % frog.cycle;
+  for (const leg of frog.legs) {
+    if (time < leg.rest) {
+      const croakStart = Math.floor(leg.rest / 2);
+      const croaking = leg.croaks && time >= croakStart && time < croakStart + frogCroakLength;
+      const art = croaking
+        ? frogFrame(frogArt[leg.facing].croak, time - croakStart)
+        : time % frogBlinkEvery < frogFrameLength
+          ? frogArt[leg.facing].sit.at(-1)!
+          : frogArt[leg.facing].sit[0]!;
+      return { ...leg.from, art };
+    }
+    time -= leg.rest;
+    const facing = leg.to.x === leg.from.x ? leg.facing : leg.to.x < leg.from.x ? 'left' : 'right';
+    if (!leg.dive && time < frogLeapLength) {
+      const place = arc(leg.from, leg.to, time / frogLeapLength, frogLeapArc);
+      const leap = frogArt[facing].leap;
+      return { ...place, art: leap[Math.floor((time / frogLeapLength) * leap.length)]! };
+    }
+    if (leg.dive && time < frogDiveLength) {
+      if (time < frogRippleLength) return { ...leg.from, art: frogFrame(frogRipple, time) };
+      const surfacing = time - (frogDiveLength - frogRippleLength);
+      return surfacing < 0 ? undefined : { ...leg.to, art: frogFrame(frogRipple, surfacing) };
+    }
+    time -= leg.dive ? frogDiveLength : frogLeapLength;
+  }
+  return undefined;
 }
 
 type Facing = keyof typeof birdArt;
@@ -506,6 +563,17 @@ export class WorldPainter {
       }
     }
     for (const lily of this.dressing.lilies) draw(lily.art, lily.x, lily.y);
+    // Frogs only exist in color, so like butterflies and birds the seam dither limits them to restored areas.
+    if (version === 'colored')
+      for (const frog of this.dressing.frogs) {
+        const place = frogPlace(frog, frame);
+        if (place)
+          draw(
+            place.art,
+            place.x - Math.floor(sprite(place.art).width / 2),
+            place.y - Math.floor(place.art.rows.length / 2),
+          );
+      }
     const woodland = this.dressing.woodland.filter(
       ({ base }) =>
         (base.column + 2) * tileSize > camera.x &&

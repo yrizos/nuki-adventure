@@ -245,3 +245,16 @@ test('bird animations face both ways, sit on an 11 by 9 frame, fly on an 11 by 7
     }
   }
 });
+
+test('frog animations face both ways, share a 15 by 11 frame with the ripple and never fade', () => {
+  const frog = sprites.frog!;
+  expect(Object.keys(frog.animations).sort()).toEqual(
+    ['ripple', ...['sit', 'croak', 'leap'].flatMap((habit) => [`left-${habit}`, `right-${habit}`])].sort(),
+  );
+  for (const { frames } of Object.values(frog.animations)) {
+    for (const art of frames) {
+      expect([sprite(art).width, sprite(art).height]).toEqual([15, 11]);
+      expect(art.faded).toBeUndefined();
+    }
+  }
+});

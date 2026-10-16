@@ -103,6 +103,7 @@ Color codes refer to the [palette](palette.md). Element colors live there, not h
 | Doors | 96 × 96 | 3 × 1 tiles at the base |
 | Butterflies | 9 × 7 | None |
 | Birds | 11 × 9 sitting, 11 × 7 flying | None |
+| Frogs | 15 × 11, ripples included | None |
 
 A new element uses the smallest size that fits its shape.
 
@@ -171,6 +172,13 @@ A new element uses the smallest size that fits its shape.
 - A ground bird pecks twice, hops a stride along, pecks twice, turns and hops back.
 - A ground bird flies to the open grass spot within three tiles that is farthest from the hero once the hero comes within 48 pixels. With no such spot, it leaves for the rest of its visit. Perching and sky birds never flee.
 - Birds face their direction of travel. A perched bird faces the way it arrived.
+
+### Frogs
+
+- Frogs exist only in color, so they appear in restored areas and never in the faded world. They are drawn at water level, above lily pads and below every prop and the hero, and cast no ground shadow.
+- Each pond gets zero, one or two frogs at random when the level loads. A frog rests only on lily pads of its pond, and two frogs never share a pad.
+- A frog sits and blinks, sometimes croaks once mid-rest, then moves on. It leaps to a pad within two tiles, or dives with a ripple, stays hidden and surfaces with a ripple on another pad of its own.
+- A frog faces its direction of travel and keeps that facing while it rests.
 
 ## Terrain
 

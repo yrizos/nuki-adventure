@@ -187,6 +187,17 @@ function birdFacing(facing: 'left' | 'right') {
 export const birdArt = { left: birdFacing('left'), right: birdFacing('right') };
 export const birdFrameLength = frameLength('bird');
 
+function frogFacing(facing: 'left' | 'right') {
+  return {
+    sit: animation('frog', `${facing}-sit`).frames,
+    croak: animation('frog', `${facing}-croak`).frames,
+    leap: animation('frog', `${facing}-leap`).frames,
+  };
+}
+export const frogArt = { left: frogFacing('left'), right: frogFacing('right') };
+export const frogRipple = animation('frog', 'ripple').frames;
+export const frogFrameLength = frameLength('frog');
+
 export function groundShadow(width: number, code: 'G1' | 'E2'): Art {
   return frame('ground-shadow', `${width}-${code}`);
 }
