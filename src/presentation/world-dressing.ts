@@ -128,6 +128,16 @@ const shortestButterflyFlight = 12;
 const stopsPerButterfly = 5;
 const mostButterflies = 3;
 
+// Butterfly variants come in sprite order: yellow, red, violet and pink. A butterfly resting on a canopy must stand
+// out from its fruit, so each fruit only hosts colors far from its own. Red apples rule out red and pink, orange
+// fruit rules out yellow and red, and lemons rule out yellow. Violet suits every fruit, so a mixed orchard always has one.
+const [yellow, red, violet, pink] = [0, 1, 2, 3];
+const fruitButterflyColors: Readonly<Record<string, readonly number[]>> = {
+  [TreeVariant.Apples.name]: [yellow, violet],
+  [TreeVariant.Oranges.name]: [violet, pink],
+  [TreeVariant.Lemons.name]: [red, violet, pink],
+};
+
 function groupsOf<T>(items: readonly T[], touch: (first: T, second: T) => boolean): T[][] {
   const groups: T[][] = [];
   const seen = new Set<T>();
@@ -165,7 +175,11 @@ function butterflyRoute(stops: readonly Point[], start: number): Point[] {
 }
 
 // A lone flower gets two hovering points beside it, so its butterfly still has somewhere to flutter to.
-function groupButterflies(stops: readonly Point[], anchor: TilePosition): Butterfly[] {
+function groupButterflies(
+  stops: readonly Point[],
+  anchor: TilePosition,
+  colors: readonly (readonly Art[])[] = butterflyArt,
+): Butterfly[] {
   const points =
     stops.length > 1
       ? stops
@@ -185,7 +199,7 @@ function groupButterflies(stops: readonly Point[], anchor: TilePosition): Butter
       };
     });
     return {
-      frames: butterflyArt[(anchorSeed + sibling) % butterflyArt.length]!,
+      frames: colors[(anchorSeed + sibling) % colors.length]!,
       legs,
       cycle: legs.reduce((sum, leg) => sum + leg.rest + leg.flight, 0),
       phase: seed * 37,
@@ -215,6 +229,9 @@ function butterflies(scenery: Scenery): Butterfly[] {
         tree.footprint.map(({ column, row }) => ({ x: column * tileSize + tileSize / 2, y: row * tileSize - 6 })),
       ),
       orchard[0]!.base,
+      butterflyArt.filter((_, color) =>
+        orchard.every((tree) => fruitButterflyColors[tree.variant.name]!.includes(color)),
+      ),
     ),
   );
   return [...patches, ...orchards].flat();
