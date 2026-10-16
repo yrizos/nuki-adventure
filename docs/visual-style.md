@@ -147,6 +147,7 @@ A new element uses the smallest size that fits its shape.
 - Canopies overlap so no ground shows inside the woodland.
 - In a woodland-bounded level, woodland continues beyond the map edges, so the camera never shows where it ends.
 - Woodland follows ordinary depth order, shading, ground shadows and restoration. Faded, it still reads as impassable and distinct from clearing grass.
+- Low ferns and small shrubs grow on clearing grass beside woodland, sparsely, on about one edge tile in five by a fixed pattern per map, so the edge stays irregular. They are walk-through ground decoration and stay off the ring around the hero start.
 
 ## Terrain
 

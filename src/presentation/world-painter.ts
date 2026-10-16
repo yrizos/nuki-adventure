@@ -242,6 +242,13 @@ export class WorldPainter {
         }
         draw(art, x, y);
       };
+    for (const { position, art } of this.dressing.undergrowth) {
+      const x = position.column * tileSize;
+      const y = position.row * tileSize;
+      // Every undergrowth variant ends at row 26, so its shadow sits on the rows below.
+      shadow(12, position, x + 10, y + 27)();
+      draw(art, x, y);
+    }
     level.scenery.trees.forEach((tree, index) => {
       const leaves = Math.floor((frame + index * 13) / treeFrameLength) % 2;
       const art = this.dressing.trees[index]![leaves]!;

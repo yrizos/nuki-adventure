@@ -147,18 +147,18 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    await expectChecksum(picture, '38663301244e11386a3d169685e7e065814d2c7c376593cc94f03832a1544acb');
+    await expectChecksum(picture, 'a6c4f6a989b760c6a0246bdc6b4f95cf0694a8bfa34e7baf1576fb504ac36dfe');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     // The key lies outside the frame, so the wave starts from her start to stop partway across the frame.
     painter.paintRestoring(picture, scene, level.hero.position, 20, [], [key.restores]);
-    await expectChecksum(picture, '736fdf9fbf6d5c42d2c8aceae8ca0289bac1b6b4c822bf4157385cdcc8fcbf8d');
+    await expectChecksum(picture, 'b6f91b736b4816de42477ede28df67e4aa8536e46fb74005e791efa585de6a71');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [key.restores]);
-    await expectChecksum(picture, 'd17378e3dd63abb9b53694df4e2f58d8ce60edda65653e4800e13a6dbaffccc3');
+    await expectChecksum(picture, 'dfd0018b499c11626515d54839aeea3ab894f69e4ed491829848674e51e34de6');
   });
 });
 
@@ -1276,6 +1276,30 @@ test('levels without woodland draw only their authored trees', () => {
   new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, []);
   const trees = [...scenery.treeArt.flat(), ...Object.values(scenery.fruitTreeArt).flat()];
   expect(draw.mock.calls.filter(([art]) => trees.includes(art))).toHaveLength(level.scenery.trees.length);
+  expect(dressWorld(level).undergrowth).toEqual([]);
+});
+
+test('undergrowth grows only on free clearing grass beside woodland, away from the hero start', () => {
+  const level = levelView(sixthLevel(randomShuffle));
+  const { scenery } = level;
+  const start = level.hero.position;
+  const taken = [...scenery.flowers, ...level.stones, ...level.keys, ...level.stars].map(({ position }) => position);
+  const { undergrowth } = dressWorld(level);
+  expect(undergrowth.length).toBeGreaterThan(0);
+  for (const { position } of undergrowth) {
+    expect(scenery.groundAt(position)).toBe(Ground.Grass);
+    expect(scenery.isWalkable(position)).toBe(true);
+    expect(taken.some((other) => other.equals(position))).toBe(false);
+    expect(Math.max(Math.abs(position.column - start.column), Math.abs(position.row - start.row))).toBeGreaterThan(1);
+    expect(
+      [-1, 0, 1].some((dy) =>
+        [-1, 0, 1].some((dx) => {
+          const neighbor = TilePosition.at(position.column + dx, position.row + dy);
+          return !scenery.size.contains(neighbor) || scenery.woodland.covers(neighbor);
+        }),
+      ),
+    ).toBe(true);
+  }
 });
 
 function arrivalDraws(age: number) {

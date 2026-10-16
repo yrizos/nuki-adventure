@@ -12,6 +12,7 @@ import {
   stoneVariants,
   terrainArt,
   treeArt,
+  undergrowthArt,
   waterArt,
   waterLilyVariants,
 } from './sprite-library';
@@ -55,6 +56,50 @@ function woodlandTrees(scenery: Scenery): WoodlandTree[] {
     treeArt.length,
   );
   return bases.map((base, index) => ({ base, frames: treeArt[choices[index]!]! }));
+}
+
+interface Undergrowth {
+  readonly position: TilePosition;
+  readonly art: Art;
+}
+
+// Ferns and shrubs soften the woodland edge on clearing grass. The position pattern keeps about one edge tile in five, so the plants stay sparse and the edge never reads as an even band. The ring around the hero start stays bare.
+function undergrowth(level: LevelView): Undergrowth[] {
+  const { scenery } = level;
+  if (scenery.woodland.tiles.length === 0) return [];
+  const { columns, rows } = scenery.size;
+  const wooded = (column: number, row: number): boolean =>
+    column < 0 || row < 0 || column >= columns || row >= rows || scenery.woodland.covers(TilePosition.at(column, row));
+  const start = level.hero.position;
+  const taken = [
+    ...scenery.flowers.map((flower) => flower.position),
+    ...level.stones.map((stone) => stone.position),
+    ...level.keys.map((key) => key.position),
+    ...level.stars.map((star) => star.position),
+    ...(level.plate ? [level.plate] : []),
+  ];
+  const positions: TilePosition[] = [];
+  for (let row = 0; row < rows; row++) {
+    for (let column = 0; column < columns; column++) {
+      const position = TilePosition.at(column, row);
+      if (
+        (column * 7 + row * 13) % 5 !== 0 ||
+        !scenery.groundAt(position).equals(Ground.Grass) ||
+        !scenery.isWalkable(position) ||
+        level.door.covers(position) ||
+        level.gates.some((gate) => gate.covers(position)) ||
+        taken.some((other) => other.equals(position)) ||
+        (Math.abs(column - start.column) <= 1 && Math.abs(row - start.row) <= 1)
+      )
+        continue;
+      const touches = [-1, 0, 1].some((dy) => [-1, 0, 1].some((dx) => wooded(column + dx, row + dy)));
+      if (touches) positions.push(position);
+    }
+  }
+  return propVariants(
+    positions.map((position) => [position]),
+    undergrowthArt.length,
+  ).map((choice, index) => ({ position: positions[index]!, art: undergrowthArt[choice]! }));
 }
 
 // The ground is drawn half a tile off the level grid so that each drawn tile sees four level tiles at its corners, which keeps every transition inside one 16 tile set.
@@ -188,6 +233,7 @@ export function propVariants(footprints: readonly (readonly TilePosition[])[], c
 export interface WorldDressing {
   readonly ground: readonly GroundTile[];
   readonly lilies: readonly WaterLily[];
+  readonly undergrowth: readonly Undergrowth[];
   readonly trees: readonly (readonly Art[])[];
   readonly woodland: readonly WoodlandTree[];
   readonly stones: readonly Art[];
@@ -239,6 +285,7 @@ export function dressWorld(level: LevelView, random?: () => number): WorldDressi
   return {
     ground: groundTiles(level.scenery),
     lilies: random ? waterLilies(level.scenery, random) : [],
+    undergrowth: undergrowth(level),
     trees,
     woodland: woodlandTrees(level.scenery),
     stones,
