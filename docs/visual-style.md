@@ -101,6 +101,7 @@ Color codes refer to the [palette](palette.md). Element colors live there, not h
 | Trees | 64 × 64 | 2 × 1 tiles at the base |
 | Fences | 32 × 32 | 1 tile |
 | Doors | 96 × 96 | 3 × 1 tiles at the base |
+| Butterflies | 9 × 7 | None |
 
 A new element uses the smallest size that fits its shape.
 
@@ -149,6 +150,15 @@ A new element uses the smallest size that fits its shape.
 - Woodland follows ordinary depth order, shading, ground shadows and restoration. Faded, it still reads as impassable and distinct from clearing grass.
 - Low ferns and small shrubs grow on clearing grass beside woodland, sparsely, on about one edge tile in five by a fixed pattern per map, so the edge stays irregular. They are walk-through ground decoration and stay off the ring around the hero start.
 
+### Butterflies
+
+- Butterflies are effects. They are drawn above every prop and the hero and cast no ground shadow.
+- They visit flower patches and orchards. A flower patch is a group of flowers touching through any of their eight neighbors. An orchard is a cluster of fruit trees. Plain trees and woodland get none.
+- Each patch or orchard gets one butterfly per five stops, at most three. Flower stops sit at tile centers. Orchard stops sit near the top of the canopy above each footprint tile. A lone flower gets two extra hovering points beside it.
+- A butterfly rests at a stop, then flies to the nearest stop it has not visited, and retraces its route once every stop is visited.
+- Four colors: yellow, red, violet and pink. On a fruit tree a butterfly uses only colors that stand out from the fruit: yellow or violet on apples, violet or pink on oranges, red, violet or pink on lemons. A mixed orchard uses only colors allowed on every tree in it.
+- Butterflies exist only in color. They appear in an area as it is restored and never in the faded world.
+
 ## Terrain
 
 - Each terrain has at least three base variants of equal detail density, placed by a fixed pattern per map.
@@ -196,6 +206,8 @@ A new element uses the smallest size that fits its shape.
 | Pressure plate sinking | 3 | 4 game frames each. Sinks deeper into the ground while pressed and rises in reverse once released. A release partway down rises from the current frame |
 | Flowers sway | 2 | 30 game frames each, offset per tile |
 | Tree leaves | 1 cluster shift | Every 40 game frames, out of sync between trees |
+| Butterfly wings | 2 | 6 game frames each while flying, 30 while resting |
+| Butterfly flight | Eased arc, whole pixels | 0.75 pixels per frame, at least 12 frames per flight. The arc lifts 6 pixels, with a 2 pixel flutter of 3 beats. Rests last 36 to 83 frames |
 | Light motes | 1 | Rise 1 pixel every 4 frames over 64 pixels, sway 1 pixel every 40, offset per mote |
 | Restoring color | 16 thresholds | Front moves 1 tile every 4 frames, crest lasts 8 |
 | Leaving a level | 16 thresholds | 3 frames each, 48 total |
