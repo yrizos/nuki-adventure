@@ -7,6 +7,7 @@ import type { Art } from './art/art';
 import { ditherSteps, ditherThreshold } from './ordered-dither';
 import { lighten, Picture, sprite, type Version } from './picture';
 import {
+  butterflyFrameLength,
   doorArt,
   flowerFrameLength,
   gateArt,
@@ -21,7 +22,7 @@ import {
   treeFrameLength,
   waterFrameLength,
 } from './sprite-library';
-import { dressWorld, type WorldDressing } from './world-dressing';
+import { type Butterfly, dressWorld, type WorldDressing } from './world-dressing';
 import { cameraPosition, clamp, heroPixels, tileSize } from './world-geometry';
 import { crestLength, isDarkened, restorationAge } from './world-transition';
 
@@ -36,6 +37,39 @@ export function keyOffset(frame: number): { readonly x: number; readonly y: numb
     y: Math.round(2 * Math.sin((2 * Math.PI * frame) / keyFloatFrames)),
   };
 }
+const butterflyArc = 6;
+const butterflyFlutter = 2;
+const butterflyFlutterBeats = 3;
+// A resting butterfly still opens and closes its wings, only more slowly, so it never looks frozen.
+const butterflyRestingBeat = 5;
+
+// Smoothstep eases each flight off and onto a stop, and the arc and flutter are whole pixels like every other motion.
+export function butterflyPlace(
+  butterfly: Butterfly,
+  frame: number,
+): { readonly x: number; readonly y: number; readonly flying: boolean } {
+  let time = (frame + butterfly.phase) % butterfly.cycle;
+  for (const leg of butterfly.legs) {
+    if (time < leg.rest) return { x: leg.from.x, y: leg.from.y, flying: false };
+    time -= leg.rest;
+    if (time < leg.flight) {
+      const progress = time / leg.flight;
+      const eased = progress * progress * (3 - 2 * progress);
+      const lift =
+        Math.sin(Math.PI * progress) * butterflyArc +
+        Math.sin(2 * Math.PI * butterflyFlutterBeats * progress) * butterflyFlutter;
+      return {
+        x: Math.round(leg.from.x + (leg.to.x - leg.from.x) * eased),
+        y: Math.round(leg.from.y + (leg.to.y - leg.from.y) * eased - lift),
+        flying: true,
+      };
+    }
+    time -= leg.flight;
+  }
+  const first = butterfly.legs[0]!.from;
+  return { x: first.x, y: first.y, flying: false };
+}
+
 const motes = [
   [22, 0],
   [34, 37],
@@ -379,5 +413,19 @@ export class WorldPainter {
     });
     objects.forEach((object) => object.shadow());
     objects.sort((a, b) => a.base - b.base).forEach((object) => object.paint());
+    // Butterflies fly above every prop and the hero. They only exist in color, so the seam dither of a partly
+    // restored world limits them to restored areas.
+    if (version !== 'colored') return;
+    for (const butterfly of this.dressing.butterflies) {
+      const place = butterflyPlace(butterfly, frame);
+      const beat = place.flying ? butterflyFrameLength : butterflyFrameLength * butterflyRestingBeat;
+      const art = butterfly.frames[Math.floor((frame + butterfly.phase) / beat) % butterfly.frames.length]!;
+      const { width } = sprite(art);
+      const x = place.x - Math.floor(width / 2);
+      const y = place.y - art.rows.length;
+      if (x + width < camera.x || x > camera.x + picture.width || place.y < camera.y || y > camera.y + picture.height)
+        continue;
+      draw(art, x, y);
+    }
   }
 }

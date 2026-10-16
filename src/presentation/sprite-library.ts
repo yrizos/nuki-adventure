@@ -173,6 +173,8 @@ export const smallHeroArt = {
 export const smallPadlockArt = frame('small-padlock', 'padlock');
 
 export const lightMote = frame('light-mote', 'light-mote');
+export const butterflyArt = animatedVariants('butterfly');
+export const butterflyFrameLength = frameLength('butterfly');
 
 export function groundShadow(width: number, code: 'G1' | 'E2'): Art {
   return frame('ground-shadow', `${width}-${code}`);
