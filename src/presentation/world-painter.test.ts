@@ -147,18 +147,18 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    await expectChecksum(picture, 'a6c4f6a989b760c6a0246bdc6b4f95cf0694a8bfa34e7baf1576fb504ac36dfe');
+    await expectChecksum(picture, 'be18643ea594f371c25cfaca4e23d3cbb95e9773a5c9c621d44bfd56a2b50d5e');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     // The key lies outside the frame, so the wave starts from her start to stop partway across the frame.
     painter.paintRestoring(picture, scene, level.hero.position, 20, [], [key.restores]);
-    await expectChecksum(picture, 'b6f91b736b4816de42477ede28df67e4aa8536e46fb74005e791efa585de6a71');
+    await expectChecksum(picture, 'b12230ca3af0a36a9ec1f0f527ae158c16b5472d04ae6d7409844df22d967f5a');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [key.restores]);
-    await expectChecksum(picture, 'dfd0018b499c11626515d54839aeea3ab894f69e4ed491829848674e51e34de6');
+    await expectChecksum(picture, 'a17f19b92b651a0959edcdd7e85d6b6b0004b6de64dd711a438b1f97d4138f28');
   });
 });
 

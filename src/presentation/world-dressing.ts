@@ -64,7 +64,14 @@ interface Undergrowth {
   readonly art: Art;
 }
 
-// Ferns and shrubs soften the woodland edge on clearing grass. The position pattern keeps about one edge tile in five, so the plants stay sparse and the edge never reads as an even band. The ring around the hero start stays bare.
+// Mixes a tile position into a well-spread unsigned integer, so choices made from it follow no visible row, column or diagonal.
+function tileHash(column: number, row: number): number {
+  let hash = Math.imul(column, 374761393) + Math.imul(row, 668265263);
+  hash = Math.imul(hash ^ (hash >>> 13), 1274126177);
+  return (hash ^ (hash >>> 16)) >>> 0;
+}
+
+// Ferns and shrubs soften the woodland edge on clearing grass. The tile hash keeps about one edge tile in five, so the plants stay sparse and the edge never reads as an even band. The ring around the hero start stays bare.
 function undergrowth(level: LevelView): Undergrowth[] {
   const { scenery } = level;
   if (scenery.woodland.tiles.length === 0) return [];
@@ -84,7 +91,7 @@ function undergrowth(level: LevelView): Undergrowth[] {
     for (let column = 0; column < columns; column++) {
       const position = TilePosition.at(column, row);
       if (
-        (column * 7 + row * 13) % 5 !== 0 ||
+        tileHash(column, row) % 5 !== 0 ||
         !scenery.groundAt(position).equals(Ground.Grass) ||
         !scenery.isWalkable(position) ||
         level.door.covers(position) ||
