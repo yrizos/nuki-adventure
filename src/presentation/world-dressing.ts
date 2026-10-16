@@ -7,6 +7,7 @@ import {
   flowerArt,
   fruitTreeArt,
   grassArt,
+  mossyStoneVariants,
   pathArt,
   stoneVariants,
   terrainArt,
@@ -209,10 +210,18 @@ export function dressWorld(level: LevelView, random?: () => number): WorldDressi
   const trees = level.scenery.trees.map(
     (tree) => fruitArt.get(tree.variant) ?? treeArt[plainChoices[plainTrees.indexOf(tree)]!]!,
   );
+  const nearWater = ({ column, row }: TilePosition): boolean =>
+    [-2, -1, 0, 1, 2].some((down) =>
+      [-2, -1, 0, 1, 2].some((across) => {
+        const tile = TilePosition.at(column + across, row + down);
+        return level.scenery.size.contains(tile) && level.scenery.groundAt(tile).equals(Ground.Water);
+      }),
+    );
+  // Mossy art shares the plain art's shapes by index, so the no-touch rule still holds across both sets.
   const stones = propVariants(
     level.stones.map((stone) => [stone.position]),
     stoneVariants.length,
-  ).map((choice) => stoneVariants[choice]!);
+  ).map((choice, index) => (nearWater(level.stones[index]!.position) ? mossyStoneVariants : stoneVariants)[choice]!);
   const flowers = propVariants(
     level.scenery.flowers.map((flower) => [flower.position]),
     level.scenery.flowerVariants.length,

@@ -70,7 +70,7 @@ Color codes refer to the [palette](palette.md). Element colors live there, not h
 | Grass | Tufts are 4 to 8 pixel clusters pointing up with a shading pixel at the base. They cover 10 to 20 percent of a tile and never form rows or a grid. |
 | Foliage | Canopies are rounded leaf clusters of 8 to 16 pixels, never one smooth circle. Each cluster has a highlight top left and shadow bottom right. At least three notches break the visible outline. |
 | Wood | Grain runs along the board in shading lines of 6 or more pixels. Board ends show one shading row. Planks are separated by one shading pixel. |
-| Stone | At most two cracks per tile, 6 to 12 pixels long. Edges miss two to four corner pixels. Highlights are clusters on the top left facets only. |
+| Stone | At most two cracks per tile, 6 to 12 pixels long. Edges miss two to four corner pixels. Highlights are clusters on the top left facets only. Stones within two tiles of water carry G1 and G2 moss on selected top and side surfaces. |
 | Fences | Posts joined by two rails, each rail a three-pixel band of highlight, wood and shading. Each piece joins neighboring fences and the door on all four sides without seams. Ground shadow 8 pixels wide below the post. |
 | Water | Ripples are horizontal lines 4 to 10 pixels long, never vertical. Shore foam is broken into segments with gaps of 2 to 6 pixels. Objects in water show a W0 band along the waterline. |
 | Water lilies | Pads float only on ground tiles whose four corners are all water, so they never touch the shore foam. Pads gather in one group of 3 to 5 neighboring pads per pond. A pond with at least 12 such tiles gets a second group of 2 to 3 pads. Each level start places them anew, with a drift of up to 4 pixels off the tile grid. |

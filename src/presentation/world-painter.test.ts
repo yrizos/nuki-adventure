@@ -27,7 +27,7 @@ import { faded, lighter, palette, type PaletteCode } from './palette';
 import { lighten, Picture, sprite } from './picture';
 import { cameraPosition, heroPixels, tileSize } from './world-geometry';
 import { arrivalMotes, risingEdge } from './arrival';
-import { propVariants } from './world-dressing';
+import { dressWorld, propVariants } from './world-dressing';
 import { keyOffset, WorldPainter } from './world-painter';
 import { closingLength, crestLength, restorationAge, restorationLength } from './world-transition';
 
@@ -48,6 +48,7 @@ const sprites = {
   keyArt: library.keyArt,
   starArt: library.starArt,
   stoneVariants: library.stoneVariants,
+  mossyStoneVariants: library.mossyStoneVariants,
   lightMote: library.lightMote,
   groundShadow: library.groundShadow,
 };
@@ -218,7 +219,8 @@ test('native interactive sprites use their documented dimensions', () => {
     expect(sprite(art).width).toBe(32);
     expect(sprite(art).height).toBe(32);
   }
-  for (const art of sprites.stoneVariants) expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
+  for (const art of [...sprites.stoneVariants, ...sprites.mossyStoneVariants])
+    expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
   for (const art of Object.values(sprites.keyArt)) expect([sprite(art).width, sprite(art).height]).toEqual([24, 24]);
 });
 
@@ -230,6 +232,7 @@ test('interactive sprites keep a closed one-pixel Ink silhouette', () => {
       ...direction.walk,
     ]),
     ...sprites.stoneVariants,
+    ...sprites.mossyStoneVariants,
     ...Object.values(sprites.keyArt),
   ];
   for (const piece of art) {
@@ -370,7 +373,7 @@ function firstLevelStoneArtDrawn(): { position: TilePosition; art: Art }[] {
   return level.stones.map(({ position }) => {
     const calls = draw.mock.calls.filter(
       ([art, column, row]) =>
-        sprites.stoneVariants.includes(art) &&
+        [...sprites.stoneVariants, ...sprites.mossyStoneVariants].includes(art) &&
         column === position.column * tileSize - camera.x &&
         row === position.row * tileSize - camera.y,
     );
@@ -451,6 +454,24 @@ test('the first level renders different stone art for each touching neighbor', (
     }
   }
   expect(touchingPairs).toBe(2);
+});
+
+test('stones within two tiles of water are mossy and stones further away are plain', () => {
+  const ground = Array.from({ length: 12 }, () =>
+    Array.from({ length: 12 }, (_, column) => (column === 0 ? Ground.Water : Ground.Grass)),
+  );
+  const level = Level.create({
+    id: LevelId.of('moss'),
+    scenery: Scenery.of(LevelSize.of(12, 12), ground, [], []),
+    stones: [Stone.at(TilePosition.at(2, 5)), Stone.at(TilePosition.at(3, 8))],
+    keys: [Key.at(TilePosition.at(9, 9), everywhere)],
+    door: Door.closedAt(TilePosition.at(9, 0)),
+    hero: { position: TilePosition.at(6, 2), facing: Direction.Down },
+    obstacles: check2dObstacles,
+  });
+  const [near, far] = dressWorld(levelView(level)).stones;
+  expect(sprites.mossyStoneVariants).toContain(near);
+  expect(sprites.stoneVariants).toContain(far);
 });
 
 test.each([

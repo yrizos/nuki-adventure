@@ -39,6 +39,7 @@ Hex values and the faded mapping live in [`src/presentation/sprites/palette.js`]
 | Stars | Y2 body, Y1 shading, Y3 shine |
 | Keys | Y2 core, Y1 shading, Y3 shine. Silver keys use N3, N4 and W4 on the same pixels |
 | Stones | N3 base, N2 shading, N4 highlight |
+| Mossy stones | Stone colors, with G1 moss and G2 moss highlights on selected top and side surfaces |
 | Boulder | N4 base, N3 shading and crack, Paper highlight, one step lighter than stones so it reads as movable |
 | Pressure plate | O2 base, O1 shading and groove, O3 highlight. Its faded grays are darker than the boulder's, so the two stay apart before restoration |
 | Fences | E1 wood, E2 highlight, E0 shading |
