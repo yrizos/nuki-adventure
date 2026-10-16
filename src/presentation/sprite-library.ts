@@ -125,9 +125,14 @@ export const terrainArt: Readonly<Record<string, readonly Art[]>> = Object.fromE
   Object.entries(sprite('terrain-transitions').animations).map(([corners, { frames }]) => [corners, frames]),
 );
 
-export const treeArt = Object.entries(sprite('tree').animations)
-  .filter(([name]) => name.startsWith('variant-'))
-  .map(([, { frames }]) => frames);
+const treeAnimations = Object.entries(sprite('tree').animations);
+// Each plain shape comes in a few subtle versions, so woodland varies while touching trees can still differ by shape.
+export const treeArt = treeAnimations
+  .filter(([name]) => /^variant-\d+$/.test(name))
+  .map(([shape, { frames }]) => [
+    frames,
+    ...treeAnimations.filter(([name]) => name.startsWith(`${shape}-`)).map(([, version]) => version.frames),
+  ]);
 export const fruitTreeArt = {
   orange: animation('tree', 'fruit-orange').frames,
   apple: animation('tree', 'fruit-apple').frames,

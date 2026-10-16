@@ -160,7 +160,20 @@ test.each(Object.entries(sprites.flowers!.frames))('flower %s has four isolated 
 
 test('no-fruit trees choose among eight leafy shapes that leave out every fruit tree', () => {
   expect(treeArt).toHaveLength(8);
-  for (const frame of Object.values(fruitTreeArt).flat()) expect(treeArt.flat()).not.toContain(frame);
+  for (const frame of Object.values(fruitTreeArt).flat()) expect(treeArt.flat(2)).not.toContain(frame);
+});
+
+test('each leafy shape has four versions that sway like the original', () => {
+  for (const [original, ...versions] of treeArt) {
+    expect(versions).toHaveLength(3);
+    for (const version of versions) {
+      expect(version).toHaveLength(original!.length);
+      for (const [index, art] of version.entries()) {
+        expect(art.rows.map((row) => row.length)).toEqual(original![index]!.rows.map((row) => row.length));
+        expect(art).not.toBe(original![index]);
+      }
+    }
+  }
 });
 
 test('animations share frames by identity', () => {

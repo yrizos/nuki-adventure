@@ -52,6 +52,14 @@ const paletteCodes = [
   'O1',
   'O2',
   'O3',
+  'M0',
+  'M1',
+  'M2',
+  'M3',
+  'F0',
+  'F1',
+  'F2',
+  'F3',
 ] as const;
 
 export type PaletteCode = (typeof paletteCodes)[number];
@@ -87,6 +95,8 @@ const ramps: readonly (readonly PaletteCode[])[] = [
   ['P0', 'P1', 'P2', 'P3'],
   ['S0', 'S1', 'S2', 'S3'],
   ['O0', 'O1', 'O2', 'O3'],
+  ['M0', 'M1', 'M2', 'M3'],
+  ['F0', 'F1', 'F2', 'F3'],
 ];
 
 const lighterSteps = new Map(ramps.flatMap((ramp) => ramp.slice(0, -1).map((code, index) => [code, ramp[index + 1]!])));

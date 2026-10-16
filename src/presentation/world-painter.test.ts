@@ -147,18 +147,18 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    await expectChecksum(picture, 'be18643ea594f371c25cfaca4e23d3cbb95e9773a5c9c621d44bfd56a2b50d5e');
+    await expectChecksum(picture, '8599babac47c3e534339ce5763fd2272930df35d767e4c9782bfee76e0e6c20a');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     // The key lies outside the frame, so the wave starts from her start to stop partway across the frame.
     painter.paintRestoring(picture, scene, level.hero.position, 20, [], [key.restores]);
-    await expectChecksum(picture, 'b12230ca3af0a36a9ec1f0f527ae158c16b5472d04ae6d7409844df22d967f5a');
+    await expectChecksum(picture, '18fff6051808c25ac8dcb602b7eb5630f0bc06789189a060700fe1b32dd0e869');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [key.restores]);
-    await expectChecksum(picture, 'a17f19b92b651a0959edcdd7e85d6b6b0004b6de64dd711a438b1f97d4138f28');
+    await expectChecksum(picture, '74014ad0cc1a04c0d94ceaaa47870f19001a612e9c4245d43a38c653d7e405cf');
   });
 });
 
@@ -914,7 +914,7 @@ function treeArtDrawn(trees: readonly Tree[]): (tree: Tree) => Art | undefined {
   const picture = new Picture(384, 384);
   const draw = vi.spyOn(picture, 'draw');
   new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, [everywhere]);
-  const frames = [...scenery.treeArt.flat(), ...Object.values(scenery.fruitTreeArt).flat()];
+  const frames = [...scenery.treeArt.flat(2), ...Object.values(scenery.fruitTreeArt).flat()];
   return (tree) => draw.mock.calls.find(([art, x]) => frames.includes(art) && x === tree.base.column * tileSize)?.[0];
 }
 
@@ -934,7 +934,9 @@ test('touching no-fruit trees use different leafy shapes', () => {
     Tree.at(TilePosition.at(6, 5), TreeVariant.NoFruit),
   ];
   const drawn = treeArtDrawn(trees);
-  const [first, second] = trees.map((tree) => scenery.treeArt.findIndex((frames) => frames.includes(drawn(tree)!)));
+  const [first, second] = trees.map((tree) =>
+    scenery.treeArt.findIndex((versions) => versions.flat().includes(drawn(tree)!)),
+  );
   expect(first).not.toBe(-1);
   expect(second).not.toBe(-1);
   expect(first).not.toBe(second);
@@ -1056,6 +1058,8 @@ const ramps = [
   ['pink', ['P0', 'P1', 'P2', 'P3']],
   ['skin', ['S0', 'S1', 'S2', 'S3']],
   ['orange', ['O0', 'O1', 'O2', 'O3']],
+  ['moss', ['M0', 'M1', 'M2', 'M3']],
+  ['fir', ['F0', 'F1', 'F2', 'F3']],
 ] as const satisfies readonly (readonly [string, readonly PaletteCode[]])[];
 
 test('the ramps hold every palette step but Ink exactly once', () => {
@@ -1227,7 +1231,7 @@ test.each([
   const draw = vi.spyOn(picture, 'draw');
   new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, []);
   const covered = new Uint8Array(picture.width * picture.height);
-  const trees = scenery.treeArt.flat();
+  const trees = scenery.treeArt.flat(2);
   for (const [art, left, top] of draw.mock.calls) {
     if (!trees.includes(art)) continue;
     const { width, height, colored } = sprite(art);
@@ -1274,7 +1278,7 @@ test('levels without woodland draw only their authored trees', () => {
   const picture = new Picture(224, 320);
   const draw = vi.spyOn(picture, 'draw');
   new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, []);
-  const trees = [...scenery.treeArt.flat(), ...Object.values(scenery.fruitTreeArt).flat()];
+  const trees = [...scenery.treeArt.flat(2), ...Object.values(scenery.fruitTreeArt).flat()];
   expect(draw.mock.calls.filter(([art]) => trees.includes(art))).toHaveLength(level.scenery.trees.length);
   expect(dressWorld(level).undergrowth).toEqual([]);
 });

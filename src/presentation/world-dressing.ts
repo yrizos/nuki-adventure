@@ -56,7 +56,13 @@ function woodlandTrees(scenery: Scenery): WoodlandTree[] {
     ]),
     treeArt.length,
   );
-  return bases.map((base, index) => ({ base, frames: treeArt[choices[index]!]! }));
+  return bases.map((base, index) => ({ base, frames: treeVersion(choices[index]!, base) }));
+}
+
+// The shape keeps touching trees apart, and the tile hash picks a version within it so the subtle versions follow no visible pattern.
+function treeVersion(shape: number, base: TilePosition): readonly Art[] {
+  const versions = treeArt[shape]!;
+  return versions[tileHash(base.column, base.row) % versions.length]!;
 }
 
 interface Undergrowth {
@@ -397,7 +403,7 @@ export function dressWorld(level: LevelView, random?: () => number): WorldDressi
     treeArt.length,
   );
   const trees = level.scenery.trees.map(
-    (tree) => fruitArt.get(tree.variant) ?? treeArt[plainChoices[plainTrees.indexOf(tree)]!]!,
+    (tree) => fruitArt.get(tree.variant) ?? treeVersion(plainChoices[plainTrees.indexOf(tree)]!, tree.base),
   );
   const nearWater = ({ column, row }: TilePosition): boolean =>
     [-2, -1, 0, 1, 2].some((down) =>

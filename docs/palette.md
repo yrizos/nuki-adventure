@@ -24,6 +24,8 @@ Hex values and the faded mapping live in [`src/presentation/sprites/palette.js`]
 | Pink | P0 to P3 |
 | Skin | S0 to S3 |
 | Orange | O0 to O3 |
+| Moss | M0 to M3 |
+| Fir | F0 to F3 |
 
 ## World
 
@@ -31,7 +33,7 @@ Hex values and the faded mapping live in [`src/presentation/sprites/palette.js`]
 | --- | --- |
 | Hero | E3 hair, E2 hair shading, E4 hair highlights, E1 eyes, Paper catchlights, S2 skin, S1 skin shading, S3 skin highlights, P2 t-shirt, P1 t-shirt shading, P3 t-shirt highlights, W1 jeans, W0 jeans shading, E1 shoes |
 | Grass | G2 base, G3 tufts, G1 shading |
-| Trees | G1 canopy, G0 shadow, G3 leaf highlights, E1 trunk, E0 trunk shadow |
+| Trees | G1 canopy, G0 shadow, G3 leaf highlights, E1 trunk, E0 trunk shadow. One version of each plain shape uses M1, M0 and M3 on the same pixels for a warmer olive green, and another uses F1, F0 and F3 for a cooler blue green |
 | Water | W1 body, W0 deep edges, W2 ripples, W4 foam |
 | Water lilies | G2 pads, G3 highlights, G1 shading and bottom right edges, P3 petals, P2 petal shading, Y3 centers, W0 waterline |
 | Paths | E3 base, E4 highlights, E2 edges |

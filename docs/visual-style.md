@@ -125,6 +125,7 @@ A new element uses the smallest size that fits its shape.
 
 - Every prop has a ground shadow.
 - Repeated props have at least two variants, and identical variants never touch. Fruit trees are the exception, because each fruit has one tree shape.
+- Each plain tree shape has four versions that differ in a few leaf and bark pixels. One version is a slightly warmer green and one a slightly cooler green, so woodland mixes shades but still reads as one kind of tree. Touching trees differ by shape, and the version within a shape is picked by a fixed pattern per map.
 
 ### Door
 
@@ -145,7 +146,7 @@ A new element uses the smallest size that fits its shape.
 
 ### Woodland
 
-- Woodland reuses the plain tree art and variants, placed by a fixed pattern per map that never changes between frames.
+- Woodland reuses the plain tree art, including every version of each shape, placed by a fixed pattern per map that never changes between frames.
 - Canopies overlap so no ground shows inside the woodland.
 - In a woodland-bounded level, woodland continues beyond the map edges, so the camera never shows where it ends.
 - Woodland follows ordinary depth order, shading, ground shadows and restoration. Faded, it still reads as impassable and distinct from clearing grass.
