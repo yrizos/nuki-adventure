@@ -1,6 +1,6 @@
 (globalThis.sprites ??= {}).plate = {
   legend: {
-    k: 'Ink',
+    k: 'O0',
     c: 'O3',
     a: 'O2',
     b: 'O1',
