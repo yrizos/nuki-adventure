@@ -102,6 +102,7 @@ Color codes refer to the [palette](palette.md). Element colors live there, not h
 | Fences | 32 × 32 | 1 tile |
 | Doors | 96 × 96 | 3 × 1 tiles at the base |
 | Butterflies | 9 × 7 | None |
+| Birds | 11 × 9 sitting, 11 × 7 flying | None |
 
 A new element uses the smallest size that fits its shape.
 
@@ -159,6 +160,17 @@ A new element uses the smallest size that fits its shape.
 - Four colors: yellow, red, violet and pink. On a fruit tree a butterfly uses only colors that stand out from the fruit: yellow or violet on apples, violet or pink on oranges, red, violet or pink on lemons. A mixed orchard uses only colors allowed on every tree in it.
 - Butterflies exist only in color. They appear in an area as it is restored and never in the faded world.
 
+### Birds
+
+- Birds are effects like butterflies. They are drawn above every prop and the hero and cast no ground shadow. They exist only in color, so they appear in restored areas and never in the faded world.
+- A bird is drawn side-on in brown and orange, so it reads apart from the front-facing, brightly colored butterflies.
+- Birds keep to the places butterflies skip. Perching birds sit on the canopy top of plain trees and woodland trees. Ground birds peck and hop on open grass, more than two tiles from the hero start. A sky bird crosses the whole map.
+- Each map gets one perching bird per 16 candidate trees and one ground bird per 64 open grass tiles, at most two of each, and one sky bird. Spots are spread evenly by a fixed pattern per map.
+- Birds appear sparingly. A perching or ground bird flies in from the side, stays a while, flies off and stays away far longer than it stayed. A sky crossing repeats far less often. Birds drift out of step, so the level often shows none.
+- A ground bird pecks twice, hops a stride along, pecks twice, turns and hops back.
+- A ground bird flies to the open grass spot within three tiles that is farthest from the hero once the hero comes within 48 pixels. With no such spot, it leaves for the rest of its visit. Perching and sky birds never flee.
+- Birds face their direction of travel. A perched bird faces the way it arrived.
+
 ## Terrain
 
 - Each terrain has at least three base variants of equal detail density, placed by a fixed pattern per map.
@@ -208,6 +220,10 @@ A new element uses the smallest size that fits its shape.
 | Tree leaves | 1 cluster shift | Every 40 game frames, out of sync between trees |
 | Butterfly wings | 2 | 6 game frames each while flying, 30 while resting |
 | Butterfly flight | Eased arc, whole pixels | 0.75 pixels per frame, at least 12 frames per flight. The arc lifts 6 pixels, with a 2 pixel flutter of 3 beats. Rests last 36 to 83 frames |
+| Bird perch | 6 | Sit with a tail flick every 36 game frames, 6 game frames each |
+| Bird ground | 4 per peck, 2 per hop | 6 game frames each. Two pecks, then two hops of a 4 pixel stride |
+| Bird flight | 2 wing frames, eased arc, whole pixels | 6 game frames each. 1.5 pixels per frame, at least 18 frames per flight. Visits arc 10 pixels from 160 pixels aside and 112 up, flee flights arc 6 |
+| Bird visits | Cycle | 4800 to 5700 frames per cycle, staying 600 to 899. A sky crossing repeats every 10800 frames, climbing one tile with a 3 pixel wave of 3 beats |
 | Light motes | 1 | Rise 1 pixel every 4 frames over 64 pixels, sway 1 pixel every 40, offset per mote |
 | Restoring color | 16 thresholds | Front moves 1 tile every 4 frames, crest lasts 8 |
 | Leaving a level | 16 thresholds | 3 frames each, 48 total |

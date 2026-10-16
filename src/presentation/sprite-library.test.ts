@@ -219,3 +219,16 @@ test('the pressure plate presses through three 32 by 32 frames', () => {
   }
   expect(sprites.plate!.animations.press!.frames).toEqual(frames.map((name) => sprites.plate!.frames[name]));
 });
+
+test('bird animations face both ways, sit on an 11 by 9 frame, fly on an 11 by 7 frame and never fade', () => {
+  const bird = sprites.bird!;
+  expect(Object.keys(bird.animations).sort()).toEqual(
+    ['perch', 'hop', 'peck', 'fly'].flatMap((habit) => [`left-${habit}`, `right-${habit}`]).sort(),
+  );
+  for (const [name, { frames }] of Object.entries(bird.animations)) {
+    for (const art of frames) {
+      expect([sprite(art).width, sprite(art).height]).toEqual(name.endsWith('-fly') ? [11, 7] : [11, 9]);
+      expect(art.faded).toBeUndefined();
+    }
+  }
+});

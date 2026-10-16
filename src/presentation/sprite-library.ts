@@ -171,6 +171,17 @@ export const lightMote = frame('light-mote', 'light-mote');
 export const butterflyArt = animatedVariants('butterfly');
 export const butterflyFrameLength = frameLength('butterfly');
 
+function birdFacing(facing: 'left' | 'right') {
+  return {
+    perch: animation('bird', `${facing}-perch`).frames,
+    hop: animation('bird', `${facing}-hop`).frames,
+    peck: animation('bird', `${facing}-peck`).frames,
+    fly: animation('bird', `${facing}-fly`).frames,
+  };
+}
+export const birdArt = { left: birdFacing('left'), right: birdFacing('right') };
+export const birdFrameLength = frameLength('bird');
+
 export function groundShadow(width: number, code: 'G1' | 'E2'): Art {
   return frame('ground-shadow', `${width}-${code}`);
 }

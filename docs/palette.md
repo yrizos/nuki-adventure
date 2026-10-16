@@ -46,6 +46,7 @@ Hex values and the faded mapping live in [`src/presentation/sprites/palette.js`]
 | Gate | E0 wood and shading, E1 highlight |
 | Door | E1 frame, E2 frame highlights, E0 frame shading and grain, E2 planks, E0 plank lines and handles, E0 doorway when open |
 | Butterflies | Y2 wings and Y0 body and wing markings. Red, violet and pink butterflies use R2 and R0, V2 and V0, or P2 and P0 on the same pixels |
+| Birds | E2 head and back, E1 wing, E0 tail, eye, lower and right outline and feet, O2 breast, O1 breast shading, Y1 beak |
 | Light motes | Paper |
 
 ## UI
