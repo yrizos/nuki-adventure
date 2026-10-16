@@ -8,6 +8,8 @@ import {
   fruitTreeArt,
   keyArt,
   readSprite,
+  smallHeroArt,
+  smallPadlockArt,
   sprites,
   terrainArt,
   treeArt,
@@ -181,6 +183,12 @@ test.each([
   ['a faded correction in color', { ...valid, faded: { a: { legend: { n: 'G2' }, rows: ['nn', 'nn'] } } }],
 ])('rejects %s', (_, data) => {
   expect(() => readSprite(data)).toThrow();
+});
+
+test('the level picker hero and padlock are 16 by 16', () => {
+  for (const art of [smallHeroArt.stand, smallHeroArt.breathe, smallHeroArt.blink, smallPadlockArt]) {
+    expect([sprite(art).width, sprite(art).height]).toEqual([16, 16]);
+  }
 });
 
 test('the key is one frame', () => {

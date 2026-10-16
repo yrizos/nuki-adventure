@@ -17,6 +17,7 @@ import { secondLevel } from '../infrastructure/second-level';
 import { thirdLevel } from '../infrastructure/third-level';
 import { fourthLevel } from '../infrastructure/fourth-level';
 import { fifthLevel } from '../infrastructure/fifth-level';
+import { sixthLevel } from '../infrastructure/sixth-level';
 import { pixelDifference } from '../test-support/pictures';
 import { png } from '../test-support/png';
 import { settleGate } from '../test-support/walk-level';
@@ -172,6 +173,7 @@ test.each([
   { name: 'third', create: thirdLevel },
   { name: 'fourth', create: fourthLevel },
   { name: 'fifth', create: fifthLevel },
+  { name: 'sixth', create: sixthLevel },
 ])('the $name level has ground art for every place where terrains meet and paints', ({ create }) => {
   const level = levelView(create(randomShuffle));
   expect(() =>
@@ -377,7 +379,7 @@ function firstLevelStoneArtDrawn(): { position: TilePosition; art: Art }[] {
   });
 }
 
-test.each([firstLevel, secondLevel, thirdLevel, fourthLevel, fifthLevel])(
+test.each([firstLevel, secondLevel, thirdLevel, fourthLevel, fifthLevel, sixthLevel])(
   'level %# floats lilies in groups inside its pond, with different art on touching tiles',
   (create) => {
     const level = create((positions) => positions);

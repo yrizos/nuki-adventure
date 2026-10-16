@@ -20,17 +20,17 @@ import {
   LevelPicker,
   levelCardArt,
   levelRowText,
-  mapSize,
   playTime,
   putClock,
   putStar,
   windowLegend,
 } from './level-picker';
-import { ditherSteps, ditherThreshold } from './ordered-dither';
+import { mapSize } from './level-map';
+import { ditherSteps } from './ordered-dither';
 import { faded, type PaletteCode } from './palette';
 import { sprite } from './picture';
 import { artUrl } from './canvas-art';
-import { heroArt } from './sprite-library';
+import { smallHeroArt } from './sprite-library';
 
 test.each([
   [0, '0:00'],
@@ -87,18 +87,22 @@ function textPattern(text: string, scale: number): Codes {
 }
 
 function iconPattern(put: (grid: PixelGrid, left: number, top: number) => void): Codes {
-  const grid = new PixelGrid(16, 16);
+  const grid = new PixelGrid(9, 9);
   put(grid, 0, 0);
   return codes(grid.build(windowLegend));
 }
 
 const goldStar = iconPattern(putStar);
 const dimStar = goldStar.map((row) => row.map((code) => (code === null || code === 'Ink' ? code : faded(code))));
-const card = (view: LevelProgressView): Codes => codes(levelCardArt(view, 5));
+const card = (view: LevelProgressView): Codes => codes(levelCardArt(view));
+const mapLeft = (cardWidth - mapSize) / 2;
+const mapTop = 6;
+// A one digit number and its outline cover this corner of the map.
+const underNumber = (x: number, y: number): boolean => x <= mapLeft + 10 && y <= mapTop + 14;
 
 test('draws every card at one size, and the picker box inside the narrowest column', () => {
   const cards = [level(1, true, 60 * 60 * 120, [5, 5]), level(12, true), level(3, false)].map((view) =>
-    levelCardArt(view, 5),
+    levelCardArt(view),
   );
   for (const art of cards) {
     expect([art.rows.length, ...new Set(art.rows.map((row) => row.length))]).toEqual([cardHeight, cardWidth]);
@@ -107,50 +111,55 @@ test('draws every card at one size, and the picker box inside the narrowest colu
   expect(cardWidth + 16).toBeLessThanOrEqual(180 - 8);
 });
 
-const mapLeft = (cardWidth - mapSize) / 2;
-const mapTop = 6;
-
 test('leaves the map window open on an unlocked card, inside an Ink border', () => {
   const rows = card(level(1, true));
-  const window = rows.slice(mapTop, mapTop + mapSize).flatMap((row) => row.slice(mapLeft, mapLeft + mapSize));
+  const window = rows
+    .slice(mapTop, mapTop + mapSize)
+    .flatMap((row, y) => row.slice(mapLeft, mapLeft + mapSize).filter((_, x) => !underNumber(mapLeft + x, mapTop + y)));
   expect(new Set(window)).toEqual(new Set([null]));
   const border = [...rows[mapTop - 1]!.slice(mapLeft - 1, mapLeft + mapSize + 1), rows[mapTop + mapSize]![mapLeft]];
   expect(new Set(border)).toEqual(new Set(['Ink']));
 });
 
-test('dims the map of a locked card with half the ordered dither in Ink', () => {
-  const art = levelCardArt(level(3, false), 5);
-  const wrong: string[] = [];
-  for (let y = mapTop; y < mapTop + mapSize; y++)
-    for (let x = mapLeft; x < mapLeft + mapSize; x++) {
-      const inked = art.legend[art.rows[y]![x]!] === 'Ink';
-      if (inked !== ditherThreshold(x, y) < ditherSteps / 2) wrong.push(`${x},${y}`);
-    }
-  expect(wrong).toEqual([]);
+test('keeps the map window of a locked card closed', () => {
+  const rows = card(level(3, false));
+  const window = rows
+    .slice(mapTop, mapTop + mapSize)
+    .flatMap((row, y) => row.slice(mapLeft, mapLeft + mapSize).filter((_, x) => !underNumber(mapLeft + x, mapTop + y)));
+  expect(new Set(window)).toEqual(new Set(['V0']));
 });
 
-test('draws the level number at twice the font size, with no frame around it', () => {
-  expect(count(card(level(7, true)), textPattern('7', 2))).toBe(1);
-  const corner = card(level(7, true))
-    .slice(2, 40)
-    .flatMap((row) => row.slice(2, 24));
-  expect(corner.filter((code) => code === 'Ink' || code === 'V1')).toEqual([]);
+test('draws the level number at the font size over the top left corner of the map', () => {
+  const rows = card(level(7, true));
+  const number = textPattern('7', 1).map((row) => row.map((code) => (code === 'V0' ? null : code)));
+  const found: string[] = [];
+  for (let top = mapTop; top + number.length <= mapTop + mapSize; top++)
+    for (let left = mapLeft; left + number[0]!.length <= mapLeft + 20; left++)
+      if (number.every((row, y) => row.every((code, x) => code === null || rows[top + y]![left + x] === code)))
+        found.push(`${left},${top}`);
+  expect(found).toEqual([`${mapLeft + 4},${mapTop + 4}`]);
 });
 
-test('draws gold stars for the stars collected and dim ones for the rest, beside the clock and last play time', () => {
-  const completed = card(level(1, true, 60 * 83, [3, 5]));
+test('draws one gold star with the count collected, beside the clock and last play time', () => {
+  const completed = card(level(1, true, 60 * 83, [4, 5]));
   expect([
     count(completed, goldStar),
     count(completed, dimStar),
+    count(completed, textPattern('4', 1)),
     count(completed, iconPattern(putClock)),
     count(completed, textPattern('1:23', 1)),
-  ]).toEqual([3, 2, 1, 1]);
+  ]).toEqual([1, 0, 1, 1, 1]);
 });
 
-test('draws five dim stars and no clock on a level without a completed playthrough', () => {
+test('draws one dim star with a zero count and no clock on a level without a completed playthrough', () => {
   for (const view of [level(2, true), level(3, false)]) {
     const shown = card(view);
-    expect([count(shown, goldStar), count(shown, dimStar), count(shown, iconPattern(putClock))]).toEqual([0, 5, 0]);
+    expect([
+      count(shown, goldStar),
+      count(shown, dimStar),
+      count(shown, textPattern('0', 1)),
+      count(shown, iconPattern(putClock)),
+    ]).toEqual([0, 1, 1, 0]);
   }
 });
 
@@ -320,7 +329,7 @@ test('Nuki stands on the card of the level to continue and breathes and blinks o
   expect(hero.parentElement).toBe(rows[1]);
   const shown = (): string => hero.style.getPropertyValue('--art');
   const url = (art: Art): string => `url(${artUrl(root as unknown as Document, art)})`;
-  expect(shown()).toBe(url(heroArt.down.stand));
+  expect(shown()).toBe(url(smallHeroArt.stand));
   for (let frame = 0; frame < 180; frame++) subject.advance();
-  expect(shown()).toBe(url(heroArt.down.blink!));
+  expect(shown()).toBe(url(smallHeroArt.blink));
 });

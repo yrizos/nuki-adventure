@@ -8,34 +8,30 @@ import { backWidth, scrollButtonWidth, textButtonHeight } from './art/panel';
 import { artUrl, pictureUrl } from './canvas-art';
 import { DitherModal, modalWidth } from './dither-modal';
 import { element } from './dom';
-import { levelMap } from './level-map';
-import { idleHeroPose } from './hero-animator';
+import { levelMap, mapSize } from './level-map';
+import { idlePose } from './hero-animator';
 import { menuChoices, takeMenuKeys } from './menu-keys';
-import { ditherSteps, ditherThreshold } from './ordered-dither';
 import { faded } from './palette';
 import { Picture } from './picture';
-import { heroArt, padlockArt, starArt } from './sprite-library';
+import { smallHeroArt, smallPadlockArt } from './sprite-library';
 
 const framesPerSecond = 60;
-const iconSize = 16;
-const starArtMargin = 4;
-const numberScale = 2;
-const numberHeight = numberScale * glyphHeight;
+// Two cards share a row, so the icons shrink to fit a star, its count, the clock and the time on one strip.
+const iconSize = 9;
 const edge = 2;
 const inset = 4;
-export const mapSize = 100;
 const boxPadding = 6;
-export const cardWidth = modalWidth - 2 * boxPadding;
-const mapLeft = (cardWidth - mapSize) / 2;
+// Two cards to a row. Rounding down to an even width keeps the map centered on whole pixels.
+export const cardWidth = 2 * Math.floor((modalWidth - 2 * boxPadding - 6) / 4);
 const mapTop = edge + inset;
+const mapLeft = (cardWidth - mapSize) / 2;
 const stripTop = mapTop + mapSize + inset + 1;
-const stripHeight = 22;
+const stripHeight = 15;
 export const cardHeight = stripTop + stripHeight + edge;
 const iconTop = stripTop + (stripHeight - iconSize) / 2;
-const starStep = iconSize + 1;
-const iconGap = 4;
-// The number keeps the padding a frame would have, so it sits as far from the card edge and the map.
-const numberPadding = 2 + 4;
+const iconGap = 2;
+// The number sits over the map's top left corner, clear of its Ink border.
+const numberInset = 4;
 const pickerTitle = 'ΕΠΙΠΕΔΑ';
 // Most of a screenful per press keeps a card in view across the jump, so the player never loses their place.
 const scrollStep = 0.8;
@@ -54,19 +50,11 @@ function clockFace(): readonly string[] {
         [0, 1],
         [0, -1],
       ].some(([across, down]) => !inside(column + across!, row + down!));
-      grid.put(column, row, edge ? 'k' : !inside(column + 2, row + 2) ? 'q' : 'p');
+      grid.put(column, row, edge ? 'k' : !inside(column + 1, row + 1) ? 'q' : 'p');
     }
   }
-  for (const [column, row, across, down] of [
-    [7, 2, 2, 1],
-    [7, 13, 2, 1],
-    [2, 7, 1, 2],
-    [13, 7, 1, 2],
-  ] as const) {
-    grid.rectangle(column, row, across, down, 'k');
-  }
-  grid.rectangle(7, 4, 2, 5, 'k');
-  grid.rectangle(9, 7, 3, 2, 'k');
+  grid.rectangle(4, 2, 1, 3, 'k');
+  grid.rectangle(5, 4, 2, 1, 'k');
   return grid.build({}).rows;
 }
 
@@ -97,15 +85,21 @@ export function putClock(grid: PixelGrid, left: number, top: number): void {
   putIcon(grid, clock, left, top);
 }
 
+// The star sprite loses its points when sampled down this far, so the icon is drawn at its own size.
+const star = [
+  '....k....',
+  '...kak...',
+  'kkkacakkk',
+  'kaaaaabbk',
+  '.kaaabbk.',
+  '..kaabk..',
+  '.kaabbbk.',
+  '.kabkkbk.',
+  '.kk...kk.',
+];
+
 export function putStar(grid: PixelGrid, left: number, top: number): void {
-  putIcon(
-    grid,
-    starArt.rows
-      .slice(starArtMargin, starArtMargin + iconSize)
-      .map((line) => line.slice(starArtMargin, starArtMargin + iconSize)),
-    left,
-    top,
-  );
+  putIcon(grid, star, left, top);
 }
 
 // The clipped corners match the message box and the switches, so every window over the game world looks like one set.
@@ -139,7 +133,7 @@ export function starsText(playthrough: Playthrough): string {
   return `${playthrough.collectedStars.value}/${playthrough.starCount.value}`;
 }
 
-// A star not collected is drawn through the faded mapping, so the row reads as gold earned against grey still to find.
+// With no star collected, the star is drawn through the faded mapping, so a grey star reads as none earned yet.
 const dimStar: Record<string, string> = { a: 'A', b: 'B', c: 'C' };
 const cardLegend = {
   ...windowLegend,
@@ -148,43 +142,41 @@ const cardLegend = {
   C: faded(windowLegend.c),
 } as const;
 
+// Over the map, an Ink outline keeps the number readable on any ground.
 function putNumber(grid: PixelGrid, number: string, left: number, top: number): void {
   const text = new PixelGrid(textWidth(number), glyphHeight);
   writeText(text, number, 0, 0, 't');
-  for (let row = 0; row < numberHeight; row++)
-    for (let column = 0; column < numberScale * textWidth(number); column++) {
-      const pixel = text.get(Math.floor(column / numberScale), Math.floor(row / numberScale));
-      if (pixel !== '.') grid.put(left + column, top + row, pixel);
+  const lit = (column: number, row: number): boolean =>
+    column >= 0 && row >= 0 && column < textWidth(number) && row < glyphHeight && text.get(column, row) !== '.';
+  for (let row = -1; row <= glyphHeight; row++)
+    for (let column = -1; column <= textWidth(number); column++) {
+      if (lit(column, row)) grid.put(left + column, top + row, 't');
+      else if ([-1, 0, 1].some((down) => [-1, 0, 1].some((across) => lit(column + across, row + down))))
+        grid.put(left + column, top + row, 'k');
     }
 }
 
-function putStars(grid: PixelGrid, collected: number, count: number): void {
-  for (let index = 0; index < count; index++) {
-    const left = inset + index * starStep;
-    putStar(grid, left, iconTop);
-    if (index < collected) continue;
+function putStars(grid: PixelGrid, collected: number): void {
+  putStar(grid, inset, iconTop);
+  if (collected === 0)
     for (let row = 0; row < iconSize; row++)
       for (let column = 0; column < iconSize; column++) {
-        const dim = dimStar[grid.get(left + column, iconTop + row)];
-        if (dim) grid.put(left + column, iconTop + row, dim);
+        const dim = dimStar[grid.get(inset + column, iconTop + row)];
+        if (dim) grid.put(inset + column, iconTop + row, dim);
       }
-  }
+  writeText(grid, String(collected), inset + iconSize + iconGap, iconTop + iconTextTop, 't');
 }
 
-// The map shows through the window left open above the strip, inside a one pixel Ink border.
-export function levelCardArt(level: LevelProgressView, starCount: number): Art {
+// The map shows through the window left open above the strip, inside a one pixel Ink border. A locked level keeps
+// the window closed, so its layout stays a surprise.
+export function levelCardArt(level: LevelProgressView): Art {
   const grid = windowFrame(cardWidth, cardHeight);
   grid.rectangle(mapLeft - 1, mapTop - 1, mapSize + 2, mapSize + 2, 'k');
-  grid.rectangle(mapLeft, mapTop, mapSize, mapSize, '.');
+  grid.rectangle(mapLeft, mapTop, mapSize, mapSize, level.isUnlocked ? '.' : 'f');
   grid.rectangle(edge, stripTop - 1, cardWidth - 2 * edge, 1, 'e');
-  if (!level.isUnlocked) {
-    for (let row = mapTop; row < mapTop + mapSize; row++)
-      for (let column = mapLeft; column < mapLeft + mapSize; column++)
-        if (ditherThreshold(column, row) < ditherSteps / 2) grid.put(column, row, 'k');
-  }
-  putNumber(grid, String(level.number), inset + numberPadding, inset + 4);
+  putNumber(grid, String(level.number), mapLeft + numberInset, mapTop + numberInset);
   const playthrough = level.lastPlaythrough;
-  putStars(grid, playthrough?.collectedStars.value ?? 0, playthrough?.starCount.value ?? starCount);
+  putStars(grid, playthrough?.collectedStars.value ?? 0);
   if (playthrough) {
     const time = playTime(playthrough.time);
     const timeLeft = cardWidth - edge - inset - textWidth(time);
@@ -261,7 +253,7 @@ export class LevelPicker {
     this.hero = root.createElement('span');
     this.hero.className = 'level-hero';
     this.hero.setAttribute('aria-hidden', 'true');
-    const stand = heroArt.down.stand;
+    const stand = smallHeroArt.stand;
     this.hero.style.setProperty('--art-width', String(stand.rows[0]!.length));
     this.hero.style.setProperty('--art-height', String(stand.rows.length));
     this.hero.style.setProperty('--left', String(mapLeft + (mapSize - stand.rows[0]!.length) / 2));
@@ -283,10 +275,10 @@ export class LevelPicker {
   show({ continueLevel, levels }: ProgressView): void {
     const cards = levels.map((level) => {
       const playable = this.levels.find(({ id }) => id.equals(level.id));
-      const art = levelCardArt(level, playable?.view.stars.length ?? 0);
+      const art = levelCardArt(level);
       const picture = new Picture(cardWidth, cardHeight);
-      if (playable) {
-        const map = this.map(playable, level.lastPlaythrough !== null);
+      if (playable && level.isUnlocked) {
+        const map = this.map(playable);
         // A level of another size sits centered in the map window and never spills out of it.
         const left = mapLeft + Math.floor((mapSize - Math.min(map.width, mapSize)) / 2);
         const top = mapTop + Math.floor((mapSize - Math.min(map.height, mapSize)) / 2);
@@ -299,9 +291,9 @@ export class LevelPicker {
       picture.draw(art, 0, 0, 'colored');
       if (!level.isUnlocked)
         picture.draw(
-          padlockArt,
-          mapLeft + (mapSize - padlockArt.rows[0]!.length) / 2,
-          mapTop + (mapSize - padlockArt.rows.length) / 2,
+          smallPadlockArt,
+          mapLeft + (mapSize - smallPadlockArt.rows[0]!.length) / 2,
+          mapTop + (mapSize - smallPadlockArt.rows.length) / 2,
           'colored',
         );
       const button = this.root.createElement('button');
@@ -359,7 +351,7 @@ export class LevelPicker {
   }
 
   private animateHero(): void {
-    const pose = idleHeroPose('down', this.heroFrame);
+    const pose = idlePose(smallHeroArt, this.heroFrame);
     if (pose === this.heroPose) return;
     this.heroPose = pose;
     let url = this.heroUrls.get(pose);
@@ -374,12 +366,12 @@ export class LevelPicker {
     this.dither.dismiss();
   }
 
-  private map(level: PickerLevel, colored: boolean): Picture {
-    const key = `${level.id.value} ${colored}`;
-    let map = this.maps.get(key);
+  // Every unlocked level shows its world in color, played or not, so the picker reads as an invitation.
+  private map(level: PickerLevel): Picture {
+    let map = this.maps.get(level.id.value);
     if (!map) {
-      map = levelMap(level.view, colored, this.random);
-      this.maps.set(key, map);
+      map = levelMap(level.view, true, this.random);
+      this.maps.set(level.id.value, map);
     }
     return map;
   }

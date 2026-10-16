@@ -8,6 +8,7 @@ import { follow, pathTo } from '../test-support/walk-level';
 import { fifthLevel } from './fifth-level';
 import { firstLevel } from './first-level';
 import { secondLevel } from './second-level';
+import { sixthLevel } from './sixth-level';
 import { fourthLevel } from './fourth-level';
 import { thirdLevel } from './third-level';
 
@@ -17,6 +18,7 @@ const authoredLevels = [
   { name: 'third', create: thirdLevel },
   { name: 'fourth', create: fourthLevel },
   { name: 'fifth', create: fifthLevel },
+  { name: 'sixth', create: sixthLevel },
 ];
 
 for (const { name, create } of authoredLevels) {

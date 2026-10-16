@@ -8,7 +8,7 @@ import { Ground, LevelSize, Scenery } from '../domain/level/scenery';
 import { LevelId } from '../domain/shared/level-id';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { InMemoryLevelRepository } from '../infrastructure/in-memory-level-repository';
-import { levelMap, mapTileSize } from './level-map';
+import { levelMap, mapSize } from './level-map';
 
 const id = LevelId.of('thumbnail');
 const everywhere = Area.of(Array.from({ length: 64 }, (_, index) => TilePosition.at(index % 8, Math.floor(index / 8))));
@@ -36,9 +36,9 @@ const thumbnail = (stars: readonly Star[], colored: boolean) => [
   ...levelMap(view(stars), colored, () => 0.5).packedPixels,
 ];
 
-test('draws the whole level with one block per tile', () => {
+test('fits the whole level into the map size', () => {
   const map = levelMap(view([]), false, () => 0.5);
-  expect([map.width, map.height]).toEqual([8 * mapTileSize, 8 * mapTileSize]);
+  expect([map.width, map.height]).toEqual([mapSize, mapSize]);
 });
 
 test('leaves the stars out, because they move every time the level is built', () => {

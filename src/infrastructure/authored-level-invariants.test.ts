@@ -8,6 +8,7 @@ import { check2dObstacles } from './check2d-obstacles';
 import { fifthLevel } from './fifth-level';
 import { firstLevel } from './first-level';
 import { secondLevel } from './second-level';
+import { sixthLevel } from './sixth-level';
 import { fourthLevel } from './fourth-level';
 import { thirdLevel } from './third-level';
 
@@ -58,6 +59,7 @@ const passes = [
   { name: 'third', authored: thirdLevel(keepOrder) },
   { name: 'fourth', authored: fourthLevel(keepOrder) },
   { name: 'fifth', authored: fifthLevel(keepOrder) },
+  { name: 'sixth', authored: sixthLevel(keepOrder) },
 ].flatMap(({ name, authored }): Pass[] => {
   const gates = authored.gates;
   if (gates.length === 0) return [{ name, authored, gates, region: undefined, beyond: undefined }];
