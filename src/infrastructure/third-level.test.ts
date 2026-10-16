@@ -14,7 +14,7 @@ import { thirdLevel, thirdLevelId } from './third-level';
 const at = TilePosition.at;
 const tiles = Array.from({ length: 25 * 25 }, (_, index) => at(index % 25, Math.floor(index / 25)));
 const start = at(15, 21);
-const goldKey = at(18, 10);
+const goldKey = at(14, 11);
 const islandSpot = at(11, 16);
 const islandLink = at(11, 17);
 const farRight = at(22, 21);
