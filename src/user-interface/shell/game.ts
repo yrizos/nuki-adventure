@@ -75,6 +75,7 @@ export function startGame(
         setActionButtonsEnabled(true);
         const view = progress.view();
         startScreen.show({ canContinue: view.continueLevel !== null, hasProgress: view.hasProgress });
+        sound.hum(0);
         sound.music(null);
       },
       // The level picker dithers out over the start screen after it closes, so both move on the same frames.
@@ -123,7 +124,6 @@ export function startGame(
   connectGameSwitches(root, sound, () => {
     // Escape is one of the keys that leave the end screen, so it leaves through the same fade.
     if (navigator.state === 'end-screen') return;
-    sound.hum(0);
     navigator.openStartScreen();
   });
   navigator.openStartScreen();
