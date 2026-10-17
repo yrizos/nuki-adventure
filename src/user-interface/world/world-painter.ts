@@ -172,10 +172,10 @@ const birdArc = 10;
 const birdFleeArc = 6;
 // Visits start and end this far up and to the side, about half a portrait view, so a bird flies in from the edge of the screen instead of appearing beside the hero.
 const birdApproach = { x: 160, y: 112 };
-// A visit is under a quarter of its cycle, so a bird is away far longer than it stays. Cycles differ by bird, so birds drift out of step and the level often has none.
-const birdVisitCycle = 4800;
+// A visit is under half its cycle, so a bird is away longer than it stays. Cycles differ by bird, so birds drift out of step.
+const birdVisitCycle = 3000;
 const birdCycleSpread = 300;
-const shortestBirdStay = 600;
+const shortestBirdStay = 900;
 const birdStaySpread = 300;
 // A crossing sweeps the whole map and every view it passes, so it repeats far less often than a visit.
 const birdSkyCycle = 10800;
@@ -184,10 +184,10 @@ const fleeDistance = 48;
 const fleeReach = 3 * tileSize;
 // Ground birds keep clear of the tiles within flee distance of the hero start, so none flees the moment a level begins.
 const birdStartClearance = 2;
-const treesPerBird = 16;
-const openTilesPerBird = 64;
-const mostPerchingBirds = 2;
-const mostGroundBirds = 2;
+const treesPerBird = 8;
+const openTilesPerBird = 32;
+const mostPerchingBirds = 3;
+const mostGroundBirds = 3;
 const birdHopStride = 8;
 const pecksPerStop = 2;
 const hopsPerStride = 2;
@@ -328,7 +328,7 @@ export function placeBirds(level: LevelView, dressing: WorldDressing): Bird[] {
       .filter(({ base }) => scenery.size.contains(base))
       .map(({ base, frames }) => canopyTop(base, frames[0]!)),
   ];
-  const perching = spread(tops, Math.min(mostPerchingBirds, Math.ceil(tops.length / treesPerBird)));
+  const perchingWanted = Math.min(mostPerchingBirds, Math.ceil(tops.length / treesPerBird));
   const start = level.hero.position;
   const taken = [
     ...scenery.flowers.map((flower) => flower.position),
@@ -357,7 +357,12 @@ export function placeBirds(level: LevelView, dressing: WorldDressing): Bird[] {
       open.push({ x: column * tileSize + tileSize / 2, y: row * tileSize + tileSize / 2 });
     }
   }
-  const grounded = spread(open, Math.min(mostGroundBirds, Math.ceil(open.length / openTilesPerBird)));
+  const groundWanted = Math.min(mostGroundBirds, Math.ceil(open.length / openTilesPerBird));
+  // Visitors and the sky bird always number fewer than the butterflies, so a level never shows more birds than butterflies.
+  const room = Math.max(0, dressing.butterflies.length - 2);
+  const perchingCount = Math.min(perchingWanted, Math.max(room - groundWanted, Math.ceil(room / 2)));
+  const perching = spread(tops, perchingCount);
+  const grounded = spread(open, Math.min(groundWanted, room - perchingCount));
   // The crossing starts and ends one bird width beyond the map, so the bird enters and leaves the picture whole.
   const margin = sprite(birdArt.right.fly[0]!).width;
   const skySeed = columns * 3 + rows * 5;

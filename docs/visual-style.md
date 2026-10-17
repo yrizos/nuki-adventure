@@ -156,8 +156,8 @@ A new element uses the smallest size that fits its shape.
 ### Butterflies
 
 - Butterflies are effects. They are drawn above every prop and the hero and cast no ground shadow.
-- They visit flower patches and orchards. A flower patch is a group of flowers touching through any of their eight neighbors. An orchard is a cluster of fruit trees. Plain trees and woodland get none.
-- Each patch or orchard gets one butterfly per five stops, at most three. Flower stops sit at tile centers. Orchard stops sit near the top of the canopy above each footprint tile. A lone flower gets two extra hovering points beside it.
+- They visit flower areas and orchards. A flower area is a group of flowers each within five tiles of another flower in it. An orchard is a cluster of fruit trees. Plain trees and woodland get none.
+- Each flower area or orchard gets one butterfly per five stops, at most three. Flower stops sit at tile centers. Orchard stops sit near the top of the canopy above each footprint tile. A lone flower gets two extra hovering points beside it.
 - A butterfly rests at a stop, then flies to the nearest stop it has not visited, and retraces its route once every stop is visited.
 - Four colors: yellow, red, violet and pink. On a fruit tree a butterfly uses only colors that stand out from the fruit: yellow or violet on apples, violet or pink on oranges, red, violet or pink on lemons. A mixed orchard uses only colors allowed on every tree in it.
 - Butterflies exist only in color. They appear in an area as it is restored and never in the faded world.
@@ -167,8 +167,8 @@ A new element uses the smallest size that fits its shape.
 - Birds are effects like butterflies. They are drawn above every prop and the hero and cast no ground shadow. They exist only in color, so they appear in restored areas and never in the faded world.
 - A bird is drawn side-on in brown and orange, so it reads apart from the front-facing, brightly colored butterflies.
 - Birds keep to the places butterflies skip. Perching birds sit on the canopy top of plain trees and woodland trees. Ground birds peck and hop on open grass, more than two tiles from the hero start. A sky bird crosses the whole map.
-- Each map gets one perching bird per 16 candidate trees and one ground bird per 64 open grass tiles, at most two of each, and one sky bird. Spots are spread evenly by a fixed pattern per map.
-- Birds appear sparingly. A perching or ground bird flies in from the side, stays a while, flies off and stays away far longer than it stayed. A sky crossing repeats far less often. Birds drift out of step, so the level often shows none.
+- Each map gets one perching bird per 8 candidate trees and one ground bird per 32 open grass tiles, at most three of each, and one sky bird. A map always has fewer birds than butterflies, so perching and ground birds together number at most two below its butterflies. Spots are spread evenly by a fixed pattern per map.
+- A perching or ground bird flies in from the side, stays a while, flies off and stays away longer than it stayed. A sky crossing repeats far less often. Birds drift out of step, so the number in view changes over time.
 - A ground bird pecks twice, hops a stride along, pecks twice, turns and hops back.
 - A ground bird flies to the open grass spot within three tiles that is farthest from the hero once the hero comes within 48 pixels. With no such spot, it leaves for the rest of its visit. Perching and sky birds never flee.
 - Birds face their direction of travel. A perched bird faces the way it arrived.
@@ -232,7 +232,7 @@ A new element uses the smallest size that fits its shape.
 | Bird perch | 6 | Sit with a tail flick every 36 game frames, 6 game frames each |
 | Bird ground | 4 per peck, 2 per hop | 6 game frames each. Two pecks, then two hops of a 4 pixel stride |
 | Bird flight | 2 wing frames, eased arc, whole pixels | 6 game frames each. 1.5 pixels per frame, at least 18 frames per flight. Visits arc 10 pixels from 160 pixels aside and 112 up, flee flights arc 6 |
-| Bird visits | Cycle | 4800 to 5700 frames per cycle, staying 600 to 899. A sky crossing repeats every 10800 frames, climbing one tile with a 3 pixel wave of 3 beats |
+| Bird visits | Cycle | 3000 to 3900 frames per cycle, staying 900 to 1199. A sky crossing repeats every 10800 frames, climbing one tile with a 3 pixel wave of 3 beats |
 | Light motes | 1 | Rise 1 pixel every 4 frames over 64 pixels, sway 1 pixel every 40, offset per mote |
 | Restoring color | 16 thresholds | Front moves 1 tile every 4 frames, crest lasts 8 |
 | Leaving a level | 16 thresholds | 3 frames each, 48 total |

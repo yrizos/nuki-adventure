@@ -138,6 +138,8 @@ const shortestButterflyFlight = 12;
 // One butterfly per handful of stops keeps a small patch from swarming, and the cap keeps a large orchard calm.
 const stopsPerButterfly = 5;
 const mostButterflies = 3;
+// Patches this many tiles apart share one butterfly, so a meadow of small patches does not swarm.
+const flowerAreaReach = 5;
 
 // Butterfly variants come in sprite order: yellow, red, violet and pink. A butterfly resting on a canopy must stand
 // out from its fruit, so each fruit only hosts colors far from its own. Red apples rule out red and pink, orange
@@ -218,12 +220,13 @@ function groupButterflies(
   });
 }
 
-// Butterflies visit flower patches, which are flowers touching through any of their eight neighbors, and orchards,
-// which are clusters of fruit trees. Plain trees and woodland get none.
+// Butterflies visit flower areas, which are flowers within a short reach of each other, and orchards, which are
+// clusters of fruit trees. Plain trees and woodland get none.
 function butterflies(scenery: Scenery): Butterfly[] {
   const patches = groupsOf(
     scenery.flowers.map((flower) => flower.position),
-    (first, second) => Math.abs(first.column - second.column) <= 1 && Math.abs(first.row - second.row) <= 1,
+    (first, second) =>
+      Math.abs(first.column - second.column) <= flowerAreaReach && Math.abs(first.row - second.row) <= flowerAreaReach,
   ).map((patch) =>
     groupButterflies(
       patch.map(({ column, row }) => ({ x: column * tileSize + tileSize / 2, y: row * tileSize + tileSize / 2 })),

@@ -153,12 +153,12 @@ describe('whole frames of the first level', () => {
   test('renders the current partially restored fixture unchanged', async () => {
     // The key lies outside the frame, so the wave starts from her start to stop partway across the frame.
     painter.paintRestoring(picture, scene, level.hero.position, 20, [], [key.restores]);
-    await expectChecksum(picture, '18fff6051808c25ac8dcb602b7eb5630f0bc06789189a060700fe1b32dd0e869');
+    await expectChecksum(picture, '3e5361ac9ef3708464da6f6907d7578c6cf913499d0c14c54ece1c9a1954489d');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [key.restores]);
-    await expectChecksum(picture, '74014ad0cc1a04c0d94ceaaa47870f19001a612e9c4245d43a38c653d7e405cf');
+    await expectChecksum(picture, '930733413e7d1d5890002fde08eb2b669fb8e55d030e7d548d344e63b7ef3f01');
   });
 });
 
@@ -1481,7 +1481,17 @@ test.each([
 describe('birds', () => {
   const plain = Tree.at(TilePosition.at(1, 6), TreeVariant.NoFruit);
   const fruit = Tree.at(TilePosition.at(8, 6), TreeVariant.Apples);
-  const level = levelView(renderingLevel(Ground.Grass, TilePosition.at(2, 2), [], [plain, fruit]));
+  // A row of flowers and a lone flower bring enough butterflies for the visitors.
+  const flowers = [...Array.from({ length: 11 }, (_, column) => TilePosition.at(column, 11)), TilePosition.at(11, 0)];
+  const level = levelView(
+    renderingLevel(
+      Ground.Grass,
+      TilePosition.at(2, 2),
+      [],
+      [plain, fruit],
+      flowers.map((tile) => Flower.at(tile)),
+    ),
+  );
   const birds = placeBirds(level, dressWorld(level));
   const faraway = { x: -1000, y: -1000 };
   const present = (bird: (typeof birds)[number], frame: number, hero = faraway): boolean =>
@@ -1501,24 +1511,21 @@ describe('birds', () => {
     }
   });
 
-  test('each bird is away longer than it stays, sky crossings are rare and the level often has no bird', () => {
+  test('each bird is away longer than it stays and sky crossings are rare', () => {
     const shares = birds.map((bird) => {
       let shown = 0;
       for (let frame = 0; frame < bird.cycle; frame++) if (present(bird, frame)) shown++;
       return shown / bird.cycle;
     });
-    for (const [index, share] of shares.entries()) expect(share, birds[index]!.habit).toBeLessThan(0.25);
+    for (const [index, share] of shares.entries()) expect(share, birds[index]!.habit).toBeLessThan(0.5);
     expect(shares.at(-1)).toBeLessThan(0.1);
-    const frames = 20000;
-    let empty = 0;
-    for (let frame = 0; frame < frames; frame++) if (!birds.some((bird) => present(bird, frame))) empty++;
-    expect(empty / frames).toBeGreaterThan(0.3);
   });
 
   test('a bird flies in facing its travel, lands home and leaves facing the same way', () => {
     const bird = birds[0]!;
     const visit = {};
     let frame = 0;
+    while (present(bird, frame)) frame++;
     while (!present(bird, frame)) frame++;
     const side = bird.to.x > bird.from.x ? library.birdArt.right : library.birdArt.left;
     expect(side.fly).toContain(birdPlace(bird, frame, faraway, visit)!.art);
