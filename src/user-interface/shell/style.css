@@ -178,7 +178,6 @@ body {
 .full-screen-switch,
 .menu-switch,
 .start-title,
-.start-hero,
 .level-hero,
 .level-picker-title,
 .confirm-box,
@@ -458,12 +457,7 @@ body {
   cursor: pointer;
 }
 
-/* Nuki stands under the title, and the empty space above the buttons pushes them to the bottom. */
-.start-hero {
-  flex: none;
-  margin-bottom: calc(16 * var(--pixel));
-}
-
+/* The free space splits above and below the title, so the logo floats in the middle of the screen above the buttons. */
 .start-continue {
   margin-top: auto;
 }
@@ -480,13 +474,12 @@ body {
 
 .start-title {
   flex: none;
-  margin: 0 0 calc(16 * var(--pixel));
+  margin: auto 0 0;
   color: transparent;
   font-size: 0;
 }
 
 .start-title,
-.start-hero,
 .level-hero,
 .level-picker-title,
 .confirm-box,

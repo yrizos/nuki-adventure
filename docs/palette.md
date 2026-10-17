@@ -65,7 +65,7 @@ Hex values and the faded mapping live in [`assets/sprites/palette.js`](../assets
 | Framed box (message box, switches, level cards) | Ink outline, V1 inner edge, V0 fill, Paper text and symbols |
 | Intro | Ink page and gutters. Panels and texts in the framed box colors. The sound word in Y3, Y2 and O2 with an Ink outline. Skip circle with an Ink ring and an N1 face filling with Paper, shaded N4 |
 | Start screen and level picker | Ink background with no texture. Buttons use the A button colors, pressed state included |
-| Game name | Paper, with ΠΟΛΥΧΡΩΜΗ letters cycling through V2, T2 and R2, and ΝΟΥΚΙ in Y2 |
+| Game name | Letters cycle through the R, O, Y, G, T, V and P ramps, light on top, base in the middle, dark at the bottom. Ink outline, Paper sticker border, V1 shadow |
 | Level card clock | Paper face, N4 shading, Ink outline, marks and hands |
 | Level card star | Same as the world star |
 | Locked level card | The whole card through the faded mapping |

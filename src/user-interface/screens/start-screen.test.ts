@@ -1,14 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, vi } from 'vitest';
 import { FakeDocument } from '../testing/fake-document';
-import { glyphs, glyphWidth, letterGap, lineHeight } from '../graphics/font';
 import { backWidth, menuButtonWidth, panelArt } from '../graphics/panel';
 import { sprite } from '../graphics/picture';
 import { artUrl } from '../graphics/canvas-art';
 import { ditherThreshold } from '../graphics/ordered-dither';
-import { heroArt } from '../graphics/sprite-library';
 import { confirmArt } from './confirm-modal';
-import { StartScreen, titleArt, type StartChoices } from './start-screen';
+import { StartScreen, type StartChoices } from './start-screen';
+import { titleArt } from './title-logo';
 
 test('draws the game name from palette codes, inside the narrowest column', () => {
   const art = titleArt();
@@ -16,42 +15,16 @@ test('draws the game name from palette codes, inside the narrowest column', () =
   expect(art.rows[0]!.length).toBeLessThanOrEqual(180 - 16);
 });
 
-const keyCycle = ['V2', 'T2', 'R2'];
-const titleLines: (readonly [string, string])[][] = [
-  [
-    ...[...'Η '].map((letter) => [letter, 'Paper'] as const),
-    ...[...'ΠΟΛΥΧΡΩΜΗ'].map((letter, index) => [letter, keyCycle[index % 3]!] as const),
-    ...[...' ΠΕΡΙΠΕΤΕΙΑ'].map((letter) => [letter, 'Paper'] as const),
-  ],
-  [
-    ...[...'ΤΗΣ '].map((letter) => [letter, 'Paper'] as const),
-    ...[...'ΝΟΥΚΙ'].map((letter) => [letter, 'Y2'] as const),
-  ],
-];
-
-test('colors each letter of the game name with its palette code', () => {
+test('draws the game name only in its rainbow, sticker, outline and shadow colors', () => {
   const art = titleArt();
-  const width = art.rows[0]!.length;
-  const violations: string[] = [];
-  titleLines.forEach((line, lineIndex) => {
-    const left = Math.floor((width - (line.length * (glyphWidth + letterGap) - letterGap)) / 2);
-    line.forEach(([letter, expected], index) => {
-      glyphs[letter]!.forEach((pixels, y) =>
-        [...pixels].forEach((pixel, x) => {
-          if (pixel !== '#') return;
-          const symbol = art.rows[lineIndex * lineHeight + y]![left + index * (glyphWidth + letterGap) + x]!;
-          const actual = art.legend[symbol];
-          if (actual !== expected) violations.push(`line ${lineIndex + 1} letter ${index} ${letter}: ${actual}`);
-        }),
-      );
-    });
-  });
-  expect([...new Set(violations)]).toEqual([]);
-});
-
-test('draws the game name only in Paper, V2, T2, R2 and Y2', () => {
-  const art = titleArt();
-  const allowed = new Set(['Paper', 'V2', 'T2', 'R2', 'Y2']);
+  const allowed = new Set([
+    'Paper',
+    'Ink',
+    ...['R', 'O', 'Y', 'T', 'V', 'P'].flatMap((ramp) => [1, 2, 3].map((step) => `${ramp}${step}`)),
+    'G2',
+    'G3',
+    'G4',
+  ]);
   const used = new Set(
     art.rows.flatMap((row) => [...row].filter((symbol) => symbol !== '.')).map((s) => art.legend[s]),
   );
@@ -104,8 +77,7 @@ function startScreen(choices: StartChoices = { canContinue: true, hasProgress: t
   const continueButton = create('button', 'start-continue');
   const pickLevelButton = create('button', 'start-pick-level');
   const newGameButton = create('button', 'start-new-game');
-  const hero = create('div', 'start-hero');
-  screen.append(title, continueButton, pickLevelButton, newGameButton, hero);
+  screen.append(title, continueButton, pickLevelButton, newGameButton);
   const confirmModal = create('section', 'confirm-modal');
   confirmModal.hidden = true;
   const yesButton = create('button', 'confirm-yes');
@@ -131,7 +103,6 @@ function startScreen(choices: StartChoices = { canContinue: true, hasProgress: t
     root,
     screen,
     subject,
-    hero,
     title,
     continueButton,
     pickLevelButton,
@@ -248,19 +219,6 @@ test('ΝΑΙ on the confirmation starts a new game, chosen by keys too', () => {
 test('draws ΟΧΙ in the B button colors and ΝΑΙ in the A button colors', () => {
   expect(new Set(Object.values(panelArt.no!.legend))).toContain('W2');
   expect(new Set(Object.values(panelArt.yes!.legend))).toContain('R2');
-});
-
-test.each([
-  ['standing', 0, heroArt.down.stand],
-  ['blinking', 180, heroArt.down.blink!],
-] as const)('shows Nuki facing the player %s at frame %i, at her art size', (_pose, frame, art) => {
-  const { root, subject, hero } = startScreen();
-  subject.animate(frame);
-  expect(['--art', '--art-width', '--art-height'].map((name) => hero.style.getPropertyValue(name))).toEqual([
-    `url(${artUrl(root as unknown as Document, art)})`,
-    String(art.rows[0]!.length),
-    String(art.rows.length),
-  ]);
 });
 
 function titleUrl(root: FakeDocument, keep: (x: number, y: number) => boolean): string {

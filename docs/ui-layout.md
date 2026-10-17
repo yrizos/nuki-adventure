@@ -79,8 +79,7 @@ All three switches sit in a row in the top right corner of the game view. Each i
 
 - Covers the whole page, control panel included, when the game opens with saved progress, when the intro ends and when the menu switch is pressed.
 - Pixel art on the panel pixel grid, on a plain background with no scenery.
-- The game name, Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ ΤΗΣ ΝΟΥΚΙ, sits at the top in the message box font over two centered lines. On each opening it appears through the ordered 4 × 4 dither, one threshold every 2 game frames, then stays still.
-- Nuki stands below the game name facing the player, at one panel pixel per hero pixel, with her idle breathing and blinking on the game's frame clock. The screen owns no timer.
+- The game name is one logo over three centered lines: Η ΠΟΛΥΧΡΩΜΗ, ΠΕΡΙΠΕΤΕΙΑ and ΤΗΣ ΝΟΥΚΙ. All letters share one heavy display font, and every other letter sits one pixel lower. Each line closes into one outlined block, the three blocks share one sticker border, and a shadow falls below it. The logo sits midway between the top of the screen and the buttons. On each opening it appears through the ordered 4 × 4 dither, one threshold every 2 game frames, then stays still.
 - At the bottom, all three buttons in this order, 8 pixels apart like the confirmation's answers, always shown, styled like the A button and sinking into their lips while pressed. All share the width of the widest. Buttons work from the first frame, and the first enabled button takes focus.
 - A button whose condition does not hold is disabled. It is dimmed like a disabled action button and ignores touch and keys.
 

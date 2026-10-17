@@ -1,36 +1,16 @@
-import { PixelGrid, type Art } from '../graphics/art';
-import { glyphHeight, glyphWidth, letterGap, lineHeight, textWidth, writeText } from '../graphics/font';
 import { menuButtonWidth, textButtonHeight } from '../graphics/panel';
 import { artUrl } from '../graphics/canvas-art';
 import { ConfirmModal } from './confirm-modal';
 import { element } from '../shell/dom';
-import { idleHeroPose } from '../world/hero-animator';
 import { menuChoices, takeMenuKeys } from './menu-keys';
 import { ditheredArt, ditherSteps } from '../graphics/ordered-dither';
+import { titleArt } from './title-logo';
 
-// ΠΟΛΥΧΡΩΜΗ means colorful, so its letters take violet, teal and red in turn, and the hero's name takes the gold of the stars.
-const gameName = [
-  { text: 'Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ', colors: 'pp' + 'vtr'.repeat(3) + 'p'.repeat(11) },
-  { text: 'ΤΗΣ ΝΟΥΚΙ', colors: 'pppp' + 'yyyyy' },
-];
-const gameNameLegend = { p: 'Paper', v: 'V2', t: 'T2', r: 'R2', y: 'Y2' } as const;
 const framesPerTitleThreshold = 2;
 
 export interface StartChoices {
   readonly canContinue: boolean;
   readonly hasProgress: boolean;
-}
-
-export function titleArt(): Art {
-  const width = Math.max(...gameName.map(({ text }) => textWidth(text)));
-  const grid = new PixelGrid(width, (gameName.length - 1) * lineHeight + glyphHeight);
-  gameName.forEach(({ text, colors }, line) => {
-    const left = Math.floor((width - textWidth(text)) / 2);
-    [...text].forEach((character, index) =>
-      writeText(grid, character, left + index * (glyphWidth + letterGap), line * lineHeight, colors[index]!),
-    );
-  });
-  return grid.build(gameNameLegend);
 }
 
 export class StartScreen {
@@ -40,20 +20,16 @@ export class StartScreen {
   private readonly newGameButton: HTMLButtonElement;
   private readonly confirm: ConfirmModal;
   private choices: StartChoices = { canContinue: false, hasProgress: false };
-  private readonly hero: HTMLElement;
   private readonly title: HTMLElement;
   private readonly titleUrls: string[];
   private titleShown = -1;
-  private readonly heroUrls = new Map<Art, string>();
-  private heroPose: Art | null = null;
 
-  constructor(private readonly root: Document) {
+  constructor(root: Document) {
     this.screen = element(root, '.start-screen');
     this.continueButton = element(root, '.start-continue');
     this.pickLevelButton = element(root, '.start-pick-level');
     this.newGameButton = element(root, '.start-new-game');
     this.confirm = new ConfirmModal(root, this.screen, this.newGameButton);
-    this.hero = element(root, '.start-hero');
     this.title = element(root, '.start-title');
     const art = titleArt();
     // Each reveal step is drawn once here, so replaying the reveal on every visit builds no new images.
@@ -97,17 +73,6 @@ export class StartScreen {
       this.titleShown = shown;
       this.title.style.setProperty('--art', this.titleUrls[shown]!);
     }
-    const pose = idleHeroPose('down', framesOpen);
-    if (pose === this.heroPose) return;
-    this.heroPose = pose;
-    let url = this.heroUrls.get(pose);
-    if (!url) {
-      url = `url(${artUrl(this.root, pose)})`;
-      this.heroUrls.set(pose, url);
-    }
-    this.hero.style.setProperty('--art', url);
-    this.hero.style.setProperty('--art-width', String(pose.rows[0]!.length));
-    this.hero.style.setProperty('--art-height', String(pose.rows.length));
   }
 
   show(choices: StartChoices): void {
