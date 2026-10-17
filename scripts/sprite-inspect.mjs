@@ -9,7 +9,7 @@ import { runInNewContext } from 'node:vm';
  * @typedef {{legend: Record<string, string>, frames: Record<string, string[]>, faded: Record<string, FadedFrame>, animations: Record<string, {length: number, frames: string[]}>}} Sprite
  */
 
-const root = fileURLToPath(new URL('../src/presentation/sprites/', import.meta.url));
+const root = fileURLToPath(new URL('../assets/sprites/', import.meta.url));
 const names = ['mode', 'sprite', 'frame', 'animation', 'filter', 'limit', 'offset', 'faded'];
 
 /** @param {string | undefined} value @param {number} fallback @param {number} maximum @param {string} name */

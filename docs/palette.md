@@ -1,6 +1,6 @@
 # Color Palette
 
-Hex values and the faded mapping live in [`src/presentation/sprites/palette.js`](../src/presentation/sprites/palette.js). [`src/presentation/palette.ts`](../src/presentation/palette.ts) defines the valid codes and the ramp order. This file assigns codes to elements.
+Hex values and the faded mapping live in [`assets/sprites/palette.js`](../assets/sprites/palette.js). [`src/user-interface/graphics/palette.ts`](../src/user-interface/graphics/palette.ts) defines the valid codes and the ramp order. This file assigns codes to elements.
 
 ## Principles
 

@@ -4,7 +4,7 @@ Terms follow the [glossary](glossary.md). A level that breaks a hard constraint 
 
 ## Hard Constraints
 
-The `Level` constructor (`src/domain/level/level.ts`), `Scenery.of` (`src/domain/level/scenery.ts`), `levelFromLayout` (`src/infrastructure/level-layout.ts`) and the authored-level tests enforce most rules. Rules marked (unchecked) have no validator, so the designer checks them.
+The `Level` constructor (`src/level/domain/level.ts`), `Scenery.of` (`src/level/domain/scenery.ts`), `levelFromLayout` (`src/level/content/level-layout.ts`) and the authored-level tests enforce most rules. Rules marked (unchecked) have no validator, so the designer checks them.
 
 Every new hard constraint comes with a deterministic test that checks it in every authored level it applies to.
 
@@ -33,7 +33,7 @@ Every new hard constraint comes with a deterministic test that checks it in ever
 - A layout MAY mark up to four [permanent star spots](glossary.md#game-world) with `@`. They count toward the twenty. Each holds a star every time, and the level start picks the rest of the five from the other spots.
 - Every star spot is reachable and not hidden. No star spot shares a tile with a key, the hero start or another star spot. Permanent star spots count as star spots.
 - Every star spot is clearly visible. No woodland or tree stands on the tile directly above it or on either tile diagonally above it, and woodland or trees never stand both directly left and directly right of it. Bad example: a star spot in a one-tile bay of the woodland edge, with canopy above it and beside it, reads as hidden even though no canopy covers its tile.
-- No star spot lies on the [mandatory route](glossary.md#game-world), and at least half of the star spots lie in [exploration areas](glossary.md#game-world). `src/test-support/routes.ts` computes both.
+- No star spot lies on the [mandatory route](glossary.md#game-world), and at least half of the star spots lie in [exploration areas](glossary.md#game-world). `src/level/testing/routes.ts` computes both.
 - A layout marks star spots or gives a star count, never both. Authored levels always mark star spots.
 
 ### Trees

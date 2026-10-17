@@ -23,7 +23,7 @@ Color codes refer to the [palette](palette.md). Element colors live there, not h
 - Image smoothing is off and the canvas uses pixelated rendering.
 - Sprites and the camera are drawn at whole pixel positions only.
 - Sprites are never scaled, rotated, skewed or filtered at draw time. Mirroring is the only transform, and only for art drawn to be symmetric.
-- Sprites are grids of palette codes in `src/presentation/sprites/<name>/data.js`, each with a `preview.html`. Never image files.
+- Sprites are grids of palette codes in `assets/sprites/<name>/data.js`, each with a `preview.html`. Never image files.
 - Terrain transitions share base grids and water frames instead of repeating whole tiles. Vite expands them into static sprite data before the game loads. Standalone previews expand the same source once.
 
 ## Grid and Perspective
@@ -188,7 +188,7 @@ A new element uses the smallest size that fits its shape.
 
 ## Faded World
 
-- At the start, only the hero, stars and keys are in color. Every scenery tile and prop has a faded version that maps each step to a neutral through `faded` in [`palette.js`](../src/presentation/sprites/palette.js), then corrected by hand.
+- At the start, only the hero, stars and keys are in color. Every scenery tile and prop has a faded version that maps each step to a neutral through `faded` in [`palette.js`](../assets/sprites/palette.js), then corrected by hand.
 - A faded object differs from its ground through its silhouette, ground shadow or at least one neutral step. Stones on grass rely on their shadow and highlight, because N3 stone matches faded grass.
 - The magical arrival changes only the hero's visibility and never the faded state.
 

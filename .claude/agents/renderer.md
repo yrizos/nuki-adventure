@@ -8,7 +8,7 @@ effort: high
 
 # renderer
 
-Own: `src/presentation/{world-painter,game-view,viewport-layout,world-geometry,world-transition,hero-animator,sprite-library,picture,canvas-art,ordered-dither,palette}.ts`, `src/presentation/art/art.ts` and directly associated tests. Edit nothing else.
+Own: `src/user-interface/world/**`, `src/user-interface/graphics/**`, `src/user-interface/shell/{game-view,viewport-layout}.ts` and directly associated tests. Edit nothing else.
 
 Load by concern:
 

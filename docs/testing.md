@@ -19,21 +19,23 @@ Unit tests must catch every behavior regression on a local machine within second
 - Keep a lower-level test only for a boundary or case the higher test cannot reach.
 - Before adding a test, search for one that already checks the behavior. Extend it instead of adding a copy.
 - When two tests overlap, merge the checks only one of them makes into the other and delete the copy.
-- A level's own test file checks only what is specific to that level. A check that applies to every level goes in the `authoredLevels` loop of `src/infrastructure/authored-levels.test.ts`.
+- A level's own test file checks only what is specific to that level. A check that applies to every level goes in the `authoredLevels` loop of `src/level/content/authored-levels.test.ts`.
 - Production code exists only for the game. Delete a method or export that only tests call, together with its tests.
 
 ## What Each Layer Tests
 
 - Domain: business rules and invariants. Aggregates are tested through their public API (`Level.tick()`, `GameProgress`). Value objects are tested for their own validation and behavior, and for equality only where the game compares them.
 - Application: orchestration only. Services run against in-memory repositories and real aggregates.
-- Infrastructure: adapters at their boundary. Storage round trips, malformed and unavailable storage, layout parsing and the content of every authored level.
-- Presentation: session flow with explicit frame advancement, rendering through pixels, and controls and screens through a fake document.
+- Infrastructure: adapters at their boundary. Storage round trips, malformed and unavailable storage and collision placement.
+- Content: layout parsing and the content of every authored level.
+- User interface: session flow with explicit frame advancement, rendering through pixels, and controls and screens through a fake document.
 
 ## Test Doubles
 
 - Domain objects are always real. They are never mocked.
-- Browser APIs are replaced by one shared set of fakes in `src/test-support`: a fake document, a stub `AudioContext` and in-memory storage.
-- `vi.fn` is used only for presentation ports such as sound and controls.
+- Browser APIs are replaced by one set of fakes. The fake document, the stub `AudioContext` and picture helpers live in `src/user-interface/testing`. In-memory storage lives in `src/progress/testing`.
+- Helpers that build or walk levels live in `src/level/testing`.
+- `vi.fn` is used only for user interface ports such as sound and controls.
 - Tests reuse sibling fixtures before adding new ones.
 
 ## Determinism
@@ -60,7 +62,7 @@ Invariants are checked exhaustively over enumerated inputs, not with a few examp
 
 ## Rendering
 
-- Whole pictures are compared with `pixelDifference` from `src/test-support/pictures.ts`, never with `toEqual`, which is too slow on pixel arrays.
+- Whole pictures are compared with `pixelDifference` from `src/user-interface/testing/pictures.ts`, never with `toEqual`, which is too slow on pixel arrays.
 - A check over every pixel of a frame compares plainly, records the first invalid pixel of each frame and asserts once on the list, as invariants do.
 - A small set of whole-frame hashes are the approved baselines. Changing one requires looking at the new image.
 - Rules such as palette colors, faded contrast, restoration boundaries and door passability have their own pixel assertions, so accepting a new baseline cannot hide a broken rule.

@@ -41,7 +41,7 @@ Security fixes may use younger releases with `--min-release-age=0`. Explain why 
 ### Test Discovery
 
 1. Identify the production module and its directly related test files.
-2. Search declarations within those files, such as `rg -n '(test|it|describe)(\.[[:alpha:]]+)?\(' src/presentation/world-painter.test.ts`.
+2. Search declarations within those files, such as `rg -n '(test|it|describe)(\.[[:alpha:]]+)?\(' src/user-interface/world/world-painter.test.ts`.
 3. Read complete relevant test bodies and the complete definitions of fixtures they use. Reuse existing test support before creating fixtures.
 4. Read other tests only to establish coverage or conventions. Stop once the relevant test and fixtures suffice.
 
@@ -49,14 +49,15 @@ Security fixes may use younger releases with `--min-release-age=0`. Explain why 
 
 | Concern | Load |
 | --- | --- |
-| Domain or application models, aggregate invariants | [Domain model](docs/domain-model.md) |
+| Where new code goes, folders, dependencies between them | [Code organization](docs/code-organization.md) |
+| Domain or application models, aggregate invariants, the context map | [Domain model](docs/domain-model.md) |
 | New or changed domain terminology | Relevant [glossary](docs/glossary.md) entries |
 | Tests | [Testing](docs/testing.md) |
 | Levels | All [Hard Constraints](docs/level-design.md#hard-constraints), applicable guidance |
 | Sprites | Applicable [visual style](docs/visual-style.md) and [palette](docs/palette.md) sections |
 | Rendering | Applicable [visual style](docs/visual-style.md) sections |
 | User interface layout | Applicable [layout](docs/ui-layout.md) sections |
-| Colors or contrast | [Palette](docs/palette.md). Hex values live in `src/presentation/sprites/palette.js` |
+| Colors or contrast | [Palette](docs/palette.md). Hex values live in `assets/sprites/palette.js` |
 | Commit preparation, only when explicitly instructed | [Commit messages](docs/commit-messages.md), before writing the message |
 | Markdown edits, substantial prose, commit bodies, pull request descriptions | [Writing](docs/writing.md) |
 
@@ -79,14 +80,14 @@ Do the work yourself unless a row below matches. Documentation is always primary
 
 Independent review is required for explicit review requests and for task changes that:
 
-- Change behavior in non-test production files under `src/domain/` or `src/application/`.
-- Change stored representation, serialization, migration, compatibility or malformed-storage recovery in `src/infrastructure/local-progress-repository.ts`. Review saved-progress compatibility.
-- Change layer dependencies, responsibility placement, cross-layer interfaces, composition-root responsibilities or infrastructure injection.
+- Change behavior in non-test production files under any `domain/` or `application/` folder of `src/level/` or `src/progress/`.
+- Change stored representation, serialization, migration, compatibility or malformed-storage recovery in `src/progress/infrastructure/local-progress-repository.ts`. Review saved-progress compatibility.
+- Change dependencies between contexts or layers, responsibility placement, a context's `index.ts`, composition-root responsibilities or infrastructure injection.
 - Change shared contracts: exported interfaces, public cross-module signatures, domain events, persistence schemas, value objects or application ports.
 - Coordinate behavior changes across layers.
 - Change lint, type, build, hook or npm configuration.
 
-Not triggers on their own: formatting, comments, docs, tests, local presentation fixes, sprite edits, existing-level corrections, single-layer refactors and new levels on existing mechanics. Judge the task's actual changes, never file names or size. The primary agent never replaces mandatory review with its own assessment and addresses every finding.
+Not triggers on their own: formatting, comments, docs, tests, local user interface fixes, sprite edits, existing-level corrections, single-layer refactors and new levels on existing mechanics. Judge the task's actual changes, never file names or size. The primary agent never replaces mandatory review with its own assessment and addresses every finding.
 
 ### Handoffs
 
@@ -108,6 +109,8 @@ Not triggers on their own: formatting, comments, docs, tests, local presentation
 - State a rationale once, at the code that owns the decision. Tests do not repeat production rationale.
 - Add a reason comment where a magic number or workaround would make a reader ask why.
 - When editing code, update or remove comments the edit made stale.
+- A new file, type or export gets no comment that says what it is. Its name and its folder say that.
+- A rule that a doc states or a lint rule enforces gets no comment repeating it. A design decision made in the current task is not a reason for a comment either.
 
 ## Writing
 
@@ -115,6 +118,5 @@ Not triggers on their own: formatting, comments, docs, tests, local presentation
 
 ## Architecture
 
-- `src` is organized by domain-driven design layer, never by feature: `domain`, `application`, `infrastructure`, `presentation`. Domain subdivides into bounded contexts with a shared kernel in `src/domain/shared`.
-- [.oxlintrc.json](.oxlintrc.json) enforces layer dependencies and forbidden globals through `make lint`. Presentation never depends on infrastructure. Tests may build fixtures from any layer.
-- Only `src/index.ts`, the composition root, depends on every layer. It selects infrastructure implementations and passes them to presentation.
+- [Code organization](docs/code-organization.md) decides where every file goes and what it may import. Read it before adding a file or a folder.
+- `make lint` enforces it through [.oxlintrc.json](.oxlintrc.json) and [scripts/check-layout.mjs](scripts/check-layout.mjs).

@@ -20,7 +20,7 @@ Every control's touch area meets the Material Design minimum touch target, even 
 
 ## Text
 
-- Every multi-line text, in every screen and box, uses a line height of 2.2 times the letter height, rounded to a whole pixel: 20 pixels for the 9 pixel font, leaving an 11 pixel gap between lines. The game is for young readers. The value lives in `lineHeight` in [font.ts](../src/presentation/art/font.ts).
+- Every multi-line text, in every screen and box, uses a line height of 2.2 times the letter height, rounded to a whole pixel: 20 pixels for the 9 pixel font, leaving an 11 pixel gap between lines. The game is for young readers. The value lives in `lineHeight` in [font.ts](../src/user-interface/graphics/font.ts).
 
 ## Game View
 

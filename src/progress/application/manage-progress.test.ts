@@ -1,0 +1,72 @@
+import { expect, test } from 'vitest';
+import { GameProgress } from '../domain/game-progress';
+import { Playthrough, PlayTime } from '../domain/playthrough';
+import type { ProgressRepository } from '../domain/progress-repository';
+import { LevelId, StarCount } from '../../level';
+import { ManageProgress } from './manage-progress';
+
+const one = LevelId.of('one');
+const two = LevelId.of('two');
+
+function subject(levels = [one, two]) {
+  let saved = GameProgress.fresh();
+  let saves = 0;
+  const repository: ProgressRepository = {
+    load: () => GameProgress.restore(saved),
+    save: (progress) => {
+      saved = progress;
+      saves++;
+    },
+  };
+  return { manage: new ManageProgress(repository, levels), saves: () => saves };
+}
+
+test('shows the levels of the game by number, with only the first unlocked at first', () => {
+  const { manage } = subject();
+  expect(manage.view()).toEqual({
+    continueLevel: null,
+    hasProgress: false,
+    levels: [
+      { id: one, number: 1, isUnlocked: true, lastPlaythrough: null },
+      { id: two, number: 2, isUnlocked: false, lastPlaythrough: null },
+    ],
+  });
+});
+
+test('saves reaching a level and completing one', () => {
+  const { manage, saves } = subject();
+  manage.reach(two);
+  manage.complete(one, { playFrames: 120, starsCollected: 2, starCount: 3 });
+  expect(saves()).toBe(2);
+  const view = manage.view();
+  expect(view.continueLevel).toBe(two);
+  expect(view.hasProgress).toBe(true);
+  expect(view.levels.map((level) => level.isUnlocked)).toEqual([true, true]);
+  expect(view.levels[0]!.lastPlaythrough).toEqual(
+    Playthrough.of(PlayTime.ofFrames(120), StarCount.of(2), StarCount.of(3)),
+  );
+});
+
+test('completing a level saves the next level of the configured order as unlocked', () => {
+  const { manage, saves } = subject([two, one]);
+  manage.complete(two, { playFrames: 120, starsCollected: 2, starCount: 3 });
+  expect(saves()).toBe(1);
+  expect(manage.view().levels.map(({ id, isUnlocked }) => [id, isUnlocked])).toEqual([
+    [two, true],
+    [one, true],
+  ]);
+});
+
+test('resetting saves fresh progress', () => {
+  const { manage } = subject();
+  manage.reach(two);
+  manage.reset();
+  expect(manage.view()).toMatchObject({ continueLevel: null, hasProgress: false });
+  expect(manage.view().levels.map((level) => level.isUnlocked)).toEqual([true, false]);
+});
+
+test('names the level after a level in the configured order, and none after the last', () => {
+  const { manage } = subject([two, one]);
+  expect(manage.levelAfter(two)).toBe(one);
+  expect(manage.levelAfter(one)).toBeNull();
+});

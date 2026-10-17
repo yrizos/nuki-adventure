@@ -1,5 +1,12 @@
 # Domain Model
 
+## Context Map
+
+- Two bounded contexts: `level`, everything inside one level, and `progress`, what the game remembers between visits.
+- `progress` is downstream of `level`. It refers to a level only by `LevelId` and stores star totals as `StarCount`, both taken from the level context's public entry.
+- `level` knows nothing about `progress`.
+- There is no shared kernel. [Code organization](code-organization.md) places every file.
+
 ## Modeling
 
 - Model with aggregate roots, entities and immutable value objects. Wrap domain concepts in value objects that validate at creation. Plain numbers are fine for raw coordinates and constants.

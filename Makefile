@@ -1,6 +1,6 @@
 .DEFAULT_GOAL := help
 
-.PHONY: sprite-inspect level-map help tools dependencies install dev build test test-file test-watch typecheck lint format fix markdown audit check check-push hooks
+.PHONY: sprite-inspect level-map layout help tools dependencies install dev build test test-file test-watch typecheck lint format fix markdown audit check check-push hooks
 
 help:
 	@printf '%-20s %s\n' \
@@ -16,7 +16,8 @@ help:
 		'make test-file FILE=path' 'Run a specific test file' \
 		'make test-watch' 'Run unit tests in watch mode' \
 		'make typecheck' 'Check TypeScript types' \
-		'make lint' 'Check code lint rules' \
+		'make lint' 'Check code lint rules, including the source layout' \
+		'make layout' 'Check that src follows docs/code-organization.md' \
 		'make format' 'Check code formatting' \
 		'make fix' 'Apply all available code and lint fixes' \
 		'make markdown' 'Check Markdown lint rules' \
@@ -54,7 +55,7 @@ test-file: dependencies
 
 level-map: dependencies
 	@test -n "$(LEVEL)" || { echo "Usage: make level-map LEVEL=<level id|all>"; exit 2; }
-	LEVEL_MAP="$(LEVEL)" npm test -- src/presentation/level-map.render.test.ts
+	LEVEL_MAP="$(LEVEL)" npm test -- src/user-interface/screens/level-map.render.test.ts
 
 test-watch: dependencies
 	npm run test:watch
@@ -64,6 +65,9 @@ typecheck: dependencies
 
 lint: dependencies
 	npm run lint
+
+layout: dependencies
+	npm run lint:layout
 
 format: dependencies
 	npm run format:check

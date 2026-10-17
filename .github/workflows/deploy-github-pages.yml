@@ -7,7 +7,7 @@ on:
     paths:
       - 'src/**/*.ts'
       - 'src/**/*.css'
-      - 'src/presentation/sprites/*/data.js'
+      - 'assets/sprites/*/data.js'
       - 'index.html'
       - 'package.json'
       - 'package-lock.json'

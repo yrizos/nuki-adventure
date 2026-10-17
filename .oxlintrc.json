@@ -27,15 +27,24 @@
   },
   "overrides": [
     {
-      "files": ["src/domain/**"],
+      "files": ["src/level/domain/**"],
       "rules": {
         "no-restricted-imports": [
           "error",
           {
             "patterns": [
               {
-                "group": ["**/application/**", "**/infrastructure/**", "**/presentation/**"],
-                "message": "The domain layer depends only on the domain."
+                "group": [
+                  "**/application/**",
+                  "**/infrastructure/**",
+                  "**/content/**",
+                  "**/testing/**",
+                  "**/progress",
+                  "**/progress/**",
+                  "**/user-interface",
+                  "**/user-interface/**"
+                ],
+                "message": "The level domain depends only on the level domain. See docs/code-organization.md."
               }
             ]
           }
@@ -44,23 +53,23 @@
           "error",
           {
             "name": "window",
-            "message": "Browser APIs belong in the presentation layer."
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
           },
           {
             "name": "document",
-            "message": "Browser APIs belong in the presentation layer."
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
           },
           {
             "name": "localStorage",
-            "message": "Browser APIs belong in the presentation layer."
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
           },
           {
             "name": "performance",
-            "message": "Browser APIs belong in the presentation layer."
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
           },
           {
             "name": "requestAnimationFrame",
-            "message": "Browser APIs belong in the presentation layer."
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
           }
         ],
         "no-restricted-properties": [
@@ -68,21 +77,29 @@
           {
             "object": "Math",
             "property": "random",
-            "message": "Randomness comes in from the composition root."
+            "message": "Randomness comes in through a port wired in src/main.ts. See docs/code-organization.md."
           }
         ]
       }
     },
     {
-      "files": ["src/application/**"],
+      "files": ["src/level/application/**"],
       "rules": {
         "no-restricted-imports": [
           "error",
           {
             "patterns": [
               {
-                "group": ["**/infrastructure/**", "**/presentation/**"],
-                "message": "The application layer depends only on the application and domain layers."
+                "group": [
+                  "**/infrastructure/**",
+                  "**/content/**",
+                  "**/testing/**",
+                  "**/progress",
+                  "**/progress/**",
+                  "**/user-interface",
+                  "**/user-interface/**"
+                ],
+                "message": "Level use cases depend only on the level domain. See docs/code-organization.md."
               }
             ]
           }
@@ -91,23 +108,23 @@
           "error",
           {
             "name": "window",
-            "message": "Browser APIs belong in the presentation layer."
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
           },
           {
             "name": "document",
-            "message": "Browser APIs belong in the presentation layer."
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
           },
           {
             "name": "localStorage",
-            "message": "Browser APIs belong in the presentation layer."
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
           },
           {
             "name": "performance",
-            "message": "Browser APIs belong in the presentation layer."
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
           },
           {
             "name": "requestAnimationFrame",
-            "message": "Browser APIs belong in the presentation layer."
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
           }
         ],
         "no-restricted-properties": [
@@ -115,21 +132,29 @@
           {
             "object": "Math",
             "property": "random",
-            "message": "Randomness comes in from the composition root."
+            "message": "Randomness comes in through a port wired in src/main.ts. See docs/code-organization.md."
           }
         ]
       }
     },
     {
-      "files": ["src/infrastructure/**"],
+      "files": ["src/level/infrastructure/**"],
       "rules": {
         "no-restricted-imports": [
           "error",
           {
             "patterns": [
               {
-                "group": ["**/application/**", "**/presentation/**"],
-                "message": "The infrastructure layer depends only on the infrastructure and domain layers."
+                "group": [
+                  "**/application/**",
+                  "**/content/**",
+                  "**/testing/**",
+                  "**/progress",
+                  "**/progress/**",
+                  "**/user-interface",
+                  "**/user-interface/**"
+                ],
+                "message": "Level adapters depend only on the level domain. See docs/code-organization.md."
               }
             ]
           }
@@ -137,15 +162,77 @@
       }
     },
     {
-      "files": ["src/presentation/**"],
+      "files": ["src/level/content/**"],
       "rules": {
         "no-restricted-imports": [
           "error",
           {
             "patterns": [
               {
-                "group": ["**/infrastructure/**"],
-                "message": "Only src/index.ts chooses infrastructure."
+                "group": [
+                  "**/application/**",
+                  "**/infrastructure/**",
+                  "**/testing/**",
+                  "**/progress",
+                  "**/progress/**",
+                  "**/user-interface",
+                  "**/user-interface/**"
+                ],
+                "message": "Authored levels depend only on the level domain. Adapters arrive as arguments. See docs/code-organization.md."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "window",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          },
+          {
+            "name": "document",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          },
+          {
+            "name": "localStorage",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          },
+          {
+            "name": "performance",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          },
+          {
+            "name": "requestAnimationFrame",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          }
+        ],
+        "no-restricted-properties": [
+          "error",
+          {
+            "object": "Math",
+            "property": "random",
+            "message": "Randomness comes in through a port wired in src/main.ts. See docs/code-organization.md."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/level/index.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/infrastructure/**",
+                  "**/testing/**",
+                  "**/progress",
+                  "**/progress/**",
+                  "**/user-interface",
+                  "**/user-interface/**"
+                ],
+                "message": "The level entry exposes only the level domain, use cases and catalog. See docs/code-organization.md."
               }
             ]
           }
@@ -153,7 +240,190 @@
       }
     },
     {
-      "files": ["src/presentation/sprites/**/*.js"],
+      "files": ["src/progress/domain/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/application/**",
+                  "**/infrastructure/**",
+                  "**/testing/**",
+                  "**/level/**",
+                  "**/user-interface",
+                  "**/user-interface/**"
+                ],
+                "message": "The progress domain depends only on its own domain and the level entry. See docs/code-organization.md."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "window",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          },
+          {
+            "name": "document",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          },
+          {
+            "name": "localStorage",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          },
+          {
+            "name": "performance",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          },
+          {
+            "name": "requestAnimationFrame",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          }
+        ],
+        "no-restricted-properties": [
+          "error",
+          {
+            "object": "Math",
+            "property": "random",
+            "message": "Randomness comes in through a port wired in src/main.ts. See docs/code-organization.md."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/progress/application/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/infrastructure/**",
+                  "**/testing/**",
+                  "**/level/**",
+                  "**/user-interface",
+                  "**/user-interface/**"
+                ],
+                "message": "Progress use cases depend only on the progress domain and the level entry. See docs/code-organization.md."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "window",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          },
+          {
+            "name": "document",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          },
+          {
+            "name": "localStorage",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          },
+          {
+            "name": "performance",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          },
+          {
+            "name": "requestAnimationFrame",
+            "message": "Browser APIs belong in src/user-interface or an infrastructure adapter. See docs/code-organization.md."
+          }
+        ],
+        "no-restricted-properties": [
+          "error",
+          {
+            "object": "Math",
+            "property": "random",
+            "message": "Randomness comes in through a port wired in src/main.ts. See docs/code-organization.md."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/progress/infrastructure/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/application/**",
+                  "**/testing/**",
+                  "**/level/**",
+                  "**/user-interface",
+                  "**/user-interface/**"
+                ],
+                "message": "Progress adapters depend only on the progress domain and the level entry. See docs/code-organization.md."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/progress/index.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/infrastructure/**",
+                  "**/testing/**",
+                  "**/level/**",
+                  "**/user-interface",
+                  "**/user-interface/**"
+                ],
+                "message": "The progress entry exposes only the progress domain and use cases. See docs/code-organization.md."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/user-interface/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/level/**", "**/progress/**", "**/testing/**"],
+                "message": "The user interface reaches a context only through its index.ts and never imports test helpers. See docs/code-organization.md."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/main.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/domain/**", "**/application/**", "**/content/**", "**/testing/**"],
+                "message": "The composition root imports context entries and infrastructure adapters only. See docs/code-organization.md."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["assets/sprites/**/*.js"],
       "rules": {
         "typescript/no-unsafe-assignment": "off",
         "typescript/no-unsafe-call": "off",
@@ -163,7 +433,7 @@
       }
     },
     {
-      "files": ["src/**/*.test.ts"],
+      "files": ["src/**/*.test.ts", "src/**/testing/**"],
       "rules": {
         "no-restricted-imports": "off",
         "no-restricted-globals": "off",
