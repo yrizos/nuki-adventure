@@ -1,24 +1,22 @@
 import type { Art } from '../graphics/art';
 import { PixelGrid } from '../graphics/art';
-import { glyphHeight, glyphWidth, letterGap, lineHeight, writeText } from '../graphics/font';
+import { glyphHeight, lineHeight, textWidth, wrapText, writeText } from '../graphics/font';
 import { ditherSteps, ditherThreshold } from '../graphics/ordered-dither';
 import type { Picture } from '../graphics/picture';
 
 const margin = 8;
 const edge = 2;
 const padding = 10;
-const advance = glyphWidth + letterGap;
 const dissolveLength = ditherSteps;
 
 export function wrap(text: string, boxWidth: number): readonly string[] {
-  const perLine = Math.floor((boxWidth - 2 * (edge + padding) + letterGap) / advance);
-  const lines: string[] = [];
-  for (const word of text.split(' ')) {
-    const last = lines.at(-1);
-    if (last !== undefined && last.length + 1 + word.length <= perLine) lines[lines.length - 1] = `${last} ${word}`;
-    else lines.push(word);
-  }
-  return lines;
+  return wrapText(text, boxWidth - 2 * (edge + padding));
+}
+
+// The box shrinks to its longest line, so a short text gets a small box instead of one spanning the view.
+export function fittedMessageBoxArt(text: string, widest: number): Art {
+  const lines = wrap(text, widest);
+  return boxArt(text, Math.max(...lines.map(textWidth)) + 2 * (edge + padding));
 }
 
 function boxArt(text: string, width: number): Art {

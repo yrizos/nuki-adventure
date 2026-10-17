@@ -16,7 +16,13 @@ import { pathTo, same } from '../../level/testing/walk-level';
 import { InMemoryLevelRepository } from '../../level/infrastructure/in-memory-level-repository';
 import { LocalProgressRepository } from '../../progress/infrastructure/local-progress-repository';
 import { audioWindow } from '../testing/audio-context';
-import { FakeDocument, type FakeElement, type FakeHTMLElement, stubDisplay } from '../testing/fake-document';
+import {
+  type FakeCanvasElement,
+  FakeDocument,
+  type FakeElement,
+  type FakeHTMLElement,
+  stubDisplay,
+} from '../testing/fake-document';
 import { memoryStorage } from '../../progress/testing/memory-storage';
 import { pixelDifference } from '../testing/pictures';
 import type { Art } from '../graphics/art';
@@ -26,6 +32,8 @@ import { arrivalLength } from './game-phase';
 import { Sound } from '../audio/sound';
 import { GameLoop } from './game-loop';
 import { endScreenFadeLength } from '../screens/end-screen';
+import { narration } from '../screens/intro';
+import { introLength, skipLength } from '../screens/intro-timeline';
 import { GameSession, humVolume, messages } from './game-session';
 import { HeroAnimator } from '../world/hero-animator';
 import { MessageBox } from '../screens/message-box';
@@ -605,7 +613,7 @@ describe('the magical arrival', () => {
   });
 });
 
-function gamePage({ secondUnlocked = false, arrives = false } = {}) {
+function gamePage({ secondUnlocked = false, arrives = false, intro = false } = {}) {
   FakeDocument.stubGlobals();
   audioWindow();
   const display = stubDisplay(1);
@@ -702,6 +710,9 @@ function gamePage({ secondUnlocked = false, arrives = false } = {}) {
   );
   if (secondUnlocked) progress.complete(levels[0]!.id, { playFrames: 60, starsCollected: 0, starCount: 0 });
   startGame(root as unknown as Document, levels, progress, () => 1);
+  // A fresh game opens on the intro, and Escape leaves it for the start screen that most tests begin on.
+  if (!intro && !secondUnlocked)
+    root.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: 'Escape', repeat: false }));
   // The level picker reads every level once to draw its picture, which starts no session.
   started.length = 0;
   let now = 0;
@@ -720,6 +731,8 @@ function gamePage({ secondUnlocked = false, arrives = false } = {}) {
     started,
     frame,
     announcement,
+    screen: elements.get('screen')!,
+    canvas: view.children[0] as FakeCanvasElement,
     startScreen: elements.get('start-screen')!,
     confirmModal: elements.get('confirm-modal')!,
     endScreen: elements.get('end-screen')!,
@@ -778,6 +791,47 @@ describe('the game page', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  test('opens a fresh game on the intro with every control hidden, then the start screen once it ends', () => {
+    const page = gamePage({ intro: true });
+    expect(page.startScreen.hidden).toBe(true);
+    expect(page.screen.classList.contains('intro-open')).toBe(true);
+    for (let frame = 1; frame < introLength; frame++) page.frame();
+    expect(page.startScreen.hidden).toBe(true);
+    page.frame();
+    expect(page.startScreen.hidden).toBe(false);
+    expect(page.screen.classList.contains('intro-open')).toBe(false);
+    expect(page.started).toEqual([]);
+  });
+
+  test('opens the start screen at once when progress is saved', () => {
+    const page = gamePage({ secondUnlocked: true });
+    expect(page.startScreen.hidden).toBe(false);
+    expect(page.screen.classList.contains('intro-open')).toBe(false);
+  });
+
+  test('paints the intro on the game view and announces its narration', () => {
+    const page = gamePage({ intro: true });
+    page.frame();
+    expect(page.canvas.context.shown).not.toBeNull();
+    expect(page.announcement.textContent).toBe(narration[0]);
+  });
+
+  test('Escape leaves the intro for the start screen', () => {
+    const page = gamePage({ intro: true });
+    page.menuKey('Escape');
+    expect(page.startScreen.hidden).toBe(false);
+    expect(page.screen.classList.contains('intro-open')).toBe(false);
+  });
+
+  test('a touch held through the whole skip leaves the intro for the start screen', () => {
+    const page = gamePage({ intro: true });
+    page.root.body.dispatchEvent(Object.assign(new Event('pointerdown'), { pointerId: 1 }));
+    for (let frame = 1; frame < skipLength; frame++) page.frame();
+    expect(page.startScreen.hidden).toBe(true);
+    page.frame();
+    expect(page.startScreen.hidden).toBe(false);
   });
 
   test('starts level one from ΝΕΟ ΠΑΙΧΝΙΔΙ at once when no progress is saved', () => {

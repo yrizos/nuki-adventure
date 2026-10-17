@@ -15,6 +15,8 @@ import { memoryStorage } from '../../progress/testing/memory-storage';
 import { pixelDifference } from '../testing/pictures';
 import { endScreenFadeLength } from '../screens/end-screen';
 import { GameNavigator } from './game-navigator';
+import { Intro } from '../screens/intro';
+import { introLength, skipLength } from '../screens/intro-timeline';
 import { GameSession } from './game-session';
 import { HeroAnimator } from '../world/hero-animator';
 import { Picture } from '../graphics/picture';
@@ -50,6 +52,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
   vi.spyOn(progress, 'reach');
   vi.spyOn(progress, 'complete');
   const screens = {
+    showIntro: vi.fn(),
     showStartScreen: vi.fn(),
     animateStartScreen: vi.fn(),
     showLevelPicker: vi.fn(),
@@ -62,6 +65,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
   const { showStartScreen } = screens;
   const started: string[] = [];
   const plays: { id: LevelId; play: PlayLevel }[] = [];
+  const hold = { isHeld: false };
   const playable = (name: string) => {
     const id = LevelId.of(name);
     return {
@@ -92,6 +96,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
     [playable('one'), playable('two')],
     progress,
     (level, report) => new GameSession(level, controls, sound, progress, report),
+    () => new Intro(hold),
     screens,
   );
   if (first) subject.play(LevelId.of(first));
@@ -120,7 +125,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
   const steer = (direction: Direction | null): void => {
     heading = direction && Heading.of(direction);
   };
-  return { navigator: subject, started, progress, screens, showStartScreen, complete, press, current, steer };
+  return { navigator: subject, started, progress, screens, showStartScreen, complete, press, current, steer, hold };
 }
 
 describe('the game navigator', () => {
@@ -255,5 +260,28 @@ describe('the game navigator', () => {
     subject.complete();
     expect(vi.mocked(subject.progress.complete).mock.calls.map(([id]) => id.value)).toEqual(['one', 'two']);
     expect(vi.mocked(subject.progress.reach).mock.calls.map(([id]) => id.value)).toEqual(['one', 'two']);
+  });
+
+  test('plays the intro to its end and then opens the start screen', () => {
+    const subject = navigator(null);
+    subject.navigator.openIntro();
+    expect(subject.screens.showIntro).toHaveBeenCalledOnce();
+    for (let frame = 1; frame < introLength; frame++) subject.navigator.tick();
+    expect(subject.navigator.state).toBe('intro');
+    expect(subject.showStartScreen).not.toHaveBeenCalled();
+    subject.navigator.tick();
+    expect(subject.navigator.state).toBe('start-screen');
+    expect(subject.navigator.intro).toBeNull();
+    expect(subject.showStartScreen).toHaveBeenCalledOnce();
+  });
+
+  test('a held press opens the start screen once it has lasted the whole skip', () => {
+    const subject = navigator(null);
+    subject.navigator.openIntro();
+    subject.hold.isHeld = true;
+    for (let frame = 1; frame < skipLength; frame++) subject.navigator.tick();
+    expect(subject.navigator.state).toBe('intro');
+    subject.navigator.tick();
+    expect(subject.navigator.state).toBe('start-screen');
   });
 });

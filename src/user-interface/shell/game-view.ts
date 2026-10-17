@@ -1,4 +1,5 @@
 import type { GameSession } from './game-session';
+import type { Intro } from '../screens/intro';
 import { Picture } from '../graphics/picture';
 import { fitCanvas, minimumGamePixels, pixelAlignment } from './viewport-layout';
 
@@ -30,7 +31,7 @@ export class GameView {
   }
 
   paint(
-    session: Pick<GameSession, 'paint'>,
+    session: Pick<GameSession, 'paint'> | Pick<Intro, 'paint'>,
     tickProgress: number,
     overlay?: (context: CanvasRenderingContext2D) => void,
   ): void {

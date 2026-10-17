@@ -50,9 +50,34 @@ All three switches sit in a row in the top right corner of the game view. Each i
 | Full screen | Left of the sound switch, 4 panel pixel gap, widened so touch areas meet without overlapping | Four corners, outward when not full screen, inward when full screen | Toggles full screen. Shown only where the browser supports it, so hidden on iPhone |
 | Menu | Left of the full screen switch, or of the sound switch when full screen is hidden, same gap | Three stacked bars | Leaves the level at once and opens the start screen. The level starts afresh when chosen again |
 
+## Intro
+
+- Opens when the game opens with no saved progress. Ends on the start screen.
+- Hides the control panel and all three switches, so the game view takes the whole column.
+- A comic page on Ink in the game view, with 8 pixel margins and 6 pixel gutters. All art is at the game's one size, except the sound word.
+- Three rows: panels 1 and 2 side by side, panel 3 across the middle, then panels 4 and 5 side by side. A row of two is as tall as its taller text box plus the tree. On short pages the outer rows shrink first and the middle row keeps at least 116 pixels. The page is centered vertically.
+- Every panel shows the same spot: the apple tree with Nuki 50 pixels to the right of its trunk, the pair centered in the panel and standing 8 pixels above its bottom edge.
+- Each panel wears the message box frame: an Ink line, a V1 edge and clipped corners. Nothing moves inside a panel.
+- The texts sit in [message boxes](#message-box) in the top left of their panels, each as narrow as its longest line.
+
+| Panel | Picture | Text |
+| --- | --- | --- |
+| 1 | Nuki dancing beside the apple tree, the yellow butterfly on the canopy | None |
+| 2 | Nuki stopped, standing still and facing the reader | ΞΑΦΝΙΚΑ... |
+| 3 | Apples falling above their ground shadows, the butterfly flying off, Nuki facing the reader, Μ Π Ο Υ Μ ! in big outlined letters just above the treetop | None |
+| 4 | Gray creeping in from the left over half the tree, Nuki and the grass beside her still in color | ΤΑ ΧΡΩΜΑΤΑ... |
+| 5 | Everything gray except Nuki | ΠΟΥ ΠΗΓΑΝ; |
+
+- Panel timing is set in [Intro](visual-style.md#intro).
+- The intro makes no sound.
+- Holding any key or touch for 1.5 seconds skips to the start screen. Only presses that start during the intro count. Key repeats, Escape and keys pressed with Meta never count. Letting go before the end starts the hold over.
+- While a press is held, a 13 pixel circle 8 pixels from the bottom right corner shows the hold. It is drawn like the level card clock, an Ink ring around an N1 face that Paper fills clockwise from the top, with N4 shading on its lower right edge. It never shows otherwise.
+- Escape opens the start screen at once.
+- A hidden live region repeats the newest narration for screen readers.
+
 ## Start Screen
 
-- Covers the whole page, control panel included, when the game opens and when the menu switch is pressed.
+- Covers the whole page, control panel included, when the game opens with saved progress, when the intro ends and when the menu switch is pressed.
 - Pixel art on the panel pixel grid, on a plain background with no scenery.
 - The game name, Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ ΤΗΣ ΝΟΥΚΙ, sits at the top in the message box font over two centered lines. On each opening it appears through the ordered 4 × 4 dither, one threshold every 2 game frames, then stays still.
 - Nuki stands below the game name facing the player, at one panel pixel per hero pixel, with her idle breathing and blinking on the game's frame clock. The screen owns no timer.
@@ -86,7 +111,7 @@ All three switches sit in a row in the top right corner of the game view. Each i
 
 ## Music
 
-- The start screen, the confirmation and the level picker are silent.
+- The intro, the start screen, the confirmation and the level picker are silent.
 - Levels play the game tune. The end screen plays a slow, soft tune.
 - Changing music fades the old tune out over 1 second and the new one in over half a second.
 

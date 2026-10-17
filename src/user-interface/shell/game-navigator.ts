@@ -1,9 +1,11 @@
 import type { ManageProgress } from '../../progress';
 import type { LevelId } from '../../level';
 import { endScreenFadeLength } from '../screens/end-screen';
+import type { Intro } from '../screens/intro';
 import type { GameSession, PlayableLevel, SessionReport } from './game-session';
 
 export interface Screens {
+  readonly showIntro: () => void;
   readonly showStartScreen: () => void;
   readonly animateStartScreen: (framesOpen: number) => void;
   readonly showLevelPicker: () => void;
@@ -17,6 +19,7 @@ export interface Screens {
 type Screen =
   | { readonly name: 'start-screen' | 'level-picker' }
   | { readonly name: 'end-screen'; leavingFrom: number | null }
+  | { readonly name: 'intro'; readonly intro: Intro }
   | { readonly name: 'playing'; readonly session: GameSession };
 
 const endScreenStay = 120;
@@ -29,6 +32,7 @@ export class GameNavigator {
     private readonly levels: readonly PlayableLevel[],
     private readonly progress: Pick<ManageProgress, 'view' | 'levelAfter'>,
     private readonly startSession: (level: PlayableLevel, report: SessionReport) => GameSession,
+    private readonly startIntro: () => Intro,
     private readonly screens: Screens,
   ) {}
 
@@ -38,6 +42,15 @@ export class GameNavigator {
 
   get session(): GameSession | null {
     return 'session' in this.screen ? this.screen.session : null;
+  }
+
+  get intro(): Intro | null {
+    return 'intro' in this.screen ? this.screen.intro : null;
+  }
+
+  openIntro(): void {
+    this.screen = { name: 'intro', intro: this.startIntro() };
+    this.screens.showIntro();
   }
 
   // The screen shows its first frame as it opens, so it never appears with a pose left over from its last visit.
@@ -75,7 +88,10 @@ export class GameNavigator {
   // Menus animate on the same frames as gameplay, so their timing is as deterministic as a level's.
   tick(): void {
     if ('session' in this.screen) this.screen.session.tick();
-    else if (this.screen.name === 'start-screen') this.screens.animateStartScreen(this.framesOpen++);
+    else if ('intro' in this.screen) {
+      this.screen.intro.tick();
+      if (this.screen.intro.finished) this.openStartScreen();
+    } else if (this.screen.name === 'start-screen') this.screens.animateStartScreen(this.framesOpen++);
     else if (this.screen.name === 'level-picker') this.screens.animateLevelPicker();
     else if (this.screen.name === 'end-screen') {
       this.framesOpen++;

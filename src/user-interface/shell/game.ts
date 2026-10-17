@@ -9,6 +9,8 @@ import { GameNavigator } from './game-navigator';
 import { GameSession, type PlayableLevel } from './game-session';
 import { connectGameSwitches } from './game-switches';
 import { GameView } from './game-view';
+import { HoldToSkip } from '../input/hold-to-skip';
+import { Intro } from '../screens/intro';
 import { LevelPicker } from '../screens/level-picker';
 import { drawObstacles } from '../world/obstacle-overlay';
 import { Sound } from '../audio/sound';
@@ -63,12 +65,25 @@ export function startGame(
     random,
   );
   const endScreen = new EndScreen(root);
+  const holdToSkip = new HoldToSkip(window, root.body);
   const navigator = new GameNavigator(
     levels,
     progress,
     (level, report) => new GameSession(level, controls, sound, progress, report, random),
+    () => new Intro(holdToSkip),
     {
+      showIntro: () => {
+        startScreen.hide();
+        levelPicker.hide();
+        endScreen.hide();
+        screen.classList.add('intro-open');
+        holdToSkip.listen();
+        sound.hum(0);
+        sound.music(null);
+      },
       showStartScreen: () => {
+        screen.classList.remove('intro-open');
+        holdToSkip.stop();
         levelPicker.hide();
         endScreen.hide();
         announcement.textContent = '';
@@ -126,7 +141,8 @@ export function startGame(
     if (navigator.state === 'end-screen') return;
     navigator.openStartScreen();
   });
-  navigator.openStartScreen();
+  if (progress.view().hasProgress) navigator.openStartScreen();
+  else navigator.openIntro();
 
   // Counting from when the prompt starts makes every burst, and its chime, begin at once instead of mid-cycle.
   const promptAges: Record<'a' | 'b', number | null> = { a: null, b: null };
@@ -142,12 +158,14 @@ export function startGame(
     const bursts = Object.values(promptAges).filter((age) => age !== null && age % wobbleEvery === 0);
     if (bursts.length > 0) sound.hint(bursts.includes(0));
     // Completing a level replaces the session during its own tick, so the message comes from whichever level is now open.
-    const spoken = navigator.session?.messageText ?? '';
+    const spoken = (navigator.session ?? navigator.intro)?.messageText ?? '';
     if (announcement.textContent !== spoken) announcement.textContent = spoken;
   };
 
   const showObstacles = import.meta.env.DEV && new URLSearchParams(window.location.search).has('obstacles');
   const render = (tickProgress: number): void => {
+    const intro = navigator.intro;
+    if (intro) gameView.paint(intro, tickProgress);
     const playing = navigator.session;
     if (!playing) return;
     gameView.paint(

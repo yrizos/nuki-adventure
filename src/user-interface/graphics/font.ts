@@ -59,6 +59,17 @@ export function textWidth(text: string): number {
   return text.length * (glyphWidth + letterGap) - letterGap;
 }
 
+export function wrapText(text: string, width: number): readonly string[] {
+  const perLine = Math.floor((width + letterGap) / (glyphWidth + letterGap));
+  const lines: string[] = [];
+  for (const word of text.split(' ')) {
+    const last = lines.at(-1);
+    if (last !== undefined && last.length + 1 + word.length <= perLine) lines[lines.length - 1] = `${last} ${word}`;
+    else lines.push(word);
+  }
+  return lines;
+}
+
 export function writeText(grid: PixelGrid, text: string, column: number, row: number, symbol: string): void {
   [...text].forEach((character, index) => {
     const glyph = glyphs[character];

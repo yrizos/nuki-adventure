@@ -37,9 +37,9 @@ The [domain model](domain-model.md#context-map) describes how the two contexts r
 | Area | Holds |
 | --- | --- |
 | `shell` | The game loop, the session that runs one level, screen navigation, the game view and the page switches. |
-| `screens` | The start screen, level picker, end screen, confirmation, message box and their menus. |
+| `screens` | The intro, the start screen, level picker, end screen, confirmation, message box and their menus. |
 | `world` | Painting the level, its dressing and ambient life, transitions and the hero's animation. |
-| `input` | The joystick and the action buttons. |
+| `input` | The joystick, the action buttons and holding to skip the intro. |
 | `audio` | Music and sound effects. |
 | `graphics` | Pixel grids, pictures, the palette, dithering, the font, panel art and the sprite library. |
 

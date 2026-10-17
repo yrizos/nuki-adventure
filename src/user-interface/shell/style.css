@@ -49,6 +49,14 @@ body {
   }
 }
 
+/* The intro has no controls, so the game view takes the whole column and nothing on it looks pressable. */
+.intro-open .control-panel,
+.intro-open .sound-switch,
+.intro-open .full-screen-switch,
+.intro-open .menu-switch {
+  display: none;
+}
+
 /* Messages are drawn on the canvas, so screen readers get the same words from this hidden text. */
 .announcement {
   position: absolute;

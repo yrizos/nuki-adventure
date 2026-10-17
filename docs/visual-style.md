@@ -252,6 +252,17 @@ The hero materializes at her start over 48 game frames and cannot move until it 
 - The reveal masks only the hero. Motes stay within about 20 pixels of her, move in whole pixels and keep ordinary depth order.
 - No transparency fades, scaling, rotation or blur. Nothing marks the end and no pause follows.
 
+### Intro
+
+The [intro](ui-layout.md#intro) is a still comic page drawn with the game's own art at its one size. Falling apples copy the apple clusters of the apple tree. The sound word Μ Π Ο Υ Μ ! is the game font at three times its size, or twice where three times does not fit the panel, in Y3, Y2 and O2 from top to bottom with an Ink outline.
+
+| Frames | What shows |
+| --- | --- |
+| Each panel's first 32 | The panel appears through the ordered 4 × 4 dither, one threshold every 2 frames. Earlier panels stay |
+| 0, 120, 240, 360, 480 | Panels 1 to 5 start to appear |
+| 272 to 293 | Once panel 3 is whole, the whole page trembles in whole pixels, at most 3, and settles |
+| 600 to 647 | The whole page darkens to Ink like [leaving a level](#leaving-a-level), then the start screen opens |
+
 ### Animation Rules
 
 - Frames of one animation keep the same silhouette area. The hero is the exception, because her frames shift feet and pigtails.
@@ -261,4 +272,4 @@ The hero materializes at her start over 48 game frames and cannot move until it 
 - Arms swing opposite to the legs, one pixel forward and back. Shoulders dip one pixel on passing frames.
 - Turning shows the new facing for 2 game frames before she moves.
 - Keys are collected by walking onto them, with no pause, pose or held-key animation. Restoration starts at once, movement continues and a congratulations message appears.
-- No transparency, screen shake, motion blur or glow filters.
+- No transparency, screen shake, motion blur or glow filters. The [intro](#intro) tremble is the one exception.
