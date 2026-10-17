@@ -88,7 +88,7 @@ All three switches sit in a row in the top right corner of the game view. Each i
 
 - The start screen, the confirmation and the level picker are silent.
 - Levels play the game tune. The end screen plays a slow, soft tune.
-- Changing music fades the old tune out and the new one in over 1 second.
+- Changing music fades the old tune out over 1 second and the new one in over half a second.
 
 ## Level Picker
 

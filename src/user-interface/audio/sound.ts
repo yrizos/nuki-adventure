@@ -29,7 +29,8 @@ const tunes: Readonly<Record<Track, Tune>> = {
     volume: 0.06,
   },
 };
-const tuneFade = 1;
+const tuneFadeOut = 1;
+const tuneFadeIn = 0.5;
 const storageKey = 'sound';
 // Two close pitches beat against each other, so the steady tone buzzes without a second modulating oscillator.
 const humPitches = [440, 446];
@@ -177,13 +178,13 @@ export class Sound {
     const old = this.tuneGain;
     if (old) {
       old.gain.setValueAtTime(old.gain.value, now);
-      old.gain.linearRampToValueAtTime(0, now + tuneFade);
-      setTimeout(() => old.disconnect(), tuneFade * 1000);
+      old.gain.linearRampToValueAtTime(0, now + tuneFadeOut);
+      setTimeout(() => old.disconnect(), tuneFadeOut * 1000);
     }
     this.tuneGain = null;
     if (!this.track) return;
     const gain = new GainNode(context, { gain: 0 });
-    gain.gain.linearRampToValueAtTime(1, now + tuneFade);
+    gain.gain.linearRampToValueAtTime(1, now + tuneFadeIn);
     gain.connect(output);
     this.tuneGain = gain;
     this.loopTune(gain, tunes[this.track], now);
