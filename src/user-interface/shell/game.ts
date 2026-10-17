@@ -75,7 +75,6 @@ export function startGame(
         setActionButtonsEnabled(true);
         const view = progress.view();
         startScreen.show({ canContinue: view.continueLevel !== null, hasProgress: view.hasProgress });
-        screen.classList.add('menu-open');
         sound.music(null);
       },
       // The level picker dithers out over the start screen after it closes, so both move on the same frames.
@@ -84,7 +83,6 @@ export function startGame(
         levelPicker.advance();
       },
       showLevelPicker: () => {
-        screen.classList.add('menu-open');
         setActionButtonsEnabled(true);
         levelPicker.show(progress.view());
         sound.music(null);
@@ -94,7 +92,6 @@ export function startGame(
       showEndScreen: () => {
         announcement.textContent = '';
         endScreen.show();
-        screen.classList.remove('menu-open');
         sound.hum(0);
         sound.music('end');
       },
@@ -103,7 +100,6 @@ export function startGame(
         startScreen.hide();
         levelPicker.hide();
         endScreen.hide();
-        screen.classList.remove('menu-open');
         sound.music('game');
         actionButtons.a.disabled = !usesA;
         actionButtons.b.disabled = !usesB;

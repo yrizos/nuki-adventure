@@ -46,8 +46,8 @@ All three switches sit in a row in the top right corner of the game view. Each i
 
 | Switch | Position | Symbol | Behavior |
 | --- | --- | --- | --- |
-| Sound | 8 panel pixels from the top and right edges, below the top safe-area inset | Speaker with two waves when on, a cross when off | Turns music and all sound effects on or off. Remembered across visits. Also shown on the start screen and the level picker |
-| Full screen | Left of the sound switch, 4 panel pixel gap, widened so touch areas meet without overlapping | Four corners, outward when not full screen, inward when full screen | Toggles full screen. Shown only where the browser supports it, so hidden on iPhone. Also shown on the start screen and the level picker |
+| Sound | 8 panel pixels from the top and right edges, below the top safe-area inset | Speaker with two waves when on, a cross when off | Turns music and all sound effects on or off. Remembered across visits |
+| Full screen | Left of the sound switch, 4 panel pixel gap, widened so touch areas meet without overlapping | Four corners, outward when not full screen, inward when full screen | Toggles full screen. Shown only where the browser supports it, so hidden on iPhone |
 | Menu | Left of the full screen switch, or of the sound switch when full screen is hidden, same gap | Three stacked bars | Leaves the level at once and opens the start screen. The level starts afresh when chosen again |
 
 ## Start Screen
@@ -55,7 +55,8 @@ All three switches sit in a row in the top right corner of the game view. Each i
 - Covers the whole page, control panel included, when the game opens and when the menu switch is pressed.
 - Pixel art on the panel pixel grid, on a plain background with no scenery.
 - The game name, Η ΠΟΛΥΧΡΩΜΗ ΠΕΡΙΠΕΤΕΙΑ ΤΗΣ ΝΟΥΚΙ, sits at the top in the message box font over two centered lines. On each opening it appears through the ordered 4 × 4 dither, one threshold every 2 game frames, then stays still.
-- Below it, all three buttons in this order, always shown, styled like the A button and sinking into their lips while pressed. All share the width of the widest. Buttons work from the first frame, and the first enabled button takes focus.
+- Nuki stands below the game name facing the player, at one panel pixel per hero pixel, with her idle breathing and blinking on the game's frame clock. The screen owns no timer.
+- At the bottom, all three buttons in this order, 8 pixels apart like the confirmation's answers, always shown, styled like the A button and sinking into their lips while pressed. All share the width of the widest. Buttons work from the first frame, and the first enabled button takes focus.
 - A button whose condition does not hold is disabled. It is dimmed like a disabled action button and ignores touch and keys.
 
 | Button | Enabled when | Action |
@@ -64,8 +65,7 @@ All three switches sit in a row in the top right corner of the game view. Each i
 | ΕΠΙΠΕΔΑ | Any progress is saved | Opens the level picker |
 | ΝΕΟ ΠΑΙΧΝΙΔΙ | Always | Starts the first level. With progress saved, opens the confirmation first |
 
-- The sound and full screen switches stay above the start screen and the level picker in their usual places, in a band of their own above the scrolling content. The menu switch stays covered.
-- Nuki stands at the bottom facing the player, at one panel pixel per hero pixel, with her idle breathing and blinking on the game's frame clock. The screen owns no timer.
+- The start screen and the level picker cover all three switches.
 - The screen scrolls when its contents do not fit.
 
 ### Confirmation

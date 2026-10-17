@@ -129,12 +129,6 @@ body {
   --art: var(--art-full-screen-leave);
 }
 
-/* The menus cover the game view, so these two switches are lifted above them. The menu switch stays below, because it only opens the start screen. */
-.menu-open .sound-switch,
-.menu-open .full-screen-switch {
-  z-index: 2;
-}
-
 /* A drawn switch is smaller than a finger at narrow widths, so an invisible margin keeps the touch area at the Material minimum. */
 .sound-switch::before,
 .full-screen-switch::before,
@@ -345,10 +339,9 @@ body {
   background: var(--ink);
 }
 
-/* The switches sit in a band above the start screen. A border is outside the scrolling area, so scrolled content never slides under them. */
+/* The buttons sit as close together as the confirmation's answers. */
 .start-screen {
-  border-top: calc(env(safe-area-inset-top) + 31 * var(--pixel)) solid var(--ink);
-  padding-top: calc(8 * var(--pixel));
+  gap: calc(8 * var(--pixel));
 }
 
 .start-screen[hidden],
@@ -457,9 +450,13 @@ body {
   cursor: pointer;
 }
 
-/* The empty space above pushes Nuki to the bottom, so the title and buttons stay the focal point. */
+/* Nuki stands under the title, and the empty space above the buttons pushes them to the bottom. */
 .start-hero {
   flex: none;
+  margin-bottom: calc(16 * var(--pixel));
+}
+
+.start-continue {
   margin-top: auto;
 }
 
@@ -475,7 +472,7 @@ body {
 
 .start-title {
   flex: none;
-  margin: 0 0 calc(12 * var(--pixel));
+  margin: 0 0 calc(16 * var(--pixel));
   color: transparent;
   font-size: 0;
 }
