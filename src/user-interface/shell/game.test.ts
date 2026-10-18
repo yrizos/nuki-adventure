@@ -7,7 +7,7 @@ import { LevelId } from '../../level/domain/level-id';
 import { type LevelView } from '../../level/application/level-view';
 import { PlayLevel } from '../../level/application/play-level';
 import { Level } from '../../level/domain/level';
-import { ManageProgress } from '../../progress/application/manage-progress';
+import { ManageProgress, type SuspendedRun } from '../../progress/application/manage-progress';
 import { check2dObstacles } from '../../level/infrastructure/check2d-obstacles';
 import { levelFromLayout } from '../../level/content/level-layout';
 import { secondLevel, secondLevelId } from '../../level/content/second';
@@ -76,7 +76,11 @@ function gameSession(
     gate: vi.fn(),
     plate: vi.fn(),
   };
-  const progress = { reach: vi.fn<(level: LevelId) => void>(), complete: vi.fn() };
+  const progress = {
+    reach: vi.fn<(level: LevelId) => void>(),
+    complete: vi.fn(),
+    suspend: vi.fn<(level: LevelId, run: SuspendedRun) => void>(),
+  };
   let play: PlayLevel;
   const createPlay = vi.fn(() => {
     const scenery = Scenery.of(
@@ -227,6 +231,16 @@ describe('the game session', () => {
     },
   );
 
+  test('leaving while colors spread keeps the moment before the key was picked up', () => {
+    const subject = gameSession();
+    subject.move(Direction.Right);
+    subject.session.suspend();
+    const [, { snapshot, playFrames }] = subject.progress.suspend.mock.lastCall!;
+    expect(subject.level.keys).toEqual([]);
+    expect(snapshot.collectedKeys).toEqual([]);
+    expect(playFrames).toBeLessThan(subject.frames);
+  });
+
   test('keeps walking and collecting stars while colors spread', () => {
     const subject = gameSession();
     subject.move(Direction.Right);
@@ -341,11 +355,12 @@ function gatedSession(arrives = false) {
       keys: { K: { restores: () => true } },
     },
   );
+  const progress = { reach: vi.fn(), complete: vi.fn(), suspend: vi.fn<(level: LevelId, run: SuspendedRun) => void>() };
   const session = new GameSession(
     { id, start: () => new PlayLevel(new InMemoryLevelRepository([level])), arrives },
     controls,
     sound,
-    { reach: vi.fn(), complete: vi.fn() },
+    progress,
     { completed: vi.fn() },
   );
   const tick = (count = 1): void => {
@@ -355,6 +370,7 @@ function gatedSession(arrives = false) {
     session,
     controls,
     sound,
+    progress,
     tick,
     press(button: 'a' | 'b'): void {
       pressed.add(button);
@@ -385,7 +401,7 @@ test('a game session passes its randomness to the world painter to float the wat
       gate: vi.fn(),
       plate: vi.fn(),
     },
-    { reach: vi.fn(), complete: vi.fn() },
+    { reach: vi.fn(), complete: vi.fn(), suspend: vi.fn() },
     { completed: vi.fn() },
     random,
   );
@@ -425,6 +441,23 @@ describe('a swing gate in the game session', () => {
     expect(subject.session.level.hero.feet.y).toBeLessThan(start.y);
     subject.tick(40);
     expect(subject.session.level.hero.position.row).toBeLessThan(3);
+  });
+
+  test('leaving while it swings keeps the moment before A was pressed until the swing ends', () => {
+    const subject = gatedSession();
+    const saved = () => {
+      subject.session.suspend();
+      const [, { snapshot, playFrames }] = subject.progress.suspend.mock.lastCall!;
+      return [snapshot.gates, playFrames];
+    };
+    subject.tick(3);
+    expect(saved()).toEqual([['closed'], 3]);
+    subject.press('a');
+    expect(saved()).toEqual([['closed'], 3]);
+    subject.tick(gateSwingLength - 2);
+    expect(saved()).toEqual([['closed'], 3]);
+    subject.tick();
+    expect(saved()).toEqual([['open'], 4 + gateSwingLength - 1]);
   });
 
   test('answers no further press while it swings', () => {
@@ -530,7 +563,7 @@ describe('the second level in the game session', () => {
       },
       controls,
       sound,
-      { reach: vi.fn(), complete: vi.fn() },
+      { reach: vi.fn(), complete: vi.fn(), suspend: vi.fn() },
       report,
     );
     const walkTo = (arrived: (tile: TilePosition) => boolean): void => {
@@ -610,7 +643,13 @@ describe('the magical arrival', () => {
   });
 });
 
-function gamePage({ secondUnlocked = false, arrives = false, intro = false } = {}) {
+function gamePage({
+  secondUnlocked = false,
+  arrives = false,
+  intro = false,
+  star = false,
+  storage = memoryStorage(),
+} = {}) {
   FakeDocument.stubGlobals();
   audioWindow();
   const display = stubDisplay(1);
@@ -672,6 +711,7 @@ function gamePage({ secondUnlocked = false, arrives = false, intro = false } = {
   for (const menu of ['start-screen', 'confirm-modal', 'end-screen', 'level-picker-screen'])
     elements.get(menu)!.hidden = true;
   const started: string[] = [];
+  const plays: PlayLevel[] = [];
   const playable = (name: string) => {
     const id = LevelId.of(name);
     return {
@@ -679,7 +719,7 @@ function gamePage({ secondUnlocked = false, arrives = false, intro = false } = {
       arrives,
       start: () => {
         started.push(name);
-        return new PlayLevel(
+        const play = new PlayLevel(
           new InMemoryLevelRepository([
             Level.create({
               id,
@@ -694,15 +734,18 @@ function gamePage({ secondUnlocked = false, arrives = false, intro = false } = {
               door: Door.closedAt(TilePosition.at(0, 0)),
               hero: { position: TilePosition.at(1, 4), facing: Direction.Up },
               obstacles: check2dObstacles,
+              ...(star ? { stars: [Star.at(TilePosition.at(2, 4))] } : {}),
             }),
           ]),
         );
+        plays.push(play);
+        return play;
       },
     };
   };
   const levels = [playable('one'), playable('two')];
   const progress = new ManageProgress(
-    new LocalProgressRepository(memoryStorage()),
+    new LocalProgressRepository(storage),
     levels.map(({ id }) => id),
   );
   if (secondUnlocked) progress.complete(levels[0]!.id, { playFrames: 60, starsCollected: 0, starCount: 0 });
@@ -723,10 +766,32 @@ function gamePage({ secondUnlocked = false, arrives = false, intro = false } = {
     display.window.dispatchEvent(event);
   };
   const announcement = elements.get('announcement')!;
+  const visibility = (state: 'hidden' | 'visible'): void => {
+    Object.defineProperty(root, 'visibilityState', { value: state, configurable: true });
+    root.dispatchEvent(new Event('visibilitychange'));
+  };
   return {
     root,
     started,
     frame,
+    frames(count: number): void {
+      for (let step = 0; step < count; step++) frame();
+    },
+    hold(name: string, count: number): void {
+      key('keydown', name);
+      for (let step = 0; step < count; step++) frame();
+      key('keyup', name);
+    },
+    // A hidden page gets no animation frames, so its clock simply jumps ahead when it is shown again.
+    hide: (): void => visibility('hidden'),
+    show(milliseconds: number): void {
+      now += milliseconds;
+      visibility('visible');
+    },
+    pageHide: (): void => void display.window.dispatchEvent(new Event('pagehide')),
+    get level(): LevelView {
+      return plays.at(-1)!.view(LevelId.of(started.at(-1)!));
+    },
     announcement,
     screen: elements.get('screen')!,
     canvas: view.children[0] as FakeCanvasElement,
@@ -854,16 +919,111 @@ describe('the game page', () => {
     expect(page.progress.view().levels.map(({ isUnlocked }) => isUnlocked)).toEqual([true, false]);
   });
 
-  test('ΣΥΝΕΧΕΙΑ restarts the level left through the menu', () => {
-    const page = gamePage({ secondUnlocked: true });
+  test('ΣΥΝΕΧΕΙΑ goes on from where she left the level through the menu, with the play time it had', () => {
+    const page = gamePage({ secondUnlocked: true, star: true });
     expect(page.continueButton.disabled).toBe(true);
     page.pickLevel();
     page.choose(2);
+    page.hold('ArrowRight', 20);
+    page.frames(2);
+    const { hero, collected } = page.level;
+    expect(collected).toHaveLength(1);
     page.openMenu();
+    expect(page.progress.levelInProgress()?.playFrames).toBe(22);
+    page.frames(30);
     expect(page.continueButton.disabled).toBe(false);
     expect(page.focused()).toBe(page.continueButton);
     page.continueGame();
     expect(page.started).toEqual(['two', 'two']);
+    expect([page.level.hero.feet, page.level.hero.facing]).toEqual([hero.feet, Direction.Right]);
+    expect([page.level.stars, page.level.collected]).toEqual([[], collected]);
+    page.frames(10);
+    page.openMenu();
+    expect(page.progress.levelInProgress()?.playFrames).toBe(32);
+  });
+
+  test('ΣΥΝΕΧΕΙΑ shows her where she was at once, without the magical arrival', () => {
+    const arrival = vi.spyOn(Sound.prototype, 'arrival');
+    const page = gamePage({ arrives: true });
+    page.newGame();
+    page.frames(arrivalLength + 5);
+    page.openMenu();
+    page.continueGame();
+    expect(arrival).toHaveBeenCalledOnce();
+    page.hold('ArrowRight', 12);
+    expect(page.level.hero.feet.x).toBeGreaterThan(48);
+  });
+
+  test.each(['hide', 'pageHide'] as const)(
+    'keeps her place and play time for the next visit after the page fires %s',
+    (leave) => {
+      const storage = memoryStorage();
+      const page = gamePage({ secondUnlocked: true, star: true, storage });
+      page.pickLevel();
+      page.choose(2);
+      page.hold('ArrowRight', 20);
+      page.frames(2);
+      const { hero } = page.level;
+      page[leave]();
+      const next = gamePage({ star: true, storage });
+      next.continueGame();
+      expect(next.started).toEqual(['two']);
+      expect(next.level.hero.feet).toEqual(hero.feet);
+      expect(next.level.collected).toHaveLength(1);
+      next.openMenu();
+      expect(next.progress.levelInProgress()?.playFrames).toBe(22);
+    },
+  );
+
+  test('adds no play time while the page is hidden', () => {
+    const page = gamePage({ secondUnlocked: true });
+    page.pickLevel();
+    page.choose(2);
+    page.frames(10);
+    page.hide();
+    page.show(10_000);
+    // The first frame back only restarts the clock, and the next one plays on.
+    page.frames(2);
+    page.openMenu();
+    expect(page.progress.levelInProgress()?.playFrames).toBe(11);
+  });
+
+  test('the level picker starts the level afresh and forgets where she was', () => {
+    const page = gamePage({ secondUnlocked: true, star: true });
+    page.pickLevel();
+    page.choose(2);
+    page.hold('ArrowRight', 20);
+    page.openMenu();
+    page.pickLevel();
+    page.choose(2);
+    expect(page.level.hero.position).toEqual(TilePosition.at(1, 4));
+    expect(page.level.collected).toEqual([]);
+    page.openMenu();
+    expect(page.progress.levelInProgress()).toBeNull();
+    page.continueGame();
+    expect(page.level.hero.position).toEqual(TilePosition.at(1, 4));
+  });
+
+  test('ΝΕΟ ΠΑΙΧΝΙΔΙ forgets where she was', () => {
+    const page = gamePage({ star: true });
+    page.newGame();
+    page.hold('ArrowRight', 20);
+    page.openMenu();
+    page.newGame();
+    page.confirm();
+    expect(page.level.hero.position).toEqual(TilePosition.at(1, 4));
+    expect(page.level.collected).toEqual([]);
+  });
+
+  test('leaving a level as its door closes behind her leaves nothing to resume', () => {
+    const page = gamePage();
+    page.newGame();
+    page.walkUpUntil(() => page.level.isComplete);
+    page.openMenu();
+    expect(page.progress.levelInProgress()).toBeNull();
+    page.continueGame();
+    expect(page.started).toEqual(['one', 'one']);
+    expect(page.level.hero.position).toEqual(TilePosition.at(1, 4));
   });
 
   test('keeps the start screen and the level picker silent and plays the game tune in a level', () => {
@@ -1040,6 +1200,17 @@ describe('the game loop', () => {
     loop.advance(51);
     expect(tick).toHaveBeenCalledTimes(3);
     expect(render).toHaveBeenCalledTimes(3);
+  });
+
+  test('drops the time a hidden page was away once it rests', () => {
+    const tick = vi.fn();
+    const loop = new GameLoop(tick, vi.fn(), 0);
+    loop.advance(10);
+    loop.rest();
+    loop.advance(10_000);
+    expect(tick).not.toHaveBeenCalled();
+    loop.advance(10_017);
+    expect(tick).toHaveBeenCalledOnce();
   });
 
   test('caps background catch-up without queuing the discarded time', () => {
@@ -1318,15 +1489,21 @@ describe('a boulder in the game session', () => {
         keys: { K: { restores: () => true } },
       },
     );
+    const progress = {
+      reach: vi.fn(),
+      complete: vi.fn(),
+      suspend: vi.fn<(level: LevelId, run: SuspendedRun) => void>(),
+    };
     const session = new GameSession(
       { id, start: () => new PlayLevel(new InMemoryLevelRepository([level])) },
       controls,
       sound,
-      { reach: vi.fn(), complete: vi.fn() },
+      progress,
       { completed: vi.fn() },
     );
     return {
       session,
+      progress,
       held,
       walk(direction: Direction | null): void {
         heading = direction && Heading.of(direction);
@@ -1340,6 +1517,22 @@ describe('a boulder in the game session', () => {
   test('enables only A in a level with a boulder', () => {
     expect(boulderSession().session.uses('a')).toBe(true);
     expect(boulderSession().session.uses('b')).toBe(false);
+  });
+
+  test('leaving while the boulder slides keeps the moment before it started until it stops', () => {
+    const subject = boulderSession();
+    const saved = () => {
+      subject.session.suspend();
+      const [, { snapshot, playFrames }] = subject.progress.suspend.mock.lastCall!;
+      return [snapshot.boulders, playFrames];
+    };
+    subject.tick(2);
+    subject.held.add('a');
+    subject.walk(Direction.Up);
+    subject.tick(15);
+    expect(saved()).toEqual([[TilePosition.at(2, 3)], 2]);
+    subject.tick(1);
+    expect(saved()).toEqual([[TilePosition.at(2, 2)], 18]);
   });
 
   test('holding A alone only grips the boulder and moves nothing', () => {
@@ -1395,7 +1588,7 @@ describe('a boulder in the game session', () => {
         gate: vi.fn(),
         plate: vi.fn(),
       },
-      { reach: vi.fn(), complete: vi.fn() },
+      { reach: vi.fn(), complete: vi.fn(), suspend: vi.fn() },
       { completed: vi.fn() },
     );
     for (let frame = 0; frame < 16; frame++) session.tick();
@@ -1454,7 +1647,7 @@ describe('a pressure plate in the game session', () => {
       { id, start: () => new PlayLevel(new InMemoryLevelRepository([level])) },
       controls,
       sound,
-      { reach: vi.fn(), complete: vi.fn() },
+      { reach: vi.fn(), complete: vi.fn(), suspend: vi.fn() },
       { completed: vi.fn() },
     );
     return {

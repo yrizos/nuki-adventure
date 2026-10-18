@@ -59,6 +59,13 @@ export class Hero {
     this.previousFeet = this.currentFeet;
   }
 
+  static standingAt(feet: WorldPosition, facing: Direction): Hero {
+    const hero = new Hero(feet.tile, facing);
+    hero.currentFeet = feet;
+    hero.previousFeet = feet;
+    return hero;
+  }
+
   static feetOn(tile: TilePosition): WorldPosition {
     return WorldPosition.within(tile, 16, 28);
   }

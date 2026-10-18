@@ -32,7 +32,10 @@ export function buttonWobble(age: number): number {
 export function startGame(
   root: Document,
   levels: readonly PlayableLevel[],
-  progress: Pick<ManageProgress, 'view' | 'levelAfter' | 'reach' | 'complete' | 'reset'>,
+  progress: Pick<
+    ManageProgress,
+    'view' | 'levelAfter' | 'reach' | 'complete' | 'reset' | 'suspend' | 'levelInProgress'
+  >,
   random: () => number,
 ): void {
   const screen = element<HTMLElement>(root, '.screen');
@@ -69,7 +72,7 @@ export function startGame(
   const navigator = new GameNavigator(
     levels,
     progress,
-    (level, report) => new GameSession(level, controls, sound, progress, report, random),
+    (level, report, suspended) => new GameSession(level, controls, sound, progress, report, random, suspended),
     () => new Intro(holdToSkip),
     {
       showIntro: () => {
@@ -126,7 +129,7 @@ export function startGame(
   );
   startScreen.whenContinuing(() => {
     const level = progress.view().continueLevel;
-    if (level) navigator.play(level);
+    if (level) navigator.play(level, progress.levelInProgress() ?? undefined);
   });
   startScreen.whenNewGame(() => {
     progress.reset();
@@ -176,6 +179,12 @@ export function startGame(
   };
 
   const gameLoop = new GameLoop(tick, render, performance.now());
+  // Closing the tab or the browser hides the page first, so the level is saved before it can be lost.
+  root.addEventListener('visibilitychange', () => {
+    if (root.visibilityState === 'hidden') navigator.suspend();
+    else gameLoop.rest();
+  });
+  window.addEventListener('pagehide', () => navigator.suspend());
   const loop = (now: number): void => {
     gameLoop.advance(now);
     requestAnimationFrame(loop);

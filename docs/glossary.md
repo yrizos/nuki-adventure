@@ -64,8 +64,11 @@ Describes a tile the hero can walk to from her start without stepping into the d
 
 | Term | Definition |
 | --- | --- |
-| Progress | What the game remembers between visits: the continue level, the unlocked levels and each level's last playthrough. Never a level in progress. |
+| Progress | What the game remembers between visits: the continue level, the unlocked levels, each level's last playthrough and the level in progress. |
+| Level In Progress | The continue level as it stood at its last calm moment, with its play time so far. Only ΣΥΝΕΧΕΙΑ resumes it. Starting or completing that level drops it. |
+| Calm Moment | A frame of play when no gate swings, no boulder slides, no key's colors spread and the door has not been entered. |
+| Level Snapshot | What play can change in a level at a calm moment: where the hero stands and faces, the stars left and collected, the keys collected, each gate open or closed and each boulder's tile. |
 | Playthrough | One play of a level from start to door: play time, stars collected and the level's star count. |
-| Play Time | Game frames from the first playable frame until the hero steps into the door. Arrival frames are excluded. |
+| Play Time | Game frames from the first playable frame until the hero steps into the door. Arrival frames are excluded. A resumed level carries on from the play time of its level in progress. |
 | Level Order | The sequence of levels. It names the first level, which is always unlocked, and the level each completion unlocks. It holds every level once and is never empty. |
 | Unlocked Level | A level the player has reached, or whose preceding level the player has completed. A level never locks again. |

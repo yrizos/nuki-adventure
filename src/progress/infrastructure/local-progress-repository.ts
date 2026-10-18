@@ -1,34 +1,39 @@
 import * as z from 'zod';
-import { GameProgress } from '../domain/game-progress';
+import { GameProgress, type LevelInProgress } from '../domain/game-progress';
 import { Playthrough, PlayTime } from '../domain/playthrough';
 import type { ProgressRepository } from '../domain/progress-repository';
-import { LevelId, StarCount } from '../../level';
+import { Direction, LevelId, StarCount, TilePosition, WorldPosition } from '../../level';
 
 export const progressKey = 'nuki-adventure-progress';
-const currentVersion = 2;
+const currentVersion = 3;
 
 const count = z.int().nonnegative();
 const levelId = z.string().min(1);
 const playthroughRecord = z.object({ levelId, frames: count, collectedStars: count, starCount: count });
-
-// Version 1 also kept the best playthrough of each level, which is not the last one, so loading ignores it.
-const versionOneSavedProgress = z.object({
-  version: z.literal(1),
-  continueLevelId: levelId.nullable(),
-  unlockedLevelIds: z.array(levelId),
+const tileRecord = z.object({ column: z.int(), row: z.int() });
+const facings = { up: Direction.Up, down: Direction.Down, left: Direction.Left, right: Direction.Right };
+const levelInProgressRecord = z.object({
+  levelId,
+  frames: count,
+  hero: z.object({ x: z.number(), y: z.number(), facing: z.enum(['up', 'down', 'left', 'right']) }),
+  stars: z.array(tileRecord),
+  collectedStars: z.array(tileRecord),
+  collectedKeys: z.array(tileRecord),
+  gates: z.array(z.enum(['open', 'closed'])),
+  boulders: z.array(tileRecord),
 });
 
-const versionTwoSavedProgress = z.object({
-  version: z.literal(2),
+// Earlier versions are not read, so a save from before this version starts the player afresh.
+const savedProgress = z.object({
+  version: z.literal(currentVersion),
   continueLevelId: levelId.nullable(),
   unlockedLevelIds: z.array(levelId),
   lastPlaythroughs: z.array(playthroughRecord),
+  levelInProgress: z.unknown().optional(),
 });
 
-const savedProgress = z.discriminatedUnion('version', [versionOneSavedProgress, versionTwoSavedProgress]);
-
 type SavedProgress = z.infer<typeof savedProgress>;
-type VersionTwoSavedProgress = z.infer<typeof versionTwoSavedProgress>;
+type LevelInProgressRecord = z.infer<typeof levelInProgressRecord>;
 
 const storedVersion = z.object({ version: z.int() });
 
@@ -81,11 +86,38 @@ function fromSaved(saved: SavedProgress): GameProgress {
   return GameProgress.restore({
     continueLevel: saved.continueLevelId === null ? null : LevelId.of(saved.continueLevelId),
     unlockedLevels: saved.unlockedLevelIds.map((id) => LevelId.of(id)),
-    lastPlaythroughs: saved.version === 1 ? [] : saved.lastPlaythroughs.map(mapPlaythrough),
+    lastPlaythroughs: saved.lastPlaythroughs.map(mapPlaythrough),
+    levelInProgress: levelInProgressFrom(saved.levelInProgress),
   });
 }
 
-function toSaved(progress: GameProgress): VersionTwoSavedProgress {
+// A broken level in progress only costs her the place she left, never the rest of her progress.
+function levelInProgressFrom(saved: unknown): LevelInProgress | null {
+  if (saved === null) return null;
+  const parsed = levelInProgressRecord.safeParse(saved);
+  if (!parsed.success) return null;
+  const { levelId, frames, hero, stars, collectedStars, collectedKeys, gates, boulders } = parsed.data;
+  const tiles = (records: readonly z.infer<typeof tileRecord>[]) =>
+    records.map(({ column, row }) => TilePosition.at(column, row));
+  try {
+    return {
+      level: LevelId.of(levelId),
+      time: PlayTime.ofFrames(frames),
+      snapshot: {
+        hero: { feet: WorldPosition.at(hero.x, hero.y), facing: facings[hero.facing] },
+        stars: tiles(stars),
+        collectedStars: tiles(collectedStars),
+        collectedKeys: tiles(collectedKeys),
+        gates,
+        boulders: tiles(boulders),
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+function toSaved(progress: GameProgress): SavedProgress {
   const mapRecord = ({ level, playthrough }: { level: LevelId; playthrough: Playthrough }) => ({
     levelId: level.value,
     frames: playthrough.time.frames,
@@ -97,5 +129,24 @@ function toSaved(progress: GameProgress): VersionTwoSavedProgress {
     continueLevelId: progress.continueLevel?.value ?? null,
     unlockedLevelIds: progress.unlockedLevels.map((level) => level.value),
     lastPlaythroughs: progress.lastPlaythroughs.map(mapRecord),
+    levelInProgress: levelInProgressRecordOf(progress.levelInProgress),
+  };
+}
+
+function levelInProgressRecordOf(inProgress: LevelInProgress | null): LevelInProgressRecord | null {
+  if (!inProgress) return null;
+  const { level, time, snapshot } = inProgress;
+  const tiles = (positions: readonly TilePosition[]) => positions.map(({ column, row }) => ({ column, row }));
+  const { feet, facing } = snapshot.hero;
+  if (facing.name !== 'up' && facing.name !== 'down' && facing.name !== 'left' && facing.name !== 'right') return null;
+  return {
+    levelId: level.value,
+    frames: time.frames,
+    hero: { x: feet.x, y: feet.y, facing: facing.name },
+    stars: tiles(snapshot.stars),
+    collectedStars: tiles(snapshot.collectedStars),
+    collectedKeys: tiles(snapshot.collectedKeys),
+    gates: [...snapshot.gates],
+    boulders: tiles(snapshot.boulders),
   };
 }

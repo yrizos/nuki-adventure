@@ -32,6 +32,12 @@ export class Outline {
     return new Outline(this.form, center, this.width, this.height);
   }
 
+  contains(point: WorldPosition): boolean {
+    const across = (point.x - this.center.x) / (this.width / 2);
+    const along = (point.y - this.center.y) / (this.height / 2);
+    return this.form === 'box' ? Math.abs(across) < 1 && Math.abs(along) < 1 : across ** 2 + along ** 2 < 1;
+  }
+
   // Bounding boxes are compared, so an oval counts as touching a little early, which errs on the side of keeping clear.
   overlaps(other: Outline): boolean {
     return (

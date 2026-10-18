@@ -4,6 +4,7 @@
 
 - Two bounded contexts: `level`, everything inside one level, and `progress`, what the game remembers between visits.
 - `progress` is downstream of `level`. It refers to a level only by `LevelId` and stores star totals as `StarCount`, both taken from the level context's public entry.
+- `progress` stores the level in progress as a `LevelSnapshot`. `level` defines the snapshot and checks that it still fits the level before resuming it.
 - `level` knows nothing about `progress`.
 - There is no shared kernel. [Code organization](code-organization.md) places every file.
 

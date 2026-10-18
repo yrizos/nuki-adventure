@@ -1,4 +1,4 @@
-import type { Boulder } from './boulder';
+import { Boulder } from './boulder';
 import { type Area, type Key, Star } from './collectibles';
 import { StarCount } from './star-count';
 import type { Door } from './door';
@@ -17,6 +17,7 @@ import {
   PlateReleased,
 } from './level-events';
 import type { LevelId } from './level-id';
+import type { LevelSnapshot } from './level-snapshot';
 import type { LevelAction } from './level-action';
 import { type Obstacles, Outline, type PlaceObstacles } from './obstacles';
 import { Direction, type Heading, TilePosition, TilePositions, WorldPosition, tileKey } from './position';
@@ -58,7 +59,8 @@ export interface LevelDefinition {
 }
 
 export class Level {
-  private readonly heroEntity: Hero;
+  private readonly definition: LevelDefinition;
+  private heroEntity: Hero;
   private remainingKeys: readonly Key[];
   private collectedKeys: readonly Key[] = [];
   private currentDoor: Door;
@@ -93,6 +95,19 @@ export class Level {
     plate,
     obstacles,
   }: LevelDefinition) {
+    this.definition = {
+      id,
+      scenery,
+      stones,
+      keys,
+      door,
+      hero,
+      stars,
+      gates,
+      boulders,
+      ...(plate ? { plate } : {}),
+      obstacles,
+    };
     this.id = id;
     this.scenery = scenery;
     this.stones = stones;
@@ -276,6 +291,96 @@ export class Level {
     new Level({ ...definition, stars: [...permanent, ...spots].map(Star.at) });
     const drawn = shuffle(spots).slice(0, starsAmongSpots.value - permanent.length);
     return new Level({ ...definition, stars: [...permanent, ...drawn].map(Star.at) });
+  }
+
+  // Nothing may be moving, because a snapshot taken halfway through a swing or a slide could not be played on from.
+  get snapshot(): LevelSnapshot | null {
+    if (
+      this.completed ||
+      this.carried ||
+      this.currentGates.some((gate) => gate.isSwinging) ||
+      this.currentBoulders.some((boulder) => boulder.isSliding)
+    )
+      return null;
+    return {
+      hero: { feet: this.hero.feet, facing: this.hero.facing },
+      stars: this.remainingStars.map((star) => star.position),
+      collectedStars: this.collectedStars.map((star) => star.position),
+      collectedKeys: this.collectedKeys.map((key) => key.position),
+      gates: this.currentGates.map((gate) => (gate.isOpen ? 'open' : 'closed')),
+      boulders: this.currentBoulders.map((boulder) => boulder.position),
+    };
+  }
+
+  // The level may have changed since the snapshot was taken, so a snapshot that no longer fits is refused instead of placing her somewhere impossible.
+  resumed(snapshot: LevelSnapshot): Level {
+    const { keys, boulders = [], stars = [] } = this.definition;
+    if (snapshot.stars.length + snapshot.collectedStars.length !== stars.length) {
+      throw new RangeError(
+        `The level has ${stars.length} stars, not ${snapshot.stars.length + snapshot.collectedStars.length}`,
+      );
+    }
+    // Building with every saved star runs the same checks as a fresh start, so the saved picks need no checks of their own.
+    const level = new Level({
+      ...this.definition,
+      stars: [...snapshot.stars, ...snapshot.collectedStars].map(Star.at),
+    });
+    level.collectedStars = level.remainingStars.slice(snapshot.stars.length);
+    level.remainingStars = level.remainingStars.slice(0, snapshot.stars.length);
+    const collectedKeys = snapshot.collectedKeys.map((tile) => keys.find((key) => key.position.equals(tile)));
+    if (collectedKeys.some((key, index) => !key || collectedKeys.indexOf(key) !== index)) {
+      throw new RangeError('Every collected key must be a different key of the level');
+    }
+    level.collectedKeys = collectedKeys.filter((key) => key !== undefined);
+    level.remainingKeys = keys.filter((key) => !level.collectedKeys.includes(key));
+    if (level.remainingKeys.length === 0) level.currentDoor = level.currentDoor.opened();
+    if (snapshot.gates.length !== level.currentGates.length) {
+      throw new RangeError(`The level has ${level.currentGates.length} gates, not ${snapshot.gates.length}`);
+    }
+    level.currentGates = level.currentGates.map((gate, index) => gate.resting(snapshot.gates[index]!));
+    if (snapshot.boulders.length !== boulders.length) {
+      throw new RangeError(`The level has ${boulders.length} boulders, not ${snapshot.boulders.length}`);
+    }
+    level.currentBoulders = [];
+    for (const tile of snapshot.boulders) {
+      if (!level.canHoldBoulder(tile)) {
+        throw new RangeError(`A boulder needs open ground of its own, at ${tile.column}, ${tile.row}`);
+      }
+      level.currentBoulders = [...level.currentBoulders, Boulder.at(tile)];
+    }
+    const { feet: heroFeet, facing } = snapshot.hero;
+    if (facing.isDiagonal) throw new RangeError(`The hero faces a side, not ${facing.name}`);
+    level.heroEntity = Hero.standingAt(heroFeet, facing);
+    level.obstacles = level.placedObstacles();
+    const tile = level.heroEntity.position;
+    const { columns, rows } = level.scenery.size;
+    // Feet pressed against a boulder, a stone or a fence can stand inside its tile, so only the obstacles themselves decide where she fits.
+    // Walking pushes feet out of an overlap but leaves feet sunk too deep to settle where they are, so those are caught by their middle.
+    const fits = level.obstacles.walk(feet.at(heroFeet), heroFeet);
+    const sunk = level.obstacleOutlines.some((outline) => outline.contains(heroFeet));
+    if (
+      tile.column < 0 ||
+      tile.row < 0 ||
+      tile.column >= columns ||
+      tile.row >= rows ||
+      fits.x !== heroFeet.x ||
+      fits.y !== heroFeet.y ||
+      sunk ||
+      level.currentDoor.covers(tile) ||
+      level.remainingStars.some((star) => star.position.equals(tile)) ||
+      level.remainingKeys.some((key) => key.position.equals(tile))
+    ) {
+      throw new RangeError(`The hero needs open ground, at ${tile.column}, ${tile.row}`);
+    }
+    const plate = level.plate;
+    if (plate) {
+      level.plateDown = tile.equals(plate) || level.currentBoulders.some((boulder) => boulder.covers(plate));
+      // A plate holds its gate open, so any other pairing would swing the gate the moment play goes on.
+      if (level.currentGates[0]!.isOpen !== level.plateDown) {
+        throw new RangeError('A pressure plate holds its gate open exactly while something presses it');
+      }
+    }
+    return level;
   }
 
   get hero(): HeroState {

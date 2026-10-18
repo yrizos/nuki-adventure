@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { progressLevels, progressOrder, progressSequences } from '../testing/progress-sequences';
+import { leftInProgress, progressLevels, progressOrder, progressSequences } from '../testing/progress-sequences';
 import { LevelId, StarCount } from '../../level';
 import { GameProgress } from './game-progress';
 import { LevelOrder } from './level-order';
@@ -107,6 +107,50 @@ describe('game progress', () => {
     expect(progress.unlockedLevels).toEqual([]);
   });
 
+  test('keeps the level to continue left in progress until it is reached again or completed', () => {
+    const progress = GameProgress.fresh();
+    progress.reach(two);
+    progress.suspend(leftInProgress(two));
+    expect(progress.levelInProgressAmong(order)).toEqual(leftInProgress(two));
+    progress.complete(one, playthrough(300, 1), order);
+    expect(progress.levelInProgressAmong(order)).toEqual(leftInProgress(two));
+    progress.reach(two);
+    expect(progress.levelInProgress).toBeNull();
+    progress.suspend(leftInProgress(two));
+    progress.complete(two, playthrough(300, 1), order);
+    expect(progress.levelInProgress).toBeNull();
+  });
+
+  test('leaves in progress only the level to continue', () => {
+    const progress = GameProgress.fresh();
+    progress.suspend(leftInProgress(one));
+    expect(progress.levelInProgress).toBeNull();
+    progress.reach(two);
+    progress.suspend(leftInProgress(one));
+    expect(progress.levelInProgress).toBeNull();
+  });
+
+  test('resumes nothing once the level left in progress is no longer in the game', () => {
+    const removed = LevelId.of('removed');
+    const progress = GameProgress.fresh();
+    progress.reach(removed);
+    progress.suspend(leftInProgress(removed));
+    expect(progress.continueLevelAmong(order)).toEqual(one);
+    expect(progress.levelInProgressAmong(order)).toBeNull();
+  });
+
+  test('restores the level left in progress only for the level to continue', () => {
+    const restored = (continueLevel: LevelId) =>
+      GameProgress.restore({
+        continueLevel,
+        unlockedLevels: [two],
+        lastPlaythroughs: [],
+        levelInProgress: leftInProgress(two),
+      }).levelInProgress;
+    expect(restored(two)).toEqual(leftInProgress(two));
+    expect(restored(one)).toBeNull();
+  });
+
   test('restores what was saved', () => {
     const progress = GameProgress.restore({
       continueLevel: two,
@@ -156,6 +200,11 @@ test('progress through every short sequence never relocks a level or moves the c
           last.starCount.value !== kept.starCount.value)
       )
         violations.push(`${step.label}: did not keep the playthrough as the last one`);
+      const inProgress = progress.levelInProgress;
+      if (inProgress && !progress.continueLevel?.equals(inProgress.level))
+        violations.push(`${step.label}: left a level in progress that is not the level to continue`);
+      if ((step.label.startsWith('reach') || step.completion?.level.equals(inProgress?.level ?? one)) && inProgress)
+        violations.push(`${step.label}: kept a level in progress after starting or completing it`);
       progressLevels.forEach((level, index) => {
         if (unlockedBefore[index] && !progress.isUnlocked(level, progressOrder))
           violations.push(`${step.label}: relocked ${level.value}`);

@@ -1104,3 +1104,192 @@ describe('a pressure plate', () => {
       expect(() => pressable(at(2, 7), Direction.Up, plate)).toThrow('pressure plate');
   });
 });
+
+describe('a snapshot of a level', () => {
+  const plated = [
+    '..DDD....',
+    '.....FFFF',
+    '.....F...',
+    '.....G.K.',
+    '.....F...',
+    '..P..F...',
+    '..O..FFFF',
+    '.........',
+  ];
+
+  function pressable(stars: readonly TilePosition[] = [at(0, 6), at(1, 6)]): Level {
+    const { scenery, where } = parse(plated);
+    return Level.create({
+      id: LevelId.of('test'),
+      scenery,
+      stones: [],
+      keys: [Key.at(where('K')[0]!, everywhere)],
+      door: Door.closedAt(where('D')[0]!),
+      hero: { position: at(2, 7), facing: Direction.Up },
+      gates: [SwingGate.closedAt(where('G')[0]!, Direction.Left)],
+      boulders: where('O').map(Boulder.at),
+      plate: where('P')[0]!,
+      stars: stars.map(Star.at),
+      obstacles: check2dObstacles,
+    });
+  }
+
+  // She pushes the boulder onto the plate, which opens the gate, and walks left to the first star.
+  function played(): Level {
+    const subject = pressable();
+    subject.grip();
+    hold(subject, Direction.Up, 1);
+    hold(subject, null, 16);
+    subject.release();
+    settleGate(subject);
+    hold(subject, Direction.Left, 20);
+    hold(subject, null, 1);
+    return subject;
+  }
+
+  const snapshotOf = (subject: Level) => subject.snapshot!;
+
+  test('holds where she stands, the stars, the keys, the gates and the boulders', () => {
+    const subject = played();
+    expect(subject.snapshot).toEqual({
+      hero: { feet: subject.hero.feet, facing: Direction.Left },
+      stars: [at(0, 6)],
+      collectedStars: [at(1, 6)],
+      collectedKeys: [],
+      gates: ['open'],
+      boulders: [at(2, 5)],
+    });
+  });
+
+  test('resumes a fresh level exactly as it was left, and plays on from there', () => {
+    const subject = played();
+    const resumed = pressable().resumed(snapshotOf(subject));
+    expect(resumed.snapshot).toEqual(subject.snapshot);
+    expect([resumed.hero, resumed.isPlateDown, resumed.outlines]).toEqual([
+      subject.hero,
+      subject.isPlateDown,
+      subject.outlines,
+    ]);
+    expect(hold(resumed, Direction.Left, 20)).toEqual(hold(subject, Direction.Left, 20));
+    expect(resumed.hero).toEqual(subject.hero);
+  });
+
+  test('keeps the stars placed where they were, not where a new shuffle would put them', () => {
+    const resumed = pressable([at(6, 7), at(7, 7)]).resumed(snapshotOf(played()));
+    expect([resumed.stars, resumed.collected]).toEqual([[Star.at(at(0, 6))], [Star.at(at(1, 6))]]);
+  });
+
+  test('opens the door once every key was collected', () => {
+    const resumed = pressable().resumed({ ...snapshotOf(played()), collectedKeys: [at(7, 3)] });
+    expect([resumed.keys, resumed.door.isOpen, resumed.restored]).toEqual([[], true, [everywhere]]);
+  });
+
+  test('presses the plate under her feet without a sound on the next tick', () => {
+    const fresh = pressable();
+    const onPlate = {
+      ...snapshotOf(fresh),
+      hero: { feet: Hero.feetOn(at(2, 5)), facing: Direction.Up },
+      gates: ['open' as const],
+    };
+    const resumed = fresh.resumed(onPlate);
+    expect(resumed.isPlateDown).toBe(true);
+    expect(resumed.tick(null)).toEqual([]);
+  });
+
+  test('is not taken while a boulder slides, while a gate swings or once the level is complete', () => {
+    const pushed = pressable();
+    pushed.grip();
+    hold(pushed, Direction.Up, 1);
+    expect(pushed.boulders[0]?.isSliding).toBe(true);
+    expect(pushed.snapshot).toBeNull();
+    const stepping = pressable().resumed({
+      ...snapshotOf(pressable()),
+      hero: { feet: Hero.feetOn(at(2, 4)), facing: Direction.Down },
+    });
+    hold(stepping, Direction.Down, 4);
+    expect(stepping.gates[0]?.isSwinging).toBe(true);
+    expect(stepping.snapshot).toBeNull();
+    settleGate(stepping);
+    expect(stepping.snapshot).not.toBeNull();
+    const done = pressable().resumed({
+      ...snapshotOf(pressable()),
+      collectedKeys: [at(7, 3)],
+      hero: { feet: Hero.feetOn(at(2, 1)), facing: Direction.Up },
+    });
+    hold(done, Direction.Up, 32);
+    expect(done.isComplete).toBe(true);
+    expect(done.snapshot).toBeNull();
+  });
+
+  test.each([
+    ['a key the level does not have', { collectedKeys: [at(0, 0)] }],
+    ['the same key twice', { collectedKeys: [at(7, 3), at(7, 3)] }],
+    ['another number of gates', { gates: [] }],
+    ['another number of boulders', { boulders: [] }],
+    ['a boulder in the fence', { boulders: [at(5, 4)] }],
+    ['a boulder on the gate', { boulders: [at(5, 3)] }],
+    ['a boulder over her feet', { boulders: [at(1, 6)] }],
+    ['a star she cannot reach', { stars: [at(8, 0)] }],
+    ['a star on a key', { stars: [at(7, 3)] }],
+    ['a star under her feet', { stars: [at(1, 6)], collectedStars: [at(0, 6)] }],
+    ['another number of stars', { stars: [] }],
+    ['a hero in the fence', { hero: { feet: Hero.feetOn(at(5, 5)), facing: Direction.Up } }],
+    [
+      'a hero on the closed gate',
+      { gates: ['closed' as const], boulders: [at(2, 6)], hero: { feet: Hero.feetOn(at(5, 3)), facing: Direction.Up } },
+    ],
+    ['a hero facing a diagonal', { hero: { feet: Hero.feetOn(at(1, 7)), facing: Direction.UpLeft } }],
+    ['a gate open with nothing on the plate', { boulders: [at(2, 6)] }],
+    ['a gate closed with the boulder on the plate', { gates: ['closed' as const] }],
+  ])('refuses %s', (_, change) => {
+    const snapshot = { ...snapshotOf(played()), ...change };
+    expect(() => pressable().resumed(snapshot)).toThrow(RangeError);
+  });
+
+  test('resumes her pressed against a boulder from above, where her feet stand inside its tile', () => {
+    const stepping = pressable().resumed({
+      ...snapshotOf(pressable()),
+      hero: { feet: Hero.feetOn(at(2, 4)), facing: Direction.Down },
+    });
+    hold(stepping, Direction.Down, 40);
+    settleGate(stepping);
+    expect(stepping.hero.position).toEqual(at(2, 6));
+    expect(pressable().resumed(snapshotOf(stepping)).snapshot).toEqual(stepping.snapshot);
+  });
+
+  test('every calm frame of a play through pushes, the plate and the gate resumes exactly as it was', () => {
+    const subject = pressable();
+    const script: readonly [Direction | null, number, boolean][] = [
+      [Direction.Up, 1, true],
+      [null, 16, true],
+      [null, 16, false],
+      [Direction.Left, 20, false],
+      [Direction.Up, 40, false],
+      [Direction.Right, 20, false],
+      [Direction.Down, 40, false],
+      [Direction.Up, 10, false],
+      [Direction.Down, 10, true],
+      [null, 40, false],
+      [Direction.Right, 40, false],
+      [Direction.Up, 60, false],
+    ];
+    const violations: string[] = [];
+    let frame = 0;
+    for (const [direction, frames, gripping] of script) {
+      for (let step = 0; step < frames; step++, frame++) {
+        if (gripping) subject.grip();
+        else subject.release();
+        subject.tick(toward(direction));
+        const snapshot = subject.snapshot;
+        if (!snapshot) continue;
+        try {
+          const resumed = pressable().resumed(snapshot);
+          if (JSON.stringify(resumed.snapshot) !== JSON.stringify(snapshot)) violations.push(`frame ${frame}: changed`);
+        } catch (error) {
+          violations.push(`frame ${frame}: ${(error as Error).message}`);
+        }
+      }
+    }
+    expect(violations).toEqual([]);
+  });
+});

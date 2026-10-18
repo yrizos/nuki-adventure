@@ -59,6 +59,8 @@ Invariants are checked exhaustively over enumerated inputs, not with a few examp
 - A swing gate moves from closed through opening to open, and from open through closing to closed. A swing in progress can reverse. Any other request changes nothing and emits no event. It blocks its whole tile through the last of its sixteen opening frames and lets the hero through on the next frame.
 - The magical arrival advances only through explicit frames. Through its last frame the hero does not move, collect anything or complete the level, and its frames add no play time. A held direction moves her on the first playable frame.
 - Every short sequence of reaching and completing levels keeps unlocked levels unlocked and sets the last playthrough of each completed level. Every resulting progress state survives a save and load.
+- A level in progress is always the continue level. Reaching or completing that level drops it.
+- A resumed level plays on exactly as the level it was taken from. A snapshot that does not fit the level starts it afresh.
 
 ## Rendering
 

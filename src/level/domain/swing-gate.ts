@@ -64,6 +64,10 @@ export class SwingGate {
     return [wholeTile(this.position), ...this.openLeaf].every((leaf) => !leaf.overlaps(feet));
   }
 
+  resting(state: 'open' | 'closed'): SwingGate {
+    return this.with(state);
+  }
+
   requestOpen(): SwingGate {
     return this.state === 'closed' ? this.with('opening') : this;
   }

@@ -1,16 +1,23 @@
-import type { LevelId } from '../../level';
+import type { LevelId, LevelSnapshot } from '../../level';
 import type { LevelOrder } from './level-order';
-import type { Playthrough } from './playthrough';
+import type { Playthrough, PlayTime } from './playthrough';
 
 export interface LastPlaythrough {
   readonly level: LevelId;
   readonly playthrough: Playthrough;
 }
 
+export interface LevelInProgress {
+  readonly level: LevelId;
+  readonly snapshot: LevelSnapshot;
+  readonly time: PlayTime;
+}
+
 interface SavedProgress {
   readonly continueLevel: LevelId | null;
   readonly unlockedLevels: readonly LevelId[];
   readonly lastPlaythroughs: readonly LastPlaythrough[];
+  readonly levelInProgress?: LevelInProgress | null;
 }
 
 export class GameProgress {
@@ -18,16 +25,18 @@ export class GameProgress {
     private continueAt: LevelId | null,
     private readonly unlocked: LevelId[],
     private readonly last: Map<string, LastPlaythrough>,
+    private inProgress: LevelInProgress | null,
   ) {}
 
   static fresh(): GameProgress {
-    return new GameProgress(null, [], new Map());
+    return new GameProgress(null, [], new Map(), null);
   }
 
-  static restore({ continueLevel, unlockedLevels, lastPlaythroughs }: SavedProgress): GameProgress {
-    const progress = new GameProgress(continueLevel, [], new Map());
+  static restore({ continueLevel, unlockedLevels, lastPlaythroughs, levelInProgress }: SavedProgress): GameProgress {
+    const progress = new GameProgress(continueLevel, [], new Map(), null);
     for (const level of unlockedLevels) progress.unlock(level);
     for (const { level, playthrough } of lastPlaythroughs) progress.recordLast(level, playthrough);
+    if (levelInProgress) progress.suspend(levelInProgress);
     return progress;
   }
 
@@ -61,16 +70,34 @@ export class GameProgress {
     return finished ? null : this.continueAt;
   }
 
+  get levelInProgress(): LevelInProgress | null {
+    return this.inProgress;
+  }
+
+  // Only the level she would continue can be resumed, so a level removed from the game or a finished game resumes nothing.
+  levelInProgressAmong(order: LevelOrder): LevelInProgress | null {
+    const level = this.continueLevelAmong(order);
+    return level && this.inProgress?.level.equals(level) ? this.inProgress : null;
+  }
+
   lastPlaythroughOf(level: LevelId): Playthrough | null {
     return this.last.get(level.value)?.playthrough ?? null;
   }
 
+  // Starting a level afresh drops any level in progress, so only continuing can ever resume one.
   reach(level: LevelId): void {
     this.continueAt = level;
+    this.inProgress = null;
     this.unlock(level);
   }
 
+  // Storage that could not be written, or another tab, can leave a different level to continue, and the level she plays must go on regardless.
+  suspend(levelInProgress: LevelInProgress): void {
+    if (this.continueAt?.equals(levelInProgress.level)) this.inProgress = levelInProgress;
+  }
+
   complete(level: LevelId, playthrough: Playthrough, order: LevelOrder): void {
+    if (this.inProgress?.level.equals(level)) this.inProgress = null;
     this.recordLast(level, playthrough);
     const next = order.after(level);
     if (next) this.unlock(next);

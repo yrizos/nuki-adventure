@@ -48,7 +48,7 @@ All three switches sit in a row in the top right corner of the game view. Each i
 | --- | --- | --- | --- |
 | Sound | 8 panel pixels from the top and right edges, below the top safe-area inset | Speaker with two waves when on, a cross when off | Turns music and all sound effects on or off. Remembered across visits |
 | Full screen | Left of the sound switch, 4 panel pixel gap, widened so touch areas meet without overlapping | Four corners, outward when not full screen, inward when full screen | Toggles full screen. Shown only where the browser supports it, so hidden on iPhone |
-| Menu | Left of the full screen switch, or of the sound switch when full screen is hidden, same gap | Three stacked bars | Leaves the level at once and opens the start screen. The level starts afresh when chosen again |
+| Menu | Left of the full screen switch, or of the sound switch when full screen is hidden, same gap | Three stacked bars | Leaves the level at once and opens the start screen. ΣΥΝΕΧΕΙΑ resumes it. The level picker starts it afresh |
 
 ## Intro
 
@@ -85,7 +85,7 @@ All three switches sit in a row in the top right corner of the game view. Each i
 
 | Button | Enabled when | Action |
 | --- | --- | --- |
-| ΣΥΝΕΧΕΙΑ | A level was started, unless the last level started is the final level and it has a completed playthrough | Starts the last level started |
+| ΣΥΝΕΧΕΙΑ | A level was started, unless the last level started is the final level and it has a completed playthrough | Resumes the level in progress at its last calm moment with its play time, without the magical arrival. With no level in progress, starts the last level started |
 | ΕΠΙΠΕΔΑ | Any progress is saved | Opens the level picker |
 | ΝΕΟ ΠΑΙΧΝΙΔΙ | Always | Starts the first level. With progress saved, opens the confirmation first |
 

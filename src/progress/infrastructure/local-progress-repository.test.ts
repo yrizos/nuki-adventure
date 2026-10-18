@@ -2,10 +2,10 @@ import { describe, expect, test } from 'vitest';
 import { GameProgress } from '../domain/game-progress';
 import { LevelOrder } from '../domain/level-order';
 import { Playthrough, PlayTime } from '../domain/playthrough';
-import { LevelId, StarCount } from '../../level';
+import { Direction, LevelId, StarCount, WorldPosition } from '../../level';
 import { LocalProgressRepository, progressKey } from './local-progress-repository';
 import { memoryStorage } from '../testing/memory-storage';
-import { progressLevels, progressOrder, progressSequences } from '../testing/progress-sequences';
+import { leftInProgress, progressLevels, progressOrder, progressSequences } from '../testing/progress-sequences';
 
 function storage(initial: string | null = null): Storage {
   const store = memoryStorage();
@@ -14,17 +14,22 @@ function storage(initial: string | null = null): Storage {
 }
 
 const saved = {
-  version: 2,
+  version: 3,
   continueLevelId: 'second',
   unlockedLevelIds: ['second'],
   lastPlaythroughs: [{ levelId: 'first', frames: 600, collectedStars: 2, starCount: 3 }],
+  levelInProgress: null,
 };
 
-const savedByVersionOne = {
-  version: 1,
-  continueLevelId: 'second',
-  unlockedLevelIds: ['second'],
-  bestPlaythroughs: [{ levelId: 'first', frames: 600, collectedStars: 2, starCount: 3 }],
+const savedInProgress = {
+  levelId: 'second',
+  frames: 1200,
+  hero: { x: 48.5, y: 92.25, facing: 'left' },
+  stars: [{ column: 2, row: 4 }],
+  collectedStars: [{ column: 0, row: 1 }],
+  collectedKeys: [{ column: 1, row: 3 }],
+  gates: ['open', 'closed'],
+  boulders: [{ column: 3, row: 3 }],
 };
 
 const isFresh = (progress: GameProgress): boolean =>
@@ -34,6 +39,7 @@ const snapshot = (progress: GameProgress) => ({
   unlocked: progressLevels.map((level) => progress.isUnlocked(level, progressOrder)),
   last: progressLevels.map((level) => progress.lastPlaythroughOf(level)),
   continueLevel: progress.continueLevelAmong(progressOrder),
+  levelInProgress: progress.levelInProgress,
 });
 
 describe('loading saved progress', () => {
@@ -50,22 +56,31 @@ describe('loading saved progress', () => {
     );
   });
 
-  test('reads progress saved by version 1 without its best playthroughs', () => {
-    const progress = new LocalProgressRepository(storage(JSON.stringify(savedByVersionOne))).load();
-    expect(progress.continueLevel).toEqual(LevelId.of('second'));
-    expect(progress.unlockedLevels).toEqual([LevelId.of('second')]);
-    expect(progress.lastPlaythroughs).toEqual([]);
+  test('reads the level left in progress', () => {
+    const progress = new LocalProgressRepository(
+      storage(JSON.stringify({ ...saved, levelInProgress: savedInProgress })),
+    ).load();
+    expect(progress.levelInProgress).toEqual(leftInProgress(LevelId.of('second')));
+    expect(progress.levelInProgress?.snapshot.hero.facing).toBe(Direction.Left);
   });
 
-  test('reads progress saved by version 1 even when its best playthroughs are invalid', () => {
-    const json = JSON.stringify({
-      ...savedByVersionOne,
-      bestPlaythroughs: [{ ...savedByVersionOne.bestPlaythroughs[0], collectedStars: 4 }],
-    });
-    const progress = new LocalProgressRepository(storage(json)).load();
+  test.each([
+    ['a level in progress with no level id', { ...savedInProgress, levelId: '' }],
+    ['a level in progress with negative frames', { ...savedInProgress, frames: -1 }],
+    [
+      'a level in progress with a hero facing a diagonal',
+      { ...savedInProgress, hero: { x: 0, y: 0, facing: 'up-left' } },
+    ],
+    ['a level in progress with a hero off the map', { ...savedInProgress, hero: { x: null, y: 0, facing: 'up' } }],
+    ['a level in progress with a star between tiles', { ...savedInProgress, stars: [{ column: 0.5, row: 1 }] }],
+    ['a level in progress with a gate halfway open', { ...savedInProgress, gates: ['opening'] }],
+    ['a level in progress that is not the level to continue', { ...savedInProgress, levelId: 'first' }],
+    ['a level in progress that is missing', undefined],
+  ])('drops %s and keeps the rest', (_, levelInProgress) => {
+    const progress = new LocalProgressRepository(storage(JSON.stringify({ ...saved, levelInProgress }))).load();
+    expect(progress.levelInProgress).toBeNull();
     expect(progress.continueLevel).toEqual(LevelId.of('second'));
-    expect(progress.unlockedLevels).toEqual([LevelId.of('second')]);
-    expect(progress.lastPlaythroughs).toEqual([]);
+    expect(progress.lastPlaythroughs).toHaveLength(1);
   });
 
   test('keeps level ids the game no longer has', () => {
@@ -79,7 +94,9 @@ describe('loading saved progress', () => {
     ['invalid JSON', '{'],
     ['a value that is not an object', '42'],
     ['a missing version', JSON.stringify({ ...saved, version: undefined })],
-    ['an unsupported version', JSON.stringify({ ...saved, version: 3 })],
+    ['progress saved by version 1', JSON.stringify({ ...saved, version: 1, levelInProgress: undefined })],
+    ['progress saved by version 2', JSON.stringify({ ...saved, version: 2, levelInProgress: undefined })],
+    ['an unsupported version', JSON.stringify({ ...saved, version: 4 })],
     ['an empty level id', JSON.stringify({ ...saved, unlockedLevelIds: [''] })],
     ['a blank level id', JSON.stringify({ ...saved, continueLevelId: '  ' })],
     ['negative frames', JSON.stringify({ ...saved, lastPlaythroughs: [{ ...saved.lastPlaythroughs[0], frames: -1 }] })],
@@ -118,24 +135,57 @@ describe('saving progress', () => {
     expect(snapshot(repository.load())).toEqual(snapshot(progress));
   });
 
+  test('writes the level left in progress that loads back the same', () => {
+    const store = storage();
+    const repository = new LocalProgressRepository(store);
+    const progress = GameProgress.fresh();
+    progress.reach(LevelId.of('second'));
+    progress.suspend(leftInProgress(LevelId.of('second')));
+    repository.save(progress);
+    expect((JSON.parse(store.getItem(progressKey)!) as { levelInProgress: unknown }).levelInProgress).toEqual(
+      savedInProgress,
+    );
+    expect(repository.load().levelInProgress).toEqual(progress.levelInProgress);
+  });
+
+  test('writes no level in progress for a hero facing a diagonal, and keeps the rest', () => {
+    const store = storage();
+    const repository = new LocalProgressRepository(store);
+    const progress = GameProgress.fresh();
+    progress.reach(LevelId.of('second'));
+    const left = leftInProgress(LevelId.of('second'));
+    progress.suspend({
+      ...left,
+      snapshot: { ...left.snapshot, hero: { feet: WorldPosition.at(0, 0), facing: Direction.UpLeft } },
+    });
+    repository.save(progress);
+    expect(JSON.parse(store.getItem(progressKey)!)).toMatchObject({ continueLevelId: 'second', levelInProgress: null });
+  });
+
   test('leaves progress saved by a newer version of the game alone', () => {
-    const newer = JSON.stringify({ version: 3, somethingNew: true });
+    const newer = JSON.stringify({ version: 4, somethingNew: true });
     const store = storage(newer);
     new LocalProgressRepository(store).save(GameProgress.fresh());
     expect(store.getItem(progressKey)).toBe(newer);
   });
 
-  test('writes version 2 over progress saved by version 1', () => {
-    const store = storage(JSON.stringify(savedByVersionOne));
+  test('writes version 3 over progress saved by an earlier version', () => {
+    const store = storage(JSON.stringify({ ...saved, version: 2, levelInProgress: undefined }));
     const repository = new LocalProgressRepository(store);
     repository.save(repository.load());
-    expect(JSON.parse(store.getItem(progressKey)!)).toEqual({ ...saved, lastPlaythroughs: [] });
+    expect(JSON.parse(store.getItem(progressKey)!)).toEqual({
+      version: 3,
+      continueLevelId: null,
+      unlockedLevelIds: [],
+      lastPlaythroughs: [],
+      levelInProgress: null,
+    });
   });
 
   test('overwrites progress that cannot be read', () => {
     const store = storage('{');
     new LocalProgressRepository(store).save(GameProgress.fresh());
-    expect(JSON.parse(store.getItem(progressKey)!)).toMatchObject({ version: 2 });
+    expect(JSON.parse(store.getItem(progressKey)!)).toMatchObject({ version: 3 });
   });
 
   test('carries on when storage cannot be written', () => {

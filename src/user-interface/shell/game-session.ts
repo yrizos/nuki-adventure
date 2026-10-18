@@ -13,7 +13,7 @@ import {
   SwingGateOpeningStarted,
   SwingGateStuck,
 } from '../../level';
-import type { ManageProgress } from '../../progress';
+import type { ManageProgress, SuspendedRun } from '../../progress';
 import type { Controls } from '../input/controls';
 import {
   appearing,
@@ -39,6 +39,8 @@ export const messages = {
 } as const;
 
 const humReach = 4;
+// A mobile browser can close a tab without warning, so play is also saved every so often instead of only on leaving.
+const saveEvery = 60;
 
 const buttonFor: Readonly<Record<LevelAction, 'a' | 'b'>> = { operate: 'a', grip: 'a' };
 
@@ -74,6 +76,7 @@ export class GameSession {
   private frame = 0;
   private phase: Phase;
   private readonly run: LevelRun;
+  private calm: SuspendedRun | null = null;
 
   constructor(
     level: PlayableLevel,
@@ -82,13 +85,16 @@ export class GameSession {
       Sound,
       'star' | 'key' | 'hum' | 'door' | 'footstep' | 'restoring' | 'arrival' | 'gate' | 'plate'
     >,
-    private readonly progress: Pick<ManageProgress, 'reach' | 'complete'>,
+    private readonly progress: Pick<ManageProgress, 'reach' | 'complete' | 'suspend'>,
     private readonly report: SessionReport,
     private readonly random?: () => number,
+    suspended?: SuspendedRun,
   ) {
-    this.run = this.begin(level);
-    this.phase = level.arrives ? appearing(this.frame) : playing;
-    if (level.arrives) this.sound.arrival();
+    this.run = this.begin(level, suspended);
+    // A resumed level shows her where she was at once, so it never replays the arrival.
+    const arrives = level.arrives && this.calm === null;
+    this.phase = arrives ? appearing(this.frame) : playing;
+    if (arrives) this.sound.arrival();
   }
 
   get level(): LevelView {
@@ -145,6 +151,7 @@ export class GameSession {
           this.transitionTo(restoringKey(event, this.frame));
         } else if (event instanceof LevelCompleted) {
           this.sound.door();
+          this.calm = null;
           const level = play.view(id);
           this.progress.complete(id, {
             playFrames: this.frame - this.run.startFrame,
@@ -184,6 +191,15 @@ export class GameSession {
     }
     this.sound.hum(this.phase.name === 'playing' ? humVolume(play.view(id)) : 0);
     this.frame++;
+    // Only a moment with nothing moving is kept, so leaving halfway through a swing or a slide goes back to just before it.
+    const snapshot = this.phase.name === 'playing' ? play.snapshot(id) : null;
+    if (snapshot) this.calm = { snapshot, playFrames: this.frame - this.run.startFrame };
+    if (this.phase.name === 'playing' && this.frame % saveEvery === 0) this.suspend();
+  }
+
+  // The level is saved as it was at its last calm moment, so continuing goes on from there with the same play time.
+  suspend(): void {
+    if (this.calm) this.progress.suspend(this.run.id, this.calm);
   }
 
   paint(picture: Picture, tickProgress = 1): void {
@@ -230,9 +246,11 @@ export class GameSession {
     if (previous.name === 'closing' && next.name === 'ended') this.report.completed();
   }
 
-  private begin({ id, start, arrives }: PlayableLevel): LevelRun {
+  private begin({ id, start, arrives }: PlayableLevel, suspended: SuspendedRun | undefined): LevelRun {
     const play = start();
-    this.progress.reach(id);
+    const resumed = suspended !== undefined && play.resume(id, suspended.snapshot);
+    if (resumed) this.calm = suspended;
+    else this.progress.reach(id);
     return {
       id,
       play,
@@ -240,8 +258,9 @@ export class GameSession {
       animator: new HeroAnimator(),
       messageBox: new MessageBox(),
       // Play time starts on the first playable frame, so the arrival never counts toward it.
-      startFrame: this.frame + (arrives ? arrivalLength : 0),
-      plateDepth: 0,
+      // A resumed level has already been played for a while, so its play time goes on from there.
+      startFrame: resumed ? this.frame - suspended.playFrames : this.frame + (arrives ? arrivalLength : 0),
+      plateDepth: resumed && play.view(id).isPlateDown ? plateSinkLength : 0,
     };
   }
 }

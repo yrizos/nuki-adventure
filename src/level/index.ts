@@ -21,6 +21,7 @@ export {
   SwingGateStuck,
 } from './domain/level-events';
 export { LevelId } from './domain/level-id';
+export type { LevelSnapshot } from './domain/level-snapshot';
 export type { LevelRepository } from './domain/level-repository';
 export type { Obstacles, Outline, PlaceObstacles } from './domain/obstacles';
 export { Direction, Heading, TilePosition, tileSize, WorldPosition } from './domain/position';
