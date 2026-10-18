@@ -628,6 +628,7 @@ function gamePage({ secondUnlocked = false, arrives = false, intro = false } = {
     'sound-switch',
     'start-screen',
     'start-title',
+    'start-sparkles',
     'confirm-modal',
     'confirm-box',
     'confirm-text',

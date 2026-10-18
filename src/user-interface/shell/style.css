@@ -178,6 +178,7 @@ body {
 .full-screen-switch,
 .menu-switch,
 .start-title,
+.start-sparkles,
 .level-hero,
 .level-picker-title,
 .confirm-box,
@@ -473,13 +474,21 @@ body {
 }
 
 .start-title {
+  position: relative;
   flex: none;
   margin: auto 0 0;
   color: transparent;
   font-size: 0;
 }
 
+.start-sparkles {
+  position: absolute;
+  top: calc(-1 * var(--sparkle-margin) * var(--pixel));
+  left: calc(-1 * var(--sparkle-margin) * var(--pixel));
+}
+
 .start-title,
+.start-sparkles,
 .level-hero,
 .level-picker-title,
 .confirm-box,

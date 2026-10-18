@@ -7,7 +7,7 @@ import { artUrl } from '../graphics/canvas-art';
 import { ditherThreshold } from '../graphics/ordered-dither';
 import { confirmArt } from './confirm-modal';
 import { StartScreen, type StartChoices } from './start-screen';
-import { titleArt, titleShineArts } from './title-logo';
+import { sparkleMargin, titleArt, titleShineArts, titleSparkleArts } from './title-logo';
 
 test('draws the game name from palette codes, inside the narrowest column', () => {
   const art = titleArt();
@@ -74,6 +74,8 @@ function startScreen(choices: StartChoices = { canContinue: true, hasProgress: t
   const screen = create('section', 'start-screen');
   screen.hidden = true;
   const title = create('h1', 'start-title');
+  const sparkles = create('span', 'start-sparkles');
+  title.append(sparkles);
   const continueButton = create('button', 'start-continue');
   const pickLevelButton = create('button', 'start-pick-level');
   const newGameButton = create('button', 'start-new-game');
@@ -104,6 +106,7 @@ function startScreen(choices: StartChoices = { canContinue: true, hasProgress: t
     screen,
     subject,
     title,
+    sparkles,
     continueButton,
     pickLevelButton,
     newGameButton,
@@ -302,6 +305,67 @@ test('the shine crosses every letter and lights only letter pixels, in Paper and
     [...row].flatMap((_, x) => (isLetter(x, y) && !lit.has(`${x},${y}`) ? [`${x},${y}`] : [])),
   );
   expect([[...violations], unlit]).toEqual([[], []]);
+});
+
+test('draws the sparkles inside the narrowest column, only on the dark around the game name, in Paper and light ramp steps', () => {
+  const title = titleArt();
+  const sparkleArts = titleSparkleArts();
+  const allowed = new Set(['Paper', 'R3', 'Y3', 'G4', 'T3', 'P3']);
+  const violations = new Set<string>();
+  for (const sparkle of sparkleArts) {
+    expect(() => sprite(sparkle)).not.toThrow();
+    sparkle.rows.forEach((row, y) =>
+      [...row].forEach((symbol, x) => {
+        if (symbol === '.') return;
+        if (!allowed.has(sparkle.legend[symbol]!)) violations.add(`${sparkle.legend[symbol]} at ${x},${y}`);
+        if ((title.rows[y - sparkleMargin]?.[x - sparkleMargin] ?? '.') !== '.')
+          violations.add(`over the logo at ${x},${y}`);
+      }),
+    );
+  }
+  expect(sparkleArts[0]!.rows[0]!.length).toBeLessThanOrEqual(180 - 16);
+  expect([...violations]).toEqual([]);
+});
+
+test('lights one sparkle at a time, every spot in turn, each growing to a star and shrinking back', () => {
+  const sparkleArts = titleSparkleArts();
+  const lit = (art: (typeof sparkleArts)[number]) =>
+    art.rows.flatMap((row, y) => [...row].flatMap((symbol, x) => (symbol === '.' ? [] : [[x, y] as const])));
+  const sizes = sparkleArts.map((art) => lit(art).length);
+  const centers = sparkleArts.flatMap((art) => {
+    const pixels = lit(art);
+    if (pixels.length === 0) return [];
+    const xs = pixels.map(([x]) => x);
+    const ys = pixels.map(([, y]) => y);
+    return [`${(Math.min(...xs) + Math.max(...xs)) / 2},${(Math.min(...ys) + Math.max(...ys)) / 2}`];
+  });
+  const sizesPerSparkle = 15;
+  expect([sizes.length % sizesPerSparkle, new Set(centers).size]).toEqual([0, 5]);
+  for (let start = 0; start < sizes.length; start += sizesPerSparkle)
+    expect(sizes.slice(start, start + sizesPerSparkle)).toEqual([1, 5, 9, 5, 1, ...Array<number>(10).fill(0)]);
+});
+
+test('shows no sparkles until the title is whole, then steps them every 4 frames and loops', () => {
+  const { root, subject, sparkles } = startScreen();
+  const urls = titleSparkleArts().map((art) => `url(${artUrl(root as unknown as Document, art)})`);
+  const dark = urls.at(-1);
+  const shownAt = (frame: number) => {
+    subject.animate(frame);
+    return sparkles.style.getPropertyValue('--art');
+  };
+  const cycle = urls.length * 4;
+  expect([shownAt(0), shownAt(31), shownAt(32), shownAt(35), shownAt(36), shownAt(40), shownAt(32 + cycle)]).toEqual([
+    dark,
+    dark,
+    urls[0],
+    urls[0],
+    urls[1],
+    urls[2],
+    urls[0],
+  ]);
+  subject.hide();
+  subject.show({ canContinue: true, hasProgress: true });
+  expect(shownAt(0)).toBe(dark);
 });
 
 test('reopening the start screen replays the title reveal from empty', () => {

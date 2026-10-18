@@ -29,6 +29,19 @@ const shadowDepth = 3;
 // The shine runs along x + y, so it crosses the letters as a 45 degree streak: a light edge, Paper, a light edge.
 const shineWidth = 4;
 const shineStride = 2;
+export const sparkleMargin = 4;
+// Each spot is a sparkle's center in the margined frame, on Ink in a corner or beside a shorter line, so no ray touches the sticker or its shadow.
+const sparkles: readonly { x: number; y: number; ray: PaletteCode }[] = [
+  { x: 2, y: 2, ray: 'R3' },
+  { x: 152, y: 36, ray: 'Y3' },
+  { x: 12, y: 56, ray: 'G4' },
+  { x: 156, y: 2, ray: 'T3' },
+  { x: 147, y: 58, ray: 'P3' },
+];
+// A sparkle grows from a dot to a star and back, so it twinkles rather than blinks.
+const sparkleRays = [0, 1, 2, 1, 0];
+// The dark steps between sparkles keep the twinkling an occasional glint, one sparkle at a time.
+const sparkleRest = 10;
 
 const font: Readonly<Record<string, readonly string[]>> = {
   Α: [
@@ -459,4 +472,31 @@ export function titleShineArts(): Art[] {
       ),
     };
   });
+}
+
+export function titleSparkleArts(): Art[] {
+  const art = titleArt();
+  const width = art.rows[0]!.length + 2 * sparkleMargin;
+  const height = art.rows.length + 2 * sparkleMargin;
+  const codes = [...new Set<PaletteCode>(['Paper', ...sparkles.map(({ ray }) => ray)])];
+  const legend = Object.fromEntries(codes.map((code, index) => [String.fromCharCode(97 + index), code]));
+  const symbolOf = new Map(Object.entries(legend).map(([symbol, code]) => [code, symbol]));
+  const dark = new PixelGrid(width, height).build(legend);
+  return sparkles.flatMap(({ x, y, ray }) => [
+    ...sparkleRays.map((reach) => {
+      const grid = new PixelGrid(width, height);
+      grid.put(x, y, symbolOf.get('Paper')!);
+      for (let distance = 1; distance <= reach; distance++) {
+        for (const [dx, dy] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ])
+          grid.put(x + dx! * distance, y + dy! * distance, symbolOf.get(ray)!);
+      }
+      return grid.build(legend);
+    }),
+    ...Array.from({ length: sparkleRest }, () => dark),
+  ]);
 }

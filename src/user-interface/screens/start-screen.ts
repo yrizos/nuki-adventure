@@ -4,12 +4,14 @@ import { ConfirmModal } from './confirm-modal';
 import { element } from '../shell/dom';
 import { menuChoices, takeMenuKeys } from './menu-keys';
 import { ditheredArt, ditherSteps } from '../graphics/ordered-dither';
-import { titleArt, titleShineArts } from './title-logo';
+import type { Art } from '../graphics/art';
+import { sparkleMargin, titleArt, titleShineArts, titleSparkleArts } from './title-logo';
 
 const framesPerTitleThreshold = 2;
 const titleRevealLength = ditherSteps * framesPerTitleThreshold;
 // A long rest keeps the shine an occasional glint rather than a constant flicker.
 const shineRest = 180;
+const framesPerSparkleStep = 4;
 
 export interface StartChoices {
   readonly canContinue: boolean;
@@ -27,6 +29,9 @@ export class StartScreen {
   private readonly titleUrls: string[];
   private readonly shineUrls: string[];
   private titleShown = '';
+  private readonly sparkles: HTMLElement;
+  private readonly sparkleUrls: string[];
+  private sparklesShown = '';
 
   constructor(root: Document) {
     this.screen = element(root, '.start-screen');
@@ -44,6 +49,17 @@ export class StartScreen {
     this.shineUrls = titleShineArts().map((shine) => `url(${artUrl(root, shine)})`);
     this.title.style.setProperty('--art-width', String(art.rows[0]!.length));
     this.title.style.setProperty('--art-height', String(art.rows.length));
+    this.sparkles = element(root, '.start-sparkles');
+    const sparkleArts = titleSparkleArts();
+    // The dark steps share one art, so each distinct step is drawn once.
+    const drawn = new Map<Art, string>();
+    this.sparkleUrls = sparkleArts.map((sparkle) => {
+      if (!drawn.has(sparkle)) drawn.set(sparkle, `url(${artUrl(root, sparkle)})`);
+      return drawn.get(sparkle)!;
+    });
+    this.sparkles.style.setProperty('--art-width', String(sparkleArts[0]!.rows[0]!.length));
+    this.sparkles.style.setProperty('--art-height', String(sparkleArts[0]!.rows.length));
+    this.sparkles.style.setProperty('--sparkle-margin', String(sparkleMargin));
     for (const button of [this.continueButton, this.pickLevelButton, this.newGameButton]) {
       button.style.setProperty('--art-width', String(menuButtonWidth));
       button.style.setProperty('--art-height', String(textButtonHeight));
@@ -84,6 +100,16 @@ export class StartScreen {
     if (shown !== this.titleShown) {
       this.titleShown = shown;
       this.title.style.setProperty('--art', shown);
+    }
+    const sparkles =
+      this.sparkleUrls[
+        sinceReveal < 0
+          ? this.sparkleUrls.length - 1
+          : Math.floor(sinceReveal / framesPerSparkleStep) % this.sparkleUrls.length
+      ]!;
+    if (sparkles !== this.sparklesShown) {
+      this.sparklesShown = sparkles;
+      this.sparkles.style.setProperty('--art', sparkles);
     }
   }
 
