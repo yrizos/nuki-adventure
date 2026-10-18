@@ -6,7 +6,7 @@ Hex values and the faded mapping live in [`assets/sprites/palette.js`](../assets
 
 - Ramp steps run darkest to lightest. Shadows lean toward blue or teal, highlights toward yellow.
 - A new hue is added as a full four-step ramp, never as a single color.
-- Ink is the outline color for everything the player interacts with: the hero, stars, keys and stones. Ink has no lighter ramp step.
+- Ink is the outline color for everything the player interacts with: the hero, orbs and stones. Ink has no lighter ramp step.
 - Pure white is never used. Pure black is only the desktop background outside the game column.
 
 ## Codes
@@ -38,8 +38,7 @@ Hex values and the faded mapping live in [`assets/sprites/palette.js`](../assets
 | Water lilies | G2 pads, G3 highlights, G1 shading and bottom right edges, P3 petals, P2 petal shading, Y3 centers, W0 waterline |
 | Paths | E3 base, E4 highlights, E2 edges |
 | Flowers | R3, V3, W3 or Paper petals, Y3 centers, G1 stems |
-| Stars | Y2 body, Y1 shading, Y3 shine |
-| Keys | Y2 core, Y1 shading, Y3 shine. Silver keys use N3, N4 and W4 on the same pixels |
+| Orbs | One ramp per orb: rim, shading, body and light steps 0 to 3 of R, O, Y, T, W, V or P, and steps 1 to 4 of G so green stands out from G2 grass. Paper core and shine. [`sprite-library.ts`](../src/user-interface/graphics/sprite-library.ts) maps each hue to its steps |
 | Stones | N3 base, N2 shading, N4 highlight |
 | Mossy stones | Stone colors, with G1 moss and G2 moss highlights on selected top and side surfaces |
 | Boulder | N4 base, N3 shading and crack, Paper highlight, one step lighter than stones so it reads as movable |
@@ -67,7 +66,6 @@ Hex values and the faded mapping live in [`assets/sprites/palette.js`](../assets
 | Menu screen and level picker | Ink background with no texture. Buttons use the A button colors, pressed state included |
 | Game name | Letters cycle through the R, O, Y, G, T, V and P ramps, light on top, base in the middle, dark at the bottom. Ink outline, Paper sticker border, V1 shadow. The shine is Paper with each letter's light step on both edges. Each sparkle has a Paper center and rays in one light step: R3, Y3, G4, T3 or P3. Confetti bits take the base steps R2, O2, Y2, G3, T2, V2 and P2 |
 | Level card clock | Paper face, N4 shading, Ink outline, marks and hands |
-| Level card star | Same as the world star |
 | Locked level card | The whole card through the faded mapping |
 
 ## Contrast
@@ -82,4 +80,4 @@ Text needs at least 4.5:1. Controls need at least 3:1. Pairs closest to those li
 | W2 on V0, B button | 4.5:1 |
 | Paper on R1 or W1, pressed letters | 5.0:1 |
 
-Stars and keys reach only 1.3:1 against paths and 1.9:1 against grass, so their Ink outline is required. It reaches 5.8:1 against grass and 8.4:1 against paths. Keys and stars share colors and differ by silhouette alone.
+Orb ramps can sit close in value to the ground below them, so their Ink outline is required. Ink reaches 5.8:1 against grass and 8.4:1 against paths.

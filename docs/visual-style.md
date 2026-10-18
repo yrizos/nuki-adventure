@@ -57,7 +57,7 @@ Color codes refer to the [palette](palette.md). Element colors live there, not h
 
 ## Value and Contrast
 
-- The hero has the widest value range on screen, from Ink to her lightest highlight. Stars and keys have the second widest.
+- The hero has the widest value range on screen, from Ink to her lightest highlight. Orbs have the second widest.
 - Props span at most three steps of their ramp.
 - Ground tiles use one base step plus the steps directly above and below it, which together cover at most 20 percent of the tile.
 - A ramp's darkest and lightest steps appear in ground tiles only along transitions and shorelines, or where the palette assigns them.
@@ -78,7 +78,7 @@ Color codes refer to the [palette](palette.md). Element colors live there, not h
 
 ## Outlines
 
-- The hero, stars, keys and stones have a closed one pixel Ink outline. Lines between parts of one sprite, such as hair and face, use that part's darkest assigned step.
+- The hero, orbs and stones have a closed one pixel Ink outline. Lines between parts of one sprite, such as hair and face, use that part's darkest assigned step.
 - Scenery never uses Ink. Its outline uses the darkest step of its own ramp on the bottom and right sides only. Ground tiles have no outlines.
 
 ## Line Work and Clusters
@@ -96,7 +96,7 @@ Color codes refer to the [palette](palette.md). Element colors live there, not h
 | Element | Sprite size | Footprint |
 | --- | --- | --- |
 | Hero | 32 × 32 | 1 tile |
-| Stars and keys | 24 × 24 | 1 tile |
+| Orbs | 24 × 24 swirl, 32 × 32 burst | 1 tile |
 | Stones and small props | 32 × 32 | 1 tile |
 | Trees | 64 × 64 | 2 × 1 tiles at the base |
 | Fences | 32 × 32 | 1 tile |
@@ -117,10 +117,12 @@ A new element uses the smallest size that fits its shape.
 - The t-shirt shows one fold line on each side. One row separates the t-shirt from the jeans at the waist.
 - Hands and shoes are each two pixels while she stands or walks.
 
-### Stars and Keys
+### Orbs
 
-- Centered in their tile with a four pixel empty margin.
-- All keys share one sprite: a round bow, a shaft and teeth. Gold and silver differ only in color.
+- A 16 × 16 ball centered in its tile with a four pixel empty margin, in the same pixels in every frame.
+- Every orb uses one ramp only, plus Ink and Paper. All hues share one grid and differ only in their four ramp steps. Orbs are never multicolored.
+- Inside the ball, a band of the orb's light step travels around just inside the outline, and two light arms turn around a fixed 2 × 2 Paper core. A fixed shine sits top left. No sparkles outside the ball.
+- Each orb in view takes a different hue until the hues run out, and its own swirl and float phase.
 
 ### Scenery Props
 
@@ -188,16 +190,16 @@ A new element uses the smallest size that fits its shape.
 
 ## Faded World
 
-- At the start, only the hero, stars and keys are in color. Every scenery tile and prop has a faded version that maps each step to a neutral through `faded` in [`palette.js`](../assets/sprites/palette.js), then corrected by hand.
+- At the start, only the hero and the orbs are in color. Every scenery tile and prop has a faded version that maps each step to a neutral through `faded` in [`palette.js`](../assets/sprites/palette.js), then corrected by hand.
 - A faded object differs from its ground through its silhouette, ground shadow or at least one neutral step. Stones on grass rely on their shadow and highlight, because N3 stone matches faded grass.
 - The magical arrival changes only the hero's visibility and never the faded state.
 
 ### Restoring Color
 
-- Color returns through an ordered 4 × 4 dither dissolve. It spreads from the center of the key's tile as a circle, one tile every 4 frames.
+- Color returns through an ordered 4 × 4 dither dissolve. It spreads from the center of the orb's tile as a circle, one tile every 4 frames.
 - Each changing pixel first shows its final color one step lighter for 8 frames, so a bright crest travels with the front. Ink and a ramp's lightest step stay as they are.
 - Pixels that are the same before and after never change.
-- Only the collected key's area and its seam band change.
+- Only the collected orb's area and its seam band change.
 - The seam between colored and faded areas is a band of the same dither about three tiles wide, centered on the area edge and eased at both ends. It never animates. The dissolve passes through it and ends exactly on the settled seam.
 - During the last restoration, the door is drawn open where color reaches it. The hero can enter once color covers the whole door.
 
@@ -221,8 +223,10 @@ A new element uses the smallest size that fits its shape.
 | Hero walk | 4 per direction | 8 game frames each, one cycle per two cardinal tiles, continuous across tiles and diagonals |
 | Hero idle | 2 | Blink of 6 frames every 180, except facing up. Shoulders lift one pixel every 90 |
 | Hero push | 2 per direction | 8 game frames each |
-| Star bob | 4 | 1 pixel up and down, 10 game frames each |
-| Key float | Sine, whole pixels | 2 pixels up and down over 150 frames, 1 pixel sideways over 60. The shadow stays still |
+| Orb swirl | 8 | 10 game frames each, phases 70 frames apart between orbs |
+| Orb float | Sine, whole pixels | 2 pixels up and down over 150 frames, 1 pixel sideways over 60, with the orb's swirl phase. The shadow stays still |
+| Orb burst | 6 | 4 game frames each from the pickup, at the orb's last float position. A 1 pixel swell, then a few pixels of its own ramp and Paper drift out and fade. The last frame is empty |
+| Orb pop | 8 Paper specks, eased, whole pixels | 2 × 2 specks fly straight out from 12 to 92 pixels from the orb's center and drop out one by one between frames 20 and 35. One color only, no rotation |
 | Water | 4 | 15 game frames each, all tiles in sync |
 | Pressure plate sinking | 3 | 4 game frames each. Sinks deeper into the ground while pressed and rises in reverse once released. A release partway down rises from the current frame |
 | Flowers sway | 2 | 30 game frames each, offset per tile |
@@ -271,5 +275,5 @@ The [intro](ui-layout.md#intro) is a still comic page drawn with the game's own 
 - Stopping on a passing frame shows a settle frame for 8 game frames while her pigtails catch up.
 - Arms swing opposite to the legs, one pixel forward and back. Shoulders dip one pixel on passing frames.
 - Turning shows the new facing for 2 game frames before she moves.
-- Keys are collected by walking onto them, with no pause, pose or held-key animation. Restoration starts at once, movement continues and a congratulations message appears.
+- Orbs are collected by walking onto them, with no pause, pose or held-orb animation. The burst, the pop and restoration start at once and movement continues. The last orb shows a message that the colors are back.
 - No transparency, screen shake, motion blur or glow filters. The [intro](#intro) tremble is the one exception.

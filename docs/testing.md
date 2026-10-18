@@ -52,9 +52,9 @@ Invariants are checked exhaustively over enumerated inputs, not with a few examp
 
 - Every [level design hard constraint](level-design.md#hard-constraints) added gets a deterministic test over every authored level.
 - In every authored level, every tile that touches a fenced enclosure from outside, corners included, is open ground with no stone or woodland.
-- In every authored level, the hero starts on each walkable tile of the playable area and moves in each of the eight directions. She never ends inside an obstacle or outside the level. The door stays closed until every key is collected.
+- In every authored level, the hero starts on each walkable tile of the playable area and moves in each of the eight directions. She never ends inside an obstacle or outside the level. The door stays closed until every orb is collected.
 - In every authored level, every open tile is reachable from the start, with the gate and any boulder counted as passable.
-- In every authored level, no key or star spot lies on the start or the eight tiles around it.
+- In every authored level, over many plays, no orb lies on the start or the eight tiles around it.
 - In every authored level with swing gates, the sweep runs with every gate closed from every tile of each region the gates divide, where she never enters another region, and once with every gate open from every tile.
 - A swing gate moves from closed through opening to open, and from open through closing to closed. A swing in progress can reverse. Any other request changes nothing and emits no event. It blocks its whole tile through the last of its sixteen opening frames and lets the hero through on the next frame.
 - The magical arrival advances only through explicit frames. Through its last frame the hero does not move, collect anything or complete the level, and its frames add no play time. A held direction moves her on the first playable frame.

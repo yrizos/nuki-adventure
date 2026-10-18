@@ -2,7 +2,7 @@ import { type Area, Direction, Ground, type LevelView, TilePosition, TreeVariant
 import { arrivalMotes, revealed, risingEdge, shadowShown } from './arrival';
 import type { Art } from '../graphics/art';
 import { ditherSteps, ditherThreshold } from '../graphics/ordered-dither';
-import { lighten, Picture, sprite, type Version } from '../graphics/picture';
+import { lighten, packedColor, Picture, sprite, type Version } from '../graphics/picture';
 import {
   birdArt,
   birdFrameLength,
@@ -18,7 +18,10 @@ import {
   sideGateArt,
   groundShadow,
   lightMote,
-  orbArt,
+  orbBurstFrameLength,
+  orbBurstFrames,
+  orbFrameLength,
+  orbFrames,
   orbHues,
   type OrbHue,
   boulderArt,
@@ -38,11 +41,45 @@ import { cameraPosition, clamp, heroPixels, tileSize } from './world-geometry';
 import { crestLength, isDarkened, restorationAge } from './world-transition';
 
 const orbFloatFrames = 150;
+const orbSwayFrames = 60;
+// Seventy frames apart, up to eight orbs show different swirl frames and stand at different points of their float path.
+const orbPhaseSpacing = 70;
+const orbInset = 4;
 
-// Rounding a sine holds each pixel longest near the turning points, so the orb eases up and down instead of jerking.
-export function orbFloat(frame: number): number {
-  return Math.round(2 * Math.sin((2 * Math.PI * frame) / orbFloatFrames));
+// Rounding a sine holds each pixel longest near the turning points, so the orb eases up and down and side to side instead of jerking.
+// The frame is reduced to its cycle first, because a sine that lands exactly on a half would otherwise round differently from cycle to cycle.
+export function orbFloat(frame: number): { readonly x: number; readonly y: number } {
+  return {
+    x: Math.round(Math.sin((2 * Math.PI * (frame % orbSwayFrames)) / orbSwayFrames)),
+    y: Math.round(2 * Math.sin((2 * Math.PI * (frame % orbFloatFrames)) / orbFloatFrames)),
+  };
 }
+
+interface OrbLook {
+  readonly hue: OrbHue;
+  readonly phase: number;
+}
+
+// Few specks keep the pop a light scatter rather than a cloud.
+const popSpecks = 8;
+const popLength = 40;
+// Specks start past the hero's shoulders, because she stands on the orb's tile and would hide them.
+const popStart = 12;
+const popTravel = 80;
+// Two pixels square, because single pixels vanish in the busy dither of the color wave.
+const popSize = 2;
+const popColor = packedColor('Paper');
+
+// Specks ease out to a stop and drop out one by one, so the pop fades instead of ending on a hard frame.
+function popSpeck(index: number, framesSinceStart: number): { readonly x: number; readonly y: number } | undefined {
+  const lasts = popLength / 2 + ((index * 5) % (popLength / 2));
+  if (framesSinceStart >= lasts) return undefined;
+  const progress = framesSinceStart / popLength;
+  const reach = popStart + popTravel * (1 - (1 - progress) * (1 - progress));
+  const angle = (2 * Math.PI * (index + 0.5 * (index % 2))) / popSpecks;
+  return { x: Math.round(Math.cos(angle) * reach), y: Math.round(Math.sin(angle) * reach) };
+}
+
 const butterflyArc = 6;
 const butterflyFlutter = 2;
 const butterflyFlutterBeats = 3;
@@ -434,7 +471,8 @@ export class WorldPainter {
   private after = new Picture(0, 0);
   private readonly shadows = new Map<string, Art>();
   private readonly birds: readonly { readonly bird: Bird; readonly visit: BirdVisit }[];
-  private readonly orbHues = new Map<string, OrbHue>();
+  // Looks are kept by tile from the start, because collected orbs leave the level and must not shift the others' hues or phases.
+  private readonly orbLooks = new Map<string, OrbLook>();
 
   constructor(level: LevelView, random?: () => number) {
     this.dressing = dressWorld(level, random);
@@ -443,13 +481,20 @@ export class WorldPainter {
     const hues = [...orbHues];
     if (random) {
       for (let index = hues.length - 1; index > 0; index--) {
-        const other = Math.floor(random() * (index + 1));
+        const other = Math.min(Math.floor(random() * (index + 1)), index);
         [hues[index], hues[other]] = [hues[other]!, hues[index]!];
       }
     }
     level.orbs.forEach(({ position }, index) =>
-      this.orbHues.set(`${position.column},${position.row}`, hues[index % hues.length]!),
+      this.orbLooks.set(`${position.column},${position.row}`, {
+        hue: hues[index % hues.length]!,
+        phase: index * orbPhaseSpacing,
+      }),
     );
+  }
+
+  private orbLook({ column, row }: TilePosition): OrbLook | undefined {
+    return this.orbLooks.get(`${column},${row}`);
   }
 
   paint(target: Picture, scene: Scene, restored: readonly Area[]): void {
@@ -469,6 +514,7 @@ export class WorldPainter {
     this.compose(this.before, scene, before);
     this.compose(this.after, scene, after);
     const view = cameraPosition(scene.level, target.width, target.height);
+    const look = this.orbLook(origin);
     for (let y = 0; y < target.height; y++) {
       for (let x = 0; x < target.width; x++) {
         const offset = y * target.width + x;
@@ -483,6 +529,32 @@ export class WorldPainter {
         target.packedPixels[offset] = age < 0 ? earlier : age < crestLength ? lighten(later) : later;
       }
     }
+    if (!look) return;
+    // The orb was last drawn on the frame it was collected, so the burst opens where the float had carried it.
+    const float = orbFloat(scene.frame - framesSinceStart + look.phase);
+    const centerX = (origin.column + 0.5) * tileSize + float.x - view.x;
+    const centerY = (origin.row + 0.5) * tileSize + float.y - view.y;
+    for (let index = 0; index < popSpecks; index++) {
+      const speck = popSpeck(index, framesSinceStart);
+      if (!speck) continue;
+      for (let down = 0; down < popSize; down++) {
+        for (let across = 0; across < popSize; across++) {
+          const x = centerX + speck.x + across;
+          const y = centerY + speck.y + down;
+          if (x >= 0 && y >= 0 && x < target.width && y < target.height)
+            target.packedPixels[y * target.width + x] = popColor;
+        }
+      }
+    }
+    const burst = orbBurstFrames[look.hue][Math.floor(framesSinceStart / orbBurstFrameLength)];
+    if (!burst) return;
+    const margin = (sprite(burst).width - sprite(orbFrames[look.hue][0]!).width) / 2;
+    target.draw(
+      burst,
+      origin.column * tileSize + orbInset - margin + float.x - view.x,
+      origin.row * tileSize + orbInset - margin + float.y - view.y,
+      'colored',
+    );
   }
 
   paintClosing(target: Picture, scene: Scene, framesSinceStart: number): void {
@@ -708,12 +780,14 @@ export class WorldPainter {
     const underBoulder = (tile: TilePosition): boolean => level.boulders.some((boulder) => boulder.covers(tile));
     for (const orb of level.orbs) {
       const { column, row } = orb.position;
-      const art = orbArt[this.orbHues.get(`${column},${row}`) ?? orbHues[0]];
-      const float = orbFloat(frame);
+      const { hue, phase } = this.orbLook(orb.position) ?? { hue: orbHues[0], phase: 0 };
+      const swirl = orbFrames[hue];
+      const art = swirl[Math.floor((frame + phase) / orbFrameLength) % swirl.length]!;
+      const float = orbFloat(frame + phase);
       objects.push({
         base: underBoulder(orb.position) ? -Infinity : (row + 1) * tileSize,
         shadow: shadow(12, orb.position, column * tileSize + 10, row * tileSize + 27),
-        paint: () => draw(art, column * tileSize + 4, row * tileSize + 4 + float, 'colored'),
+        paint: () => draw(art, column * tileSize + orbInset + float.x, row * tileSize + orbInset + float.y, 'colored'),
       });
     }
     const hero = heroPixels(level);

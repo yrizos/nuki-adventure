@@ -17,12 +17,11 @@ Definitions only. Rules that use these terms live in [Level Design](level-design
 | Level | One enclosed part of the game world, bounded by woodland or fences. |
 | Playable Area | The connected traversable tiles reachable from the hero's start, excluding the closed door. |
 | Magical Arrival | The 48-frame presentation in which the hero materializes at her start before movement begins. |
-| Door | The level exit. It opens once every key is collected and color has returned to the whole door. Stepping into it completes the level. |
+| Door | The level exit. It opens once every orb is collected and color has returned to the whole door. Stepping into it completes the level. |
 | Hidden | Describes a tile that a tree canopy, a woodland canopy or the door is drawn over. |
-| Star Spot | A tile in a level's layout that can hold a star. Each level start picks the stars from these spots. |
-| Permanent Star Spot | A star spot that holds a star every time the level starts. Each one takes a star from the five the level start picks. |
-| Star Count | The number of stars a level holds. Stars go to the star spots, or to random reachable tiles that are not hidden. |
-| Key | A collectible that floats, buzzes and hums when the hero is near. Each restores color to its own area. Gold by default. A level may make its keys silver, which changes only the color. |
+| Orb | A floating ball of one color that hums when the hero is near. Collecting it restores color to the circle of tiles around it. |
+| Permanent Orb | An orb that a layout places on its tile every time the level starts. |
+| Random Orb | An orb the level start places on a weighted random tile to fill up the level's orb count. |
 | Stone | A static gray obstacle that is never part of a level boundary. |
 | Fenced Enclosure | A closed ring of fence standing free inside the level. It may hold a swing gate. |
 | Dividing Fence | A fence line that joins the level boundary at both ends and splits the level in two. Its swing gate is the only passage between the two parts. |
@@ -31,7 +30,7 @@ Definitions only. Rules that use these terms live in [Level Design](level-design
 | Tree Variant | A tree's fruit: none, oranges, apples or lemons. |
 | Flower Variant | A flower cluster's petal colors and arrangement. Each level chooses its variants. |
 | Tree Cluster | Trees whose footprints touch, including at a corner. |
-| Mandatory Route | The tiles of every shortest walk from the hero start through every key to the door. |
+| Mandatory Route | The tiles of every shortest walk from the hero start to the door. |
 | Exploration Area | Reachable tiles at least three steps away from the mandatory route. |
 | Ground Shadow | The shadow directly below an object, drawn in the shading step of the surface beneath it. |
 
@@ -41,7 +40,7 @@ A single wooden leaf hinged in a fence. In a fence row, pressing A on any of the
 
 ### Boulder
 
-A large gray rock covering one tile. Holding A while she stands on the adjacent tile facing it, or presses against it from that side, grips it. Gripping alone moves nothing. While she grips it, walking in any direction moves the boulder and her together one tile that way, and she keeps facing it. A move happens only when both the boulder and she have room. Releasing A lets go. It never enters woodland, water, a fence, a tree, a stone, the gate or the door. It rolls over stars and keys, which the hero collects as she steps onto their tiles.
+A large gray rock covering one tile. Holding A while she stands on the adjacent tile facing it, or presses against it from that side, grips it. Gripping alone moves nothing. While she grips it, walking in any direction moves the boulder and her together one tile that way, and she keeps facing it. A move happens only when both the boulder and she have room. Releasing A lets go. It never enters woodland, water, a fence, a tree, a stone, the gate or the door. It rolls over orbs, which the hero collects as she steps onto their tiles.
 
 ### Pressure Plate
 
@@ -55,10 +54,10 @@ Describes a tile the hero can walk to from her start without stepping into the d
 
 | Term | Definition |
 | --- | --- |
-| Faded World | The starting state, in which only the hero, stars and keys are in color. |
+| Faded World | The starting state, in which only the hero and the orbs are in color. |
 | Faded Version | The variant of a scenery tile or prop in which each palette step maps to a neutral. |
 | Restoration | The return of color, spreading outward from a point. |
-| Area | The part of a level that one key returns to color. |
+| Area | The part of a level that one orb returns to color. |
 
 ## Saved Progress
 
@@ -66,9 +65,9 @@ Describes a tile the hero can walk to from her start without stepping into the d
 | --- | --- |
 | Progress | What the game remembers between visits: the continue level, the unlocked levels, each level's last playthrough and the level in progress. |
 | Level In Progress | The continue level as it stood at its last calm moment, with its play time so far. Only ΣΥΝΕΧΕΙΑ resumes it. Starting or completing that level drops it. |
-| Calm Moment | A frame of play when no gate swings, no boulder slides, no key's colors spread and the door has not been entered. |
-| Level Snapshot | What play can change in a level at a calm moment: where the hero stands and faces, the stars left and collected, the keys collected, each gate open or closed and each boulder's tile. |
-| Playthrough | One play of a level from start to door: play time, stars collected and the level's star count. |
+| Calm Moment | A frame of play when no gate swings, no boulder slides, no orb's colors spread and the door has not been entered. |
+| Level Snapshot | What play can change in a level at a calm moment: where the hero stands and faces, the orbs left and collected, each gate open or closed and each boulder's tile. |
+| Playthrough | One play of a level from start to door and its play time. |
 | Play Time | Game frames from the first playable frame until the hero steps into the door. Arrival frames are excluded. A resumed level carries on from the play time of its level in progress. |
 | Level Order | The sequence of levels. It names the first level, which is always unlocked, and the level each completion unlocks. It holds every level once and is never empty. |
 | Unlocked Level | A level the player has reached, or whose preceding level the player has completed. A level never locks again. |

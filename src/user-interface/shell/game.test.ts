@@ -183,6 +183,7 @@ describe('the game session', () => {
   test('starts painting restored world colors on the orb pickup tick', () => {
     const subject = gameSession();
     const orb = subject.level.orbs[0]!;
+    const painter = new WorldPainter(subject.session.level);
     subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
     const actual = new Picture(224, 448);
     const expected = new Picture(224, 448);
@@ -192,7 +193,6 @@ describe('the game session', () => {
       frame: subject.frames,
       hero: subject.normalAnimator.pose(subject.session.level.hero, subject.frames),
     };
-    const painter = new WorldPainter(scene.level);
     painter.paintRestoring(expected, scene, orb.position, 1, [], subject.level.restored);
     painter.paint(faded, scene, []);
     subject.session.paint(actual);
@@ -1114,7 +1114,7 @@ describe('the game page', () => {
     expect(arrival).toHaveBeenCalledTimes(2);
   });
 
-  test('silences the key hum when the menu switch leaves the level', () => {
+  test('silences the orb hum when the menu switch leaves the level', () => {
     const hum = vi.spyOn(Sound.prototype, 'hum');
     const page = gamePage();
     page.newGame();
@@ -1269,16 +1269,24 @@ async function paintedChecksum(subject: ReturnType<typeof gameSession>): Promise
   return checksum(picture);
 }
 
-function unexpectedHeroPixels(subject: ReturnType<typeof gameSession>, above: number, height: number): number {
+// The painter must be made while the orb still lies in the level, because only then does it know the orb's burst and pop.
+function unexpectedHeroPixels(
+  subject: ReturnType<typeof gameSession>,
+  above: number,
+  height: number,
+  pickup: { readonly painter: WorldPainter; readonly orb: TilePosition; readonly frame: number },
+): number {
   const actual = new Picture(224, 448);
   const faded = new Picture(224, 448);
   const colored = new Picture(224, 448);
+  const restoring = new Picture(224, 448);
   const level = subject.session.level;
   const pose = subject.normalAnimator.pose(level.hero, subject.frames);
   const scene = { level, frame: subject.frames, hero: pose };
-  const painter = new WorldPainter(level);
+  const { painter } = pickup;
   painter.paint(faded, scene, []);
   painter.paint(colored, scene, [Area.whole(level.scenery.size)]);
+  painter.paintRestoring(restoring, scene, pickup.orb, subject.frames - pickup.frame, [], subject.level.restored);
   subject.session.paint(actual);
   const camera = cameraPosition(level, actual.width, actual.height);
   const hero = heroPixels(level);
@@ -1290,7 +1298,9 @@ function unexpectedHeroPixels(subject: ReturnType<typeof gameSession>, above: nu
       const coloredPixel = colored.packedPixels[index]!;
       const onHero = (pose.rows[row - above]?.[column] ?? '.') !== '.';
       // Only the ground around the hero changes color, so her own pixels must never be faded or lightened.
-      const allowed = onHero ? [coloredPixel] : [faded.packedPixels[index]!, coloredPixel, lighten(coloredPixel)];
+      const allowed = onHero
+        ? [coloredPixel, restoring.packedPixels[index]!]
+        : [faded.packedPixels[index]!, coloredPixel, lighten(coloredPixel), restoring.packedPixels[index]!];
       if (!allowed.includes(shown)) unexpected++;
     }
   }
@@ -1300,16 +1310,20 @@ function unexpectedHeroPixels(subject: ReturnType<typeof gameSession>, above: nu
 describe('whole frames of the game session', () => {
   test.each(['walking', 'idle'] as const)('paints the normal %s hero pose after orb pickup', (motion) => {
     const subject = gameSession();
+    const pickup = { painter: new WorldPainter(subject.session.level), orb: subject.level.orbs[0]!.position };
     subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
+    const frame = subject.frames - 1;
     if (motion === 'idle') subject.tick();
-    expect(unexpectedHeroPixels(subject, 0, 32)).toBe(0);
+    expect(unexpectedHeroPixels(subject, 0, 32, { ...pickup, frame })).toBe(0);
   });
 
   test.each(['walking', 'idle'] as const)('paints no orb above the %s hero after pickup', (motion) => {
     const subject = gameSession();
+    const pickup = { painter: new WorldPainter(subject.session.level), orb: subject.level.orbs[0]!.position };
     subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
+    const frame = subject.frames - 1;
     if (motion === 'idle') subject.tick();
-    expect(unexpectedHeroPixels(subject, 18, 18)).toBe(0);
+    expect(unexpectedHeroPixels(subject, 18, 18, { ...pickup, frame })).toBe(0);
   });
 
   test.each([false, true])(
@@ -1318,6 +1332,7 @@ describe('whole frames of the game session', () => {
       const subject = gameSession(earlier ? twoOrbs : undefined);
       const orbs = subject.level.orbs;
       const last = orbs.at(-1)!;
+      const painter = new WorldPainter(subject.session.level);
       if (earlier) {
         subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 1);
         subject.advance(restorationLength(subject.level.scenery.size, orbs[0]!.position));
@@ -1334,7 +1349,7 @@ describe('whole frames of the game session', () => {
         frame: subject.frames,
         hero: subject.normalAnimator.pose(level.hero, subject.frames),
       };
-      new WorldPainter(level).paintRestoring(
+      painter.paintRestoring(
         expected,
         scene,
         last.position,

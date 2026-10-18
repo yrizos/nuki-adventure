@@ -22,5 +22,5 @@ Return per [Handoffs](../../AGENTS.md#handoffs), plus unmet constraints or guida
 
 - The mandatory route length and the sections it passes.
 - What lies within the minimum view from the approach to the new mechanic.
-- The star spots on the mandatory route and in exploration areas.
+- The permanent orbs on the mandatory route and in exploration areas.
 - Any straight woodland edges.

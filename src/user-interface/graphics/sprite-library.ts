@@ -163,25 +163,33 @@ export const doorArt = { closed: frame('door', 'closed'), open: frame('door', 'o
 
 export const orbHues = ['red', 'orange', 'yellow', 'green', 'teal', 'blue', 'violet', 'pink'] as const;
 export type OrbHue = (typeof orbHues)[number];
-const pinkOrbFrames = animation('orb', 'sparkle').frames;
+const pinkOrbFrames = animation('orb', 'swirl').frames;
+const pinkOrbBurstFrames = animation('orb', 'burst').frames;
 // Every orb shares one pixel grid, so each hue swaps only the rim, shading, body and light steps of the pink ramp.
 // Green starts one step lighter than the others so its body stands out from G2 grass.
-const orbOfRamp = (d: PaletteCode, b: PaletteCode, a: PaletteCode, c: PaletteCode): readonly Art[] =>
-  pinkOrbFrames.map((art) => ({ ...art, legend: { ...art.legend, d, b, a, c } }));
-export const orbFrames: Readonly<Record<OrbHue, readonly Art[]>> = {
-  red: orbOfRamp('R0', 'R1', 'R2', 'R3'),
-  orange: orbOfRamp('O0', 'O1', 'O2', 'O3'),
-  yellow: orbOfRamp('Y0', 'Y1', 'Y2', 'Y3'),
-  green: orbOfRamp('G1', 'G2', 'G3', 'G4'),
-  teal: orbOfRamp('T0', 'T1', 'T2', 'T3'),
-  blue: orbOfRamp('W0', 'W1', 'W2', 'W3'),
-  violet: orbOfRamp('V0', 'V1', 'V2', 'V3'),
-  pink: pinkOrbFrames,
+const orbRamps: Readonly<
+  Record<Exclude<OrbHue, 'pink'>, readonly [PaletteCode, PaletteCode, PaletteCode, PaletteCode]>
+> = {
+  red: ['R0', 'R1', 'R2', 'R3'],
+  orange: ['O0', 'O1', 'O2', 'O3'],
+  yellow: ['Y0', 'Y1', 'Y2', 'Y3'],
+  green: ['G1', 'G2', 'G3', 'G4'],
+  teal: ['T0', 'T1', 'T2', 'T3'],
+  blue: ['W0', 'W1', 'W2', 'W3'],
+  violet: ['V0', 'V1', 'V2', 'V3'],
 };
-export const orbFrameLength = frameLength('orb');
-export const orbArt = Object.fromEntries(orbHues.map((hue) => [hue, orbFrames[hue][0]!])) as Readonly<
-  Record<OrbHue, Art>
->;
+const orbHueFrames = (pink: readonly Art[]): Readonly<Record<OrbHue, readonly Art[]>> =>
+  Object.fromEntries(
+    orbHues.map((hue) => {
+      if (hue === 'pink') return [hue, pink];
+      const [d, b, a, c] = orbRamps[hue];
+      return [hue, pink.map((art) => ({ ...art, legend: { ...art.legend, d, b, a, c } }))];
+    }),
+  ) as Readonly<Record<OrbHue, readonly Art[]>>;
+export const orbFrames = orbHueFrames(pinkOrbFrames);
+export const orbFrameLength = animation('orb', 'swirl').length;
+export const orbBurstFrames = orbHueFrames(pinkOrbBurstFrames);
+export const orbBurstFrameLength = animation('orb', 'burst').length;
 export const padlockArt = frame('padlock', 'padlock');
 
 export const smallPadlockArt = frame('small-padlock', 'padlock');

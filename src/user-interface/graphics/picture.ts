@@ -25,6 +25,10 @@ const packedColors = Object.fromEntries(
   }),
 ) as Record<PaletteCode, number>;
 
+export function packedColor(code: PaletteCode): number {
+  return packedColors[code];
+}
+
 const lightened = new Map(
   (Object.keys(palette) as PaletteCode[]).map((code) => [packedColors[code], packedColors[lighter(code)]] as const),
 );

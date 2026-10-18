@@ -44,7 +44,10 @@ const scenery = {
 };
 const sprites = {
   heroArt: library.heroArt,
-  orbArt: library.orbArt,
+  orbArt: Object.fromEntries(library.orbHues.map((hue) => [hue, library.orbFrames[hue][0]!])) as Record<
+    (typeof library.orbHues)[number],
+    Art
+  >,
   stoneVariants: library.stoneVariants,
   mossyStoneVariants: library.mossyStoneVariants,
   lightMote: library.lightMote,
@@ -148,18 +151,18 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    await expectChecksum(picture, '8e408f63e7919b59374f9a66e9c2783764041272aa11be2686277df85d4ae013');
+    await expectChecksum(picture, 'f5640570bd612d066eb89ab62d21448f55d69d4a40284a16454ccd4cd95d1553');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     // Starting the wave at the hero leaves its front inside the frame.
     painter.paintRestoring(picture, scene, level.hero.position, 20, [], [everywhere]);
-    await expectChecksum(picture, '6d0fe66aba949729654755d39457f26b0854ddadbc2f0f394ac58237d683be94');
+    await expectChecksum(picture, '3cdee6dafd153b5377ad010a66dcb57bed57cc80a4e97fc25ed350b0da65af88');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [everywhere]);
-    await expectChecksum(picture, '0507adaaa6dac15144043249f319215fd51bbf47dfeaabe7bd4aa3b13ea61cc3');
+    await expectChecksum(picture, '0ae81883531ff09af00cac59afe0dae80d2f25bdfaecd45a4d036ffff5188a0f');
   });
 });
 
@@ -535,10 +538,62 @@ test('orb hues share one pixel grid and keep distinct body colors', () => {
   expect(new Set(hues.map((art) => art.legend.a)).size).toBe(hues.length);
 });
 
-test('an orb floats within two pixels up and down', () => {
-  const offsets = Array.from({ length: 400 }, (_, frame) => orbFloat(frame));
-  expect(Math.min(...offsets)).toBe(-2);
-  expect(Math.max(...offsets)).toBe(2);
+test('an orb floats two pixels up and down over 150 frames and sways one pixel sideways over 60', () => {
+  const offsets = Array.from({ length: 300 }, (_, frame) => orbFloat(frame));
+  const ups = offsets.map(({ y }) => y);
+  const sides = offsets.map(({ x }) => x);
+  expect([Math.min(...ups), Math.max(...ups)]).toEqual([-2, 2]);
+  expect([Math.min(...sides), Math.max(...sides)]).toEqual([-1, 1]);
+  const jumps = offsets.filter(
+    ({ x, y }, frame) =>
+      !Number.isInteger(x) ||
+      !Number.isInteger(y) ||
+      Math.abs(x - offsets[(frame + 1) % 300]!.x) > 1 ||
+      Math.abs(y - offsets[(frame + 1) % 300]!.y) > 1,
+  );
+  expect(jumps).toEqual([]);
+  for (let frame = 0; frame < 300; frame++) {
+    expect(orbFloat(frame + 150).y + 0).toBe(orbFloat(frame).y + 0);
+    expect(orbFloat(frame + 60).x + 0).toBe(orbFloat(frame).x + 0);
+  }
+});
+
+describe('orbs of the first level', () => {
+  const level = firstLevel(
+    (positions) => positions,
+    check2dObstacles,
+    () => 0,
+  );
+  const swirls = Object.values(library.orbFrames);
+  const swirlDrawn = (frame: number): { frame: number; x: number; y: number }[] => {
+    const picture = new Picture(level.scenery.size.columns * tileSize, level.scenery.size.rows * tileSize);
+    const draw = vi.spyOn(picture, 'draw');
+    new WorldPainter(level).paint(picture, { level, frame, hero: sprites.heroArt.down.stand }, []);
+    return draw.mock.calls.flatMap(([art, x, y]) => {
+      const swirl = swirls.find((frames) => frames.includes(art));
+      return swirl ? [{ frame: swirl.indexOf(art), x, y }] : [];
+    });
+  };
+
+  test('swirl through every frame, each orb out of step with the others', () => {
+    expect(level.orbs.length).toBeGreaterThan(1);
+    const seen = level.orbs.map(() => new Set<number>());
+    for (let frame = 0; frame < library.orbFrameLength * 8; frame += library.orbFrameLength)
+      swirlDrawn(frame).forEach((drawn, index) => seen[index]!.add(drawn.frame));
+    for (const frames of seen) expect(frames.size).toBe(8);
+    const shown = swirlDrawn(0).map((drawn) => drawn.frame);
+    expect(new Set(shown).size).toBe(level.orbs.length);
+  });
+
+  test('float on their own phases', () => {
+    const rest = level.orbs.map(({ position }) => ({ x: position.column * tileSize, y: position.row * tileSize }));
+    const offsets = (frame: number): string[] =>
+      swirlDrawn(frame).map((drawn, index) => `${drawn.x - rest[index]!.x},${drawn.y - rest[index]!.y}`);
+    const paths = level.orbs.map((_, index) =>
+      Array.from({ length: 30 }, (__, step) => offsets(step * 10)[index]).join(' '),
+    );
+    expect(new Set(paths).size).toBe(level.orbs.length);
+  });
 });
 
 test('oversized views extend edge terrain without leaving empty map margins', () => {
@@ -917,6 +972,215 @@ test('a changed pixel is its before color until the wave arrives, then crests li
     expect(shownAt(index, arrival + crestLength - 1), at(arrival + crestLength - 1)).toBe(lighten(later));
     expect(shownAt(index, arrival + crestLength), at(arrival + crestLength)).toBe(later);
   }
+});
+
+describe('collecting an orb', () => {
+  const level = renderingLevel();
+  const orb = level.orbs[0]!;
+  const hue = library.orbHues[0];
+  const scene = { level, frame: 200, hero: sprites.heroArt.down.stand };
+  const restore = (painter: WorldPainter, framesSinceStart: number): Picture => {
+    const picture = new Picture(overview.width, overview.height);
+    painter.paintRestoring(
+      picture,
+      { ...scene, frame: scene.frame + framesSinceStart },
+      orb.position,
+      framesSinceStart,
+      [],
+      [everywhere],
+    );
+    return picture;
+  };
+
+  test('plays the burst once in the orb hue where the orb was last drawn, then stops on its empty frame', () => {
+    const painter = new WorldPainter(level);
+    const burst = library.orbBurstFrames[hue];
+    const float = orbFloat(scene.frame);
+    const camera = cameraPosition(level, overview.width, overview.height);
+    for (
+      let framesSinceStart = 0;
+      framesSinceStart < burst.length * library.orbBurstFrameLength + 8;
+      framesSinceStart++
+    ) {
+      const picture = new Picture(overview.width, overview.height);
+      const draw = vi.spyOn(picture, 'draw');
+      painter.paintRestoring(
+        picture,
+        { ...scene, frame: scene.frame + framesSinceStart },
+        orb.position,
+        framesSinceStart,
+        [],
+        [everywhere],
+      );
+      const drawn = draw.mock.calls.filter(([art]) => Object.values(library.orbBurstFrames).flat().includes(art));
+      const index = Math.floor(framesSinceStart / library.orbBurstFrameLength);
+      if (index >= burst.length) {
+        expect(drawn, `frame ${framesSinceStart}`).toEqual([]);
+        continue;
+      }
+      expect(
+        drawn.map(([art, x, y]) => [art, x, y]),
+        `frame ${framesSinceStart}`,
+      ).toEqual([
+        [
+          burst[index],
+          orb.position.column * tileSize + float.x - camera.x,
+          orb.position.row * tileSize + float.y - camera.y,
+        ],
+      ]);
+    }
+    expect(sprite(burst.at(-1)!).colored.some((byte, offset) => offset % 4 === 3 && byte !== 0)).toBe(false);
+  });
+
+  test('the wave shows only earlier, later or lightened colors on changing pixels and leaves unchanged pixels alone', () => {
+    const painter = new WorldPainter(level);
+    const plain = new WorldPainter(renderingLevel());
+    const before = new Picture(overview.width, overview.height);
+    const after = new Picture(overview.width, overview.height);
+    const camera = cameraPosition(level, overview.width, overview.height);
+    for (const framesSinceStart of [44, 52]) {
+      const frameScene = { ...scene, frame: scene.frame + framesSinceStart };
+      plain.paint(before, frameScene, []);
+      plain.paint(after, frameScene, [everywhere]);
+      const wave = restore(painter, framesSinceStart);
+      const states = new Set<string>();
+      const unexpected: string[] = [];
+      for (let index = 0; index < wave.packedPixels.length; index++) {
+        const earlier = before.packedPixels[index]!;
+        const later = after.packedPixels[index]!;
+        const pixel = wave.packedPixels[index]!;
+        const worldX = (index % wave.width) + camera.x;
+        const worldY = Math.floor(index / wave.width) + camera.y;
+        if (worldX < 2 * tileSize && worldY < 2 * tileSize) continue;
+        if (earlier === later) {
+          if (pixel !== later) unexpected.push(`unchanged pixel ${index}`);
+          continue;
+        }
+        if (pixel === earlier) states.add('earlier');
+        else if (pixel === lighten(later)) states.add('lightened');
+        else if (pixel === later) states.add('later');
+        else unexpected.push(`changed pixel ${index}`);
+      }
+      expect(unexpected.slice(0, 5), `frame ${framesSinceStart}`).toEqual([]);
+      expect([...states].sort(), `frame ${framesSinceStart}`).toEqual(['earlier', 'later', 'lightened']);
+    }
+  });
+});
+
+describe('the pop when an orb is collected', () => {
+  const orbTile = TilePosition.at(6, 6);
+  const level = Level.create({
+    id: LevelId.of('pop'),
+    scenery: Scenery.of(
+      LevelSize.of(12, 12),
+      Array.from({ length: 12 }, () => Array.from({ length: 12 }, () => Ground.Grass)),
+      [],
+      [],
+    ),
+    stones: [],
+    orbs: [Orb.at(orbTile, 4, LevelSize.of(12, 12))],
+    door: Door.closedAt(TilePosition.at(9, 0)),
+    hero: { position: TilePosition.at(2, 2), facing: Direction.Down },
+    obstacles: check2dObstacles,
+  });
+  const painter = new WorldPainter(level);
+  const camera = cameraPosition(level, overview.width, overview.height);
+  const paper = packedOf('Paper');
+  const baseFrame = 200;
+  const half = 20;
+
+  // Pixels that differ from the plain wave outside the burst box, as {x, y} relative to the orb center.
+  function extras(origin: TilePosition, framesSinceStart: number): { x: number; y: number; color: number }[] {
+    const frameScene = { level, frame: baseFrame + framesSinceStart, hero: sprites.heroArt.down.stand };
+    const before = new Picture(overview.width, overview.height);
+    const after = new Picture(overview.width, overview.height);
+    const wave = new Picture(overview.width, overview.height);
+    painter.paint(before, frameScene, []);
+    painter.paint(after, frameScene, [everywhere]);
+    painter.paintRestoring(wave, frameScene, origin, framesSinceStart, [], [everywhere]);
+    const float = orbFloat(baseFrame);
+    const centerX = (orbTile.column + 0.5) * tileSize + float.x - camera.x;
+    const centerY = (orbTile.row + 0.5) * tileSize + float.y - camera.y;
+    const found: { x: number; y: number; color: number }[] = [];
+    for (let index = 0; index < wave.packedPixels.length; index++) {
+      const x = (index % wave.width) - centerX;
+      const y = Math.floor(index / wave.width) - centerY;
+      if (Math.abs(x) <= half && Math.abs(y) <= half) continue;
+      const pixel = wave.packedPixels[index]!;
+      const earlier = before.packedPixels[index]!;
+      const later = after.packedPixels[index]!;
+      if (pixel !== earlier && pixel !== later && pixel !== lighten(later)) found.push({ x, y, color: pixel });
+    }
+    return found;
+  }
+
+  function specks(pixels: readonly { x: number; y: number }[]): { x: number; y: number }[][] {
+    const remaining = [...pixels];
+    const groups: { x: number; y: number }[][] = [];
+    while (remaining.length > 0) {
+      const group = [remaining.pop()!];
+      for (let next = 0; next < group.length; next++)
+        for (let at = remaining.length - 1; at >= 0; at--)
+          if (Math.abs(remaining[at]!.x - group[next]!.x) <= 1 && Math.abs(remaining[at]!.y - group[next]!.y) <= 1)
+            group.push(...remaining.splice(at, 1));
+      groups.push(group);
+    }
+    return groups;
+  }
+
+  test('adds only Paper specks, each within 2 by 2 pixels, and at most eight', () => {
+    const problems: string[] = [];
+    let most = 0;
+    for (let framesSinceStart = 8; framesSinceStart < 40; framesSinceStart++) {
+      const found = extras(orbTile, framesSinceStart);
+      if (found.some(({ color }) => color !== paper)) problems.push(`frame ${framesSinceStart} has a non-Paper pixel`);
+      const groups = specks(found);
+      most = Math.max(most, groups.length);
+      for (const group of groups) {
+        const xs = group.map(({ x }) => x);
+        const ys = group.map(({ y }) => y);
+        if (Math.max(...xs) - Math.min(...xs) > 1 || Math.max(...ys) - Math.min(...ys) > 1)
+          problems.push(`frame ${framesSinceStart} has a speck larger than 2 by 2`);
+      }
+    }
+    expect(problems).toEqual([]);
+    expect(most).toBeGreaterThan(0);
+    expect(most).toBeLessThanOrEqual(8);
+  });
+
+  test('moves the specks outward over time', () => {
+    const farthest = (framesSinceStart: number): number =>
+      Math.max(...extras(orbTile, framesSinceStart).map(({ x, y }) => Math.hypot(x, y)));
+    const reach = [8, 16, 24].map(farthest);
+    expect(reach[0]).toBeGreaterThan(half);
+    expect(reach[1]).toBeGreaterThan(reach[0]!);
+    expect(reach[2]).toBeGreaterThan(reach[1]!);
+  });
+
+  test('leaves none from frame 40 on', () => {
+    expect(extras(orbTile, 30).length).toBeGreaterThan(0);
+    for (const framesSinceStart of [40, 41, 80])
+      expect(extras(orbTile, framesSinceStart), `frame ${framesSinceStart}`).toEqual([]);
+  });
+
+  test('draws nothing when the restoration starts on a tile without an orb', () => {
+    for (const framesSinceStart of [0, 8, 16, 24]) {
+      const frameScene = { level, frame: baseFrame + framesSinceStart, hero: sprites.heroArt.down.stand };
+      const before = new Picture(overview.width, overview.height);
+      const after = new Picture(overview.width, overview.height);
+      const wave = new Picture(overview.width, overview.height);
+      painter.paint(before, frameScene, []);
+      painter.paint(after, frameScene, [everywhere]);
+      painter.paintRestoring(wave, frameScene, TilePosition.at(3, 3), framesSinceStart, [], [everywhere]);
+      const strays: number[] = [];
+      for (let index = 0; index < wave.packedPixels.length; index++) {
+        const pixel = wave.packedPixels[index]!;
+        const later = after.packedPixels[index]!;
+        if (pixel !== before.packedPixels[index] && pixel !== later && pixel !== lighten(later)) strays.push(index);
+      }
+      expect(strays.slice(0, 5), `frame ${framesSinceStart}`).toEqual([]);
+    }
+  });
 });
 
 function treeArtDrawn(trees: readonly Tree[]): (tree: Tree) => Art | undefined {
@@ -1481,7 +1745,7 @@ test('a boulder hides the orb it rolls onto, while sliding and once it rests', (
     check2dObstacles,
     () => 0,
   );
-  const item = library.orbArt.red;
+  const item = library.orbFrames.red[0]!;
   level.grip();
   level.tick(Heading.of(Direction.Up));
   for (const ticks of [8, 8]) {

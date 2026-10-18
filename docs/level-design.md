@@ -21,20 +21,16 @@ Every new hard constraint comes with a deterministic test that checks it in ever
 
 ### Usable Items
 
-- No tree canopy hides a usable item: a star spot, a key, a boulder spot, a pressure plate, a swing gate or the tile from which a gate is approached.
+- No tree canopy hides a usable item: a permanent orb, a boulder spot, a pressure plate, a swing gate or the tile from which a gate is approached.
 
-### Keys
+### Orbs
 
-- At least one key. Every key is reachable, has its own tile and is not hidden.
-
-### Stars
-
-- A layout marks exactly twenty star spots, and five hold stars each time the level starts. The code accepts fifteen or more, so twenty is checked only by level tests.
-- A layout MAY mark up to four [permanent star spots](glossary.md#game-world) with `@`. They count toward the twenty. Each holds a star every time, and the level start picks the rest of the five from the other spots.
-- Every star spot is reachable and not hidden. No star spot shares a tile with a key, the hero start or another star spot. Permanent star spots count as star spots.
-- Every star spot is clearly visible. No woodland or tree stands on the tile directly above it or on either tile diagonally above it, and woodland or trees never stand both directly left and directly right of it. Bad example: a star spot in a one-tile bay of the woodland edge, with canopy above it and beside it, reads as hidden even though no canopy covers its tile.
-- No star spot lies on the [mandatory route](glossary.md#game-world), and at least half of the star spots lie in [exploration areas](glossary.md#game-world). `src/level/testing/routes.ts` computes both.
-- A layout marks star spots or gives a star count, never both. Authored levels always mark star spots.
+- A layout MAY mark [permanent orbs](glossary.md#game-world) with `Q`. Each level start places them, then fills up to a random count with [random orbs](glossary.md#game-world). `orbCount` in [`level.ts`](../src/level/domain/level.ts) holds the range.
+- Every orb restores a circle of tiles around it. `orbRadii` and the gap between circles live in [`collectibles.ts`](../src/level/domain/collectibles.ts). Circles never come closer than that gap. A circle that does not fit shrinks before its orb is given up.
+- Permanent orbs stand far enough apart for their circles to keep the gap.
+- Every orb is reachable, has its own tile and is not hidden. No orb lies on the hero start or the eight tiles around it, the plate, a gate tile, the tile a gate swings into or a boulder.
+- Every orb is clearly visible. No woodland or tree stands on the tile directly above it or on either tile diagonally above it, and woodland or trees never stand both directly left and directly right of it. Bad example: an orb in a one-tile bay of the woodland edge, with canopy above it and beside it, reads as hidden even though no canopy covers its tile.
+- Random orbs favor tiles far from the [mandatory route](glossary.md#game-world) and dead ends. `orbSpots` in [`level.ts`](../src/level/domain/level.ts) holds the weights.
 
 ### Trees
 
@@ -53,7 +49,7 @@ Every new hard constraint comes with a deterministic test that checks it in ever
 A canopy is the part of woodland or a tree drawn over the tile above it. A hidden tile is one a canopy covers.
 
 - The hero MAY walk on hidden tiles.
-- Every key, every star spot and the tile in front of the door are reachable from the hero start without stepping on a hidden tile.
+- Every orb and the tile in front of the door are reachable from the hero start without stepping on a hidden tile.
 - The hero can walk a complete loop around every obstacle without stepping on a hidden tile. Obstacles are water, [fenced enclosures](glossary.md#game-world), trees and stones. Bad example: a lake whose only shore passage on one side is a strip under the woodland canopy.
 
 ### Fenced Enclosures
@@ -98,8 +94,8 @@ A [dividing fence](glossary.md#game-world) deliberately breaks free movement. It
 - A level MAY hold one [boulder](glossary.md#boulder). Each `O` marks a spot where it may start, and each play picks one spot at random.
 - Every spot satisfies every boulder rule.
 - The boulder stands on its own open ground, never on a stone, the door, the gate tile, its approach tile or the tile it swings into.
-- No key or star spot shares a boulder's tile. (unchecked for keys)
-- No move of a gripped boulder leaves it where the hero can no longer move it out of the way of a key or the door. (unchecked)
+- No orb shares a boulder's tile.
+- No move of a gripped boulder leaves it where the hero can no longer move it out of the way of an orb or the door. (unchecked)
 
 ### Pressure Plates
 
@@ -110,11 +106,11 @@ A [dividing fence](glossary.md#game-world) deliberately breaks free movement. It
 ### Magical Arrival
 
 - A level MAY open with the [magical arrival](visual-style.md#magical-arrival).
-- All eight tiles around the start are open ground with no tree, woodland, stone, flower, key or star spot, and no canopy covers them. (unchecked)
+- All eight tiles around the start are open ground with no tree, woodland, stone, flower or orb, and no canopy covers them. (unchecked)
 
 ### Areas
 
-- Every area holds at least one tile. A level's key areas together cover every tile.
+- Every area holds at least one tile. Collecting every orb restores the whole level.
 
 ### Viewport
 
@@ -125,17 +121,15 @@ A [dividing fence](glossary.md#game-world) deliberately breaks free movement. It
 - Audience: players are about seven years old. Early levels stay simple. A level that introduces a mechanic only needs to teach it clearly. Nothing new has to happen after the player solves it.
 - Purpose: define what a level is for before building it. Only one mechanic per level is new.
 - Mechanics: each one appears in four stages across levels: introduce, practice, vary, combine. It first appears where no other new mechanic must be solved at the same time.
-- Star spots: choose by hand and concentrate them in exploration areas, which exist to reward curiosity. Place them on optional dead ends, side routes, scenic spots and places visible before they are reachable. Never on the mandatory route. Stars are never required.
-- Dead ends: an intentional dead end holds a payoff, usually a star spot. Not every one needs a star.
-- Required objects: keys never depend on accidental discovery, never look like scenery and never rely on color alone. Players find keys through terrain and the proximity hum.
-- Mandatory route: it is the tour of the level, because young players follow paths and sounds and rarely leave them. It passes most of the level's sections. Exploration areas add stars and places on top of that tour, never in place of it. Bad example: a route that reaches the key through one corner while every other section lies off it.
-- New mechanics: from the tile where the hero approaches the level's new mechanic, a goal it leads to, such as the door or a key, is visible within the minimum view of [Native Resolution](visual-style.md#native-resolution). A sound cue alone never gives the reason to use the mechanic.
+- Required objects: orbs never depend on accidental discovery, never look like scenery and never rely on color alone. Players find orbs through terrain and the proximity hum.
+- Mandatory route: it is the tour of the level, because young players follow paths and sounds and rarely leave them. It passes most of the level's sections. Exploration areas add orbs and places on top of that tour, never in place of it. Bad example: a route that reaches the door through one corner while every other section lies off it.
+- New mechanics: from the tile where the hero approaches the level's new mechanic, a goal it leads to, such as the door or an orb, is visible within the minimum view of [Native Resolution](visual-style.md#native-resolution). A sound cue alone never gives the reason to use the mechanic.
 - Exploration: a level holds meaningful space outside the mandatory route. Optional branches lead to distinct places. A larger map adds navigable space, not decoration.
 - Paths and sections: prefer complex paths that link distinct sections over one track through open ground. Each section is a separate place with its own character, entered through a clear opening. Paths branch, turn and rejoin between sections. Bad example: a single path running straight from the start to the door with scenery on either side.
 - Woodland outline: every woodland edge that faces open ground, along the map border and inside the level, steps in or out at least every three tiles. Steps vary in depth and spacing, never a regular zigzag. The woodland's thickness varies along the border, so the clearing never reads as a rectangle. A layout with a longer straight woodland edge is not finished. Bad example: open ground running for nine rows beside a one-tile woodland band along the map edge.
 - Door position: vary the door's column along the top edge from level to level. Place it toward the left or right as often as near the middle. Bad example: every level with its door at the center of the top edge.
 - Areas: each area is a recognizable place, such as a forest, lake, garden, courtyard, ruins or island. Boundaries follow those places, never a straight split. The restoration seam is a gradient about three tiles wide. Put it where it reads as a change of place, such as a shoreline, tree line or track. Never use color to show a route.
-- Returning to the door: the player knows where the door is before the last key. Backtracking is fine when the space has changed through color, a new route or a shortcut. Avoid long returns through unchanged space.
+- Returning to the door: the player knows where the door is before the last orb. Backtracking is fine when the space has changed through color, a new route or a shortcut. Avoid long returns through unchanged space.
 - Difficulty dimensions: map size, mandatory travel, objective count, route choices, mechanics combined, backtracking, similarity between places, obstacle density, memory load, strength of navigation cues. When a level is harder than the previous one, name the dimension that increased. Do not raise several at once. Mandatory travel does not shrink from one level to the next unless the designer decides it should.
 
 ## Level Sequence
@@ -149,8 +143,6 @@ Each level introduces exactly one new element. Later levels may reuse it.
 | 3 | [Fenced enclosure](glossary.md#game-world) |
 | 4 | Moving a [boulder](glossary.md#boulder) |
 | 5 | [Pressure plate](glossary.md#pressure-plate) |
-| 6 | Two keys: gold and silver |
-| 7 | Three keys: gold, silver and bronze |
 
 ## Natural Layouts
 
@@ -170,4 +162,4 @@ Guidance only. Never overrides a hard constraint or the readability of the manda
 
 ## Playtesting
 
-No numerical limits exist yet. Playtests should capture completion time, time to each key, stars collected, route, wrong turns, repeated traversal, stalls, help needed, time to first movement, and whether the arrival, the woodland boundary, optional paths and inaccessible space read as intended.
+No numerical limits exist yet. Playtests should capture completion time, time to each orb, route, wrong turns, repeated traversal, stalls, help needed, time to first movement, and whether the arrival, the woodland boundary, optional paths and inaccessible space read as intended.

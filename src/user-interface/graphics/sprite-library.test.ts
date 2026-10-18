@@ -6,7 +6,8 @@ import { sprite } from './picture';
 import {
   flowerArt,
   fruitTreeArt,
-  orbArt,
+  orbBurstFrameLength,
+  orbBurstFrames,
   orbFrameLength,
   orbFrames,
   orbHues,
@@ -204,41 +205,60 @@ test('the level picker padlock is 16 by 16', () => {
   expect([sprite(smallPadlockArt).width, sprite(smallPadlockArt).height]).toEqual([16, 16]);
 });
 
-test('the orb sparkles through eight 24 by 24 frames on one clock', () => {
+test('the orb swirls through eight 24 by 24 frames and bursts through six 32 by 32 frames', () => {
   const orb = sprites.orb!;
-  const names = Array.from({ length: 8 }, (_, step) => `orb-${step}`);
-  expect(Object.keys(orb.frames)).toEqual(names);
-  expect(Object.keys(orb.animations)).toEqual(['sparkle']);
-  expect(orb.animations.sparkle!.frames).toEqual(names.map((name) => orb.frames[name]));
-  expect(orbFrameLength).toBe(orb.animations.sparkle!.length);
-  for (const art of orb.animations.sparkle!.frames) expect([sprite(art).width, sprite(art).height]).toEqual([24, 24]);
+  const swirl = Array.from({ length: 8 }, (_, step) => `swirl-${step}`);
+  const burst = Array.from({ length: 6 }, (_, step) => `burst-${step}`);
+  expect(Object.keys(orb.frames)).toEqual([...swirl, ...burst]);
+  expect(Object.keys(orb.animations)).toEqual(['swirl', 'burst']);
+  expect(orb.animations.swirl!.frames).toEqual(swirl.map((name) => orb.frames[name]));
+  expect(orb.animations.burst!.frames).toEqual(burst.map((name) => orb.frames[name]));
+  expect(orbFrameLength).toBe(orb.animations.swirl!.length);
+  expect(orbBurstFrameLength).toBe(orb.animations.burst!.length);
+  for (const art of orb.animations.swirl!.frames) expect([sprite(art).width, sprite(art).height]).toEqual([24, 24]);
+  for (const art of orb.animations.burst!.frames) expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
+  expect(orb.animations.burst!.frames.at(-1)!.rows.join('')).toMatch(/^\.+$/);
 });
 
-test('every orb frame keeps the same outline and opaque area so only the glint and sparkles move', () => {
-  const frames = sprites.orb!.animations.sparkle!.frames;
+test('every orb swirl frame keeps the ball in the same pixels so only the light and the rainbow band move', () => {
+  const frames = sprites.orb!.animations.swirl!.frames;
   const outline = (rows: readonly string[]): string => rows.map((row) => row.replace(/[^k]/g, '.')).join('\n');
-  const area = (rows: readonly string[]): number => rows.join('').replace(/\./g, '').length;
+  const silhouette = (rows: readonly string[]): string => rows.map((row) => row.replace(/[^.]/g, 'x')).join('\n');
   for (const art of frames) {
     expect(outline(art.rows)).toBe(outline(frames[0]!.rows));
-    expect(area(art.rows)).toBe(area(frames[0]!.rows));
+    expect(silhouette(art.rows)).toBe(silhouette(frames[0]!.rows));
   }
+});
+
+test('the orb draws only Ink, Paper and the four steps of its own ramp, and no two swirl frames match', () => {
+  const orb = sprites.orb!;
+  expect(Object.keys(orb.frames['swirl-0']!.legend).sort()).toEqual(['a', 'b', 'c', 'd', 'h', 'k']);
+  for (const art of Object.values(orb.frames)) expect(art.rows.join('')).toMatch(/^[.kdbach]+$/);
+  const swirl = orb.animations.swirl!.frames.map((art) => art.rows.join('\n'));
+  expect(new Set(swirl).size).toBe(swirl.length);
 });
 
 test('every orb hue shares the pink pixel grid in every frame and changes only its four ramp steps', () => {
-  const pink = sprites.orb!.animations.sparkle!.frames;
+  const animations = sprites.orb!.animations;
   expect(Object.keys(orbFrames)).toEqual([...orbHues]);
-  expect(Object.keys(orbArt)).toEqual([...orbHues]);
-  expect(orbFrames.pink).toBe(pink);
-  for (const hue of orbHues) {
-    expect(orbFrames[hue]).toHaveLength(pink.length);
-    expect(orbArt[hue]).toBe(orbFrames[hue][0]);
-    orbFrames[hue].forEach((art, step) => {
-      expect(art.rows).toBe(pink[step]!.rows);
-      expect(art.legend).toMatchObject({ k: 'Ink', h: 'Paper' });
-      expect(Object.keys(art.legend).sort()).toEqual(Object.keys(pink[step]!.legend).sort());
-    });
-  }
-  expect(new Set(orbHues.map((hue) => orbArt[hue].legend.a)).size).toBe(orbHues.length);
+  expect(Object.keys(orbBurstFrames)).toEqual([...orbHues]);
+  expect(orbFrames.pink).toBe(animations.swirl!.frames);
+  expect(orbBurstFrames.pink).toBe(animations.burst!.frames);
+  for (const [hued, pink] of [
+    [orbFrames, animations.swirl!.frames],
+    [orbBurstFrames, animations.burst!.frames],
+  ] as const)
+    for (const hue of orbHues) {
+      expect(hued[hue]).toHaveLength(pink.length);
+      hued[hue].forEach((art, step) => {
+        expect(art.rows).toBe(pink[step]!.rows);
+        expect(art.legend).toMatchObject({ k: 'Ink', h: 'Paper' });
+        expect(Object.keys(art.legend).sort()).toEqual(Object.keys(pink[step]!.legend).sort());
+        for (const symbol of Object.keys(art.legend))
+          if (!'dbac'.includes(symbol)) expect(art.legend[symbol]).toBe(pink[step]!.legend[symbol]);
+      });
+    }
+  expect(new Set(orbHues.map((hue) => orbFrames[hue][0]!.legend.a)).size).toBe(orbHues.length);
 });
 
 test('the fence gate frames share one 32 by 64 size and park open apart from the last swing frame', () => {
