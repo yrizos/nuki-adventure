@@ -7,7 +7,7 @@ import { artUrl } from '../graphics/canvas-art';
 import { ditherThreshold } from '../graphics/ordered-dither';
 import { confirmArt } from './confirm-modal';
 import { StartScreen, type StartChoices } from './start-screen';
-import { titleArt } from './title-logo';
+import { titleArt, titleShineArts } from './title-logo';
 
 test('draws the game name from palette codes, inside the narrowest column', () => {
   const art = titleArt();
@@ -231,26 +231,77 @@ test('reveals the title through the ordered dither, one threshold every 2 frames
   const { root, subject, title } = startScreen();
   const expected = Array.from({ length: 17 }, (_, shown) => titleUrl(root, (x, y) => ditherThreshold(x, y) < shown));
   const violations: number[] = [];
-  for (const frame of [...Array.from({ length: 41 }, (_, frame) => frame), 1000]) {
+  for (let frame = 0; frame <= 40; frame++) {
     subject.animate(frame);
     if (title.style.getPropertyValue('--art') !== expected[Math.min(16, Math.floor(frame / 2))]) violations.push(frame);
   }
   expect(violations).toEqual([]);
 });
 
-test('shows no title at frame 0 and the whole title from frame 32 on', () => {
+test('shows no title at frame 0 and the whole title from frame 32 until the first shine at frame 212', () => {
   const { root, subject, title } = startScreen();
   const shownAt = (frame: number) => {
     subject.animate(frame);
     return title.style.getPropertyValue('--art');
   };
   const whole = `url(${artUrl(root as unknown as Document, titleArt())})`;
-  expect([shownAt(0), shownAt(32), shownAt(33), shownAt(600)]).toEqual([
+  expect([shownAt(0), shownAt(32), shownAt(33), shownAt(211)]).toEqual([
     titleUrl(root, () => false),
     whole,
     whole,
     whole,
   ]);
+});
+
+test('sweeps the shine across the title one step per frame, then rests for 180 frames before the next sweep', () => {
+  const { root, subject, title } = startScreen();
+  const shines = titleShineArts().map((art) => `url(${artUrl(root as unknown as Document, art)})`);
+  const whole = `url(${artUrl(root as unknown as Document, titleArt())})`;
+  const end = 212 + shines.length;
+  const shownAt = (frame: number) => {
+    subject.animate(frame);
+    return title.style.getPropertyValue('--art');
+  };
+  expect([shownAt(212), shownAt(213), shownAt(end - 1), shownAt(end), shownAt(end + 179), shownAt(end + 180)]).toEqual([
+    shines[0],
+    shines[1],
+    shines.at(-1),
+    whole,
+    whole,
+    shines[0],
+  ]);
+});
+
+test('the shine crosses every letter and lights only letter pixels, in Paper and the light step of each ramp', () => {
+  const art = titleArt();
+  const code = (x: number, y: number) => art.legend[art.rows[y]?.[x] ?? '.'];
+  // V1 is both the violet dark step and the shadow. Shadow columns run down to the empty edge, and letters end on the outline.
+  const isLetter = (x: number, y: number): boolean => {
+    if (['Paper', 'Ink', undefined].includes(code(x, y))) return false;
+    let below = y;
+    while (code(x, below) === 'V1') below++;
+    return code(x, below) !== undefined;
+  };
+  const lit = new Set<string>();
+  const violations = new Set<string>();
+  for (const shine of titleShineArts()) {
+    shine.rows.forEach((row, y) =>
+      [...row].forEach((symbol, x) => {
+        const before = code(x, y)!;
+        const after = shine.legend[symbol];
+        if (after === before) return;
+        lit.add(`${x},${y}`);
+        const ramp = before[0];
+        if (!isLetter(x, y)) violations.add(`${before} at ${x},${y}`);
+        else if (after !== 'Paper' && after !== `${ramp}${ramp === 'G' ? 4 : 3}`)
+          violations.add(`${before} to ${after}`);
+      }),
+    );
+  }
+  const unlit = art.rows.flatMap((row, y) =>
+    [...row].flatMap((_, x) => (isLetter(x, y) && !lit.has(`${x},${y}`) ? [`${x},${y}`] : [])),
+  );
+  expect([[...violations], unlit]).toEqual([[], []]);
 });
 
 test('reopening the start screen replays the title reveal from empty', () => {

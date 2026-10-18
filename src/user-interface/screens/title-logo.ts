@@ -4,7 +4,8 @@ import type { PaletteCode } from '../graphics/palette';
 // ΠΟΛΥΧΡΩΜΗ means colorful, so every letter of the logo takes the next color of the rainbow.
 const lines = ['Η ΠΟΛΥΧΡΩΜΗ', 'ΠΕΡΙΠΕΤΕΙΑ', 'ΤΗΣ ΝΟΥΚΙ'];
 // Each ramp runs light, base, dark, so the letters catch the light on top.
-const ramps: readonly (readonly [PaletteCode, PaletteCode, PaletteCode])[] = [
+type Ramp = readonly [PaletteCode, PaletteCode, PaletteCode];
+const ramps: readonly Ramp[] = [
   ['R3', 'R2', 'R1'],
   ['O3', 'O2', 'O1'],
   ['Y3', 'Y2', 'Y1'],
@@ -25,6 +26,9 @@ const bounce = 1;
 const lineClosing = 6;
 const stickerWidth = 2;
 const shadowDepth = 3;
+// The shine runs along x + y, so it crosses the letters as a 45 degree streak: a light edge, Paper, a light edge.
+const shineWidth = 4;
+const shineStride = 2;
 
 const font: Readonly<Record<string, readonly string[]>> = {
   Α: [
@@ -337,8 +341,9 @@ function eroded(mask: Mask, radius: number): Mask {
   );
 }
 
-export function titleArt(): Art {
+function drawnTitle(): { art: Art; letterRamps: Map<string, Ramp> } {
   const fill = new Map<string, PaletteCode>();
+  const rampAt = new Map<string, Ramp>();
   const lineMasks: Mask[] = [];
   const widths = lines.map((line) =>
     [...line].reduce(
@@ -364,6 +369,7 @@ export function titleArt(): Art {
         [...row].forEach((pixel, x) => {
           if (pixel !== '#') return;
           fill.set(key(left + x, top + y), ramp[y < lightRows ? 0 : y < darkFrom ? 1 : 2]);
+          rampAt.set(key(left + x, top + y), ramp);
           mask.add(key(left + x, top + y));
         }),
       );
@@ -420,5 +426,37 @@ export function titleArt(): Art {
   for (const pixel of paper) paint(pixel, 'Paper');
   for (const pixel of outline) paint(pixel, 'Ink');
   for (const [pixel, code] of fill) paint(pixel, code);
-  return grid.build(Object.fromEntries(codes.map((code) => [symbols.get(code)!, code])));
+  const letterRamps = new Map(
+    [...rampAt].map(([pixel, ramp]) => {
+      const [x, y] = point(pixel);
+      return [key(x - left, y - top), ramp] as const;
+    }),
+  );
+  return { art: grid.build(Object.fromEntries(codes.map((code) => [symbols.get(code)!, code]))), letterRamps };
+}
+
+export function titleArt(): Art {
+  return drawnTitle().art;
+}
+
+export function titleShineArts(): Art[] {
+  const { art, letterRamps } = drawnTitle();
+  const symbolOf = new Map(Object.entries(art.legend).map(([symbol, code]) => [code, symbol]));
+  const span = art.rows[0]!.length + art.rows.length;
+  return Array.from({ length: Math.ceil((span + shineWidth) / shineStride) }, (_, step) => {
+    const front = step * shineStride - shineWidth;
+    return {
+      legend: art.legend,
+      rows: art.rows.map((row, y) =>
+        [...row]
+          .map((symbol, x) => {
+            const ramp = letterRamps.get(key(x, y));
+            const offset = x + y - front;
+            if (!ramp || offset < 0 || offset >= shineWidth) return symbol;
+            return symbolOf.get(offset === 0 || offset === shineWidth - 1 ? ramp[0] : 'Paper')!;
+          })
+          .join(''),
+      ),
+    };
+  });
 }
