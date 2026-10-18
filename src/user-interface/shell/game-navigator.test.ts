@@ -262,26 +262,28 @@ describe('the game navigator', () => {
     expect(vi.mocked(subject.progress.reach).mock.calls.map(([id]) => id.value)).toEqual(['one', 'two']);
   });
 
-  test('plays the intro to its end and then opens the menu screen', () => {
+  test('plays the intro to its end and then starts the first level', () => {
     const subject = navigator(null);
     subject.navigator.openIntro();
     expect(subject.screens.showIntro).toHaveBeenCalledOnce();
     for (let frame = 1; frame < introLength; frame++) subject.navigator.tick();
     expect(subject.navigator.state).toBe('intro');
-    expect(subject.showMenuScreen).not.toHaveBeenCalled();
+    expect(subject.started).toEqual([]);
     subject.navigator.tick();
-    expect(subject.navigator.state).toBe('menu-screen');
+    expect(subject.navigator.state).toBe('playing');
     expect(subject.navigator.intro).toBeNull();
-    expect(subject.showMenuScreen).toHaveBeenCalledOnce();
+    expect(subject.started).toEqual(['one']);
+    expect(subject.showMenuScreen).not.toHaveBeenCalled();
   });
 
-  test('a held press opens the menu screen once it has lasted the whole skip', () => {
+  test('a held press starts the first level once it has lasted the whole skip', () => {
     const subject = navigator(null);
     subject.navigator.openIntro();
     subject.hold.isHeld = true;
     for (let frame = 1; frame < skipLength; frame++) subject.navigator.tick();
     expect(subject.navigator.state).toBe('intro');
     subject.navigator.tick();
-    expect(subject.navigator.state).toBe('menu-screen');
+    expect(subject.navigator.state).toBe('playing');
+    expect(subject.started).toEqual(['one']);
   });
 });

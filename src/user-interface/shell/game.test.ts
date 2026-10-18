@@ -643,13 +643,7 @@ describe('the magical arrival', () => {
   });
 });
 
-function gamePage({
-  secondUnlocked = false,
-  arrives = false,
-  intro = false,
-  star = false,
-  storage = memoryStorage(),
-} = {}) {
+function gamePage({ secondUnlocked = false, arrives = false, star = false, storage = memoryStorage() } = {}) {
   FakeDocument.stubGlobals();
   audioWindow();
   const display = stubDisplay(1);
@@ -751,9 +745,6 @@ function gamePage({
   );
   if (secondUnlocked) progress.complete(levels[0]!.id, { playFrames: 60, starsCollected: 0, starCount: 0 });
   startGame(root as unknown as Document, levels, progress, () => 1);
-  // A fresh game opens on the intro, and Escape leaves it for the menu screen that most tests begin on.
-  if (!intro && !secondUnlocked)
-    root.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: 'Escape', repeat: false }));
   // The level picker reads every level once to draw its picture, which starts no session.
   started.length = 0;
   let now = 0;
@@ -767,6 +758,8 @@ function gamePage({
     display.window.dispatchEvent(event);
   };
   const announcement = elements.get('announcement')!;
+  const touch = (type: 'pointerdown' | 'pointerup'): void =>
+    void root.body.dispatchEvent(Object.assign(new Event(type), { pointerId: 1 }));
   const visibility = (state: 'hidden' | 'visible'): void => {
     Object.defineProperty(root, 'visibilityState', { value: state, configurable: true });
     root.dispatchEvent(new Event('visibilitychange'));
@@ -814,6 +807,12 @@ function gamePage({
     progress,
     levelPicker: elements.get('level-picker-screen')!,
     newGame: (): void => (elements.get('menu-new-game') as FakeHTMLElement).click(),
+    touch,
+    skipIntro(): void {
+      touch('pointerdown');
+      for (let step = 0; step < skipLength; step++) frame();
+      touch('pointerup');
+    },
     // The level picker answers only once it has dithered in, and is gone only once it has dithered out.
     pickLevel: (): void => {
       (elements.get('menu-pick-level') as FakeHTMLElement).click();
@@ -855,59 +854,57 @@ describe('the game page', () => {
     vi.useRealTimers();
   });
 
-  test('opens a fresh game on the intro with every control hidden, then the menu screen once it ends', () => {
-    const page = gamePage({ intro: true });
-    expect(page.menuScreen.hidden).toBe(true);
-    expect(page.screen.classList.contains('intro-open')).toBe(true);
-    for (let frame = 1; frame < introLength; frame++) page.frame();
-    expect(page.menuScreen.hidden).toBe(true);
-    page.frame();
+  test.each([false, true])('opens on the menu screen without the intro when progress saved is %s', (secondUnlocked) => {
+    const page = gamePage({ secondUnlocked });
     expect(page.menuScreen.hidden).toBe(false);
     expect(page.screen.classList.contains('intro-open')).toBe(false);
-    expect(page.started).toEqual([]);
+    page.frame();
+    expect(page.announcement.textContent).toBe('');
   });
 
-  test('opens the menu screen at once when progress is saved', () => {
-    const page = gamePage({ secondUnlocked: true });
-    expect(page.menuScreen.hidden).toBe(false);
+  test('plays the intro from ΝΕΟ ΠΑΙΧΝΙΔΙ with every control hidden when no progress is saved, then level one once it ends', () => {
+    const page = gamePage();
+    page.newGame();
+    expect(page.menuScreen.hidden).toBe(true);
+    expect(page.confirmModal.hidden).toBe(true);
+    expect(page.screen.classList.contains('intro-open')).toBe(true);
+    for (let frame = 1; frame < introLength; frame++) page.frame();
+    expect(page.started).toEqual([]);
+    page.frame();
+    expect(page.started).toEqual(['one']);
+    expect(page.menuScreen.hidden).toBe(true);
     expect(page.screen.classList.contains('intro-open')).toBe(false);
   });
 
   test('paints the intro on the game view and announces its narration', () => {
-    const page = gamePage({ intro: true });
+    const page = gamePage();
+    page.newGame();
     page.frame();
     expect(page.canvas.context.shown).not.toBeNull();
     expect(page.announcement.textContent).toBe(narration[0]);
   });
 
   test('Escape leaves the intro for the menu screen', () => {
-    const page = gamePage({ intro: true });
+    const page = gamePage();
+    page.newGame();
     page.menuKey('Escape');
     expect(page.menuScreen.hidden).toBe(false);
     expect(page.screen.classList.contains('intro-open')).toBe(false);
-  });
-
-  test('a touch held through the whole skip leaves the intro for the menu screen', () => {
-    const page = gamePage({ intro: true });
-    page.root.body.dispatchEvent(Object.assign(new Event('pointerdown'), { pointerId: 1 }));
-    for (let frame = 1; frame < skipLength; frame++) page.frame();
-    expect(page.menuScreen.hidden).toBe(true);
-    page.frame();
-    expect(page.menuScreen.hidden).toBe(false);
-  });
-
-  test('starts level one from ΝΕΟ ΠΑΙΧΝΙΔΙ at once when no progress is saved', () => {
-    const page = gamePage();
-    expect(page.menuScreen.hidden).toBe(false);
-    page.frame();
     expect(page.started).toEqual([]);
-    page.newGame();
-    expect(page.menuScreen.hidden).toBe(true);
-    expect(page.confirmModal.hidden).toBe(true);
-    expect(page.started).toEqual(['one']);
   });
 
-  test('with progress saved, ΝΕΟ ΠΑΙΧΝΙΔΙ asks first, ΟΧΙ keeps the progress and ΝΑΙ deletes it before starting level one', () => {
+  test('a touch held through the whole skip leaves the intro for level one', () => {
+    const page = gamePage();
+    page.newGame();
+    page.touch('pointerdown');
+    for (let frame = 1; frame < skipLength; frame++) page.frame();
+    expect(page.started).toEqual([]);
+    page.frame();
+    expect(page.started).toEqual(['one']);
+    expect(page.screen.classList.contains('intro-open')).toBe(false);
+  });
+
+  test('with progress saved, ΝΕΟ ΠΑΙΧΝΙΔΙ asks first, ΟΧΙ keeps the progress and ΝΑΙ deletes it before the intro and level one', () => {
     const page = gamePage({ secondUnlocked: true });
     page.newGame();
     expect([page.menuScreen.hidden, page.confirmModal.hidden]).toEqual([false, false]);
@@ -916,8 +913,12 @@ describe('the game page', () => {
     expect(page.progress.view().hasProgress).toBe(true);
     page.newGame();
     page.confirm();
-    expect(page.started).toEqual(['one']);
     expect(page.progress.view().levels.map(({ isUnlocked }) => isUnlocked)).toEqual([true, false]);
+    expect([page.menuScreen.hidden, page.confirmModal.hidden]).toEqual([true, true]);
+    expect(page.screen.classList.contains('intro-open')).toBe(true);
+    expect(page.started).toEqual([]);
+    page.skipIntro();
+    expect(page.started).toEqual(['one']);
   });
 
   test('ΣΥΝΕΧΕΙΑ goes on from where she left the level through the menu, with the play time it had', () => {
@@ -947,6 +948,7 @@ describe('the game page', () => {
     const arrival = vi.spyOn(Sound.prototype, 'arrival');
     const page = gamePage({ arrives: true });
     page.newGame();
+    page.skipIntro();
     page.frames(arrivalLength + 5);
     page.openMenu();
     page.continueGame();
@@ -1008,10 +1010,12 @@ describe('the game page', () => {
   test('ΝΕΟ ΠΑΙΧΝΙΔΙ forgets where she was', () => {
     const page = gamePage({ star: true });
     page.newGame();
+    page.skipIntro();
     page.hold('ArrowRight', 20);
     page.openMenu();
     page.newGame();
     page.confirm();
+    page.skipIntro();
     expect(page.level.hero.position).toEqual(TilePosition.at(1, 4));
     expect(page.level.collected).toEqual([]);
   });
@@ -1019,6 +1023,7 @@ describe('the game page', () => {
   test('leaving a level as its door closes behind her leaves nothing to resume', () => {
     const page = gamePage();
     page.newGame();
+    page.skipIntro();
     page.walkUpUntil(() => page.level.isComplete);
     page.openMenu();
     expect(page.progress.levelInProgress()).toBeNull();
@@ -1101,6 +1106,7 @@ describe('the game page', () => {
   test('returns to the menu screen from the menu switch', () => {
     const page = gamePage();
     page.newGame();
+    page.skipIntro();
     page.walkUpUntil(() => page.announcement.textContent === messages.colorsBack);
     page.openMenu();
     expect(page.menuScreen.hidden).toBe(false);
@@ -1114,12 +1120,14 @@ describe('the game page', () => {
     const arrival = vi.spyOn(Sound.prototype, 'arrival');
     const page = gamePage({ arrives: true });
     page.newGame();
+    page.skipIntro();
     page.frame();
     page.frame();
     page.openMenu();
     expect(page.menuScreen.hidden).toBe(false);
     page.newGame();
     page.confirm();
+    page.skipIntro();
     expect(page.started).toEqual(['one', 'one']);
     expect(arrival).toHaveBeenCalledTimes(2);
   });
@@ -1128,6 +1136,7 @@ describe('the game page', () => {
     const hum = vi.spyOn(Sound.prototype, 'hum');
     const page = gamePage();
     page.newGame();
+    page.skipIntro();
     page.walkUpUntil(() => (hum.mock.lastCall?.[0] ?? 0) > 0);
     page.openMenu();
     expect(hum).toHaveBeenLastCalledWith(0);
@@ -1178,6 +1187,7 @@ describe('the game page', () => {
   test('announces the message of the level being played', () => {
     const page = gamePage();
     page.newGame();
+    page.skipIntro();
     page.frame();
     expect(page.announcement.textContent).toBe('');
     page.walkUpUntil(() => page.announcement.textContent === messages.colorsBack);

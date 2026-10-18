@@ -100,7 +100,7 @@ export class GameNavigator {
     if ('session' in this.screen) this.screen.session.tick();
     else if ('intro' in this.screen) {
       this.screen.intro.tick();
-      if (this.screen.intro.finished) this.openMenuScreen();
+      if (this.screen.intro.finished) this.play(this.levels[0]!.id);
     } else if (this.screen.name === 'menu-screen') this.screens.animateMenuScreen(this.framesOpen++);
     else if (this.screen.name === 'level-picker') this.screens.animateLevelPicker();
     else if (this.screen.name === 'end-screen') {

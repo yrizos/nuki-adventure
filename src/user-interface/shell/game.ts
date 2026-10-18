@@ -116,6 +116,8 @@ export function startGame(
       },
       animateEndScreen: (framesOpen, framesLeaving) => endScreen.animate(framesOpen, framesLeaving),
       showLevel: (usesA, usesB) => {
+        screen.classList.remove('intro-open');
+        holdToSkip.stop();
         menuScreen.hide();
         levelPicker.hide();
         endScreen.hide();
@@ -133,7 +135,7 @@ export function startGame(
   });
   menuScreen.whenNewGame(() => {
     progress.reset();
-    navigator.play(levels[0]!.id);
+    navigator.openIntro();
   });
   endScreen.whenLeaving(() => navigator.leaveEndScreen());
   menuScreen.whenPickingLevel(() => navigator.openLevelPicker());
@@ -144,8 +146,7 @@ export function startGame(
     if (navigator.state === 'end-screen') return;
     navigator.openMenuScreen();
   });
-  if (progress.view().hasProgress) navigator.openMenuScreen();
-  else navigator.openIntro();
+  navigator.openMenuScreen();
 
   // Counting from when the prompt starts makes every burst, and its chime, begin at once instead of mid-cycle.
   const promptAges: Record<'a' | 'b', number | null> = { a: null, b: null };
