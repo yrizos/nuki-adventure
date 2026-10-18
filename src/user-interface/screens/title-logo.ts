@@ -42,6 +42,27 @@ const sparkles: readonly { x: number; y: number; ray: PaletteCode }[] = [
 const sparkleRays = [0, 1, 2, 1, 0];
 // The dark steps between sparkles keep the twinkling an occasional glint, one sparkle at a time.
 const sparkleRest = 10;
+// The confetti reaches past the logo by these margins, so bits show beside and above it before falling behind it.
+export const confettiSide = 6;
+export const confettiAbove = 12;
+// The bits are spread across the width and down the height, so the falling tile never shows a clump or a gap.
+const confetti: readonly { x: number; y: number; color: PaletteCode }[] = [
+  { x: 2, y: 0, color: 'R2' },
+  { x: 15, y: 37, color: 'G3' },
+  { x: 30, y: 74, color: 'P2' },
+  { x: 36, y: 26, color: 'Y2' },
+  { x: 48, y: 63, color: 'V2' },
+  { x: 66, y: 15, color: 'O2' },
+  { x: 71, y: 52, color: 'T2' },
+  { x: 86, y: 4, color: 'R2' },
+  { x: 93, y: 41, color: 'G3' },
+  { x: 112, y: 78, color: 'P2' },
+  { x: 118, y: 30, color: 'Y2' },
+  { x: 127, y: 67, color: 'V2' },
+  { x: 139, y: 19, color: 'O2' },
+  { x: 159, y: 56, color: 'T2' },
+];
+const confettiSize = 2;
 
 const font: Readonly<Record<string, readonly string[]>> = {
   Α: [
@@ -499,4 +520,14 @@ export function titleSparkleArts(): Art[] {
     }),
     ...Array.from({ length: sparkleRest }, () => dark),
   ]);
+}
+
+export function titleConfettiArt(): Art {
+  const art = titleArt();
+  const grid = new PixelGrid(art.rows[0]!.length + 2 * confettiSide, art.rows.length + 2 * confettiAbove);
+  const codes = [...new Set(confetti.map(({ color }) => color))];
+  const legend = Object.fromEntries(codes.map((code, index) => [String.fromCharCode(97 + index), code]));
+  for (const { x, y, color } of confetti)
+    grid.rectangle(x, y, confettiSize, confettiSize, String.fromCharCode(97 + codes.indexOf(color)));
+  return grid.build(legend);
 }

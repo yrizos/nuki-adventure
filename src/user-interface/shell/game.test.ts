@@ -667,6 +667,7 @@ function gamePage({
     'sound-switch',
     'start-screen',
     'start-title',
+    'start-confetti',
     'start-sparkles',
     'confirm-modal',
     'confirm-box',

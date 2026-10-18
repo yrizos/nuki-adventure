@@ -487,7 +487,18 @@ body {
   left: calc(-1 * var(--sparkle-margin) * var(--pixel));
 }
 
+/* Below the title's own background, so the bits pass behind the logo. The tile repeats down, so the falling bits wrap. */
+.start-confetti {
+  position: absolute;
+  z-index: -1;
+  top: calc(-1 * var(--confetti-above) * var(--pixel));
+  left: calc(-1 * var(--confetti-side) * var(--pixel));
+  background: var(--art) 0 calc(var(--fall) * var(--pixel)) / 100% 100% repeat-y;
+  image-rendering: pixelated;
+}
+
 .start-title,
+.start-confetti,
 .start-sparkles,
 .level-hero,
 .level-picker-title,

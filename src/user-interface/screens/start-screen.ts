@@ -5,13 +5,23 @@ import { element } from '../shell/dom';
 import { menuChoices, takeMenuKeys } from './menu-keys';
 import { ditheredArt, ditherSteps } from '../graphics/ordered-dither';
 import type { Art } from '../graphics/art';
-import { sparkleMargin, titleArt, titleShineArts, titleSparkleArts } from './title-logo';
+import {
+  confettiAbove,
+  confettiSide,
+  sparkleMargin,
+  titleArt,
+  titleConfettiArt,
+  titleShineArts,
+  titleSparkleArts,
+} from './title-logo';
 
 const framesPerTitleThreshold = 2;
 const titleRevealLength = ditherSteps * framesPerTitleThreshold;
 // A long rest keeps the shine an occasional glint rather than a constant flicker.
 const shineRest = 180;
 const framesPerSparkleStep = 4;
+// One pixel every 4 game frames keeps the confetti drifting rather than falling.
+const framesPerConfettiStep = 4;
 
 export interface StartChoices {
   readonly canContinue: boolean;
@@ -32,6 +42,9 @@ export class StartScreen {
   private readonly sparkles: HTMLElement;
   private readonly sparkleUrls: string[];
   private sparklesShown = '';
+  private readonly confetti: HTMLElement;
+  private readonly confettiUrl: string;
+  private readonly confettiHeight: number;
 
   constructor(root: Document) {
     this.screen = element(root, '.start-screen');
@@ -60,6 +73,14 @@ export class StartScreen {
     this.sparkles.style.setProperty('--art-width', String(sparkleArts[0]!.rows[0]!.length));
     this.sparkles.style.setProperty('--art-height', String(sparkleArts[0]!.rows.length));
     this.sparkles.style.setProperty('--sparkle-margin', String(sparkleMargin));
+    this.confetti = element(root, '.start-confetti');
+    const confettiArt = titleConfettiArt();
+    this.confettiUrl = `url(${artUrl(root, confettiArt)})`;
+    this.confettiHeight = confettiArt.rows.length;
+    this.confetti.style.setProperty('--art-width', String(confettiArt.rows[0]!.length));
+    this.confetti.style.setProperty('--art-height', String(this.confettiHeight));
+    this.confetti.style.setProperty('--confetti-side', String(confettiSide));
+    this.confetti.style.setProperty('--confetti-above', String(confettiAbove));
     for (const button of [this.continueButton, this.pickLevelButton, this.newGameButton]) {
       button.style.setProperty('--art-width', String(menuButtonWidth));
       button.style.setProperty('--art-height', String(textButtonHeight));
@@ -111,6 +132,11 @@ export class StartScreen {
       this.sparklesShown = sparkles;
       this.sparkles.style.setProperty('--art', sparkles);
     }
+    this.confetti.style.setProperty('--art', sinceReveal < 0 ? 'none' : this.confettiUrl);
+    this.confetti.style.setProperty(
+      '--fall',
+      String(sinceReveal < 0 ? 0 : Math.floor(sinceReveal / framesPerConfettiStep) % this.confettiHeight),
+    );
   }
 
   show(choices: StartChoices): void {

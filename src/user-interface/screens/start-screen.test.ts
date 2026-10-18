@@ -7,7 +7,15 @@ import { artUrl } from '../graphics/canvas-art';
 import { ditherThreshold } from '../graphics/ordered-dither';
 import { confirmArt } from './confirm-modal';
 import { StartScreen, type StartChoices } from './start-screen';
-import { sparkleMargin, titleArt, titleShineArts, titleSparkleArts } from './title-logo';
+import {
+  confettiAbove,
+  confettiSide,
+  sparkleMargin,
+  titleArt,
+  titleConfettiArt,
+  titleShineArts,
+  titleSparkleArts,
+} from './title-logo';
 
 test('draws the game name from palette codes, inside the narrowest column', () => {
   const art = titleArt();
@@ -74,8 +82,9 @@ function startScreen(choices: StartChoices = { canContinue: true, hasProgress: t
   const screen = create('section', 'start-screen');
   screen.hidden = true;
   const title = create('h1', 'start-title');
+  const confetti = create('span', 'start-confetti');
   const sparkles = create('span', 'start-sparkles');
-  title.append(sparkles);
+  title.append(confetti, sparkles);
   const continueButton = create('button', 'start-continue');
   const pickLevelButton = create('button', 'start-pick-level');
   const newGameButton = create('button', 'start-new-game');
@@ -107,6 +116,7 @@ function startScreen(choices: StartChoices = { canContinue: true, hasProgress: t
     subject,
     title,
     sparkles,
+    confetti,
     continueButton,
     pickLevelButton,
     newGameButton,
@@ -366,6 +376,42 @@ test('shows no sparkles until the title is whole, then steps them every 4 frames
   subject.hide();
   subject.show({ canContinue: true, hasProgress: true });
   expect(shownAt(0)).toBe(dark);
+});
+
+test('draws the confetti as 2 pixel bits in the rainbow base steps, reaching past the logo and inside the narrowest column', () => {
+  const title = titleArt();
+  const art = titleConfettiArt();
+  const codes = new Set(
+    art.rows.flatMap((row) => [...row].filter((symbol) => symbol !== '.')).map((s) => art.legend[s]),
+  );
+  expect(() => sprite(art)).not.toThrow();
+  expect(codes).toEqual(new Set(['R2', 'O2', 'Y2', 'G3', 'T2', 'V2', 'P2']));
+  expect([art.rows[0]!.length, art.rows.length]).toEqual([
+    title.rows[0]!.length + 2 * confettiSide,
+    title.rows.length + 2 * confettiAbove,
+  ]);
+  expect(art.rows[0]!.length).toBeLessThanOrEqual(180 - 16);
+});
+
+test('hides the confetti until the title is whole, then drifts it down one pixel every 4 frames and wraps', () => {
+  const { root, subject, confetti } = startScreen();
+  const url = `url(${artUrl(root as unknown as Document, titleConfettiArt())})`;
+  const height = titleConfettiArt().rows.length;
+  const shownAt = (frame: number) => {
+    subject.animate(frame);
+    return [confetti.style.getPropertyValue('--art'), confetti.style.getPropertyValue('--fall')];
+  };
+  expect([shownAt(0), shownAt(31), shownAt(32), shownAt(35), shownAt(36), shownAt(32 + 4 * height)]).toEqual([
+    ['none', '0'],
+    ['none', '0'],
+    [url, '0'],
+    [url, '0'],
+    [url, '1'],
+    [url, '0'],
+  ]);
+  subject.hide();
+  subject.show({ canContinue: true, hasProgress: true });
+  expect(shownAt(0)).toEqual(['none', '0']);
 });
 
 test('reopening the start screen replays the title reveal from empty', () => {
