@@ -1,4 +1,5 @@
-import { type TilePosition, tileKey } from './position';
+import { TilePosition, tileKey } from './position';
+import type { LevelSize } from './scenery';
 
 export class Area {
   private readonly keys: ReadonlySet<number>;
@@ -14,38 +15,61 @@ export class Area {
     return area;
   }
 
+  static whole(size: LevelSize): Area {
+    return Area.of(
+      Array.from({ length: size.columns * size.rows }, (_, index) =>
+        TilePosition.at(index % size.columns, Math.floor(index / size.columns)),
+      ),
+    );
+  }
+
   covers(position: TilePosition): boolean {
     return this.keys.has(tileKey(position));
   }
 }
 
-export class KeyMaterial {
-  static readonly Gold = new KeyMaterial('gold');
-  static readonly Silver = new KeyMaterial('silver');
+export const orbRadii = { smallest: 4, largest: 6 } as const;
+// Color feathers out to the middle of the second tile past a restored area, so three faded tiles keep two circles from meeting.
+const fadedGap = 3;
 
-  private constructor(readonly name: 'gold' | 'silver') {}
-}
-
-export class Key {
+export class Orb {
   private constructor(
     readonly position: TilePosition,
+    readonly radius: number,
     readonly restores: Area,
-    readonly material: KeyMaterial,
   ) {}
 
-  static at(position: TilePosition, restores: Area, material: KeyMaterial = KeyMaterial.Gold): Key {
-    return new Key(position, restores, material);
+  static at(position: TilePosition, radius: number, size: LevelSize): Orb {
+    if (!Number.isInteger(radius) || radius < orbRadii.smallest || radius > orbRadii.largest) {
+      throw new RangeError(
+        `An orb restores ${orbRadii.smallest} to ${orbRadii.largest} tiles around it, not ${radius}`,
+      );
+    }
+    if (!size.contains(position)) {
+      throw new RangeError(`An orb must lie inside the level, at ${position.column}, ${position.row}`);
+    }
+    const tiles: TilePosition[] = [];
+    for (let row = position.row - radius; row <= position.row + radius; row++) {
+      for (let column = position.column - radius; column <= position.column + radius; column++) {
+        const tile = TilePosition.at(column, row);
+        if (size.contains(tile) && (column - position.column) ** 2 + (row - position.row) ** 2 <= radius ** 2)
+          tiles.push(tile);
+      }
+    }
+    return new Orb(position, radius, Area.of(tiles));
   }
-}
 
-export class Star {
-  private constructor(readonly position: TilePosition) {}
-
-  static at(position: TilePosition): Star {
-    return new Star(position);
-  }
-
-  equals(other: Star): boolean {
-    return this.position.equals(other.position);
+  touches(other: Orb): boolean {
+    const reach = this.radius + other.radius + fadedGap;
+    if (
+      Math.abs(this.position.column - other.position.column) > reach ||
+      Math.abs(this.position.row - other.position.row) > reach
+    )
+      return false;
+    return this.restores.tiles.some((tile) =>
+      other.restores.tiles.some(
+        (each) => Math.max(Math.abs(tile.column - each.column), Math.abs(tile.row - each.row)) <= fadedGap,
+      ),
+    );
   }
 }

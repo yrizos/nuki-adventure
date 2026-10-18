@@ -1,4 +1,4 @@
-import type { LevelView } from '../../level';
+import { Area, type LevelView } from '../../level';
 import { Picture } from '../graphics/picture';
 import { heroArt } from '../graphics/sprite-library';
 import { WorldPainter } from '../world/world-painter';
@@ -12,13 +12,13 @@ const band = 2 * tileSize;
 
 // The longer side of the level fills the map, so a tile may cover a fraction of a pixel. Each block of the painted
 // world becomes one map pixel in its most common color, so paths, water, trees and the
-// door keep their real colors and the layout of the whole level reads at a glance. The stars land on different
+// door keep their real colors and the layout of the whole level reads at a glance. Orbs land on different
 // spots every time a level is built, so the map leaves them out and shows only what stays put.
 export function levelMap(view: LevelView, colored: boolean, random: () => number): Picture {
-  const level = { ...view, stars: [] };
+  const level = { ...view, orbs: [] };
   const { columns, rows } = view.scenery.size;
   const world = new Picture(columns * tileSize, rows * tileSize + band);
-  const restored = colored ? view.keys.map((key) => key.restores) : [];
+  const restored = colored ? [Area.whole(view.scenery.size)] : [];
   // An arrival that has not begun yet draws no hero, no shadow and no motes. The card draws its own small Nuki
   // instead, because at map size she would shrink to a speck.
   new WorldPainter(level, random).paint(world, { level, frame: 0, hero: heroArt.down.stand, arrival: -1 }, restored);

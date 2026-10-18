@@ -1,13 +1,12 @@
 import { expect, test, vi } from 'vitest';
 import { type LevelProgressView, type ProgressView } from '../../progress/application/manage-progress';
 import { Playthrough, PlayTime } from '../../progress/domain/playthrough';
-import { Area, Key } from '../../level/domain/collectibles';
+import { Orb } from '../../level/domain/collectibles';
 import { Direction, TilePosition } from '../../level/domain/position';
 import { Door } from '../../level/domain/door';
 import { Ground, LevelSize, Scenery } from '../../level/domain/scenery';
 import { LevelId } from '../../level/domain/level-id';
 import { PlayLevel } from '../../level/application/play-level';
-import { StarCount } from '../../level/domain/star-count';
 import { Level } from '../../level/domain/level';
 import { check2dObstacles } from '../../level/infrastructure/check2d-obstacles';
 import { InMemoryLevelRepository } from '../../level/infrastructure/in-memory-level-repository';
@@ -22,12 +21,11 @@ import {
   levelRowText,
   playTime,
   putClock,
-  putStar,
   windowLegend,
 } from './level-picker';
 import { mapSize } from './level-map';
 import { ditherSteps } from '../graphics/ordered-dither';
-import { faded, type PaletteCode } from '../graphics/palette';
+import type { PaletteCode } from '../graphics/palette';
 import { sprite } from '../graphics/picture';
 import { artUrl } from '../graphics/canvas-art';
 import { heroArt } from '../graphics/sprite-library';
@@ -42,19 +40,11 @@ test.each([
   expect(playTime(PlayTime.ofFrames(frames))).toBe(shown);
 });
 
-const level = (
-  number: number,
-  isUnlocked: boolean,
-  frames?: number,
-  stars: readonly [number, number] = [3, 5],
-): LevelProgressView => ({
+const level = (number: number, isUnlocked: boolean, frames?: number): LevelProgressView => ({
   id: LevelId.of(`level ${number}`),
   number,
   isUnlocked,
-  lastPlaythrough:
-    frames === undefined
-      ? null
-      : Playthrough.of(PlayTime.ofFrames(frames), StarCount.of(stars[0]), StarCount.of(stars[1])),
+  lastPlaythrough: frames === undefined ? null : Playthrough.of(PlayTime.ofFrames(frames)),
 });
 
 const levels = [level(1, true, 60 * 83), level(2, true), level(3, false)];
@@ -92,8 +82,6 @@ function iconPattern(put: (grid: PixelGrid, left: number, top: number) => void):
   return codes(grid.build(windowLegend));
 }
 
-const goldStar = iconPattern(putStar);
-const dimStar = goldStar.map((row) => row.map((code) => (code === null || code === 'Ink' ? code : faded(code))));
 const card = (view: LevelProgressView): Codes => codes(levelCardArt(view));
 const mapLeft = (cardWidth - mapSize) / 2;
 const mapTop = 6;
@@ -101,9 +89,7 @@ const mapTop = 6;
 const underNumber = (x: number, y: number): boolean => x <= mapLeft + 10 && y <= mapTop + 14;
 
 test('draws every card at one size, and the picker box inside the narrowest column', () => {
-  const cards = [level(1, true, 60 * 60 * 120, [5, 5]), level(12, true), level(3, false)].map((view) =>
-    levelCardArt(view),
-  );
+  const cards = [level(1, true, 60 * 60 * 120), level(12, true), level(3, false)].map((view) => levelCardArt(view));
   for (const art of cards) {
     expect([art.rows.length, ...new Set(art.rows.map((row) => row.length))]).toEqual([cardHeight, cardWidth]);
     expect(() => sprite(art)).not.toThrow();
@@ -140,38 +126,21 @@ test('draws the level number at the font size over the top left corner of the ma
   expect(found).toEqual([`${mapLeft + 4},${mapTop + 4}`]);
 });
 
-test('draws one gold star with the count collected, beside the clock and last play time', () => {
-  const completed = card(level(1, true, 60 * 83, [4, 5]));
-  expect([
-    count(completed, goldStar),
-    count(completed, dimStar),
-    count(completed, textPattern('4', 1)),
-    count(completed, iconPattern(putClock)),
-    count(completed, textPattern('1:23', 1)),
-  ]).toEqual([1, 0, 1, 1, 1]);
+test('draws the clock and the last play time', () => {
+  const completed = card(level(1, true, 60 * 83));
+  expect([count(completed, iconPattern(putClock)), count(completed, textPattern('1:23', 1))]).toEqual([1, 1]);
 });
 
-test('draws no star, count or clock on a level without a completed playthrough', () => {
+test('draws no clock or time on a level without a completed playthrough', () => {
   for (const view of [level(2, true), level(3, false)]) {
     const shown = card(view);
-    expect([
-      count(shown, goldStar),
-      count(shown, dimStar),
-      count(shown, textPattern('0', 1)),
-      count(shown, iconPattern(putClock)),
-    ]).toEqual([0, 0, 0, 0]);
+    expect([count(shown, textPattern('0', 1)), count(shown, iconPattern(putClock))]).toEqual([0, 0]);
   }
 });
 
 test('reads every card out for screen readers', () => {
-  expect(levels.map(levelRowText)).toEqual([
-    'ΕΠΙΠΕΔΟ 1. ΧΡΟΝΟΣ 1:23. ΑΣΤΕΡΙΑ 3/5.',
-    'ΕΠΙΠΕΔΟ 2.',
-    'ΕΠΙΠΕΔΟ 3. ΚΛΕΙΔΩΜΕΝΟ.',
-  ]);
+  expect(levels.map(levelRowText)).toEqual(['ΕΠΙΠΕΔΟ 1. ΧΡΟΝΟΣ 1:23.', 'ΕΠΙΠΕΔΟ 2.', 'ΕΠΙΠΕΔΟ 3. ΚΛΕΙΔΩΜΕΝΟ.']);
 });
-
-const everywhere = Area.of(Array.from({ length: 30 }, (_, index) => TilePosition.at(index % 5, Math.floor(index / 5))));
 
 function view(id: LevelId) {
   const level = Level.create({
@@ -183,7 +152,7 @@ function view(id: LevelId) {
       [],
     ),
     stones: [],
-    keys: [Key.at(TilePosition.at(1, 3), everywhere)],
+    orbs: [Orb.at(TilePosition.at(1, 3), 4, LevelSize.of(5, 6))],
     door: Door.closedAt(TilePosition.at(0, 0)),
     hero: { position: TilePosition.at(2, 4), facing: Direction.Up },
     obstacles: check2dObstacles,

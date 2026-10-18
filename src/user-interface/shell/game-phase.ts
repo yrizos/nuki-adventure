@@ -1,4 +1,4 @@
-import type { Area, KeyCollected, TilePosition } from '../../level';
+import type { Area, OrbCollected, TilePosition } from '../../level';
 import { closingLength } from '../world/world-transition';
 
 export type Phase =
@@ -21,8 +21,8 @@ export function swingingGate(frame: number): Phase {
   return { name: 'swinging-gate', since: frame };
 }
 
-export function restoringKey(key: KeyCollected, frame: number): Phase {
-  return { name: 'restoring', since: frame, origin: key.position, restores: key.restores };
+export function restoringOrb(orb: OrbCollected, frame: number): Phase {
+  return { name: 'restoring', since: frame, origin: orb.position, restores: orb.restores };
 }
 
 export function closingLevel(frame: number): Phase {
@@ -31,7 +31,7 @@ export function closingLevel(frame: number): Phase {
 
 interface FrameEnd {
   readonly frame: number;
-  readonly restorationLength: (origin: TilePosition) => number;
+  readonly restorationLength: (origin: TilePosition, restores: Area) => number;
   readonly gateSwinging: boolean;
 }
 
@@ -45,7 +45,7 @@ export function phaseAfterFrame(phase: Phase, { frame, restorationLength, gateSw
     case 'swinging-gate':
       return gateSwinging ? phase : playing;
     case 'restoring':
-      return frame - phase.since >= restorationLength(phase.origin) ? playing : phase;
+      return frame - phase.since >= restorationLength(phase.origin, phase.restores) ? playing : phase;
     case 'closing':
       return frame - phase.since >= closingLength ? { name: 'ended' } : phase;
     case 'ended':

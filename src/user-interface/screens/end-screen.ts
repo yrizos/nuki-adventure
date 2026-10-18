@@ -9,7 +9,6 @@ const congratulations = 'ΣΥΓΧΑΡΗΤΗΡΙΑ!';
 const framesPerFadeThreshold = 2;
 export const endScreenFadeLength = ditherSteps * framesPerFadeThreshold;
 
-// The stars are gold, so the word that celebrates collecting them wears the same color.
 export function congratulationsArt(): Art {
   const grid = new PixelGrid(textWidth(congratulations), glyphHeight);
   writeText(grid, congratulations, 0, 0, 'y');

@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { GameProgress } from '../domain/game-progress';
 import { Playthrough, PlayTime } from '../domain/playthrough';
 import type { ProgressRepository } from '../domain/progress-repository';
-import { LevelId, StarCount } from '../../level';
+import { LevelId } from '../../level';
 import { ManageProgress } from './manage-progress';
 
 const one = LevelId.of('one');
@@ -36,20 +36,18 @@ test('shows the levels of the game by number, with only the first unlocked at fi
 test('saves reaching a level and completing one', () => {
   const { manage, saves } = subject();
   manage.reach(two);
-  manage.complete(one, { playFrames: 120, starsCollected: 2, starCount: 3 });
+  manage.complete(one, { playFrames: 120 });
   expect(saves()).toBe(2);
   const view = manage.view();
   expect(view.continueLevel).toBe(two);
   expect(view.hasProgress).toBe(true);
   expect(view.levels.map((level) => level.isUnlocked)).toEqual([true, true]);
-  expect(view.levels[0]!.lastPlaythrough).toEqual(
-    Playthrough.of(PlayTime.ofFrames(120), StarCount.of(2), StarCount.of(3)),
-  );
+  expect(view.levels[0]!.lastPlaythrough).toEqual(Playthrough.of(PlayTime.ofFrames(120)));
 });
 
 test('completing a level saves the next level of the configured order as unlocked', () => {
   const { manage, saves } = subject([two, one]);
-  manage.complete(two, { playFrames: 120, starsCollected: 2, starCount: 3 });
+  manage.complete(two, { playFrames: 120 });
   expect(saves()).toBe(1);
   expect(manage.view().levels.map(({ id, isUnlocked }) => [id, isUnlocked])).toEqual([
     [two, true],

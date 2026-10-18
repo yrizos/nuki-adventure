@@ -1,4 +1,4 @@
-import { Direction, type Door, type LevelSize, type TilePosition } from '../../level';
+import { type Area, Direction, type Door, type LevelSize, type TilePosition } from '../../level';
 import { ditherSteps, ditherThreshold } from '../graphics/ordered-dither';
 import { tileSize } from './world-geometry';
 
@@ -21,6 +21,22 @@ function settledBy(left: number, top: number, right: number, bottom: number, ori
 export function restorationLength(size: LevelSize, origin: TilePosition): number {
   const { columns, rows } = size;
   return settledBy(-tileSize, -2 * tileSize, (columns + 1) * tileSize - 1, (rows + 1) * tileSize - 1, origin);
+}
+
+// Color feathers out to the middle of the second tile past a restored area, so the wave is done two tiles beyond the area.
+export function areaRestorationLength(size: LevelSize, origin: TilePosition, area: Area): number {
+  const columns = area.tiles.map((tile) => tile.column);
+  const rows = area.tiles.map((tile) => tile.row);
+  return Math.min(
+    settledBy(
+      (Math.min(...columns) - 2) * tileSize,
+      (Math.min(...rows) - 2) * tileSize,
+      (Math.max(...columns) + 3) * tileSize - 1,
+      (Math.max(...rows) + 3) * tileSize - 1,
+      origin,
+    ),
+    restorationLength(size, origin),
+  );
 }
 
 export function restorationCovers(tiles: readonly TilePosition[], origin: TilePosition): number {

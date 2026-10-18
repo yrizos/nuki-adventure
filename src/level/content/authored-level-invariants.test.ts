@@ -3,6 +3,7 @@ import { feet } from '../domain/hero';
 import { Level } from '../domain/level';
 import { Direction, Heading, TilePosition, TilePositions, WorldPosition, tileSize } from '../domain/position';
 import { SwingGate } from '../domain/swing-gate';
+import { keepOrder, lowestRoll } from '../testing/draws';
 import { swungThrough } from '../testing/walk-level';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { fifthLevel } from './fifth';
@@ -12,7 +13,6 @@ import { sixthLevel } from './sixth';
 import { fourthLevel } from './fourth';
 import { thirdLevel } from './third';
 
-const keepOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => positions;
 const frames = 24;
 const directions = [
   Direction.Up,
@@ -54,12 +54,12 @@ interface Pass {
 
 // A gated level is swept with every gate shut from each region the gates divide, and with every gate open from every tile.
 const passes = [
-  { name: 'first', authored: firstLevel(keepOrder, check2dObstacles) },
-  { name: 'second', authored: secondLevel(keepOrder, check2dObstacles) },
-  { name: 'third', authored: thirdLevel(keepOrder, check2dObstacles) },
-  { name: 'fourth', authored: fourthLevel(keepOrder, check2dObstacles) },
-  { name: 'fifth', authored: fifthLevel(keepOrder, check2dObstacles) },
-  { name: 'sixth', authored: sixthLevel(keepOrder, check2dObstacles) },
+  { name: 'first', authored: firstLevel(keepOrder, check2dObstacles, lowestRoll) },
+  { name: 'second', authored: secondLevel(keepOrder, check2dObstacles, lowestRoll) },
+  { name: 'third', authored: thirdLevel(keepOrder, check2dObstacles, lowestRoll) },
+  { name: 'fourth', authored: fourthLevel(keepOrder, check2dObstacles, lowestRoll) },
+  { name: 'fifth', authored: fifthLevel(keepOrder, check2dObstacles, lowestRoll) },
+  { name: 'sixth', authored: sixthLevel(keepOrder, check2dObstacles, lowestRoll) },
 ].flatMap(({ name, authored }): Pass[] => {
   const gates = authored.gates;
   if (gates.length === 0) return [{ name, authored, gates, region: undefined, beyond: undefined }];
@@ -99,7 +99,7 @@ const sweeps = passes.map(({ name, authored, gates, region, beyond }) => {
       id: authored.id,
       scenery: authored.scenery,
       stones: authored.stones,
-      keys: authored.keys,
+      orbs: authored.orbs,
       door: authored.door,
       hero: { position: authored.hero.position, facing: Direction.Up },
       gates,
@@ -115,6 +115,7 @@ const sweeps = passes.map(({ name, authored, gates, region, beyond }) => {
         tile.row > authored.door.left.row &&
         authored.scenery.isWalkable(tile) &&
         !authored.stones.some((stone) => stone.position.equals(tile)) &&
+        !authored.orbs.some((orb) => orb.position.equals(tile)) &&
         (!region || region.covers(tile)),
     );
   return { name, authored, gates, beyond, obstacles, starts };
@@ -130,7 +131,7 @@ test.each(sweeps)(
           id: authored.id,
           scenery: authored.scenery,
           stones: authored.stones,
-          keys: authored.keys,
+          orbs: authored.orbs,
           door: authored.door,
           hero: { position: tile, facing: Direction.Up },
           gates,
@@ -147,10 +148,10 @@ test.each(sweeps)(
           const settled = obstacles.walk(feet.at(farAway), at);
           if (settled.x !== at.x || settled.y !== at.y) violations.push(`${where}: inside an obstacle`);
           if (beyond?.covers(level.hero.position)) violations.push(`${where}: past the closed gate`);
-          if (level.keys.length > 0) {
-            if (level.door.isOpen) violations.push(`${where}: door open while keys remain`);
-            if (level.door.covers(level.hero.position)) violations.push(`${where}: on the door while keys remain`);
-            if (level.isComplete) violations.push(`${where}: complete while keys remain`);
+          if (level.orbs.length > 0) {
+            if (level.door.isOpen) violations.push(`${where}: door open while orbs remain`);
+            if (level.door.covers(level.hero.position)) violations.push(`${where}: on the door while orbs remain`);
+            if (level.isComplete) violations.push(`${where}: complete while orbs remain`);
           }
         }
       }

@@ -1,5 +1,3 @@
-import type { StarCount } from '../../level';
-
 export class PlayTime {
   private constructor(readonly frames: number) {}
 
@@ -11,15 +9,9 @@ export class PlayTime {
 }
 
 export class Playthrough {
-  private constructor(
-    readonly time: PlayTime,
-    readonly collectedStars: StarCount,
-    readonly starCount: StarCount,
-  ) {}
+  private constructor(readonly time: PlayTime) {}
 
-  static of(time: PlayTime, collectedStars: StarCount, starCount: StarCount): Playthrough {
-    if (collectedStars.value > starCount.value)
-      throw new RangeError(`A playthrough cannot collect ${collectedStars.value} of ${starCount.value} stars`);
-    return new Playthrough(time, collectedStars, starCount);
+  static of(time: PlayTime): Playthrough {
+    return new Playthrough(time);
   }
 }

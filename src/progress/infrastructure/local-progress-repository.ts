@@ -2,23 +2,23 @@ import * as z from 'zod';
 import { GameProgress, type LevelInProgress } from '../domain/game-progress';
 import { Playthrough, PlayTime } from '../domain/playthrough';
 import type { ProgressRepository } from '../domain/progress-repository';
-import { Direction, LevelId, StarCount, TilePosition, WorldPosition } from '../../level';
+import { Direction, LevelId, type PlacedOrb, TilePosition, WorldPosition } from '../../level';
 
 export const progressKey = 'nuki-adventure-progress';
-const currentVersion = 3;
+const currentVersion = 4;
 
 const count = z.int().nonnegative();
 const levelId = z.string().min(1);
-const playthroughRecord = z.object({ levelId, frames: count, collectedStars: count, starCount: count });
+const playthroughRecord = z.object({ levelId, frames: count });
 const tileRecord = z.object({ column: z.int(), row: z.int() });
+const orbRecord = z.object({ column: z.int(), row: z.int(), radius: z.int() });
 const facings = { up: Direction.Up, down: Direction.Down, left: Direction.Left, right: Direction.Right };
 const levelInProgressRecord = z.object({
   levelId,
   frames: count,
   hero: z.object({ x: z.number(), y: z.number(), facing: z.enum(['up', 'down', 'left', 'right']) }),
-  stars: z.array(tileRecord),
-  collectedStars: z.array(tileRecord),
-  collectedKeys: z.array(tileRecord),
+  orbs: z.array(orbRecord),
+  collectedOrbs: z.array(orbRecord),
   gates: z.array(z.enum(['open', 'closed'])),
   boulders: z.array(tileRecord),
 });
@@ -79,9 +79,9 @@ export class LocalProgressRepository implements ProgressRepository {
 }
 
 function fromSaved(saved: SavedProgress): GameProgress {
-  const mapPlaythrough = ({ levelId, frames, collectedStars, starCount }: z.infer<typeof playthroughRecord>) => ({
+  const mapPlaythrough = ({ levelId, frames }: z.infer<typeof playthroughRecord>) => ({
     level: LevelId.of(levelId),
-    playthrough: Playthrough.of(PlayTime.ofFrames(frames), StarCount.of(collectedStars), StarCount.of(starCount)),
+    playthrough: Playthrough.of(PlayTime.ofFrames(frames)),
   });
   return GameProgress.restore({
     continueLevel: saved.continueLevelId === null ? null : LevelId.of(saved.continueLevelId),
@@ -96,18 +96,19 @@ function levelInProgressFrom(saved: unknown): LevelInProgress | null {
   if (saved === null) return null;
   const parsed = levelInProgressRecord.safeParse(saved);
   if (!parsed.success) return null;
-  const { levelId, frames, hero, stars, collectedStars, collectedKeys, gates, boulders } = parsed.data;
+  const { levelId, frames, hero, orbs, collectedOrbs, gates, boulders } = parsed.data;
   const tiles = (records: readonly z.infer<typeof tileRecord>[]) =>
     records.map(({ column, row }) => TilePosition.at(column, row));
+  const placedOrbs = (records: readonly z.infer<typeof orbRecord>[]) =>
+    records.map(({ column, row, radius }) => ({ position: TilePosition.at(column, row), radius }));
   try {
     return {
       level: LevelId.of(levelId),
       time: PlayTime.ofFrames(frames),
       snapshot: {
         hero: { feet: WorldPosition.at(hero.x, hero.y), facing: facings[hero.facing] },
-        stars: tiles(stars),
-        collectedStars: tiles(collectedStars),
-        collectedKeys: tiles(collectedKeys),
+        orbs: placedOrbs(orbs),
+        collectedOrbs: placedOrbs(collectedOrbs),
         gates,
         boulders: tiles(boulders),
       },
@@ -121,8 +122,6 @@ function toSaved(progress: GameProgress): SavedProgress {
   const mapRecord = ({ level, playthrough }: { level: LevelId; playthrough: Playthrough }) => ({
     levelId: level.value,
     frames: playthrough.time.frames,
-    collectedStars: playthrough.collectedStars.value,
-    starCount: playthrough.starCount.value,
   });
   return {
     version: currentVersion,
@@ -137,15 +136,16 @@ function levelInProgressRecordOf(inProgress: LevelInProgress | null): LevelInPro
   if (!inProgress) return null;
   const { level, time, snapshot } = inProgress;
   const tiles = (positions: readonly TilePosition[]) => positions.map(({ column, row }) => ({ column, row }));
+  const orbRecords = (orbs: readonly PlacedOrb[]) =>
+    orbs.map(({ position: { column, row }, radius }) => ({ column, row, radius }));
   const { feet, facing } = snapshot.hero;
   if (facing.name !== 'up' && facing.name !== 'down' && facing.name !== 'left' && facing.name !== 'right') return null;
   return {
     levelId: level.value,
     frames: time.frames,
     hero: { x: feet.x, y: feet.y, facing: facing.name },
-    stars: tiles(snapshot.stars),
-    collectedStars: tiles(snapshot.collectedStars),
-    collectedKeys: tiles(snapshot.collectedKeys),
+    orbs: orbRecords(snapshot.orbs),
+    collectedOrbs: orbRecords(snapshot.collectedOrbs),
     gates: [...snapshot.gates],
     boulders: tiles(snapshot.boulders),
   };

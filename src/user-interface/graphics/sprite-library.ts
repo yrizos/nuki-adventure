@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { Art, HeroArt, HeroDirectionArt } from './art';
-import { neutralCode, paletteCode } from './palette';
+import { neutralCode, type PaletteCode, paletteCode } from './palette';
 
 export interface Animation {
   readonly frames: readonly Art[];
@@ -161,13 +161,27 @@ export const plateArt = animation('plate', 'press').frames;
 export const plateFrameLength = frameLength('plate');
 export const doorArt = { closed: frame('door', 'closed'), open: frame('door', 'open') } as const;
 
-const goldKey = frame('key', 'key');
-// Both keys share one pixel grid, so silver swaps only the legend of the gold ramp for a cool neutral one.
-export const keyArt: Readonly<Record<'gold' | 'silver', Art>> = {
-  gold: goldKey,
-  silver: { ...goldKey, legend: { ...goldKey.legend, b: 'N3', a: 'N4', c: 'W4' } },
+export const orbHues = ['red', 'orange', 'yellow', 'green', 'teal', 'blue', 'violet', 'pink'] as const;
+export type OrbHue = (typeof orbHues)[number];
+const pinkOrbFrames = animation('orb', 'sparkle').frames;
+// Every orb shares one pixel grid, so each hue swaps only the rim, shading, body and light steps of the pink ramp.
+// Green starts one step lighter than the others so its body stands out from G2 grass.
+const orbOfRamp = (d: PaletteCode, b: PaletteCode, a: PaletteCode, c: PaletteCode): readonly Art[] =>
+  pinkOrbFrames.map((art) => ({ ...art, legend: { ...art.legend, d, b, a, c } }));
+export const orbFrames: Readonly<Record<OrbHue, readonly Art[]>> = {
+  red: orbOfRamp('R0', 'R1', 'R2', 'R3'),
+  orange: orbOfRamp('O0', 'O1', 'O2', 'O3'),
+  yellow: orbOfRamp('Y0', 'Y1', 'Y2', 'Y3'),
+  green: orbOfRamp('G1', 'G2', 'G3', 'G4'),
+  teal: orbOfRamp('T0', 'T1', 'T2', 'T3'),
+  blue: orbOfRamp('W0', 'W1', 'W2', 'W3'),
+  violet: orbOfRamp('V0', 'V1', 'V2', 'V3'),
+  pink: pinkOrbFrames,
 };
-export const starArt = frame('star', 'star');
+export const orbFrameLength = frameLength('orb');
+export const orbArt = Object.fromEntries(orbHues.map((hue) => [hue, orbFrames[hue][0]!])) as Readonly<
+  Record<OrbHue, Art>
+>;
 export const padlockArt = frame('padlock', 'padlock');
 
 export const smallPadlockArt = frame('small-padlock', 'padlock');

@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { Area, Key, Star } from '../domain/collectibles';
+import { Area, Orb } from '../domain/collectibles';
 import { Door } from '../domain/door';
 import { Level } from '../domain/level';
-import { StarCollected, SwingGateOpened, SwingGateOpeningStarted } from '../domain/level-events';
+import { OrbCollected, SwingGateOpened, SwingGateOpeningStarted } from '../domain/level-events';
 import { LevelId } from '../domain/level-id';
 import type { LevelRepository } from '../domain/level-repository';
 import { Direction, Heading, TilePosition } from '../domain/position';
@@ -15,24 +15,24 @@ const gateSwingLength = 16;
 
 const levelId = LevelId.of('play');
 const right = Heading.of(Direction.Right);
+const size = LevelSize.of(5, 5);
+const orb = Orb.at(TilePosition.at(1, 0), 4, size);
 
 function playing(gate?: SwingGate) {
-  const tiles = Array.from({ length: 25 }, (_, index) => TilePosition.at(index % 5, Math.floor(index / 5)));
   const level = Level.create({
     id: levelId,
     scenery: Scenery.of(
-      LevelSize.of(5, 5),
+      size,
       Array.from({ length: 5 }, () => Array<Ground>(5).fill(Ground.Path)),
       [],
       [],
     ),
     stones: [],
-    keys: [Key.at(TilePosition.at(4, 1), Area.of(tiles))],
+    orbs: [orb],
     door: Door.closedAt(TilePosition.at(2, 0)),
     hero: gate
       ? { position: gate.approach, facing: Direction.Up }
       : { position: TilePosition.at(0, 0), facing: Direction.Right },
-    stars: [Star.at(TilePosition.at(1, 0))],
     ...(gate ? { gates: [gate] } : {}),
     obstacles: check2dObstacles,
   });
@@ -58,10 +58,8 @@ describe('playing a level', () => {
       id: levelId,
       scenery: subject.level.scenery,
       stones: [],
-      keys: subject.level.keys,
+      orbs: [orb],
       restored: [],
-      stars: [Star.at(TilePosition.at(1, 0))],
-      collected: [],
       door: subject.level.door,
       gates: [],
       isPlateDown: false,
@@ -86,15 +84,14 @@ describe('playing a level', () => {
     for (let frame = 0; frame < 17; frame++) subject.play.advance(levelId, right);
     expect(before.hero.position).toEqual(TilePosition.at(0, 0));
     expect(before.hero.isWalking).toBe(false);
-    expect(before.stars).toEqual([Star.at(TilePosition.at(1, 0))]);
-    expect(before.collected).toEqual([]);
-    expect(subject.play.view(levelId).collected).toEqual([Star.at(TilePosition.at(1, 0))]);
+    expect([before.orbs, before.restored]).toEqual([[orb], []]);
+    expect(subject.play.view(levelId).orbs).toEqual([]);
   });
 
   test('advances the stored level in the held direction and saves it after every frame', () => {
     const subject = playing();
     const events = Array.from({ length: 17 }, () => subject.play.advance(levelId, right)).flat();
-    expect(events).toEqual([new StarCollected(levelId, TilePosition.at(1, 0))]);
+    expect(events).toEqual([new OrbCollected(levelId, TilePosition.at(1, 0), Area.whole(size), true)]);
     expect(subject.level.hero.position).toEqual(TilePosition.at(1, 0));
     expect(subject.loaded).toHaveLength(17);
     expect(subject.saved).toHaveLength(17);

@@ -4,28 +4,28 @@ import { TilePosition } from '../domain/position';
 import { LevelId } from '../domain/level-id';
 import { levelFromLayout } from '../content/level-layout';
 import { explorationArea, mandatoryRoute } from './routes';
-import { keepOrder } from './star-spots';
+import { keepOrder, lowestRoll } from './draws';
 
 const at = TilePosition.at;
 const level = levelFromLayout(
   LevelId.of('routes'),
-  ['DDD....', '.......', 'K......', 'H......', '...WWWW', '.......'],
+  ['DDD....', '.......', 'Q......', 'H......', '...WWWW', '.......'],
   keepOrder,
   check2dObstacles,
-  { keys: { K: { restores: () => true } } },
+  lowestRoll,
 );
 
-test('walks the shortest way from the start through the key to the door', () => {
+test('walks the shortest way from the start through the permanent orb to the door', () => {
   expect(mandatoryRoute(level).tiles).toEqual([at(0, 1), at(0, 2), at(0, 3)]);
 });
 
 test('includes every tile of equally short walks', () => {
   const tied = levelFromLayout(
     LevelId.of('tied'),
-    ['DDD....', '.......', 'K......', '.H.....', '.......', '.......', '.......', '.......'],
+    ['DDD....', '.......', 'Q......', '.H.....', '.......', '.......', '.......', '.......'],
     keepOrder,
     check2dObstacles,
-    { keys: { K: { restores: () => true } } },
+    lowestRoll,
   );
   expect(mandatoryRoute(tied).tiles).toEqual([at(0, 1), at(0, 2), at(1, 2), at(0, 3), at(1, 3)]);
 });

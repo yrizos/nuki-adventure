@@ -1,6 +1,4 @@
 import { Boulder } from '../domain/boulder';
-import { Area, Key, type KeyMaterial } from '../domain/collectibles';
-import type { StarCount } from '../domain/star-count';
 import { Door } from '../domain/door';
 import { Level, Stone } from '../domain/level';
 import { type LevelId } from '../domain/level-id';
@@ -8,13 +6,10 @@ import { Direction, TilePosition } from '../domain/position';
 import { Fence, Flower, type FlowerVariant, Ground, LevelSize, Scenery, Tree, TreeVariant } from '../domain/scenery';
 import { SwingGate } from '../domain/swing-gate';
 import type { PlaceObstacles } from '../domain/obstacles';
+import type { Random } from '../domain/random';
 import type { Shuffle } from '../domain/shuffle';
 
 interface LayoutContents {
-  readonly keys: Readonly<
-    Record<string, { readonly restores: (position: TilePosition) => boolean; readonly material?: KeyMaterial }>
-  >;
-  readonly starCount?: StarCount;
   readonly flowerVariants?: readonly FlowerVariant[];
 }
 
@@ -30,7 +25,8 @@ export function levelFromLayout(
   layout: readonly string[],
   shuffle: Shuffle,
   placeObstacles: PlaceObstacles,
-  contents: LayoutContents,
+  random: Random,
+  contents: LayoutContents = {},
 ): Level {
   const size = LevelSize.of(layout[0]!.length, layout.length);
   const cells = layout.flatMap((line, row) =>
@@ -39,7 +35,7 @@ export function levelFromLayout(
   const where = (symbol: string): TilePosition[] =>
     cells.filter((cell) => cell.symbol === symbol).map((cell) => cell.at);
   const ground = layout.map((line) =>
-    [...line].map((symbol) => ('#DHG=P'.includes(symbol) ? Ground.Path : symbol === '~' ? Ground.Water : Ground.Grass)),
+    [...line].map((symbol) => ('#DHGP'.includes(symbol) ? Ground.Path : symbol === '~' ? Ground.Water : Ground.Grass)),
   );
   const scenery = Scenery.of(
     size,
@@ -73,19 +69,12 @@ export function levelFromLayout(
   if (gates.length > 2) throw new Error(`The layout of level ${id.value} holds at most two gates`);
   const plates = where('P');
   if (plates.length > 1) throw new Error(`The layout of level ${id.value} holds at most one pressure plate`);
-  const starSpots = cells.filter((cell) => '+='.includes(cell.symbol)).map((cell) => cell.at);
-  const permanentStars = where('@');
-  if ((starSpots.length > 0 || permanentStars.length > 0) && contents.starCount)
-    throw new Error(`The layout of level ${id.value} marks star spots, so it takes no star count`);
-  const keys = Object.entries(contents.keys).map(([symbol, { restores, material }]) =>
-    Key.at(one(symbol), Area.of(cells.map((cell) => cell.at).filter(restores)), material),
-  );
+  const permanentOrbs = where('Q');
   const boulderSpots = where('O');
   const definition = (boulders: readonly Boulder[]) => ({
     id,
     scenery,
     stones: where('o').map(Stone.at),
-    keys,
     door: Door.closedAt(door),
     hero: { position: one('H'), facing: Direction.Up },
     gates,
@@ -93,12 +82,7 @@ export function levelFromLayout(
     boulders,
     obstacles: placeObstacles,
   });
-  const build = (boulders: readonly Boulder[]): Level => {
-    if (contents.starCount) return Level.withScatteredStars(definition(boulders), contents.starCount, shuffle);
-    return starSpots.length > 0 || permanentStars.length > 0
-      ? Level.withStarsAmong(definition(boulders), starSpots, shuffle, permanentStars)
-      : Level.create(definition(boulders));
-  };
+  const build = (boulders: readonly Boulder[]): Level => Level.withOrbs(definition(boulders), permanentOrbs, random);
   // The spots mark where the one boulder may start, and every spot must make a sound level, not only the one the shuffle picks.
   for (const spot of boulderSpots) build([Boulder.at(spot)]);
   return build(shuffle(boulderSpots).slice(0, 1).map(Boulder.at));

@@ -1,14 +1,12 @@
 import { describe, expect, test } from 'vitest';
 import { Boulder } from './boulder';
-import { Area, Key, Star } from './collectibles';
-import { StarCount } from './star-count';
+import { Area, Orb } from './collectibles';
 import { Door } from './door';
 import { Level, Stone } from './level';
 import {
   LevelCompleted,
   type LevelEvent,
-  KeyCollected,
-  StarCollected,
+  OrbCollected,
   SwingGateClosed,
   SwingGateClosingStarted,
   SwingGateOpened,
@@ -22,16 +20,13 @@ import { Direction, Heading, TilePosition } from './position';
 import { Fence, Flower, Ground, LevelSize, Scenery, Tree, TreeVariant } from './scenery';
 import { SwingGate } from './swing-gate';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
+import { lowestRoll, seededRandom } from '../testing/draws';
 import { follow, pathTo, settleGate } from '../testing/walk-level';
 
 const gateSwingLength = 16;
 
 const at = TilePosition.at;
-const area = (keep: (position: TilePosition) => boolean): Area =>
-  Area.of(Array.from({ length: 1600 }, (_, index) => TilePosition.at(index % 40, Math.floor(index / 40))).filter(keep));
-const everywhere = area(() => true);
-const leftHalf = area((position) => position.column < 2);
-const rightHalf = area((position) => position.column >= 2);
+const orb = (position: TilePosition, radius = 4): Orb => Orb.at(position, radius, LevelSize.of(40, 40));
 
 function parse(given: readonly string[]): { scenery: Scenery; where: (symbol: string) => TilePosition[] } {
   const layout = given.some((line) => line.includes('D'))
@@ -58,41 +53,17 @@ function parse(given: readonly string[]): { scenery: Scenery; where: (symbol: st
   };
 }
 
-function level(given: readonly string[], start: TilePosition, key: TilePosition): Level {
+function level(given: readonly string[], start: TilePosition, orbAt: TilePosition): Level {
   const { scenery, where } = parse(given);
   return Level.create({
     id: LevelId.of('test'),
     scenery,
     stones: where('o').map(Stone.at),
-    keys: [Key.at(key, everywhere)],
+    orbs: [orb(orbAt)],
     door: Door.closedAt(where('D')[0]!),
     hero: { position: start, facing: Direction.Right },
     obstacles: check2dObstacles,
-    stars: where('S').map(Star.at),
   });
-}
-
-function scattered(
-  given: readonly string[],
-  start: TilePosition,
-  key: TilePosition,
-  count: number,
-  shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[],
-): Level {
-  const { scenery, where } = parse(given);
-  return Level.withScatteredStars(
-    {
-      id: LevelId.of('test'),
-      scenery,
-      stones: where('o').map(Stone.at),
-      keys: [Key.at(key, everywhere)],
-      door: Door.closedAt(where('D')[0]!),
-      hero: { position: start, facing: Direction.Right },
-      obstacles: check2dObstacles,
-    },
-    StarCount.of(count),
-    shuffle,
-  );
 }
 
 const toward = (direction: Direction | null): Heading | null => direction && Heading.of(direction);
@@ -171,7 +142,7 @@ describe('the hero in a level', () => {
     ['water', '.~..', 32, 32],
     ['woodland', '.W..', 32, 32],
   ])('walks up to the base of %s without passing it', (_, line, nearest, farthest) => {
-    const subject = level(['DDD.', line], at(0, 1), at(0, 1));
+    const subject = level(['DDD.', line, '.~~~'], at(0, 1), at(0, 2));
     hold(subject, Direction.Right, 40);
     const front = subject.hero.feet.x + 7;
     expect(front).toBeGreaterThan(nearest - 0.5);
@@ -219,40 +190,47 @@ describe('the hero in a level', () => {
     expect(subject.hero.position).toEqual(at(1, 0));
   });
 
-  test('picks up the key once her feet reach its tile, leaving the door closed', () => {
+  test('picks up the last orb once her feet reach its tile, which restores the whole level but leaves the door closed', () => {
     const subject = level(['....', '....', '....'], at(0, 0), at(2, 0));
     let events = subject.tick(toward(Direction.Right));
     for (let frame = 0; frame < 80 && events.length === 0; frame++) events = subject.tick(toward(Direction.Right));
-    expect(events).toEqual([new KeyCollected(LevelId.of('test'), at(2, 0), everywhere)]);
-    expect(subject.keys).toEqual([]);
+    const whole = Area.whole(subject.scenery.size);
+    expect(events).toEqual([new OrbCollected(LevelId.of('test'), at(2, 0), whole, true)]);
+    expect([subject.orbs, subject.restored]).toEqual([[], [whole]]);
     expect(subject.door.isOpen).toBe(false);
     expect(subject.isComplete).toBe(false);
     expect(subject.hero.position).toEqual(at(2, 0));
   });
 
-  test('opens the door only once she has picked up every key', () => {
-    const { scenery, where } = parse(['DDD', '...', '...', '...']);
+  test('restores the circle of each orb she picks up, and opens the door only once she has picked up every orb', () => {
+    const { scenery, where } = parse(
+      Array.from({ length: 4 }, (_, row) => (row === 0 ? 'DDD' : '...') + '.'.repeat(13)),
+    );
+    const near = orb(at(1, 3));
+    const far = orb(at(14, 3));
     const subject = Level.create({
       id: LevelId.of('test'),
       scenery,
       stones: [],
-      keys: [Key.at(at(1, 3), leftHalf), Key.at(at(2, 3), rightHalf)],
+      orbs: [near, far],
       door: Door.closedAt(where('D')[0]!),
       hero: { position: at(0, 3), facing: Direction.Right },
       obstacles: check2dObstacles,
     });
-    hold(subject, Direction.Right, 16);
-    expect(subject.keys).toEqual([Key.at(at(2, 3), rightHalf)]);
-    expect(() => subject.openDoor()).toThrow('The door opens only once every key is picked up');
+    expect(hold(subject, Direction.Right, 16)).toEqual([
+      new OrbCollected(LevelId.of('test'), at(1, 3), near.restores, false),
+    ]);
+    expect([subject.orbs, subject.restored]).toEqual([[far], [near.restores]]);
+    expect(() => subject.openDoor()).toThrow('The door opens only once every orb is picked up');
     expect(subject.door.isOpen).toBe(false);
-    hold(subject, Direction.Right, 16);
-    expect(subject.keys).toEqual([]);
+    hold(subject, Direction.Right, 13 * 16);
+    expect([subject.orbs, subject.restored]).toEqual([[], [Area.whole(scenery.size)]]);
     expect(subject.door.isOpen).toBe(false);
     subject.openDoor();
     expect(subject.door.isOpen).toBe(true);
   });
 
-  test('is stopped by the door after picking up every key until the door opens', () => {
+  test('is stopped by the door after picking up every orb until the door opens', () => {
     const subject = level(['DDD', '...', '...', '...'], at(0, 3), at(1, 3));
     hold(subject, Direction.Right, 16);
     hold(subject, Direction.Up, 60);
@@ -260,8 +238,8 @@ describe('the hero in a level', () => {
     expect(subject.isComplete).toBe(false);
   });
 
-  test('completes the level by stepping into the open doorway, without needing the stars, after which nothing moves', () => {
-    const subject = level(['DDD', '...', '...', 'S..'], at(1, 3), at(2, 3));
+  test('completes the level by stepping into the open doorway, after which nothing moves', () => {
+    const subject = level(['DDD', '...', '...', '...'], at(1, 3), at(2, 3));
     hold(subject, Direction.Right, 16);
     expect(subject.door.isOpen).toBe(false);
     subject.openDoor();
@@ -270,7 +248,6 @@ describe('the hero in a level', () => {
     expect(events).toEqual([new LevelCompleted(LevelId.of('test'))]);
     expect(subject.isComplete).toBe(true);
     expect(subject.hero.position).toEqual(at(2, 0));
-    expect(subject.stars).toEqual([Star.at(at(0, 3))]);
   });
 });
 
@@ -292,27 +269,26 @@ describe('a level', () => {
   });
 
   test('accepts unreachable decorative trees behind an exit door on the playable top edge', () => {
-    const subject = level(['.Tt....', '....Tt.', 'FFDDDFF', '.......', '...S...'], at(0, 4), at(6, 4));
+    const subject = level(['.Tt....', '....Tt.', 'FFDDDFF', '.......', '.......'], at(0, 4), at(6, 4));
     expect(subject.door.left).toEqual(at(2, 2));
     expect(subject.scenery.trees.map((tree) => tree.base)).toEqual([at(1, 0), at(4, 1)]);
-    expect(subject.keys.map((key) => key.position)).toEqual([at(6, 4)]);
-    expect(subject.stars.map((star) => star.position)).toEqual([at(3, 4)]);
+    expect(subject.orbs.map((each) => each.position)).toEqual([at(6, 4)]);
   });
 
-  test('rejects a key outside the fenced playable area', () => {
-    expect(() => level(['.Tt....', '....Tt.', 'FFDDDFF', '.......', '...S...'], at(0, 4), at(0, 0))).toThrow(
-      new RangeError('Every key must lie where the hero can reach it'),
+  test('rejects an orb outside the fenced playable area', () => {
+    expect(() => level(['.Tt....', '....Tt.', 'FFDDDFF', '.......', '.......'], at(0, 4), at(0, 0))).toThrow(
+      new RangeError('Every orb must lie where the hero can reach it'),
     );
   });
 
-  test('rejects a level without a key', () => {
+  test('rejects a level without an orb', () => {
     const { scenery, where } = parse(['...']);
     expect(() =>
       Level.create({
         id: LevelId.of('test'),
         scenery,
         stones: [],
-        keys: [],
+        orbs: [],
         door: Door.closedAt(where('D')[0]!),
         hero: { position: at(0, 0), facing: Direction.Right },
         obstacles: check2dObstacles,
@@ -320,14 +296,14 @@ describe('a level', () => {
     ).toThrow(RangeError);
   });
 
-  test('rejects two keys on one tile', () => {
+  test('rejects two orbs on one tile', () => {
     const { scenery, where } = parse(['...']);
     expect(() =>
       Level.create({
         id: LevelId.of('test'),
         scenery,
         stones: [],
-        keys: [Key.at(at(2, 0), leftHalf), Key.at(at(2, 0), rightHalf)],
+        orbs: [orb(at(2, 0)), orb(at(2, 0), 5)],
         door: Door.closedAt(where('D')[0]!),
         hero: { position: at(0, 0), facing: Direction.Right },
         obstacles: check2dObstacles,
@@ -335,82 +311,50 @@ describe('a level', () => {
     ).toThrow(RangeError);
   });
 
-  test('rejects keys that leave a tile faded', () => {
-    const { scenery, where } = parse(['...']);
-    expect(() =>
+  test.each([
+    [at(13, 1), false],
+    [at(14, 1), true],
+  ])('with the second orb at %s, accepts two circles only with three faded tiles between them: %s', (second, apart) => {
+    const { scenery, where } = parse(['.'.repeat(18), '.'.repeat(18), '.'.repeat(18)]);
+    const create = () =>
       Level.create({
         id: LevelId.of('test'),
         scenery,
         stones: [],
-        keys: [Key.at(at(2, 0), leftHalf)],
+        orbs: [orb(at(2, 1)), orb(second)],
         door: Door.closedAt(where('D')[0]!),
-        hero: { position: at(0, 0), facing: Direction.Right },
+        hero: { position: at(0, 2), facing: Direction.Right },
         obstacles: check2dObstacles,
-      }),
-    ).toThrow(RangeError);
+      });
+    if (apart) expect(create().orbs).toHaveLength(2);
+    else expect(create).toThrow('The circles of two orbs must stay apart');
   });
 
   test('rejects a hero that starts on a stone', () => {
     expect(() => level(['o..'], at(0, 0), at(2, 0))).toThrow(RangeError);
   });
 
-  test('rejects a key that cannot be reached', () => {
+  test('rejects an orb that cannot be reached', () => {
     expect(() => level(['..~'], at(0, 0), at(2, 0))).toThrow(RangeError);
   });
 
-  test('rejects a star that cannot be reached', () => {
-    expect(() =>
-      Level.create({
-        id: LevelId.of('test'),
-        scenery: Scenery.of(
-          LevelSize.of(3, 3),
-          [
-            [Ground.Grass, Ground.Grass, Ground.Grass],
-            [Ground.Grass, Ground.Grass, Ground.Water],
-            [Ground.Grass, Ground.Grass, Ground.Grass],
-          ],
-          [],
-          [],
-        ),
-        stones: [],
-        keys: [Key.at(at(1, 2), everywhere)],
-        door: Door.closedAt(at(0, 0)),
-        hero: { position: at(0, 2), facing: Direction.Right },
-        obstacles: check2dObstacles,
-        stars: [Star.at(at(2, 1))],
-      }),
-    ).toThrow('Every star must lie where the hero can reach it');
+  test('rejects an orb on open ground that fences cut off from the hero', () => {
+    expect(() => level(['..F..', '..F..'], at(0, 0), at(4, 0))).toThrow(RangeError);
   });
 
-  test('rejects a star on open ground that fences cut off from the hero', () => {
-    expect(() => level(['..F.S', '..F..'], at(0, 0), at(1, 0))).toThrow(RangeError);
+  test('rejects an orb on the hero start', () => {
+    expect(() => level(['...'], at(0, 0), at(0, 0))).toThrow('An orb needs a tile of its own');
   });
 
-  test('rejects a star behind a tree', () => {
-    expect(() => level(['.S..', '.Tt.'], at(0, 0), at(3, 0))).toThrow(RangeError);
-  });
-
-  test('rejects a star on the key', () => {
-    expect(() => level(['S..'], at(1, 0), at(0, 0))).toThrow(RangeError);
-  });
-
-  test('rejects a star on the hero start', () => {
-    expect(() => level(['S..'], at(0, 0), at(2, 0))).toThrow(RangeError);
-  });
-
-  test('rejects a star behind woodland', () => {
-    expect(() => level(['.S..', '.W..', '....'], at(0, 0), at(3, 0))).toThrow(RangeError);
-  });
-
-  test('rejects a key behind woodland', () => {
+  test('rejects an orb behind woodland', () => {
     expect(() => level(['...', '..W', '...'], at(0, 0), at(2, 0))).toThrow(RangeError);
   });
 
-  test('rejects a key that woodland cuts off from the hero', () => {
+  test('rejects an orb that woodland cuts off from the hero', () => {
     expect(() => level(['.W..', '.W..'], at(0, 0), at(3, 1))).toThrow(RangeError);
   });
 
-  test('rejects a key behind a tree', () => {
+  test('rejects an orb behind a tree', () => {
     expect(() => level(['...', '.Tt'], at(0, 0), at(2, 0))).toThrow(RangeError);
   });
 
@@ -420,8 +364,8 @@ describe('a level', () => {
     );
   });
 
-  test('rejects a key on the closed door', () => {
-    expect(() => level(['DDD', '...'], at(0, 1), at(1, 0))).toThrow('Every key must lie where the hero can reach it');
+  test('rejects an orb on the closed door', () => {
+    expect(() => level(['DDD', '...'], at(0, 1), at(1, 0))).toThrow('Every orb must lie where the hero can reach it');
   });
 
   test('rejects a door that does not stand on open ground', () => {
@@ -473,107 +417,76 @@ describe('trees in the scenery', () => {
   });
 });
 
-describe('stars scattered across a level', () => {
-  const layout = ['.....', '.Tt..', '....F', '...F.'];
-  const spots = [
-    at(3, 0),
-    at(0, 1),
-    at(3, 1),
-    at(4, 1),
-    at(0, 2),
-    at(1, 2),
-    at(2, 2),
-    at(3, 2),
-    at(0, 3),
-    at(1, 3),
-    at(2, 3),
-  ];
-  const shuffles: [string, (positions: readonly TilePosition[]) => readonly TilePosition[]][] = [
-    ['in order', (positions) => positions],
-    ['reversed', (positions) => [...positions].reverse()],
-    ['rotated', (positions) => [...positions.slice(2), ...positions.slice(0, 2)]],
-  ];
-
-  test.each(shuffles)('fill every visible, reachable tile when %s', (_, shuffle) => {
-    const subject = scattered(layout, at(0, 0), at(4, 0), spots.length, shuffle);
-    expect(subject.stars.map((star) => star.position)).toEqual(expect.arrayContaining(spots));
-    expect(subject.stars).toHaveLength(spots.length);
-  });
-
-  test.each(shuffles)('number exactly as many as the level asks for when %s', (_, shuffle) => {
-    const subject = scattered(layout, at(0, 0), at(4, 0), 3, shuffle);
-    expect(subject.stars).toHaveLength(3);
-    expect(spots).toEqual(expect.arrayContaining(subject.stars.map((star) => star.position)));
-  });
-
-  test('need enough visible, reachable tiles', () => {
-    expect(() => scattered(layout, at(0, 0), at(4, 0), spots.length + 1, (positions) => positions)).toThrow(RangeError);
-  });
-});
-
-describe('stars chosen among star spots', () => {
-  const open = ['......', '......', '......', '......'];
-  const hero = at(0, 0);
-  const key = at(5, 3);
-  const free = Array.from({ length: 24 }, (_, index) => at(index % 6, Math.floor(index / 6))).filter(
-    (tile) => !tile.equals(hero) && !tile.equals(key),
-  );
-  const among = (
-    spots: readonly TilePosition[],
-    shuffle: (positions: readonly TilePosition[]) => readonly TilePosition[] = (positions) => positions,
-    permanent: readonly TilePosition[] = [],
+describe('orbs placed in a level', () => {
+  const open = Array.from({ length: 25 }, (_, row) => (row === 0 ? 'DDD' : '...') + '.'.repeat(22));
+  const placed = (
+    random: () => number,
+    permanent: readonly TilePosition[] = [at(20, 20)],
+    given = open,
+    hero = at(1, 24),
   ): Level => {
-    const { scenery, where } = parse(open);
-    return Level.withStarsAmong(
+    const { scenery, where } = parse(given);
+    return Level.withOrbs(
       {
         id: LevelId.of('test'),
         scenery,
         stones: [],
-        keys: [Key.at(key, everywhere)],
         door: Door.closedAt(where('D')[0]!),
-        hero: { position: hero, facing: Direction.Right },
+        hero: { position: hero, facing: Direction.Up },
         obstacles: check2dObstacles,
       },
-      spots,
-      shuffle,
       permanent,
+      random,
     );
   };
+  const seeds = Array.from({ length: 40 }, (_, seed) => seed);
 
-  test.each([0, 14])('rejects %s spots', (count) => {
-    expect(() => among(free.slice(0, count))).toThrow(RangeError);
-  });
-  test.each([15, 20])('accepts %s spots', (count) => {
-    expect(among(free.slice(0, count)).stars).toHaveLength(5);
-  });
-
-  test('rejects an invalid spot even when the shuffle would not pick it', () => {
-    expect(() => among([...free.slice(0, 14), hero])).toThrow(RangeError);
-  });
-
-  test('holds the first five of the shuffled spots', () => {
-    const spots = free.slice(0, 15);
-    const subject = among(spots, (positions) => [...positions].reverse());
-    expect(subject.stars.map((star) => star.position)).toEqual([...spots].reverse().slice(0, 5));
-  });
-
-  test('holds every permanent spot and fills the rest of the five from the shuffled spots', () => {
-    const spots = free.slice(0, 14);
-    const permanent = free.slice(14, 15);
-    const subject = among(spots, (positions) => [...positions].reverse(), permanent);
-    expect(subject.stars.map((star) => star.position)).toEqual([...permanent, ...[...spots].reverse().slice(0, 4)]);
+  test('hold every permanent orb and three to nine orbs in all, with circles of two to four tiles that never touch', () => {
+    const violations = seeds.flatMap((seed) => {
+      const { orbs, permanentOrbs } = placed(seededRandom(seed));
+      return [
+        ...(orbs.length < 3 || orbs.length > 9 ? [`seed ${seed}: ${orbs.length} orbs`] : []),
+        ...(orbs[0]!.position.equals(at(20, 20)) ? [] : [`seed ${seed}: no permanent orb first`]),
+        ...(permanentOrbs.length === 1 && permanentOrbs[0]!.equals(at(20, 20)) ? [] : [`seed ${seed}: lost permanent`]),
+        ...orbs.flatMap((each) => (each.radius < 4 || each.radius > 6 ? [`seed ${seed}: radius ${each.radius}`] : [])),
+        ...orbs.flatMap((each, index) =>
+          orbs.slice(index + 1).some((other) => other.touches(each)) ? [`seed ${seed}: touching circles`] : [],
+        ),
+      ];
+    });
+    expect(violations).toEqual([]);
   });
 
-  test('rejects five permanent spots, which leave the shuffle nothing to choose', () => {
-    expect(() => among(free.slice(0, 15), undefined, free.slice(15, 20))).toThrow(RangeError);
+  test('roll other counts and every radius over many plays', () => {
+    const plays = Array.from({ length: 300 }, (_, seed) => placed(seededRandom(seed)).orbs);
+    expect(new Set(plays.map((orbs) => orbs.length)).size).toBeGreaterThan(1);
+    expect(new Set(plays.flat().map((each) => each.radius))).toEqual(new Set([4, 5, 6]));
   });
 
-  test('rejects a permanent spot that is also a shuffled spot', () => {
-    expect(() => among(free.slice(0, 15), undefined, free.slice(0, 1))).toThrow(RangeError);
+  test('land on other tiles in other plays', () => {
+    const places = (seed: number) =>
+      placed(seededRandom(seed)).orbs.map((each) => `${each.position.column},${each.position.row}`);
+    expect(places(1)).not.toEqual(places(2));
   });
 
-  test('rejects an invalid permanent spot', () => {
-    expect(() => among(free.slice(0, 15), undefined, [hero])).toThrow(RangeError);
+  // Later orbs go wherever their circles still fit, so only the first random orb shows the preference on its own.
+  test('favor tiles far from the shortest walk between the start and the door', () => {
+    const first = seeds.map((seed) => placed(seededRandom(seed), []).orbs[0]!);
+    expect(first.filter((each) => each.position.column >= 12).length).toBeGreaterThan(seeds.length * 0.75);
+  });
+
+  test('shrink a circle that does not fit, so the fewest rolls still give three orbs', () => {
+    const { orbs } = placed(lowestRoll);
+    expect(orbs.map((each) => each.radius)).toEqual([4, 4, 4]);
+  });
+
+  test('place only as many orbs as fit with their circles apart in a small level', () => {
+    const cramped = ['.......', '.......', '.......'];
+    expect(placed(seededRandom(3), [], cramped, at(0, 2)).orbs).toHaveLength(1);
+  });
+
+  test('reject permanent orbs that stand too close for their circles to stay apart', () => {
+    expect(() => placed(lowestRoll, [at(10, 10), at(14, 10)])).toThrow('A permanent orb stands too close');
   });
 });
 
@@ -592,13 +505,13 @@ describe('a door', () => {
 describe('a swing gate', () => {
   const fenced = ['..DDD..', '.......', '.......', 'WWFGFWW', '.......', '.......'];
 
-  function gated(start = at(3, 4), facing = Direction.Up, key = at(0, 0), given: readonly string[] = fenced): Level {
+  function gated(start = at(3, 4), facing = Direction.Up, orbAt = at(0, 0), given: readonly string[] = fenced): Level {
     const { scenery, where } = parse(given);
     return Level.create({
       id: LevelId.of('test'),
       scenery,
       stones: [],
-      keys: [Key.at(key, everywhere)],
+      orbs: [orb(orbAt)],
       door: Door.closedAt(where('D')[0]!),
       hero: { position: start, facing },
       gates: [SwingGate.closedAt(where('G')[0]!)],
@@ -625,7 +538,7 @@ describe('a swing gate', () => {
     expect(subject.hero.feet).not.toEqual(feet);
   });
 
-  test('lets a key lie behind it, out of reach until it opens', () => {
+  test('lets an orb lie behind it, out of reach until it opens', () => {
     const subject = gated();
     expect(pathTo(subject, (tile) => tile.equals(at(0, 0)))).toBeUndefined();
     expect(pathTo(opened(subject), (tile) => tile.equals(at(0, 0)))).toBeDefined();
@@ -700,13 +613,13 @@ describe('a swing gate', () => {
     expect(subject.gates[0]?.state).toBe('open');
   });
 
-  test('stays open when the key is collected and the door opens', () => {
+  test('stays open when the orb is collected and the door opens', () => {
     const subject = opened(gated());
     const events = follow(
       subject,
       pathTo(subject, (tile) => tile.equals(at(0, 0)))!,
     );
-    expect(events.some((event) => event instanceof KeyCollected)).toBe(true);
+    expect(events.some((event) => event instanceof OrbCollected)).toBe(true);
     subject.openDoor();
     expect(subject.gates[0]?.state).toBe('open');
   });
@@ -716,9 +629,9 @@ describe('a swing gate', () => {
     expect(() => gated(at(0, 5), Direction.Up, at(0, 0), pocket)).toThrow('The gate must be operable');
   });
 
-  test('does not excuse a key that stays out of reach with the gate open', () => {
+  test('does not excuse an orb that stays out of reach with the gate open', () => {
     const walledOff = ['..DDDW.', '.....W.', '.....W.', 'WWFGFWW', '.......', '.......'];
-    expect(() => gated(at(3, 4), Direction.Up, at(6, 0), walledOff)).toThrow('Every key must lie');
+    expect(() => gated(at(3, 4), Direction.Up, at(6, 0), walledOff)).toThrow('Every orb must lie');
   });
 
   test('needs open ground on both sides of it', () => {
@@ -726,25 +639,8 @@ describe('a swing gate', () => {
     expect(() => gated(at(3, 4), Direction.Up, at(0, 0), blocked)).toThrow('The gate needs open ground');
   });
 
-  test('keeps stars off the gate tile and the tile its leaf swings over', () => {
-    const { scenery, where } = parse(fenced);
-    const definition = {
-      id: LevelId.of('test'),
-      scenery,
-      stones: [],
-      keys: [Key.at(at(0, 0), everywhere)],
-      door: Door.closedAt(where('D')[0]!),
-      hero: { position: at(3, 4), facing: Direction.Up },
-      gates: [SwingGate.closedAt(where('G')[0]!)],
-      obstacles: check2dObstacles,
-    };
-    for (const spot of [at(3, 3), at(3, 2)])
-      expect(() => Level.create({ ...definition, stars: [Star.at(spot)] })).toThrow('A star must stay visible');
-    const scattered = Level.withScatteredStars(definition, StarCount.of(1), (positions) => {
-      expect(positions.some((tile) => tile.equals(at(3, 3)) || tile.equals(at(3, 2)))).toBe(false);
-      return positions;
-    });
-    expect(scattered.stars).toHaveLength(1);
+  test('keeps orbs off the gate tile and the tile its leaf swings over', () => {
+    for (const spot of [at(3, 3), at(3, 2)]) expect(() => gated(at(3, 4), Direction.Up, spot)).toThrow(RangeError);
   });
 });
 
@@ -755,19 +651,17 @@ describe('a boulder', () => {
     given: readonly string[] = open,
     start = at(2, 3),
     facing = Direction.Up,
-    key = at(0, 0),
-    stars: readonly TilePosition[] = [],
+    orbAt = at(0, 0),
   ): Level {
     const { scenery, where } = parse(given);
     return Level.create({
       id: LevelId.of('test'),
       scenery,
       stones: where('o').map(Stone.at),
-      keys: [Key.at(key, everywhere)],
+      orbs: [orb(orbAt)],
       door: Door.closedAt(where('D')[0]!),
       hero: { position: start, facing },
       boulders: where('O').map(Boulder.at),
-      stars: stars.map(Star.at),
       obstacles: check2dObstacles,
     });
   }
@@ -885,15 +779,15 @@ describe('a boulder', () => {
     expect(stoneBeside.boulders).toEqual([Boulder.at(at(2, 2))]);
   });
 
-  test('rolls over a star, which she collects as she follows it', () => {
-    const subject = bouldered(open, at(2, 3), Direction.Up, at(2, 0), [at(2, 1)]);
+  test('rolls over an orb, which she collects as she follows it', () => {
+    const subject = bouldered(open, at(2, 3), Direction.Up, at(2, 1));
     const events = [...move(subject, Direction.Up), ...move(subject, Direction.Up)];
-    expect(events.some((event) => event instanceof StarCollected)).toBe(true);
+    expect(events.some((event) => event instanceof OrbCollected)).toBe(true);
   });
 
-  test('lets her collect a key she steps back onto', () => {
+  test('lets her collect an orb she steps back onto', () => {
     const subject = bouldered(open, at(2, 3), Direction.Up, at(2, 4));
-    expect(move(subject, Direction.Down).some((event) => event instanceof KeyCollected)).toBe(true);
+    expect(move(subject, Direction.Down).some((event) => event instanceof OrbCollected)).toBe(true);
   });
 
   test('blocks her on the tile it moved to', () => {
@@ -904,7 +798,7 @@ describe('a boulder', () => {
     expect(subject.hero.position).toEqual(at(2, 2));
   });
 
-  test('lets a key lie behind it, out of reach until it moves', () => {
+  test('lets an orb lie behind it, out of reach until it moves', () => {
     const pocket = ['.....', '~~~..', '...O.', '~~~..', '.....'];
     const subject = bouldered(pocket, at(3, 3), Direction.Up, at(0, 2));
     expect(pathTo(subject, (tile) => tile.equals(at(0, 2)))).toBeUndefined();
@@ -914,8 +808,7 @@ describe('a boulder', () => {
   });
 
   test('needs open ground of its own', () => {
-    expect(() => bouldered(open, at(2, 3), Direction.Up, at(2, 2))).toThrow('Every key must lie');
-    expect(() => bouldered(open, at(2, 3), Direction.Up, at(0, 0), [at(2, 2)])).toThrow('A star needs a tile');
+    expect(() => bouldered(open, at(2, 3), Direction.Up, at(2, 2))).toThrow('An orb needs a tile of its own');
   });
 });
 
@@ -926,14 +819,14 @@ describe('two swing gates', () => {
     given: readonly string[] = enclosed,
     start = at(2, 7),
     plate?: TilePosition,
-    key = at(5, 4),
+    orbAt = at(5, 4),
   ): Level {
     const { scenery, where } = parse(given);
     return Level.create({
       id: LevelId.of('test'),
       scenery,
       stones: [],
-      keys: [Key.at(key, everywhere)],
+      orbs: [orb(orbAt)],
       door: Door.closedAt(where('D')[0]!),
       hero: { position: start, facing: Direction.Up },
       gates: where('G').map((gate) => SwingGate.closedAt(gate)),
@@ -1006,7 +899,7 @@ describe('a pressure plate', () => {
       id: LevelId.of('test'),
       scenery,
       stones: [],
-      keys: [Key.at(where('K')[0]!, everywhere)],
+      orbs: [orb(where('K')[0]!)],
       door: Door.closedAt(where('D')[0]!),
       hero: { position: start, facing },
       gates: [SwingGate.closedAt(where('G')[0]!, Direction.Left)],
@@ -1021,7 +914,7 @@ describe('a pressure plate', () => {
     return [...subject.tick(Heading.of(direction)), ...Array.from({ length: 16 }, () => subject.tick(null)).flat()];
   }
 
-  test('opens the gate by itself once the boulder rests on it, and lets her reach the key', () => {
+  test('opens the gate by itself once the boulder rests on it, and lets her reach the orb', () => {
     const subject = pressable();
     expect(slide(subject, Direction.Up)).toEqual([
       new PlatePressed(LevelId.of('test'), at(2, 5)),
@@ -1052,7 +945,7 @@ describe('a pressure plate', () => {
         id: LevelId.of('test'),
         scenery,
         stones: [],
-        keys: [Key.at(at(0, 7), everywhere)],
+        orbs: [orb(at(0, 7))],
         door: Door.closedAt(where('D')[0]!),
         hero: { position: at(2, 7), facing: Direction.Up },
         plate: where('P')[0]!,
@@ -1115,26 +1008,28 @@ describe('a snapshot of a level', () => {
     '..P..F...',
     '..O..FFFF',
     '.........',
+    ...Array.from({ length: 16 }, () => '.........'),
   ];
+  const near = { position: at(1, 6), radius: 4 };
+  const far = { position: at(7, 20), radius: 5 };
 
-  function pressable(stars: readonly TilePosition[] = [at(0, 6), at(1, 6)]): Level {
+  function pressable(orbs: readonly { position: TilePosition; radius: number }[] = [near, far]): Level {
     const { scenery, where } = parse(plated);
     return Level.create({
       id: LevelId.of('test'),
       scenery,
       stones: [],
-      keys: [Key.at(where('K')[0]!, everywhere)],
+      orbs: orbs.map(({ position, radius }) => orb(position, radius)),
       door: Door.closedAt(where('D')[0]!),
       hero: { position: at(2, 7), facing: Direction.Up },
       gates: [SwingGate.closedAt(where('G')[0]!, Direction.Left)],
       boulders: where('O').map(Boulder.at),
       plate: where('P')[0]!,
-      stars: stars.map(Star.at),
       obstacles: check2dObstacles,
     });
   }
 
-  // She pushes the boulder onto the plate, which opens the gate, and walks left to the first star.
+  // She pushes the boulder onto the plate, which opens the gate, and walks left to the near orb.
   function played(): Level {
     const subject = pressable();
     subject.grip();
@@ -1149,13 +1044,12 @@ describe('a snapshot of a level', () => {
 
   const snapshotOf = (subject: Level) => subject.snapshot!;
 
-  test('holds where she stands, the stars, the keys, the gates and the boulders', () => {
+  test('holds where she stands, the orbs, the gates and the boulders', () => {
     const subject = played();
     expect(subject.snapshot).toEqual({
       hero: { feet: subject.hero.feet, facing: Direction.Left },
-      stars: [at(0, 6)],
-      collectedStars: [at(1, 6)],
-      collectedKeys: [],
+      orbs: [far],
+      collectedOrbs: [near],
       gates: ['open'],
       boulders: [at(2, 5)],
     });
@@ -1174,14 +1068,22 @@ describe('a snapshot of a level', () => {
     expect(resumed.hero).toEqual(subject.hero);
   });
 
-  test('keeps the stars placed where they were, not where a new shuffle would put them', () => {
-    const resumed = pressable([at(6, 7), at(7, 7)]).resumed(snapshotOf(played()));
-    expect([resumed.stars, resumed.collected]).toEqual([[Star.at(at(0, 6))], [Star.at(at(1, 6))]]);
+  test('keeps the orbs placed where they were, with their circles, not where a new start would put them', () => {
+    const resumed = pressable([{ position: at(7, 3), radius: 4 }]).resumed(snapshotOf(played()));
+    const { size } = resumed.scenery;
+    expect([resumed.orbs, resumed.restored]).toEqual([
+      [Orb.at(far.position, far.radius, size)],
+      [Orb.at(near.position, near.radius, size).restores],
+    ]);
   });
 
-  test('opens the door once every key was collected', () => {
-    const resumed = pressable().resumed({ ...snapshotOf(played()), collectedKeys: [at(7, 3)] });
-    expect([resumed.keys, resumed.door.isOpen, resumed.restored]).toEqual([[], true, [everywhere]]);
+  test('opens the door and restores the whole level once every orb was collected', () => {
+    const resumed = pressable().resumed({ ...snapshotOf(played()), orbs: [], collectedOrbs: [near, far] });
+    expect([resumed.orbs, resumed.door.isOpen, resumed.restored]).toEqual([
+      [],
+      true,
+      [Area.whole(resumed.scenery.size)],
+    ]);
   });
 
   test('presses the plate under her feet without a sound on the next tick', () => {
@@ -1213,7 +1115,8 @@ describe('a snapshot of a level', () => {
     expect(stepping.snapshot).not.toBeNull();
     const done = pressable().resumed({
       ...snapshotOf(pressable()),
-      collectedKeys: [at(7, 3)],
+      orbs: [],
+      collectedOrbs: [near, far],
       hero: { feet: Hero.feetOn(at(2, 1)), facing: Direction.Up },
     });
     hold(done, Direction.Up, 32);
@@ -1222,17 +1125,17 @@ describe('a snapshot of a level', () => {
   });
 
   test.each([
-    ['a key the level does not have', { collectedKeys: [at(0, 0)] }],
-    ['the same key twice', { collectedKeys: [at(7, 3), at(7, 3)] }],
+    ['no orbs', { orbs: [], collectedOrbs: [] }],
+    ['the same orb twice', { orbs: [far], collectedOrbs: [far] }],
+    ['orbs whose circles touch', { orbs: [{ position: at(3, 12), radius: 4 }] }],
+    ['an orb circle too wide', { orbs: [{ ...far, radius: 7 }] }],
     ['another number of gates', { gates: [] }],
     ['another number of boulders', { boulders: [] }],
     ['a boulder in the fence', { boulders: [at(5, 4)] }],
     ['a boulder on the gate', { boulders: [at(5, 3)] }],
     ['a boulder over her feet', { boulders: [at(1, 6)] }],
-    ['a star she cannot reach', { stars: [at(8, 0)] }],
-    ['a star on a key', { stars: [at(7, 3)] }],
-    ['a star under her feet', { stars: [at(1, 6)], collectedStars: [at(0, 6)] }],
-    ['another number of stars', { stars: [] }],
+    ['an orb she cannot reach', { orbs: [{ position: at(8, 0), radius: 4 }] }],
+    ['an orb under her feet', { orbs: [near], collectedOrbs: [far] }],
     ['a hero in the fence', { hero: { feet: Hero.feetOn(at(5, 5)), facing: Direction.Up } }],
     [
       'a hero on the closed gate',

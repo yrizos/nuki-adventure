@@ -1,20 +1,33 @@
 import { expect, test } from 'vitest';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
-import { LevelCompleted, KeyCollected } from '../domain/level-events';
+import { LevelCompleted, OrbCollected } from '../domain/level-events';
+import { orbCount } from '../domain/level';
+import type { Random } from '../domain/random';
 import { Direction, Heading, TilePosition, tileKey } from '../domain/position';
 import { Ground } from '../domain/scenery';
 import type { Shuffle } from '../domain/shuffle';
-import { explorationArea, mandatoryRoute } from '../testing/routes';
-import { keepOrder, reverseOrder, starSpotsOf } from '../testing/star-spots';
-import { follow, pathTo } from '../testing/walk-level';
+import { keepOrder, lowestRoll, seededRandom } from '../testing/draws';
+import { collectEveryOrb, follow, pathTo } from '../testing/walk-level';
 import { authoredLevels as catalog } from './catalog';
 import { firstLevel } from './first';
 import { fourthLevel } from './fourth';
 
 const authoredLevels = catalog.map(({ id, create }) => ({
   name: id.value,
-  create: (shuffle: Shuffle) => create(shuffle, check2dObstacles),
+  create: (shuffle: Shuffle, random: Random = lowestRoll) => create(shuffle, check2dObstacles, random),
 }));
+const seeds = Array.from({ length: 60 }, (_, seed) => seed);
+// Random orbs land elsewhere on every start, so a rule about orbs is checked over many plays.
+type CreateLevel = (shuffle: Shuffle, random: Random) => ReturnType<typeof firstLevel>;
+const plays = new Map<CreateLevel, readonly ReturnType<typeof firstLevel>[]>();
+const everyPlayOf = (create: CreateLevel) => {
+  let levels = plays.get(create);
+  if (!levels) {
+    levels = seeds.map((seed) => create(keepOrder, seededRandom(seed)));
+    plays.set(create, levels);
+  }
+  return levels;
+};
 
 for (const { name, create } of authoredLevels) {
   // The gate and any boulder count as open, because she can always open the gate and move the boulder.
@@ -80,11 +93,11 @@ for (const { name, create } of authoredLevels) {
       )
       .map((tile) => `${tile.column}, ${tile.row}`);
     expect(blockedRing, 'every tile around the start must be drawn as free open ground').toEqual([]);
-    const spots = starSpotsOf(create);
-    const crowded = [start, ...ring]
-      .filter((tile) => level.keys.some((key) => key.position.equals(tile)) || spots.some((spot) => spot.equals(tile)))
+    const crowded = everyPlayOf(create)
+      .flatMap((play) => play.orbs.map((orb) => orb.position))
+      .filter((orb) => [start, ...ring].some((tile) => tile.equals(orb)))
       .map((tile) => `${tile.column}, ${tile.row}`);
-    expect(crowded, 'no key or star spot may lie on or around the start').toEqual([]);
+    expect(crowded, 'no orb may lie on or around the start').toEqual([]);
     const lowestVisibleRow = Math.max(...tiles.filter(visiblyOpen).map((tile) => tile.row));
     expect(lowestVisibleRow - start.row, 'one visibly free row, then the bottom boundary').toBe(1);
     const isPath = (tile: TilePosition): boolean =>
@@ -152,20 +165,9 @@ test.each(authoredLevels)('she can walk a full loop around every fenced enclosur
   expect(blocked).toEqual([]);
 });
 
-test('the first level keeps star spots off the mandatory route and at least half in exploration areas', () => {
-  const level = firstLevel(keepOrder, check2dObstacles);
-  // A shuffle that offers nothing leaves only the permanent stars, which count as star spots too.
-  const permanent = firstLevel(() => [], check2dObstacles).stars.map((star) => star.position);
-  const spots = [...permanent, ...starSpotsOf(firstLevel)];
-  const route = mandatoryRoute(level);
-  const exploration = explorationArea(level);
-  expect(spots.filter((spot) => route.covers(spot)).map((spot) => `${spot.column}, ${spot.row}`)).toEqual([]);
-  expect(2 * spots.filter((spot) => exploration.covers(spot)).length).toBeGreaterThanOrEqual(spots.length);
-});
-
 // Following blocking tiles from outside the map, corners included, reaches every obstacle the boundary joins.
 test('the first level lets her walk a full loop around every obstacle, which never joins the boundary', () => {
-  const level = firstLevel(keepOrder, check2dObstacles);
+  const level = firstLevel(keepOrder, check2dObstacles, lowestRoll);
   const { columns, rows } = level.scenery.size;
   const inside = (tile: TilePosition): boolean => level.scenery.size.contains(tile);
   const stone = (tile: TilePosition): boolean => level.stones.some((each) => each.position.equals(tile));
@@ -202,7 +204,7 @@ test('the first level lets her walk a full loop around every obstacle, which nev
 });
 
 test('the first level leaves no diagonal gap between two blocking tiles that meet only at a corner', () => {
-  const level = firstLevel(keepOrder, check2dObstacles);
+  const level = firstLevel(keepOrder, check2dObstacles, lowestRoll);
   const { columns, rows } = level.scenery.size;
   const blocking = (column: number, row: number): boolean => {
     const tile = TilePosition.at(column, row);
@@ -228,12 +230,9 @@ test('the first level leaves no diagonal gap between two blocking tiles that mee
 });
 
 test('the first level hides no usable item under a tree canopy', () => {
-  const level = firstLevel(keepOrder, check2dObstacles);
-  const permanent = firstLevel(() => [], check2dObstacles).stars.map((star) => star.position);
+  const level = firstLevel(keepOrder, check2dObstacles, lowestRoll);
   const items = [
-    ...permanent,
-    ...starSpotsOf(firstLevel),
-    ...level.keys.map((key) => key.position),
+    ...everyPlayOf(authoredLevels[0]!.create).flatMap((play) => play.orbs.map((orb) => orb.position)),
     ...level.boulders.map((boulder) => boulder.position),
     ...(level.plate ? [level.plate] : []),
     ...level.gates.flatMap((gate) => [gate.position, gate.approach]),
@@ -242,29 +241,36 @@ test('the first level hides no usable item under a tree canopy', () => {
   expect(hidden.map((item) => `${item.column}, ${item.row}`)).toEqual([]);
 });
 
-test('the first level keeps every star spot clearly visible, with no canopy above it or on both sides', () => {
-  const level = firstLevel(keepOrder, check2dObstacles);
-  const permanent = firstLevel(() => [], check2dObstacles).stars.map((star) => star.position);
-  const canopy = (column: number, row: number): boolean => {
-    const tile = TilePosition.at(column, row);
-    return level.scenery.woodland.covers(tile) || level.scenery.trees.some((tree) => tree.covers(tile));
-  };
-  const crowded = [...permanent, ...starSpotsOf(firstLevel)].filter(
-    ({ column, row }) =>
-      canopy(column - 1, row - 1) ||
-      canopy(column, row - 1) ||
-      canopy(column + 1, row - 1) ||
-      (canopy(column - 1, row) && canopy(column + 1, row)),
-  );
-  expect(crowded.map(({ column, row }) => `${column}, ${row}`)).toEqual([]);
-});
+test.each(authoredLevels)(
+  'the $name level keeps every orb clearly visible, with no canopy above it or on both sides',
+  ({ create }) => {
+    const level = create(keepOrder);
+    const canopy = (column: number, row: number): boolean => {
+      const tile = TilePosition.at(column, row);
+      return level.scenery.woodland.covers(tile) || level.scenery.trees.some((tree) => tree.covers(tile));
+    };
+    const random = everyPlayOf(create).flatMap((play) =>
+      play.orbs
+        .filter((orb) => !play.permanentOrbs.some((tile) => tile.equals(orb.position)))
+        .map((orb) => orb.position),
+    );
+    const crowded = random.filter(
+      ({ column, row }) =>
+        canopy(column - 1, row - 1) ||
+        canopy(column, row - 1) ||
+        canopy(column + 1, row - 1) ||
+        (canopy(column - 1, row) && canopy(column + 1, row)),
+    );
+    expect(crowded.map(({ column, row }) => `${column}, ${row}`)).toEqual([]);
+  },
+);
 
 function canopyHides(level: ReturnType<typeof firstLevel>, tile: TilePosition): boolean {
   return level.scenery.hides(tile) || level.scenery.trees.some((tree) => tree.hides(tile));
 }
 
-test('the first level lets her reach every key, star spot and the door without stepping on a hidden tile', () => {
-  const level = firstLevel(keepOrder, check2dObstacles);
+test('the first level lets her reach every orb and the door without stepping on a hidden tile', () => {
+  const level = firstLevel(keepOrder, check2dObstacles, lowestRoll);
   const open = (tile: TilePosition): boolean =>
     level.scenery.isWalkable(tile) &&
     !level.stones.some((stone) => stone.position.equals(tile)) &&
@@ -280,11 +286,8 @@ test('the first level lets her reach every key, star spot and the door without s
       reached.push(neighbor);
     }
   }
-  const permanent = firstLevel(() => [], check2dObstacles).stars.map((star) => star.position);
   const objectives = [
-    ...level.keys.map((key) => key.position),
-    ...permanent,
-    ...starSpotsOf(firstLevel),
+    ...everyPlayOf(authoredLevels[0]!.create).flatMap((play) => play.orbs.map((orb) => orb.position)),
     ...level.door.footprint.map((tile) => tile.neighbor(Direction.Down)),
   ];
   const cutOff = objectives.filter((tile) => !seen.has(tileKey(tile)));
@@ -293,7 +296,7 @@ test('the first level lets her reach every key, star spot and the door without s
 
 // Counting hidden tiles as blocking, an obstacle joined to the boundary has no loop around it on visible ground.
 test('the first level lets her walk a full loop around every obstacle without stepping on a hidden tile', () => {
-  const level = firstLevel(keepOrder, check2dObstacles);
+  const level = firstLevel(keepOrder, check2dObstacles, lowestRoll);
   const { columns, rows } = level.scenery.size;
   const inside = (tile: TilePosition): boolean => level.scenery.size.contains(tile);
   const stone = (tile: TilePosition): boolean => level.stones.some((each) => each.position.equals(tile));
@@ -333,25 +336,34 @@ test('the first level lets her walk a full loop around every obstacle without st
   expect(joined).toEqual([]);
 });
 
-test.each(authoredLevels)('the $name level holds exactly five stars', ({ create }) => {
-  expect(create(keepOrder).stars).toHaveLength(5);
-});
+test.each(authoredLevels)(
+  'the $name level holds three to nine orbs in every play, its permanent orbs first',
+  ({ create }) => {
+    const violations = everyPlayOf(create).flatMap((play, seed) => [
+      ...(play.orbs.length < orbCount.fewest || play.orbs.length > orbCount.most
+        ? [`seed ${seed}: ${play.orbs.length}`]
+        : []),
+      ...(play.permanentOrbs.every((tile, index) => play.orbs[index]!.position.equals(tile))
+        ? []
+        : [`seed ${seed}: order`]),
+    ]);
+    expect(violations).toEqual([]);
+  },
+);
 
-test.each(authoredLevels)('the $name level marks at least fifteen star spots', ({ create }) => {
-  expect(starSpotsOf(create).length).toBeGreaterThanOrEqual(15);
-});
-
-test.each(authoredLevels)('the $name level holds different stars under a different shuffle', ({ create }) => {
-  const stars = (shuffle: typeof keepOrder) => create(shuffle).stars.map((star) => star.position);
-  expect(stars(reverseOrder)).not.toEqual(stars(keepOrder));
+test.each(authoredLevels)('the $name level places different orbs in a different play', ({ create }) => {
+  const placements = everyPlayOf(create).map((play) =>
+    play.orbs.map(({ position }) => `${position.column},${position.row}`).join(';'),
+  );
+  expect(new Set(placements).size).toBeGreaterThan(1);
 });
 
 test('the fourth level is finished by pushing the boulder out of the gap to the glade', () => {
-  const level = fourthLevel(keepOrder, check2dObstacles);
-  const key = level.keys[0]!.position;
+  const level = fourthLevel(keepOrder, check2dObstacles, lowestRoll);
+  const glade = level.permanentOrbs[0]!;
   expect(
-    pathTo(level, (tile) => tile.equals(key)),
-    'the boulder must close the only way to the key',
+    pathTo(level, (tile) => tile.equals(glade)),
+    'the boulder must close the only way to the permanent orb',
   ).toBeUndefined();
   follow(
     level,
@@ -365,9 +377,10 @@ test('the fourth level is finished by pushing the boulder out of the gap to the 
     for (let tick = 0; tick < 16; tick++) level.tick(null);
   }
   level.release();
-  const toKey = pathTo(level, (tile) => tile.equals(key));
-  expect(toKey, 'the key must open up once the boulder is pushed into the glade').toBeDefined();
-  expect(follow(level, toKey!).some((event) => event instanceof KeyCollected)).toBe(true);
+  const toGlade = pathTo(level, (tile) => tile.equals(glade));
+  expect(toGlade, 'the permanent orb must open up once the boulder is pushed into the glade').toBeDefined();
+  expect(follow(level, toGlade!).some((event) => event instanceof OrbCollected)).toBe(true);
+  collectEveryOrb(level);
   level.openDoor();
   const toDoor = pathTo(level, (tile) => level.door.covers(tile));
   expect(toDoor, 'the door must stay reachable with the boulder in the glade').toBeDefined();

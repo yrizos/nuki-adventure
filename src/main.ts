@@ -9,7 +9,7 @@ import { startGame } from './user-interface/shell/game';
 
 const levels = authoredLevels.map(({ id, create, arrives }) => ({
   id,
-  start: () => new PlayLevel(new InMemoryLevelRepository([create(randomShuffle, check2dObstacles)])),
+  start: () => new PlayLevel(new InMemoryLevelRepository([create(randomShuffle, check2dObstacles, Math.random)])),
   arrives,
 }));
 

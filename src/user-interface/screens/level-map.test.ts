@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { Area, Key, Star } from '../../level/domain/collectibles';
+import { Orb } from '../../level/domain/collectibles';
 import { Direction, TilePosition } from '../../level/domain/position';
 import { Door } from '../../level/domain/door';
 import { Ground, LevelSize, Scenery } from '../../level/domain/scenery';
@@ -11,20 +11,19 @@ import { InMemoryLevelRepository } from '../../level/infrastructure/in-memory-le
 import { levelMap, mapSize } from './level-map';
 
 const id = LevelId.of('thumbnail');
-const everywhere = Area.of(Array.from({ length: 64 }, (_, index) => TilePosition.at(index % 8, Math.floor(index / 8))));
+const size = LevelSize.of(8, 8);
 
-function view(stars: readonly Star[]) {
+function view(orbs: readonly Orb[]) {
   const level = Level.create({
     id,
     scenery: Scenery.of(
-      LevelSize.of(8, 8),
+      size,
       Array.from({ length: 8 }, () => Array<Ground>(8).fill(Ground.Path)),
       [],
       [],
     ),
     stones: [],
-    stars,
-    keys: [Key.at(TilePosition.at(1, 1), everywhere)],
+    orbs,
     door: Door.closedAt(TilePosition.at(0, 0)),
     hero: { position: TilePosition.at(4, 4), facing: Direction.Up },
     obstacles: check2dObstacles,
@@ -32,20 +31,22 @@ function view(stars: readonly Star[]) {
   return new PlayLevel(new InMemoryLevelRepository([level])).view(id);
 }
 
-const thumbnail = (stars: readonly Star[], colored: boolean) => [
-  ...levelMap(view(stars), colored, () => 0.5).packedPixels,
+const lone = Orb.at(TilePosition.at(1, 1), 4, size);
+const thumbnail = (orbs: readonly Orb[], colored: boolean) => [
+  ...levelMap(view(orbs), colored, () => 0.5).packedPixels,
 ];
 
 test('fits the whole level into the map size', () => {
-  const map = levelMap(view([]), false, () => 0.5);
+  const map = levelMap(view([lone]), false, () => 0.5);
   expect([map.width, map.height]).toEqual([mapSize, mapSize]);
 });
 
-test('leaves the stars out, because they move every time the level is built', () => {
-  expect(view([Star.at(TilePosition.at(4, 3))]).stars).toHaveLength(1);
-  expect(thumbnail([Star.at(TilePosition.at(4, 3))], false)).toEqual(thumbnail([], false));
+test('leaves the orbs out, because they move every time the level is built', () => {
+  const elsewhere = Orb.at(TilePosition.at(6, 6), 4, size);
+  expect(thumbnail([lone], false)).toEqual(thumbnail([elsewhere], false));
+  expect(thumbnail([lone], true)).toEqual(thumbnail([elsewhere], true));
 });
 
 test('draws the colored world only when asked', () => {
-  expect(thumbnail([], true)).not.toEqual(thumbnail([], false));
+  expect(thumbnail([lone], true)).not.toEqual(thumbnail([lone], false));
 });

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { leftInProgress, progressLevels, progressOrder, progressSequences } from '../testing/progress-sequences';
-import { LevelId, StarCount } from '../../level';
+import { LevelId } from '../../level';
 import { GameProgress } from './game-progress';
 import { LevelOrder } from './level-order';
 import { Playthrough, PlayTime } from './playthrough';
@@ -10,16 +10,11 @@ const two = LevelId.of('two');
 const three = LevelId.of('three');
 const levels = [one, two, three];
 const order = LevelOrder.of(levels);
-const playthrough = (frames: number, collectedStars: number, starCount = 5): Playthrough =>
-  Playthrough.of(PlayTime.ofFrames(frames), StarCount.of(collectedStars), StarCount.of(starCount));
+const playthrough = (frames: number): Playthrough => Playthrough.of(PlayTime.ofFrames(frames));
 
 describe('a playthrough', () => {
   test.each([-1, 1.5, Number.NaN])('rejects a play time of %s frames', (frames) => {
     expect(() => PlayTime.ofFrames(frames)).toThrow(RangeError);
-  });
-
-  test('cannot collect more stars than the level holds', () => {
-    expect(() => playthrough(10, 6, 5)).toThrow(RangeError);
   });
 });
 
@@ -56,15 +51,15 @@ describe('game progress', () => {
 
   test('keeps the last completed playthrough even when it is worse', () => {
     const progress = GameProgress.fresh();
-    progress.complete(one, playthrough(400, 5), order);
-    progress.complete(one, playthrough(900, 1), order);
-    expect(progress.lastPlaythroughOf(one)).toEqual(playthrough(900, 1));
+    progress.complete(one, playthrough(400), order);
+    progress.complete(one, playthrough(900), order);
+    expect(progress.lastPlaythroughOf(one)).toEqual(playthrough(900));
     expect(progress.lastPlaythroughOf(two)).toBeNull();
   });
 
   test('completing a level unlocks the next level of the game', () => {
     const progress = GameProgress.fresh();
-    progress.complete(one, playthrough(500, 3), order);
+    progress.complete(one, playthrough(500), order);
     expect(progress.isUnlocked(two, order)).toBe(true);
     expect(progress.unlockedLevels).toEqual([two]);
     expect(progress.continueLevel).toBeNull();
@@ -79,7 +74,7 @@ describe('game progress', () => {
   test('completing the last level leaves nothing to continue but keeps the progress', () => {
     const progress = GameProgress.fresh();
     progress.reach(three);
-    progress.complete(three, playthrough(500, 3), order);
+    progress.complete(three, playthrough(500), order);
     expect(progress.continueLevelAmong(order)).toBeNull();
     expect(progress.hasProgress).toBe(true);
   });
@@ -88,14 +83,14 @@ describe('game progress', () => {
     const progress = GameProgress.restore({
       continueLevel: three,
       unlockedLevels: [two, three],
-      lastPlaythroughs: [{ level: three, playthrough: playthrough(300, 1) }],
+      lastPlaythroughs: [{ level: three, playthrough: playthrough(300) }],
     });
     expect(progress.continueLevelAmong(order)).toBeNull();
   });
 
   test('completing the last level unlocks nothing', () => {
     const progress = GameProgress.fresh();
-    progress.complete(three, playthrough(500, 3), order);
+    progress.complete(three, playthrough(500), order);
     expect(progress.unlockedLevels).toEqual([]);
     expect(progress.isUnlocked(two, order)).toBe(false);
     expect(progress.isUnlocked(three, order)).toBe(false);
@@ -103,7 +98,7 @@ describe('game progress', () => {
 
   test('completing a level that is not in the order unlocks nothing', () => {
     const progress = GameProgress.fresh();
-    progress.complete(LevelId.of('removed'), playthrough(500, 3), order);
+    progress.complete(LevelId.of('removed'), playthrough(500), order);
     expect(progress.unlockedLevels).toEqual([]);
   });
 
@@ -112,12 +107,12 @@ describe('game progress', () => {
     progress.reach(two);
     progress.suspend(leftInProgress(two));
     expect(progress.levelInProgressAmong(order)).toEqual(leftInProgress(two));
-    progress.complete(one, playthrough(300, 1), order);
+    progress.complete(one, playthrough(300), order);
     expect(progress.levelInProgressAmong(order)).toEqual(leftInProgress(two));
     progress.reach(two);
     expect(progress.levelInProgress).toBeNull();
     progress.suspend(leftInProgress(two));
-    progress.complete(two, playthrough(300, 1), order);
+    progress.complete(two, playthrough(300), order);
     expect(progress.levelInProgress).toBeNull();
   });
 
@@ -155,11 +150,11 @@ describe('game progress', () => {
     const progress = GameProgress.restore({
       continueLevel: two,
       unlockedLevels: [two, two],
-      lastPlaythroughs: [{ level: one, playthrough: playthrough(300, 1) }],
+      lastPlaythroughs: [{ level: one, playthrough: playthrough(300) }],
     });
     expect(progress.continueLevel).toBe(two);
     expect(progress.unlockedLevels).toEqual([two]);
-    expect(progress.lastPlaythroughs).toEqual([{ level: one, playthrough: playthrough(300, 1) }]);
+    expect(progress.lastPlaythroughs).toEqual([{ level: one, playthrough: playthrough(300) }]);
   });
 
   test('restoring last playthroughs unlocks nothing beyond the saved unlocked levels', () => {
@@ -167,8 +162,8 @@ describe('game progress', () => {
       continueLevel: one,
       unlockedLevels: [],
       lastPlaythroughs: [
-        { level: one, playthrough: playthrough(300, 1) },
-        { level: two, playthrough: playthrough(300, 1) },
+        { level: one, playthrough: playthrough(300) },
+        { level: two, playthrough: playthrough(300) },
       ],
     });
     expect(progress.unlockedLevels).toEqual([]);
@@ -193,12 +188,7 @@ test('progress through every short sequence never relocks a level or moves the c
       if (step.completion && !continueKept) violations.push(`${step.label}: moved the continue level`);
       const last = step.completion && progress.lastPlaythroughOf(step.completion.level);
       const kept = step.completion?.playthrough;
-      if (
-        kept &&
-        (last?.time.frames !== kept.time.frames ||
-          last.collectedStars.value !== kept.collectedStars.value ||
-          last.starCount.value !== kept.starCount.value)
-      )
+      if (kept && last?.time.frames !== kept.time.frames)
         violations.push(`${step.label}: did not keep the playthrough as the last one`);
       const inProgress = progress.levelInProgress;
       if (inProgress && !progress.continueLevel?.equals(inProgress.level))

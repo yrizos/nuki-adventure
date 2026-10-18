@@ -5,13 +5,17 @@ import { messages } from '../shell/game-session';
 import { Picture } from '../graphics/picture';
 
 test.each(Object.values(messages))('draws %s with the font inside the narrowest game view', (text) => {
-  for (const character of text) expect(glyphs[character]).toBeDefined();
+  for (const character of text.replaceAll('\n', '')) expect(glyphs[character]).toBeDefined();
   const lines = wrap(text, 224 - 16);
-  expect(lines.join(' ')).toBe(text);
+  expect(lines.join(' ')).toBe(text.replaceAll('\n', ' '));
   for (const line of lines) expect(line.length).toBeLessThanOrEqual(26);
   const box = new MessageBox();
   box.show(text, 0);
   expect(() => box.paint(new Picture(224, 224), 16)).not.toThrow();
+});
+
+test('puts each sentence of the last orb message on a line of its own', () => {
+  expect(wrap(messages.colorsBack, 224 - 16)).toEqual(['ΤΑ ΧΡΩΜΑΤΑ ΕΠΕΣΤΡΕΨΑΝ!', 'Η ΠΟΡΤΑ ΑΝΟΙΞΕ!']);
 });
 
 test('dissolves in, then dissolves away after being hidden', () => {

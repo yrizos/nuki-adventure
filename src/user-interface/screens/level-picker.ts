@@ -1,5 +1,5 @@
 import type { LevelId, LevelView } from '../../level';
-import type { LevelProgressView, Playthrough, PlayTime, ProgressView } from '../../progress';
+import type { LevelProgressView, PlayTime, ProgressView } from '../../progress';
 import { PixelGrid, type Art } from '../graphics/art';
 import { glyphHeight, textWidth, writeText } from '../graphics/font';
 import { backWidth, scrollButtonWidth, textButtonHeight } from '../graphics/panel';
@@ -9,12 +9,11 @@ import { element } from '../shell/dom';
 import { levelMap, mapSize } from './level-map';
 import { idlePose } from '../world/hero-animator';
 import { menuChoices, takeMenuKeys } from './menu-keys';
-import { faded } from '../graphics/palette';
 import { Picture } from '../graphics/picture';
 import { heroArt, smallPadlockArt } from '../graphics/sprite-library';
 
 const framesPerSecond = 60;
-// Two cards share a row, so the icons shrink to fit a star, its count, the clock and the time on one strip.
+// Two cards share a row, so the clock shrinks to sit beside the time on one strip.
 const iconSize = 9;
 const edge = 2;
 const inset = 4;
@@ -83,23 +82,6 @@ export function putClock(grid: PixelGrid, left: number, top: number): void {
   putIcon(grid, clock, left, top);
 }
 
-// The star sprite loses its points when sampled down this far, so the icon is drawn at its own size.
-const star = [
-  '....k....',
-  '...kak...',
-  'kkkacakkk',
-  'kaaaaabbk',
-  '.kaaabbk.',
-  '..kaabk..',
-  '.kaabbbk.',
-  '.kabkkbk.',
-  '.kk...kk.',
-];
-
-export function putStar(grid: PixelGrid, left: number, top: number): void {
-  putIcon(grid, star, left, top);
-}
-
 // The clipped corners match the message box and the switches, so every window over the game world looks like one set.
 export function windowFrame(width: number, height: number): PixelGrid {
   const grid = new PixelGrid(width, height, 'k');
@@ -127,19 +109,6 @@ export function playTime(time: PlayTime): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-export function starsText(playthrough: Playthrough): string {
-  return `${playthrough.collectedStars.value}/${playthrough.starCount.value}`;
-}
-
-// With no star collected, the star is drawn through the faded mapping, so a grey star reads as none earned yet.
-const dimStar: Record<string, string> = { a: 'A', b: 'B', c: 'C' };
-const cardLegend = {
-  ...windowLegend,
-  A: faded(windowLegend.a),
-  B: faded(windowLegend.b),
-  C: faded(windowLegend.c),
-} as const;
-
 // Over the map, an Ink outline keeps the number readable on any ground.
 function putNumber(grid: PixelGrid, number: string, left: number, top: number): void {
   const text = new PixelGrid(textWidth(number), glyphHeight);
@@ -154,17 +123,6 @@ function putNumber(grid: PixelGrid, number: string, left: number, top: number): 
     }
 }
 
-function putStars(grid: PixelGrid, collected: number): void {
-  putStar(grid, inset, iconTop);
-  if (collected === 0)
-    for (let row = 0; row < iconSize; row++)
-      for (let column = 0; column < iconSize; column++) {
-        const dim = dimStar[grid.get(inset + column, iconTop + row)];
-        if (dim) grid.put(inset + column, iconTop + row, dim);
-      }
-  writeText(grid, String(collected), inset + iconSize + iconGap, iconTop + iconTextTop, 't');
-}
-
 // The map shows through the window left open above the strip, inside a one pixel Ink border. A locked level keeps
 // the window closed, so its layout stays a surprise.
 export function levelCardArt(level: LevelProgressView): Art {
@@ -175,13 +133,12 @@ export function levelCardArt(level: LevelProgressView): Art {
   putNumber(grid, String(level.number), mapLeft + numberInset, mapTop + numberInset);
   const playthrough = level.lastPlaythrough;
   if (playthrough) {
-    putStars(grid, playthrough.collectedStars.value);
     const time = playTime(playthrough.time);
     const timeLeft = cardWidth - edge - inset - textWidth(time);
     putClock(grid, timeLeft - iconGap - iconSize, iconTop);
     writeText(grid, time, timeLeft, iconTop + iconTextTop, 't');
   }
-  return grid.build(cardLegend);
+  return grid.build(windowLegend);
 }
 
 function titleArt(): Art {
@@ -194,7 +151,7 @@ function titleArt(): Art {
 export function levelRowText(level: LevelProgressView): string {
   if (!level.isUnlocked) return `ΕΠΙΠΕΔΟ ${level.number}. ΚΛΕΙΔΩΜΕΝΟ.`;
   if (!level.lastPlaythrough) return `ΕΠΙΠΕΔΟ ${level.number}.`;
-  return `ΕΠΙΠΕΔΟ ${level.number}. ΧΡΟΝΟΣ ${playTime(level.lastPlaythrough.time)}. ΑΣΤΕΡΙΑ ${starsText(level.lastPlaythrough)}.`;
+  return `ΕΠΙΠΕΔΟ ${level.number}. ΧΡΟΝΟΣ ${playTime(level.lastPlaythrough.time)}.`;
 }
 
 export interface PickerLevel {

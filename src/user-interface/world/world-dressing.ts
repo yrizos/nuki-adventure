@@ -86,8 +86,7 @@ function undergrowth(level: LevelView): Undergrowth[] {
   const taken = [
     ...scenery.flowers.map((flower) => flower.position),
     ...level.stones.map((stone) => stone.position),
-    ...level.keys.map((key) => key.position),
-    ...level.stars.map((star) => star.position),
+    ...level.orbs.map((orb) => orb.position),
     ...(level.plate ? [level.plate] : []),
   ];
   const positions: TilePosition[] = [];

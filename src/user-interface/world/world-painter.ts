@@ -18,8 +18,9 @@ import {
   sideGateArt,
   groundShadow,
   lightMote,
-  keyArt,
-  starArt,
+  orbArt,
+  orbHues,
+  type OrbHue,
   boulderArt,
   treeFrameLength,
   waterFrameLength,
@@ -36,16 +37,11 @@ import {
 import { cameraPosition, clamp, heroPixels, tileSize } from './world-geometry';
 import { crestLength, isDarkened, restorationAge } from './world-transition';
 
-const starBob = [0, -1, 0, 1];
-const keyFloatFrames = 150;
-const keySwayFrames = 60;
+const orbFloatFrames = 150;
 
-// Rounding a sine holds each pixel longest near the turning points, so the key eases in and out instead of jerking.
-export function keyOffset(frame: number): { readonly x: number; readonly y: number } {
-  return {
-    x: Math.round(Math.sin((2 * Math.PI * frame) / keySwayFrames)),
-    y: Math.round(2 * Math.sin((2 * Math.PI * frame) / keyFloatFrames)),
-  };
+// Rounding a sine holds each pixel longest near the turning points, so the orb eases up and down instead of jerking.
+export function orbFloat(frame: number): number {
+  return Math.round(2 * Math.sin((2 * Math.PI * frame) / orbFloatFrames));
 }
 const butterflyArc = 6;
 const butterflyFlutter = 2;
@@ -333,8 +329,7 @@ export function placeBirds(level: LevelView, dressing: WorldDressing): Bird[] {
   const taken = [
     ...scenery.flowers.map((flower) => flower.position),
     ...level.stones.map((stone) => stone.position),
-    ...level.keys.map((key) => key.position),
-    ...level.stars.map((star) => star.position),
+    ...level.orbs.map((orb) => orb.position),
     ...dressing.undergrowth.map(({ position }) => position),
     ...(level.plate ? [level.plate] : []),
   ];
@@ -439,10 +434,22 @@ export class WorldPainter {
   private after = new Picture(0, 0);
   private readonly shadows = new Map<string, Art>();
   private readonly birds: readonly { readonly bird: Bird; readonly visit: BirdVisit }[];
+  private readonly orbHues = new Map<string, OrbHue>();
 
   constructor(level: LevelView, random?: () => number) {
     this.dressing = dressWorld(level, random);
     this.birds = placeBirds(level, this.dressing).map((bird) => ({ bird, visit: {} }));
+    // Each orb takes a different hue until the rainbow runs out, so orbs in view never all look alike.
+    const hues = [...orbHues];
+    if (random) {
+      for (let index = hues.length - 1; index > 0; index--) {
+        const other = Math.floor(random() * (index + 1));
+        [hues[index], hues[other]] = [hues[other]!, hues[index]!];
+      }
+    }
+    level.orbs.forEach(({ position }, index) =>
+      this.orbHues.set(`${position.column},${position.row}`, hues[index % hues.length]!),
+    );
   }
 
   paint(target: Picture, scene: Scene, restored: readonly Area[]): void {
@@ -497,7 +504,7 @@ export class WorldPainter {
     );
     const coloredTiles = colored.reduce((sum, tile) => sum + tile, 0);
     if (coloredTiles === colored.length) {
-      this.paintVersion(target, scene, 'colored', scene.level.keys.length === 0);
+      this.paintVersion(target, scene, 'colored', scene.level.orbs.length === 0);
       return;
     }
     this.paintVersion(target, scene, 'faded', false);
@@ -531,7 +538,7 @@ export class WorldPainter {
     }
   }
 
-  // The door is drawn open once every key is picked up, so during the last restoration it opens exactly where color reaches it.
+  // The door is drawn open once every orb is picked up, so during the last restoration it opens exactly where color reaches it.
   private paintVersion(picture: Picture, scene: Scene, version: Version, doorLit: boolean): void {
     const { level, frame } = scene;
     const camera = cameraPosition(level, picture.width, picture.height);
@@ -697,25 +704,16 @@ export class WorldPainter {
         }
       },
     });
-    // A boulder rolls over stars and keys, so one under a boulder is drawn before everything else and stays hidden.
+    // A boulder rolls over orbs, so one under a boulder is drawn before everything else and stays hidden.
     const underBoulder = (tile: TilePosition): boolean => level.boulders.some((boulder) => boulder.covers(tile));
-    for (const key of level.keys) {
-      const { column, row } = key.position;
-      const offset = keyOffset(frame);
+    for (const orb of level.orbs) {
+      const { column, row } = orb.position;
+      const art = orbArt[this.orbHues.get(`${column},${row}`) ?? orbHues[0]];
+      const float = orbFloat(frame);
       objects.push({
-        base: underBoulder(key.position) ? -Infinity : (row + 1) * tileSize,
-        shadow: shadow(12, key.position, column * tileSize + 10, row * tileSize + 27),
-        paint: () =>
-          draw(keyArt[key.material.name], column * tileSize + 4 + offset.x, row * tileSize + 4 + offset.y, 'colored'),
-      });
-    }
-    for (const star of level.stars) {
-      const { column, row } = star.position;
-      const bob = starBob[Math.floor(frame / 10) % starBob.length]!;
-      objects.push({
-        base: underBoulder(star.position) ? -Infinity : (row + 1) * tileSize,
-        shadow: shadow(12, star.position, column * tileSize + 10, row * tileSize + 27),
-        paint: () => draw(starArt, column * tileSize + 4, row * tileSize + 4 + bob, 'colored'),
+        base: underBoulder(orb.position) ? -Infinity : (row + 1) * tileSize,
+        shadow: shadow(12, orb.position, column * tileSize + 10, row * tileSize + 27),
+        paint: () => draw(art, column * tileSize + 4, row * tileSize + 4 + float, 'colored'),
       });
     }
     const hero = heroPixels(level);

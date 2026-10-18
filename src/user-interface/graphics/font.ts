@@ -61,13 +61,16 @@ export function textWidth(text: string): number {
 
 export function wrapText(text: string, width: number): readonly string[] {
   const perLine = Math.floor((width + letterGap) / (glyphWidth + letterGap));
-  const lines: string[] = [];
-  for (const word of text.split(' ')) {
-    const last = lines.at(-1);
-    if (last !== undefined && last.length + 1 + word.length <= perLine) lines[lines.length - 1] = `${last} ${word}`;
-    else lines.push(word);
-  }
-  return lines;
+  // A line break in the text always starts a new line, so a message can keep each sentence on a line of its own.
+  return text.split('\n').flatMap((paragraph) => {
+    const lines: string[] = [];
+    for (const word of paragraph.split(' ')) {
+      const last = lines.at(-1);
+      if (last !== undefined && last.length + 1 + word.length <= perLine) lines[lines.length - 1] = `${last} ${word}`;
+      else lines.push(word);
+    }
+    return lines;
+  });
 }
 
 export function writeText(grid: PixelGrid, text: string, column: number, row: number, symbol: string): void {

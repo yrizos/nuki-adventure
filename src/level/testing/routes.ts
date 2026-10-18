@@ -2,7 +2,7 @@ import type { Level } from '../domain/level';
 import { Direction, TilePosition, TilePositions, tileKey } from '../domain/position';
 
 const directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
-// Three steps keep a star out of the view she has while walking the route, so finding it takes a detour.
+// Three steps keep a place out of the view she has while walking the route, so finding it takes a detour.
 const explorationDistance = 3;
 
 // Gates and any boulder count as open, because she can always open the gates and move the boulder.
@@ -36,7 +36,8 @@ function permutations<T>(items: readonly T[]): T[][] {
   );
 }
 
-// Every tile of every equally short walk counts, because she may take any of them.
+// Every tile of every equally short walk through the permanent orbs counts, because she may take any of them.
+// Random orbs land elsewhere on every start, so only the permanent ones shape the route a layout is designed around.
 export function mandatoryRoute(level: Level): TilePositions {
   const reachable = [...distances(level, [level.hero.position]).keys()];
   const tiles = level.scenery.size;
@@ -44,8 +45,8 @@ export function mandatoryRoute(level: Level): TilePositions {
     TilePosition.at(index % tiles.columns, Math.floor(index / tiles.columns)),
   ).filter((tile) => reachable.includes(tileKey(tile)));
   const beforeDoor = all.filter((tile) => directions.some((direction) => level.door.covers(tile.neighbor(direction))));
-  const legs = permutations(level.keys.map((key) => key.position)).map((order) =>
-    [[level.hero.position], ...order.map((key) => [key])]
+  const legs = permutations(level.permanentOrbs).map((order) =>
+    [[level.hero.position], ...order.map((orb) => [orb])]
       .map((from, index) => [from, index < order.length ? [order[index]!] : beforeDoor] as const)
       .map(([from, to]) => ({ from: distances(level, from), to: distances(level, to) })),
   );

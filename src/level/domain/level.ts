@@ -1,13 +1,11 @@
 import { Boulder } from './boulder';
-import { type Area, type Key, Star } from './collectibles';
-import { StarCount } from './star-count';
+import { Area, Orb, orbRadii } from './collectibles';
 import type { Door } from './door';
 import { feet, Hero, type HeroState } from './hero';
 import {
   LevelCompleted,
   type LevelEvent,
-  KeyCollected,
-  StarCollected,
+  OrbCollected,
   SwingGateClosed,
   SwingGateClosingStarted,
   SwingGateOpened,
@@ -17,16 +15,17 @@ import {
   PlateReleased,
 } from './level-events';
 import type { LevelId } from './level-id';
-import type { LevelSnapshot } from './level-snapshot';
+import type { LevelSnapshot, PlacedOrb } from './level-snapshot';
 import type { LevelAction } from './level-action';
 import { type Obstacles, Outline, type PlaceObstacles } from './obstacles';
 import { Direction, type Heading, TilePosition, TilePositions, WorldPosition, tileKey } from './position';
+import type { Random } from './random';
 import type { Scenery } from './scenery';
-import type { Shuffle } from './shuffle';
 import type { SwingGate } from './swing-gate';
 
-const minimumStarSpots = StarCount.of(15);
-const starsAmongSpots = StarCount.of(5);
+export const orbCount = { fewest: 3, most: 9 } as const;
+
+const placedOrb = ({ position, radius }: Orb): PlacedOrb => ({ position, radius });
 
 export class Stone {
   private constructor(readonly position: TilePosition) {}
@@ -48,10 +47,9 @@ export interface LevelDefinition {
   readonly id: LevelId;
   readonly scenery: Scenery;
   readonly stones: readonly Stone[];
-  readonly keys: readonly Key[];
+  readonly orbs: readonly Orb[];
   readonly door: Door;
   readonly hero: { readonly position: TilePosition; readonly facing: Direction };
-  readonly stars?: readonly Star[];
   readonly gates?: readonly SwingGate[];
   readonly boulders?: readonly Boulder[];
   readonly plate?: TilePosition;
@@ -61,8 +59,11 @@ export interface LevelDefinition {
 export class Level {
   private readonly definition: LevelDefinition;
   private heroEntity: Hero;
-  private remainingKeys: readonly Key[];
-  private collectedKeys: readonly Key[] = [];
+  private remainingOrbs: readonly Orb[];
+  private collectedOrbs: readonly Orb[] = [];
+  private permanent: readonly TilePosition[] = [];
+  // One area instance for the whole level, so the restoration that the last orb starts can be told apart from the others.
+  private readonly whole: Area;
   private currentDoor: Door;
   private currentGates: readonly SwingGate[];
   private currentBoulders: readonly Boulder[];
@@ -71,8 +72,6 @@ export class Level {
   private carried: { readonly from: WorldPosition; readonly to: WorldPosition } | undefined;
   private completed = false;
   private gripping = false;
-  private remainingStars: readonly Star[];
-  private collectedStars: readonly Star[] = [];
   private readonly placeObstacles: PlaceObstacles;
   private obstacles: Obstacles;
   private obstacleOutlines: readonly Outline[] = [];
@@ -86,10 +85,9 @@ export class Level {
     id,
     scenery,
     stones,
-    keys,
+    orbs,
     door,
     hero,
-    stars = [],
     gates = [],
     boulders = [],
     plate,
@@ -99,10 +97,9 @@ export class Level {
       id,
       scenery,
       stones,
-      keys,
+      orbs,
       door,
       hero,
-      stars,
       gates,
       boulders,
       ...(plate ? { plate } : {}),
@@ -110,6 +107,7 @@ export class Level {
     };
     this.id = id;
     this.scenery = scenery;
+    this.whole = Area.whole(scenery.size);
     this.stones = stones;
     this.stoneTiles = TilePositions.of(stones.map((stone) => stone.position));
     this.heroEntity = new Hero(hero.position, hero.facing);
@@ -191,25 +189,6 @@ export class Level {
         );
       }
     });
-    if (keys.length === 0) throw new RangeError('A level needs at least one key to open its door');
-    for (let row = 0; row < scenery.size.rows; row++) {
-      for (let column = 0; column < scenery.size.columns; column++) {
-        if (!keys.some((key) => key.restores.covers(TilePosition.at(column, row)))) {
-          throw new RangeError(`The keys of a level must together restore every tile, but not ${column}, ${row}`);
-        }
-      }
-    }
-    keys.forEach((key, index) => {
-      if (!this.canEnter(key.position)) throw new RangeError('Every key must lie where the hero can reach it');
-      if (this.hides(key.position)) {
-        throw new RangeError(
-          `A key must stay visible, not behind a tree or the door, at ${key.position.column}, ${key.position.row}`,
-        );
-      }
-      if (keys.findIndex((other) => other.position.equals(key.position)) !== index) {
-        throw new RangeError(`A key needs a tile of its own, at ${key.position.column}, ${key.position.row}`);
-      }
-    });
     if (!this.canEnter(hero.position)) throw new RangeError('The hero must start on open ground');
     // Gates can be opened one after another, so each must be operable once every other gate stands open.
     for (const gate of gates) {
@@ -222,75 +201,164 @@ export class Level {
     if (reachable.tiles.some((tile) => tile.row < door.left.row)) {
       throw new RangeError('The door must stand on the top edge of the playable area');
     }
-    if (keys.some((key) => !reachable.covers(key.position))) {
-      throw new RangeError('Every key must lie where the hero can reach it');
-    }
     const directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
     if (!door.footprint.some((tile) => directions.some((direction) => reachable.covers(tile.neighbor(direction))))) {
       throw new RangeError('The door must open beside a tile the hero can reach');
     }
-    stars.forEach((star, index) => {
-      if (!reachable.covers(star.position)) throw new RangeError('Every star must lie where the hero can reach it');
-      if (this.hides(star.position)) {
-        throw new RangeError(
-          `A star must stay visible, not behind a tree or the door, at ${star.position.column}, ${star.position.row}`,
-        );
+    orbs.forEach((orb, index) => {
+      const { column, row } = orb.position;
+      if (!reachable.covers(orb.position)) throw new RangeError('Every orb must lie where the hero can reach it');
+      if (this.hides(orb.position)) {
+        throw new RangeError(`An orb must stay visible, not behind a tree or the door, at ${column}, ${row}`);
       }
       if (
-        keys.some((key) => key.position.equals(star.position)) ||
-        star.position.equals(hero.position) ||
-        boulders.some((boulder) => boulder.covers(star.position)) ||
-        stars.findIndex((other) => other.equals(star)) !== index
+        orb.position.equals(hero.position) ||
+        (plate !== undefined && orb.position.equals(plate)) ||
+        gates.some((gate) => gate.covers(orb.position)) ||
+        boulders.some((boulder) => boulder.covers(orb.position)) ||
+        orbs.findIndex((other) => other.position.equals(orb.position)) !== index
       ) {
-        throw new RangeError(`A star needs a tile of its own, at ${star.position.column}, ${star.position.row}`);
+        throw new RangeError(`An orb needs a tile of its own, at ${column}, ${row}`);
+      }
+      const touched = orbs.find((other) => other !== orb && other.touches(orb));
+      if (touched) {
+        throw new RangeError(
+          `The circles of two orbs must stay apart, at ${column}, ${row} and ${touched.position.column}, ${touched.position.row}`,
+        );
       }
     });
-    this.remainingKeys = [...keys];
-    this.remainingStars = [...stars];
+    this.remainingOrbs = [...orbs];
     this.placeObstacles = obstacles;
     this.obstacles = this.placedObstacles();
   }
 
   static create(definition: LevelDefinition): Level {
+    if (definition.orbs.length === 0) throw new RangeError('A level needs at least one orb to open its door');
     return new Level(definition);
   }
 
-  static withScatteredStars(definition: Omit<LevelDefinition, 'stars'>, starCount: StarCount, shuffle: Shuffle): Level {
-    const { keys, hero } = definition;
-    const empty = new Level({ ...definition, stars: [] });
-    const spots = empty
-      .reachableTiles((tile) => empty.clearable(tile))
-      .tiles.filter(
-        (tile) =>
-          !empty.hides(tile) &&
-          !keys.some((key) => key.position.equals(tile)) &&
-          !tile.equals(hero.position) &&
-          !(definition.boulders ?? []).some((boulder) => boulder.covers(tile)),
-      );
-    if (spots.length < starCount.value) {
-      throw new RangeError(`The level has room for ${spots.length} visible, reachable stars, not ${starCount.value}`);
+  // A permanent orb lies in its place every time the level starts, and random orbs fill up the count around it.
+  // A small level holds fewer orbs than it rolled, so only authored levels are held to the fewest.
+  static withOrbs(
+    definition: Omit<LevelDefinition, 'orbs'>,
+    permanent: readonly TilePosition[],
+    random: Random,
+  ): Level {
+    const { size } = definition.scenery;
+    const roll = (choices: number): number => Math.min(Math.floor(random() * choices), choices - 1);
+    const rolledRadius = (): number => orbRadii.smallest + roll(orbRadii.largest - orbRadii.smallest + 1);
+    // A circle that does not fit shrinks before its orb is given up, so a crowded level still gets as many orbs as it can.
+    const fitting = (tile: TilePosition, placed: readonly Orb[]): Orb | undefined => {
+      for (let radius = rolledRadius(); radius >= orbRadii.smallest; radius--) {
+        const orb = Orb.at(tile, radius, size);
+        if (!placed.some((other) => other.touches(orb))) return orb;
+      }
+      return undefined;
+    };
+    const orbs: Orb[] = [];
+    for (const tile of permanent) {
+      const orb = fitting(tile, orbs);
+      if (!orb) throw new RangeError(`A permanent orb stands too close to another, at ${tile.column}, ${tile.row}`);
+      orbs.push(orb);
     }
-    return new Level({ ...definition, stars: shuffle(spots).slice(0, starCount.value).map(Star.at) });
+    const total = orbCount.fewest + roll(orbCount.most - orbCount.fewest + 1);
+    if (orbs.length > total) throw new RangeError(`A level holds at most ${orbCount.most} orbs, not ${orbs.length}`);
+    const spots = new Level({ ...definition, orbs }).orbSpots();
+    const candidatesByRadius = new Map<number, readonly { orb: Orb; weight: number }[]>();
+    while (orbs.length < total) {
+      const radius = rolledRadius();
+      let placed = false;
+      for (let shrunk = radius; shrunk >= orbRadii.smallest && !placed; shrunk--) {
+        let candidates = candidatesByRadius.get(shrunk);
+        if (!candidates) {
+          candidates = spots.map(({ tile, weight }) => ({ weight, orb: Orb.at(tile, shrunk, size) }));
+          candidatesByRadius.set(shrunk, candidates);
+        }
+        const open = candidates.filter(({ orb }) => !orbs.some((other) => other.touches(orb)));
+        if (open.length === 0) continue;
+        let pick = random() * open.reduce((sum, spot) => sum + spot.weight, 0);
+        const chosen = open.find((spot) => (pick -= spot.weight) < 0) ?? open.at(-1)!;
+        orbs.push(chosen.orb);
+        placed = true;
+      }
+      if (!placed) break;
+    }
+    if (orbs.length < orbCount.fewest) {
+      // Greedy placement can fill the only gaps before the minimum count fits, so retry with the smallest circles.
+      const fixed = permanent.map((tile) => Orb.at(tile, orbRadii.smallest, size));
+      const candidates = spots.map(({ tile }) => Orb.at(tile, orbRadii.smallest, size));
+      const fill = (placed: readonly Orb[], from: number): readonly Orb[] | undefined => {
+        if (placed.length >= orbCount.fewest) return placed;
+        for (let index = from; index < candidates.length; index++) {
+          const candidate = candidates[index]!;
+          if (placed.some((orb) => orb.touches(candidate))) continue;
+          const filled = fill([...placed, candidate], index + 1);
+          if (filled) return filled;
+        }
+        return undefined;
+      };
+      const filled = fill(fixed, 0);
+      if (filled) orbs.splice(0, orbs.length, ...filled);
+    }
+    if (orbs.length === 0) throw new RangeError('The level has no room for an orb');
+    const level = new Level({ ...definition, orbs });
+    level.permanent = [...permanent];
+    return level;
   }
 
-  // A permanent spot holds a star every time the level starts and takes one of the five from the shuffle.
-  static withStarsAmong(
-    definition: Omit<LevelDefinition, 'stars'>,
-    spots: readonly TilePosition[],
-    shuffle: Shuffle,
-    permanent: readonly TilePosition[] = [],
-  ): Level {
-    const marked = spots.length + permanent.length;
-    if (marked < minimumStarSpots.value)
-      throw new RangeError(`A level needs at least ${minimumStarSpots.value} star spots, not ${marked}`);
-    if (permanent.length >= starsAmongSpots.value)
-      throw new RangeError(
-        `A level needs fewer than ${starsAmongSpots.value} permanent star spots, not ${permanent.length}`,
-      );
-    // Every spot must be able to hold a star, not only the ones the shuffle happens to pick.
-    new Level({ ...definition, stars: [...permanent, ...spots].map(Star.at) });
-    const drawn = shuffle(spots).slice(0, starsAmongSpots.value - permanent.length);
-    return new Level({ ...definition, stars: [...permanent, ...drawn].map(Star.at) });
+  // Tiles far from the shortest walk to the door and at the end of a dead end weigh more, so random orbs draw her off the way out.
+  private orbSpots(): readonly { readonly tile: TilePosition; readonly weight: number }[] {
+    const { hero, boulders = [], gates = [], plate } = this.definition;
+    const reachable = this.reachableTiles((tile) => this.clearable(tile));
+    const sides = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
+    const steps = (from: readonly TilePosition[]): Map<number, number> => {
+      const distance = new Map(from.map((tile) => [tileKey(tile), 0]));
+      const queue = [...from];
+      for (let index = 0; index < queue.length; index++) {
+        const tile = queue[index]!;
+        for (const side of sides) {
+          const next = tile.neighbor(side);
+          if (reachable.covers(next) && !distance.has(tileKey(next))) {
+            distance.set(tileKey(next), distance.get(tileKey(tile))! + 1);
+            queue.push(next);
+          }
+        }
+      }
+      return distance;
+    };
+    const fromStart = steps([hero.position]);
+    const exits = reachable.tiles.filter((tile) => sides.some((side) => this.currentDoor.covers(tile.neighbor(side))));
+    const fromDoor = steps(exits);
+    // Every tile on a shortest walk adds up to the same length between the start and the door.
+    const shortest = Math.min(...exits.map((tile) => fromStart.get(tileKey(tile))!));
+    const route = reachable.tiles.filter(
+      (tile) => fromStart.get(tileKey(tile))! + fromDoor.get(tileKey(tile))! === shortest,
+    );
+    const offRoute = steps(route);
+    const canopy = (column: number, row: number): boolean => {
+      const tile = TilePosition.at(column, row);
+      return this.scenery.woodland.covers(tile) || this.scenery.trees.some((tree) => tree.covers(tile));
+    };
+    // A canopy above or on both sides makes an orb read as hidden even when no canopy covers its own tile.
+    const inBay = ({ column, row }: TilePosition): boolean =>
+      canopy(column - 1, row - 1) ||
+      canopy(column, row - 1) ||
+      canopy(column + 1, row - 1) ||
+      (canopy(column - 1, row) && canopy(column + 1, row));
+    return reachable.tiles
+      .filter(
+        (tile) =>
+          !this.hides(tile) &&
+          !inBay(tile) &&
+          Math.max(Math.abs(tile.column - hero.position.column), Math.abs(tile.row - hero.position.row)) > 1 &&
+          !(plate !== undefined && tile.equals(plate)) &&
+          !gates.some((gate) => gate.covers(tile)) &&
+          !boulders.some((boulder) => boulder.covers(tile)),
+      )
+      .map((tile) => {
+        const deadEnd = sides.filter((side) => reachable.covers(tile.neighbor(side))).length === 1;
+        return { tile, weight: (1 + offRoute.get(tileKey(tile))!) ** 2 * (deadEnd ? 2 : 1) };
+      });
   }
 
   // Nothing may be moving, because a snapshot taken halfway through a swing or a slide could not be played on from.
@@ -304,9 +372,8 @@ export class Level {
       return null;
     return {
       hero: { feet: this.hero.feet, facing: this.hero.facing },
-      stars: this.remainingStars.map((star) => star.position),
-      collectedStars: this.collectedStars.map((star) => star.position),
-      collectedKeys: this.collectedKeys.map((key) => key.position),
+      orbs: this.remainingOrbs.map(placedOrb),
+      collectedOrbs: this.collectedOrbs.map(placedOrb),
       gates: this.currentGates.map((gate) => (gate.isOpen ? 'open' : 'closed')),
       boulders: this.currentBoulders.map((boulder) => boulder.position),
     };
@@ -314,26 +381,24 @@ export class Level {
 
   // The level may have changed since the snapshot was taken, so a snapshot that no longer fits is refused instead of placing her somewhere impossible.
   resumed(snapshot: LevelSnapshot): Level {
-    const { keys, boulders = [], stars = [] } = this.definition;
-    if (snapshot.stars.length + snapshot.collectedStars.length !== stars.length) {
-      throw new RangeError(
-        `The level has ${stars.length} stars, not ${snapshot.stars.length + snapshot.collectedStars.length}`,
-      );
+    const { boulders = [] } = this.definition;
+    if (snapshot.orbs.length + snapshot.collectedOrbs.length === 0) {
+      throw new RangeError('A level needs at least one orb to open its door');
     }
-    // Building with every saved star runs the same checks as a fresh start, so the saved picks need no checks of their own.
+    // Building with every saved orb runs the same checks as a fresh start, so the saved orbs need no checks of their own.
     const level = new Level({
       ...this.definition,
-      stars: [...snapshot.stars, ...snapshot.collectedStars].map(Star.at),
+      orbs: [...snapshot.orbs, ...snapshot.collectedOrbs].map(({ position, radius }) =>
+        Orb.at(position, radius, this.scenery.size),
+      ),
     });
-    level.collectedStars = level.remainingStars.slice(snapshot.stars.length);
-    level.remainingStars = level.remainingStars.slice(0, snapshot.stars.length);
-    const collectedKeys = snapshot.collectedKeys.map((tile) => keys.find((key) => key.position.equals(tile)));
-    if (collectedKeys.some((key, index) => !key || collectedKeys.indexOf(key) !== index)) {
-      throw new RangeError('Every collected key must be a different key of the level');
+    level.permanent = this.permanent;
+    if (this.permanent.some((tile) => !level.remainingOrbs.some((orb) => orb.position.equals(tile)))) {
+      throw new RangeError('Every permanent orb of the level must be among the saved orbs');
     }
-    level.collectedKeys = collectedKeys.filter((key) => key !== undefined);
-    level.remainingKeys = keys.filter((key) => !level.collectedKeys.includes(key));
-    if (level.remainingKeys.length === 0) level.currentDoor = level.currentDoor.opened();
+    level.collectedOrbs = level.remainingOrbs.slice(snapshot.orbs.length);
+    level.remainingOrbs = level.remainingOrbs.slice(0, snapshot.orbs.length);
+    if (level.remainingOrbs.length === 0) level.currentDoor = level.currentDoor.opened();
     if (snapshot.gates.length !== level.currentGates.length) {
       throw new RangeError(`The level has ${level.currentGates.length} gates, not ${snapshot.gates.length}`);
     }
@@ -367,8 +432,7 @@ export class Level {
       fits.y !== heroFeet.y ||
       sunk ||
       level.currentDoor.covers(tile) ||
-      level.remainingStars.some((star) => star.position.equals(tile)) ||
-      level.remainingKeys.some((key) => key.position.equals(tile))
+      level.remainingOrbs.some((orb) => orb.position.equals(tile))
     ) {
       throw new RangeError(`The hero needs open ground, at ${tile.column}, ${tile.row}`);
     }
@@ -387,20 +451,18 @@ export class Level {
     return this.heroEntity.state;
   }
 
-  get stars(): readonly Star[] {
-    return this.remainingStars;
+  get orbs(): readonly Orb[] {
+    return this.remainingOrbs;
   }
 
-  get collected(): readonly Star[] {
-    return this.collectedStars;
+  get permanentOrbs(): readonly TilePosition[] {
+    return this.permanent;
   }
 
-  get keys(): readonly Key[] {
-    return this.remainingKeys;
-  }
-
+  // The last orb brings back the whole level, so nothing stays faded between the circles once every orb is picked up.
   get restored(): readonly Area[] {
-    return this.collectedKeys.map((key) => key.restores);
+    if (this.remainingOrbs.length === 0) return [this.whole];
+    return this.collectedOrbs.map((orb) => orb.restores);
   }
 
   get isPlateDown(): boolean {
@@ -497,9 +559,9 @@ export class Level {
     return this.completed;
   }
 
-  // Collecting the last key only allows the door to open, because it should not let the hero through before it is seen to open.
+  // Collecting the last orb only allows the door to open, because it should not let the hero through before it is seen to open.
   openDoor(): void {
-    if (this.remainingKeys.length > 0) throw new Error('The door opens only once every key is picked up');
+    if (this.remainingOrbs.length > 0) throw new Error('The door opens only once every orb is picked up');
     this.currentDoor = this.currentDoor.opened();
     this.obstacles = this.placedObstacles();
   }
@@ -516,17 +578,12 @@ export class Level {
     const tile = this.heroEntity.position;
     const events: LevelEvent[] = [...this.followPlate(), ...this.swingGates()];
     if (tile.equals(before)) return events;
-    const star = this.remainingStars.find((candidate) => candidate.position.equals(tile));
-    if (star) {
-      this.remainingStars = this.remainingStars.filter((candidate) => candidate !== star);
-      this.collectedStars = [...this.collectedStars, star];
-      events.push(new StarCollected(this.id, star.position));
-    }
-    const key = this.remainingKeys.find((candidate) => candidate.position.equals(tile));
-    if (key) {
-      this.remainingKeys = this.remainingKeys.filter((candidate) => candidate !== key);
-      this.collectedKeys = [...this.collectedKeys, key];
-      events.push(new KeyCollected(this.id, key.position, key.restores));
+    const orb = this.remainingOrbs.find((candidate) => candidate.position.equals(tile));
+    if (orb) {
+      this.remainingOrbs = this.remainingOrbs.filter((candidate) => candidate !== orb);
+      this.collectedOrbs = [...this.collectedOrbs, orb];
+      const last = this.remainingOrbs.length === 0;
+      events.push(new OrbCollected(this.id, orb.position, last ? this.restored[0]! : orb.restores, last));
     }
     if (this.currentDoor.covers(tile)) {
       this.completed = true;

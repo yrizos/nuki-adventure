@@ -3,7 +3,7 @@ import { audioWindow } from '../testing/audio-context';
 import { memoryStorage } from '../../progress/testing/memory-storage';
 import { Sound } from './sound';
 
-const events = ['footstep', 'star', 'key', 'restoring', 'door'] as const;
+const events = ['footstep', 'orb', 'restoring', 'door'] as const;
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -57,7 +57,7 @@ test('the hum keeps sounding at the volume asked for until it is set to zero or 
   expect(page.audio()!.sounding()).toEqual([]);
 });
 
-test.each(['star', 'key', 'restoring', 'gate', 'door'] as const)('%s vibrates even while sound is off', (event) => {
+test.each(['orb', 'restoring', 'gate', 'door'] as const)('%s vibrates even while sound is off', (event) => {
   const page = audioWindow();
   const sound = new Sound(page.root);
   sound[event]();
@@ -67,10 +67,10 @@ test.each(['star', 'key', 'restoring', 'gate', 'door'] as const)('%s vibrates ev
   expect(page.vibrate).toHaveBeenCalledTimes(2);
 });
 
-test('the last key and repeated hints do not vibrate', () => {
+test('the last orb and repeated hints do not vibrate', () => {
   const page = audioWindow();
   const sound = new Sound(page.root);
-  sound.key(true);
+  sound.orb(true);
   sound.hint();
   expect(page.vibrate).not.toHaveBeenCalled();
   sound.hint(true);

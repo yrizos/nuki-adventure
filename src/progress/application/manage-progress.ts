@@ -2,7 +2,7 @@ import { GameProgress } from '../domain/game-progress';
 import { LevelOrder } from '../domain/level-order';
 import { Playthrough, PlayTime } from '../domain/playthrough';
 import type { ProgressRepository } from '../domain/progress-repository';
-import { type LevelId, type LevelSnapshot, StarCount } from '../../level';
+import type { LevelId, LevelSnapshot } from '../../level';
 
 export interface LevelProgressView {
   readonly id: LevelId;
@@ -13,8 +13,6 @@ export interface LevelProgressView {
 
 export interface CompletedRun {
   readonly playFrames: number;
-  readonly starsCollected: number;
-  readonly starCount: number;
 }
 
 export interface SuspendedRun {
@@ -57,11 +55,7 @@ export class ManageProgress {
   }
 
   complete(level: LevelId, run: CompletedRun): void {
-    const playthrough = Playthrough.of(
-      PlayTime.ofFrames(run.playFrames),
-      StarCount.of(run.starsCollected),
-      StarCount.of(run.starCount),
-    );
+    const playthrough = Playthrough.of(PlayTime.ofFrames(run.playFrames));
     this.change((progress) => progress.complete(level, playthrough, this.order));
   }
 

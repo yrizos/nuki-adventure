@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import { Area, Key, Star } from '../../level/domain/collectibles';
+import { Area, Orb } from '../../level/domain/collectibles';
 import { Direction, Heading, TilePosition } from '../../level/domain/position';
 import { Door } from '../../level/domain/door';
 import { Ground, LevelSize, Scenery } from '../../level/domain/scenery';
@@ -11,8 +11,9 @@ import { ManageProgress, type SuspendedRun } from '../../progress/application/ma
 import { check2dObstacles } from '../../level/infrastructure/check2d-obstacles';
 import { levelFromLayout } from '../../level/content/level-layout';
 import { secondLevel, secondLevelId } from '../../level/content/second';
-import { keepOrder } from '../../level/testing/star-spots';
+import { keepOrder, lowestRoll } from '../../level/testing/draws';
 import { pathTo, same } from '../../level/testing/walk-level';
+import type { PlacedOrb } from '../../level/domain/level-snapshot';
 import { InMemoryLevelRepository } from '../../level/infrastructure/in-memory-level-repository';
 import { LocalProgressRepository } from '../../progress/infrastructure/local-progress-repository';
 import { audioWindow } from '../testing/audio-context';
@@ -35,27 +36,25 @@ import { introLength, skipLength } from '../screens/intro-timeline';
 import { GameSession, humVolume, messages } from './game-session';
 import { HeroAnimator } from '../world/hero-animator';
 import { MessageBox } from '../screens/message-box';
-import { neutralCode, palette } from '../graphics/palette';
 import { lighten, Picture } from '../graphics/picture';
 import { cameraPosition, heroPixels } from '../world/world-geometry';
 import { WorldPainter } from '../world/world-painter';
-import { closingLength, doorOpeningLength, restorationLength } from '../world/world-transition';
+import { areaRestorationLength, closingLength, doorOpeningLength, restorationLength } from '../world/world-transition';
 
 const gateSwingLength = 16;
 
-const area = (keep: (position: TilePosition) => boolean): Area =>
-  Area.of(Array.from({ length: 1600 }, (_, index) => TilePosition.at(index % 40, Math.floor(index / 40))).filter(keep));
-const everywhere = area(() => true);
-const leftHalf = area((position) => position.column < 2);
-const rightHalf = area((position) => position.column >= 2);
+const at = TilePosition.at;
+const orbAt = (column: number, radius = 4): PlacedOrb => ({ position: at(column, 5), radius });
+// Two circles stay apart only with twelve tiles between their orbs, so a level with two orbs is wider.
+const twoOrbs = [orbAt(1), orbAt(13)];
+const wide = LevelSize.of(15, 6);
 
 // The page drives the joystick through the keyboard, so the touch joystick library only needs to accept listeners.
 vi.mock('nipplejs', () => ({ create: () => ({ on: () => {}, destroy: () => {} }) }));
 
 function gameSession(
-  keys: readonly Key[] = [Key.at(TilePosition.at(1, 0), everywhere)],
-  stars: readonly Star[] = [Star.at(TilePosition.at(3, 5))],
-  size: LevelSize = LevelSize.of(5, 6),
+  orbs: readonly PlacedOrb[] = [orbAt(1)],
+  size: LevelSize = orbs.length > 1 ? wide : LevelSize.of(5, 6),
   arrives = false,
 ) {
   const levelId = LevelId.of('session');
@@ -66,8 +65,7 @@ function gameSession(
     heading: vi.fn<() => Heading | null>(() => null),
   };
   const sound = {
-    star: vi.fn(),
-    key: vi.fn(),
+    orb: vi.fn(),
     hum: vi.fn(),
     door: vi.fn(),
     footstep: vi.fn(),
@@ -94,11 +92,10 @@ function gameSession(
       id: levelId,
       scenery,
       stones: [],
-      keys: keys.map((key) => Key.at(TilePosition.at(key.position.column, 5), key.restores)),
+      orbs: orbs.map(({ position, radius }) => Orb.at(position, radius, size)),
       door: Door.closedAt(TilePosition.at(1, 0)),
       hero: { position: TilePosition.at(0, 5), facing: Direction.Right },
       obstacles: check2dObstacles,
-      stars,
     });
     play = new PlayLevel(new InMemoryLevelRepository([level]));
     return play;
@@ -127,7 +124,7 @@ function gameSession(
   };
   const walkUntil = (direction: Direction, done: () => boolean): void => {
     controls.heading.mockReturnValue(Heading.of(direction));
-    for (let frame = 0; frame < 80 && !done(); frame++) tick();
+    for (let frame = 0; frame < 240 && !done(); frame++) tick();
     expect(done()).toBe(true);
     controls.heading.mockReturnValue(null);
   };
@@ -157,25 +154,36 @@ function gameSession(
 }
 
 describe('the game session', () => {
-  test('starts the restoration sound on the key pickup tick', () => {
+  test('starts the restoration sound on the orb pickup tick', () => {
     const subject = gameSession();
-    subject.walkUntil(Direction.Right, () => subject.level.keys.length === 0);
-    expect(subject.sound.key).toHaveBeenCalledExactlyOnceWith(true);
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
+    expect(subject.sound.orb).toHaveBeenCalledExactlyOnceWith(true);
     expect(subject.sound.restoring).toHaveBeenCalledOnce();
   });
 
-  test('hums beside the key and falls silent once it is picked up', () => {
+  test('hums beside the orb and falls silent once it is picked up', () => {
     const subject = gameSession();
     subject.tick();
     expect(subject.sound.hum.mock.lastCall![0]).toBeGreaterThan(0);
-    subject.walkUntil(Direction.Right, () => subject.level.keys.length === 0);
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
     expect(subject.sound.hum).toHaveBeenLastCalledWith(0);
   });
 
-  test('starts painting restored world colors on the key pickup tick', () => {
+  test('hums toward whichever orb is nearest', () => {
+    const subject = gameSession(twoOrbs);
+    subject.tick();
+    expect(subject.sound.hum.mock.lastCall![0]).toBeGreaterThan(0);
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 1);
+    subject.advance(areaRestorationLength(wide, at(1, 5), subject.level.restored[0]!));
+    expect(subject.sound.hum.mock.lastCall![0]).toBe(0);
+    subject.walkUntil(Direction.Right, () => subject.level.hero.position.equals(at(11, 5)));
+    expect(subject.sound.hum.mock.lastCall![0]).toBeGreaterThan(0);
+  });
+
+  test('starts painting restored world colors on the orb pickup tick', () => {
     const subject = gameSession();
-    const key = subject.level.keys[0]!;
-    subject.walkUntil(Direction.Right, () => subject.level.keys.length === 0);
+    const orb = subject.level.orbs[0]!;
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
     const actual = new Picture(224, 448);
     const expected = new Picture(224, 448);
     const faded = new Picture(224, 448);
@@ -185,114 +193,87 @@ describe('the game session', () => {
       hero: subject.normalAnimator.pose(subject.session.level.hero, subject.frames),
     };
     const painter = new WorldPainter(scene.level);
-    painter.paintRestoring(expected, scene, key.position, 1, [], [key.restores]);
+    painter.paintRestoring(expected, scene, orb.position, 1, [], subject.level.restored);
     painter.paint(faded, scene, []);
     subject.session.paint(actual);
     const camera = cameraPosition(scene.level, actual.width, actual.height);
     const offset =
-      ((key.position.row * 32 + 16 - camera.y) * actual.width + key.position.column * 32 + 20 - camera.x) * 4;
+      ((orb.position.row * 32 + 16 - camera.y) * actual.width + orb.position.column * 32 + 20 - camera.x) * 4;
     const pixel = (picture: Picture) => [...picture.pixels.subarray(offset, offset + 4)];
     expect(pixel(expected)).not.toEqual(pixel(faded));
     expect(pixel(actual)).toEqual(pixel(expected));
   });
 
-  test('walks through key pickup and restoration just as through a star pickup', () => {
+  test('walks through an orb pickup and its restoration without slowing her down', () => {
     const subject = gameSession();
-    const starPickup = gameSession([Key.at(TilePosition.at(4, 0), everywhere)], [Star.at(TilePosition.at(1, 5))]);
+    const elsewhere = gameSession([{ position: at(4, 0), radius: 4 }]);
     subject.controls.heading.mockReturnValue(Heading.of(Direction.Right));
-    starPickup.controls.heading.mockReturnValue(Heading.of(Direction.Right));
-    for (let frame = 0; frame < 40 && subject.level.keys.length > 0; frame++) {
+    elsewhere.controls.heading.mockReturnValue(Heading.of(Direction.Right));
+    for (let frame = 0; frame < 80; frame++) {
       subject.tick();
-      starPickup.tick();
-      expect(subject.session.level.hero.feet).toEqual(starPickup.session.level.hero.feet);
+      elsewhere.tick();
+      expect(subject.session.level.hero.feet).toEqual(elsewhere.session.level.hero.feet);
       expect(subject.session.level.hero.isWalking).toBe(true);
     }
-    expect(subject.session.level.keys).toHaveLength(0);
-    expect(starPickup.session.level.stars).toHaveLength(0);
-    for (let frame = 0; frame < 40; frame++) {
-      subject.tick();
-      starPickup.tick();
-      expect(subject.session.level.hero.feet).toEqual(starPickup.session.level.hero.feet);
-      expect(subject.session.level.hero.isWalking).toBe(true);
-    }
+    expect([subject.session.level.orbs, elsewhere.session.level.orbs.length]).toEqual([[], 1]);
   });
 
-  test.each([1, 2])(
-    'congratulates a key pickup with %s keys in the level without claiming the door is open',
-    (count) => {
-      const subject = gameSession([
-        Key.at(TilePosition.at(1, 0), count === 1 ? everywhere : leftHalf),
-        ...Array.from({ length: count - 1 }, () => Key.at(TilePosition.at(2, 0), rightHalf)),
-      ]);
-      subject.walkUntil(Direction.Right, () => subject.level.keys.length < count);
-      expect(subject.session.messageText).toContain('ΜΠΡΑΒΟ!');
-      expect(subject.session.messageText).not.toContain('Η ΠΟΡΤΑ');
-      expect(subject.session.level.door.isOpen).toBe(false);
-    },
-  );
+  test('shows no message for an orb that is not the last, and does not open the door', () => {
+    const subject = gameSession(twoOrbs);
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 1);
+    expect(subject.session.messageText).toBe('');
+    expect(subject.level.door.isOpen).toBe(false);
+    expect(subject.sound.orb).toHaveBeenCalledExactlyOnceWith(false);
+  });
 
-  test('leaving while colors spread keeps the moment before the key was picked up', () => {
+  test('tells her on the last orb that the colors are back and the door is open', () => {
+    const subject = gameSession(twoOrbs);
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
+    expect(subject.session.messageText).toBe('ΤΑ ΧΡΩΜΑΤΑ ΕΠΕΣΤΡΕΨΑΝ!\nΗ ΠΟΡΤΑ ΑΝΟΙΞΕ!');
+    expect(subject.sound.orb.mock.calls).toEqual([[false], [true]]);
+    expect(subject.level.restored).toEqual([Area.whole(wide)]);
+  });
+
+  test('leaving while colors spread keeps the moment before the orb was picked up', () => {
     const subject = gameSession();
     subject.move(Direction.Right);
     subject.session.suspend();
     const [, { snapshot, playFrames }] = subject.progress.suspend.mock.lastCall!;
-    expect(subject.level.keys).toEqual([]);
-    expect(snapshot.collectedKeys).toEqual([]);
+    expect(subject.level.orbs).toEqual([]);
+    expect(snapshot.collectedOrbs).toEqual([]);
     expect(playFrames).toBeLessThan(subject.frames);
   });
 
-  test('keeps walking and collecting stars while colors spread', () => {
+  test('keeps walking while colors spread', () => {
     const subject = gameSession();
     subject.move(Direction.Right);
-    expect(subject.sound.key).toHaveBeenCalledOnce();
+    expect(subject.sound.orb).toHaveBeenCalledOnce();
     expect(subject.session.messageText).toBe(messages.colorsBack);
     subject.move(Direction.Right);
     subject.move(Direction.Right);
     expect(subject.level.hero.position).toEqual(TilePosition.at(3, 5));
-    expect(subject.sound.star).toHaveBeenCalledOnce();
     expect(subject.sound.restoring).toHaveBeenCalledOnce();
     expect(subject.sound.footstep).toHaveBeenCalledTimes(3);
   });
 
-  test('distinguishes ordinary star pickups from the final star', () => {
-    const subject = gameSession(undefined, [Star.at(TilePosition.at(2, 5)), Star.at(TilePosition.at(3, 5))]);
-    subject.move(Direction.Right);
-    subject.move(Direction.Right);
-    expect(subject.level.stars).toHaveLength(1);
-    subject.move(Direction.Right);
-    expect(subject.level.stars).toHaveLength(0);
-    expect(subject.sound.star.mock.calls).toEqual([[false], [true]]);
+  test('plays on once the circle of an orb has spread, long before the whole level would have', () => {
+    const subject = gameSession(twoOrbs);
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 1);
+    const circle = areaRestorationLength(wide, at(1, 5), subject.level.restored[0]!);
+    expect(circle).toBeLessThan(restorationLength(wide, at(1, 5)));
+    subject.advance(circle + 1);
+    subject.session.suspend();
+    expect(subject.progress.suspend.mock.lastCall![1].playFrames).toBe(subject.frames);
   });
 
-  test('sounds the sole star as final only once across later ticks and revisits', () => {
-    const subject = gameSession();
-    for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
-    expect(subject.level.stars).toHaveLength(0);
-    subject.advance(60);
-    subject.move(Direction.Left);
-    subject.move(Direction.Right);
-    expect(subject.sound.star).toHaveBeenCalledExactlyOnceWith(true);
-  });
-
-  test('tells her to find the other key until she has both', () => {
-    const subject = gameSession([Key.at(TilePosition.at(1, 0), leftHalf), Key.at(TilePosition.at(2, 0), rightHalf)]);
-    subject.move(Direction.Right);
-    expect(subject.session.messageText).toBe(messages.someColorsBack);
-    expect(subject.level.door.isOpen).toBe(false);
-    subject.move(Direction.Right);
-    expect(subject.session.messageText).toBe(messages.colorsBack);
-    expect(subject.level.door.isOpen).toBe(false);
-    expect(subject.sound.key.mock.calls).toEqual([[false], [true]]);
-  });
-
-  test('opens the door only once color has drawn it open from the last key, however long ago the first was taken', () => {
-    const subject = gameSession([Key.at(TilePosition.at(1, 0), leftHalf), Key.at(TilePosition.at(2, 0), rightHalf)]);
+  test('opens the door only once color has drawn it open from the last orb, however long ago the first was taken', () => {
+    const subject = gameSession(twoOrbs);
     const { door, scenery } = subject.level;
-    const [first, second] = subject.level.keys;
-    subject.walkUntil(Direction.Right, () => subject.level.keys.length === 1);
+    const [first, second] = subject.level.orbs;
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 1);
     subject.advance(restorationLength(scenery.size, first!.position));
     expect(subject.level.door.isOpen).toBe(false);
-    subject.walkUntil(Direction.Right, () => subject.level.keys.length === 0);
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
     subject.advance(doorOpeningLength(door, scenery.size, second!.position) - 1);
     expect(subject.level.door.isOpen).toBe(false);
     subject.advance(1);
@@ -318,7 +299,7 @@ describe('the game session', () => {
     expect(subject.report.completed).not.toHaveBeenCalled();
     subject.advance(1);
     expect(subject.report.completed).toHaveBeenCalledOnce();
-    const playthrough = { playFrames: completedAt - 1, starsCollected: 1, starCount: 1 };
+    const playthrough = { playFrames: completedAt - 1 };
     expect(subject.progress.complete).toHaveBeenCalledExactlyOnceWith(subject.level.id, playthrough);
     subject.press('a');
     subject.advance(10);
@@ -336,8 +317,7 @@ function gatedSession(arrives = false) {
     heading: vi.fn<() => Heading | null>(() => null),
   };
   const sound = {
-    star: vi.fn(),
-    key: vi.fn(),
+    orb: vi.fn(),
     hum: vi.fn(),
     door: vi.fn(),
     footstep: vi.fn(),
@@ -348,12 +328,10 @@ function gatedSession(arrives = false) {
   };
   const level = levelFromLayout(
     id,
-    ['.DDD.', '..K..', '.....', 'WFGFW', '..H..', '.....'],
+    ['.DDD.', '..Q..', '.....', 'WFGFW', '..H..', '.....'],
     keepOrder,
     check2dObstacles,
-    {
-      keys: { K: { restores: () => true } },
-    },
+    lowestRoll,
   );
   const progress = { reach: vi.fn(), complete: vi.fn(), suspend: vi.fn<(level: LevelId, run: SuspendedRun) => void>() };
   const session = new GameSession(
@@ -387,12 +365,11 @@ test('a game session passes its randomness to the world painter to float the wat
   new GameSession(
     {
       id: secondLevelId,
-      start: () => new PlayLevel(new InMemoryLevelRepository([secondLevel(keepOrder, check2dObstacles)])),
+      start: () => new PlayLevel(new InMemoryLevelRepository([secondLevel(keepOrder, check2dObstacles, lowestRoll)])),
     },
     { takePress: vi.fn(), isHeld: vi.fn(), heading: vi.fn() },
     {
-      star: vi.fn(),
-      key: vi.fn(),
+      orb: vi.fn(),
       hum: vi.fn(),
       door: vi.fn(),
       footstep: vi.fn(),
@@ -535,7 +512,7 @@ describe('a swing gate in the game session', () => {
 });
 
 describe('the second level in the game session', () => {
-  test('is played from the arrival through the gate, to the key and out of the door into the next level', () => {
+  test('is played from the arrival through the gate, to every orb and out of the door into the next level', () => {
     const pressed = new Set<'a' | 'b'>();
     let heading: Heading | null = null;
     const controls = {
@@ -544,8 +521,7 @@ describe('the second level in the game session', () => {
       heading: () => heading,
     };
     const sound = {
-      star: vi.fn(),
-      key: vi.fn(),
+      orb: vi.fn(),
       hum: vi.fn(),
       door: vi.fn(),
       footstep: vi.fn(),
@@ -558,7 +534,7 @@ describe('the second level in the game session', () => {
     const session = new GameSession(
       {
         id: secondLevelId,
-        start: () => new PlayLevel(new InMemoryLevelRepository([secondLevel(keepOrder, check2dObstacles)])),
+        start: () => new PlayLevel(new InMemoryLevelRepository([secondLevel(keepOrder, check2dObstacles, lowestRoll)])),
         arrives: true,
       },
       controls,
@@ -592,7 +568,12 @@ describe('the second level in the game session', () => {
     for (let frame = 1; frame < gateSwingLength; frame++) session.tick();
     expect(session.level.gates[0]?.state).toBe('open');
     walkTo((tile) => tile.equals(TilePosition.at(21, 6)));
-    expect(sound.key).toHaveBeenCalledOnce();
+    expect(sound.orb).toHaveBeenCalled();
+    while (session.level.orbs.length > 0) {
+      const next = session.level.orbs[0]!.position;
+      walkTo((tile) => tile.equals(next));
+    }
+    expect(sound.orb).toHaveBeenLastCalledWith(true);
     for (let frame = 0; frame < 600 && !session.level.door.isOpen; frame++) session.tick();
     expect(session.level.door.isOpen).toBe(true);
     walkTo((tile) => session.level.door.covers(tile));
@@ -603,8 +584,7 @@ describe('the second level in the game session', () => {
 });
 
 describe('the magical arrival', () => {
-  const arriving = (stars: readonly Star[] = [Star.at(TilePosition.at(3, 5))]) =>
-    gameSession(undefined, stars, undefined, true);
+  const arriving = (orbs: readonly PlacedOrb[] = [orbAt(1)]) => gameSession(orbs, undefined, true);
 
   test('plays its chime once when the session starts', () => {
     expect(arriving().sound.arrival).toHaveBeenCalledOnce();
@@ -623,12 +603,12 @@ describe('the magical arrival', () => {
   });
 
   test('collects nothing beside the start until play begins', () => {
-    const subject = arriving([Star.at(TilePosition.at(0, 4))]);
+    const subject = arriving([{ position: at(0, 4), radius: 4 }]);
     subject.controls.heading.mockReturnValue(Heading.of(Direction.Up));
     subject.advance(arrivalLength);
-    expect(subject.level.stars).toHaveLength(1);
-    expect(subject.sound.star).not.toHaveBeenCalled();
-    subject.walkUntil(Direction.Up, () => subject.level.stars.length === 0);
+    expect(subject.level.orbs).toHaveLength(1);
+    expect(subject.sound.orb).not.toHaveBeenCalled();
+    subject.walkUntil(Direction.Up, () => subject.level.orbs.length === 0);
   });
 
   test('keeps its frames out of the play time', () => {
@@ -638,12 +618,12 @@ describe('the magical arrival', () => {
     for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
     const completedAt = subject.frames;
     subject.advance(closingLength);
-    const playthrough = { playFrames: completedAt - 1 - arrivalLength, starsCollected: 1, starCount: 1 };
+    const playthrough = { playFrames: completedAt - 1 - arrivalLength };
     expect(subject.progress.complete).toHaveBeenCalledExactlyOnceWith(subject.level.id, playthrough);
   });
 });
 
-function gamePage({ secondUnlocked = false, arrives = false, star = false, storage = memoryStorage() } = {}) {
+function gamePage({ secondUnlocked = false, arrives = false, sideOrb = false, storage = memoryStorage() } = {}) {
   FakeDocument.stubGlobals();
   audioWindow();
   const display = stubDisplay(1);
@@ -714,22 +694,24 @@ function gamePage({ secondUnlocked = false, arrives = false, star = false, stora
       arrives,
       start: () => {
         started.push(name);
+        // A second orb lies a step to the right of the start, with the first moved far enough away for both circles.
+        const size = LevelSize.of(sideOrb ? 16 : 3, 5);
+        const orbs = sideOrb ? [at(2, 4), at(15, 1)] : [at(1, 3)];
         const play = new PlayLevel(
           new InMemoryLevelRepository([
             Level.create({
               id,
               scenery: Scenery.of(
-                LevelSize.of(3, 5),
-                Array.from({ length: 5 }, () => Array<Ground>(3).fill(Ground.Path)),
+                size,
+                Array.from({ length: 5 }, () => Array<Ground>(size.columns).fill(Ground.Path)),
                 [],
                 [],
               ),
               stones: [],
-              keys: [Key.at(TilePosition.at(1, 3), everywhere)],
+              orbs: orbs.map((position) => Orb.at(position, 4, size)),
               door: Door.closedAt(TilePosition.at(0, 0)),
               hero: { position: TilePosition.at(1, 4), facing: Direction.Up },
               obstacles: check2dObstacles,
-              ...(star ? { stars: [Star.at(TilePosition.at(2, 4))] } : {}),
             }),
           ]),
         );
@@ -743,7 +725,7 @@ function gamePage({ secondUnlocked = false, arrives = false, star = false, stora
     new LocalProgressRepository(storage),
     levels.map(({ id }) => id),
   );
-  if (secondUnlocked) progress.complete(levels[0]!.id, { playFrames: 60, starsCollected: 0, starCount: 0 });
+  if (secondUnlocked) progress.complete(levels[0]!.id, { playFrames: 60 });
   startGame(root as unknown as Document, levels, progress, () => 1);
   // The level picker reads every level once to draw its picture, which starts no session.
   started.length = 0;
@@ -922,26 +904,26 @@ describe('the game page', () => {
   });
 
   test('ΣΥΝΕΧΕΙΑ goes on from where she left the level through the menu, with the play time it had', () => {
-    const page = gamePage({ secondUnlocked: true, star: true });
+    const page = gamePage({ secondUnlocked: true, sideOrb: true });
     expect(page.continueButton.disabled).toBe(true);
     page.pickLevel();
     page.choose(2);
     page.hold('ArrowRight', 20);
-    page.frames(2);
-    const { hero, collected } = page.level;
-    expect(collected).toHaveLength(1);
+    page.frames(100);
+    const { hero, orbs, restored } = page.level;
+    expect([orbs.length, restored.length]).toEqual([1, 1]);
     page.openMenu();
-    expect(page.progress.levelInProgress()?.playFrames).toBe(22);
+    expect(page.progress.levelInProgress()?.playFrames).toBe(120);
     page.frames(30);
     expect(page.continueButton.disabled).toBe(false);
     expect(page.focused()).toBe(page.continueButton);
     page.continueGame();
     expect(page.started).toEqual(['two', 'two']);
     expect([page.level.hero.feet, page.level.hero.facing]).toEqual([hero.feet, Direction.Right]);
-    expect([page.level.stars, page.level.collected]).toEqual([[], collected]);
+    expect([page.level.orbs, page.level.restored]).toEqual([orbs, restored]);
     page.frames(10);
     page.openMenu();
-    expect(page.progress.levelInProgress()?.playFrames).toBe(32);
+    expect(page.progress.levelInProgress()?.playFrames).toBe(130);
   });
 
   test('ΣΥΝΕΧΕΙΑ shows her where she was at once, without the magical arrival', () => {
@@ -961,20 +943,20 @@ describe('the game page', () => {
     'keeps her place and play time for the next visit after the page fires %s',
     (leave) => {
       const storage = memoryStorage();
-      const page = gamePage({ secondUnlocked: true, star: true, storage });
+      const page = gamePage({ secondUnlocked: true, sideOrb: true, storage });
       page.pickLevel();
       page.choose(2);
       page.hold('ArrowRight', 20);
-      page.frames(2);
+      page.frames(100);
       const { hero } = page.level;
       page[leave]();
-      const next = gamePage({ star: true, storage });
+      const next = gamePage({ sideOrb: true, storage });
       next.continueGame();
       expect(next.started).toEqual(['two']);
       expect(next.level.hero.feet).toEqual(hero.feet);
-      expect(next.level.collected).toHaveLength(1);
+      expect(next.level.restored).toHaveLength(1);
       next.openMenu();
-      expect(next.progress.levelInProgress()?.playFrames).toBe(22);
+      expect(next.progress.levelInProgress()?.playFrames).toBe(120);
     },
   );
 
@@ -992,7 +974,7 @@ describe('the game page', () => {
   });
 
   test('the level picker starts the level afresh and forgets where she was', () => {
-    const page = gamePage({ secondUnlocked: true, star: true });
+    const page = gamePage({ secondUnlocked: true, sideOrb: true });
     page.pickLevel();
     page.choose(2);
     page.hold('ArrowRight', 20);
@@ -1000,7 +982,7 @@ describe('the game page', () => {
     page.pickLevel();
     page.choose(2);
     expect(page.level.hero.position).toEqual(TilePosition.at(1, 4));
-    expect(page.level.collected).toEqual([]);
+    expect(page.level.restored).toEqual([]);
     page.openMenu();
     expect(page.progress.levelInProgress()).toBeNull();
     page.continueGame();
@@ -1008,7 +990,7 @@ describe('the game page', () => {
   });
 
   test('ΝΕΟ ΠΑΙΧΝΙΔΙ forgets where she was', () => {
-    const page = gamePage({ star: true });
+    const page = gamePage({ sideOrb: true });
     page.newGame();
     page.skipIntro();
     page.hold('ArrowRight', 20);
@@ -1017,7 +999,7 @@ describe('the game page', () => {
     page.confirm();
     page.skipIntro();
     expect(page.level.hero.position).toEqual(TilePosition.at(1, 4));
-    expect(page.level.collected).toEqual([]);
+    expect(page.level.restored).toEqual([]);
   });
 
   test('leaving a level as its door closes behind her leaves nothing to resume', () => {
@@ -1276,14 +1258,6 @@ describe('the game loop', () => {
   });
 });
 
-function colorAt(picture: Picture, column: number, row: number): string {
-  const offset = (row * picture.width + column) * 4;
-  return `#${[...picture.pixels.subarray(offset, offset + 3)]
-    .map((value) => value.toString(16).padStart(2, '0'))
-    .join('')
-    .toUpperCase()}`;
-}
-
 async function checksum(picture: Picture): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', picture.pixels.slice());
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
@@ -1304,7 +1278,7 @@ function unexpectedHeroPixels(subject: ReturnType<typeof gameSession>, above: nu
   const scene = { level, frame: subject.frames, hero: pose };
   const painter = new WorldPainter(level);
   painter.paint(faded, scene, []);
-  painter.paint(colored, scene, [everywhere]);
+  painter.paint(colored, scene, [Area.whole(level.scenery.size)]);
   subject.session.paint(actual);
   const camera = cameraPosition(level, actual.width, actual.height);
   const hero = heroPixels(level);
@@ -1324,37 +1298,32 @@ function unexpectedHeroPixels(subject: ReturnType<typeof gameSession>, above: nu
 }
 
 describe('whole frames of the game session', () => {
-  test.each(['walking', 'idle'] as const)('paints the normal %s hero pose after key pickup', (motion) => {
+  test.each(['walking', 'idle'] as const)('paints the normal %s hero pose after orb pickup', (motion) => {
     const subject = gameSession();
-    subject.walkUntil(Direction.Right, () => subject.level.keys.length === 0);
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
     if (motion === 'idle') subject.tick();
     expect(unexpectedHeroPixels(subject, 0, 32)).toBe(0);
   });
 
-  test.each(['walking', 'idle'] as const)('paints no key above the %s hero after pickup', (motion) => {
+  test.each(['walking', 'idle'] as const)('paints no orb above the %s hero after pickup', (motion) => {
     const subject = gameSession();
-    subject.walkUntil(Direction.Right, () => subject.level.keys.length === 0);
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
     if (motion === 'idle') subject.tick();
     expect(unexpectedHeroPixels(subject, 18, 18)).toBe(0);
   });
 
   test.each([false, true])(
-    'paints spreading colors with the normal hero and message, interrupted: %s',
-    (interrupted) => {
-      const subject = interrupted
-        ? gameSession([Key.at(TilePosition.at(1, 0), leftHalf), Key.at(TilePosition.at(2, 0), rightHalf)])
-        : gameSession();
-      const keys = subject.level.keys;
-      const key = keys.at(-1)!;
-      const restored = interrupted ? [keys[0]!.restores] : [];
-      subject.walkUntil(Direction.Right, () => subject.level.keys.length < keys.length);
-      const firstPickupFrame = subject.frames - 1;
-      if (interrupted) {
-        subject.walkUntil(Direction.Right, () => subject.level.keys.length === 0);
-        expect(subject.frames - 1 - firstPickupFrame).toBeLessThan(
-          restorationLength(subject.level.scenery.size, keys[0]!.position),
-        );
+    'paints spreading colors with the normal hero and message, after an earlier orb: %s',
+    (earlier) => {
+      const subject = gameSession(earlier ? twoOrbs : undefined);
+      const orbs = subject.level.orbs;
+      const last = orbs.at(-1)!;
+      if (earlier) {
+        subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 1);
+        subject.advance(restorationLength(subject.level.scenery.size, orbs[0]!.position));
       }
+      const restored = earlier ? [orbs[0]!.restores] : [];
+      subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
       const pickupFrame = subject.frames - 1;
       subject.advance(20);
       const actual = new Picture(224, 224);
@@ -1365,10 +1334,14 @@ describe('whole frames of the game session', () => {
         frame: subject.frames,
         hero: subject.normalAnimator.pose(level.hero, subject.frames),
       };
-      new WorldPainter(level).paintRestoring(expected, scene, key.position, subject.frames - pickupFrame, restored, [
-        ...restored,
-        key.restores,
-      ]);
+      new WorldPainter(level).paintRestoring(
+        expected,
+        scene,
+        last.position,
+        subject.frames - pickupFrame,
+        restored,
+        subject.level.restored,
+      );
       const congratulations = new MessageBox();
       congratulations.show(messages.colorsBack, pickupFrame);
       congratulations.paint(expected, subject.frames);
@@ -1377,43 +1350,16 @@ describe('whole frames of the game session', () => {
     },
   );
 
-  test('keeps the first area colored after a second key interrupts its restoration and finishes spreading', () => {
-    const subject = gameSession([Key.at(TilePosition.at(1, 0), leftHalf), Key.at(TilePosition.at(2, 0), rightHalf)]);
-    const [first, second] = subject.level.keys;
-    subject.walkUntil(Direction.Right, () => subject.level.keys.length === 1);
-    const firstPickupFrame = subject.frames - 1;
-    subject.walkUntil(Direction.Right, () => subject.level.keys.length === 0);
-    const secondPickupFrame = subject.frames - 1;
-    const size = subject.level.scenery.size;
-    expect(secondPickupFrame - firstPickupFrame).toBeLessThan(restorationLength(size, first!.position));
-    subject.advance(restorationLength(size, second!.position));
-    const picture = new Picture(224, 224);
-    subject.session.paint(picture);
-    const camera = cameraPosition(subject.level, picture.width, picture.height);
-    const colors = new Set(Object.values(palette));
-    const neutrals = new Set(neutralCode.options.map((code) => palette[code]));
-    const tileColors = (tile: TilePosition): string[] =>
-      Array.from({ length: 32 * 32 }, (_, index) =>
-        colorAt(picture, tile.column * 32 + (index % 32) - camera.x, tile.row * 32 + Math.floor(index / 32) - camera.y),
-      );
-    for (const tile of [TilePosition.at(0, 2), TilePosition.at(4, 2)]) {
-      const painted = tileColors(tile);
-      expect(painted.every((color) => colors.has(color))).toBe(true);
-      expect(painted.some((color) => !neutrals.has(color))).toBe(true);
-    }
-    expect(subject.session.messageText).toBe(messages.colorsBack);
-  });
-
   test('closes the colored world without a restoration message when completion interrupts spreading', () => {
-    const subject = gameSession(undefined, [], LevelSize.of(22, 6));
-    const key = subject.level.keys[0]!;
-    subject.walkUntil(Direction.Right, () => subject.level.keys.length === 0);
+    const subject = gameSession(undefined, LevelSize.of(22, 6));
+    const orb = subject.level.orbs[0]!;
+    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
     const pickupFrame = subject.frames - 1;
     subject.move(Direction.Right);
     subject.walkUntil(Direction.Up, () => subject.level.isComplete);
     const completedFrame = subject.frames - 1;
-    expect(completedFrame - pickupFrame).toBeLessThan(restorationLength(subject.level.scenery.size, key.position));
-    const playthrough = { playFrames: completedFrame, starsCollected: 0, starCount: 0 };
+    expect(completedFrame - pickupFrame).toBeLessThan(restorationLength(subject.level.scenery.size, orb.position));
+    const playthrough = { playFrames: completedFrame };
     expect(subject.progress.complete).toHaveBeenCalledExactlyOnceWith(subject.level.id, playthrough);
     for (const elapsed of [1, closingLength / 2, closingLength]) {
       subject.advance(elapsed - (subject.frames - completedFrame));
@@ -1461,10 +1407,9 @@ test.each([
   [2, 0.5],
   [4, 0],
   [6, 0],
-])('a key %i tiles away hums at volume %d', (distance, volume) => {
-  const restores = Area.of([TilePosition.at(0, 0)]);
+])('an orb %i tiles away hums at volume %d', (distance, volume) => {
   const level = {
-    keys: [Key.at(TilePosition.at(distance, 0), restores)],
+    orbs: [Orb.at(TilePosition.at(distance, 0), 4, LevelSize.of(8, 1))],
     hero: { position: TilePosition.at(0, 0) },
   } as unknown as LevelView;
   expect(humVolume(level)).toBe(volume);
@@ -1481,8 +1426,7 @@ describe('a boulder in the game session', () => {
       heading: vi.fn<() => Heading | null>(() => heading),
     };
     const sound = {
-      star: vi.fn(),
-      key: vi.fn(),
+      orb: vi.fn(),
       hum: vi.fn(),
       door: vi.fn(),
       footstep: vi.fn(),
@@ -1493,12 +1437,10 @@ describe('a boulder in the game session', () => {
     };
     const level = levelFromLayout(
       id,
-      ['.DDD.', 'K....', '.....', '..O..', '..H..', '.....'],
+      ['.DDD.', 'Q....', '.....', '..O..', '..H..', '.....'],
       keepOrder,
       check2dObstacles,
-      {
-        keys: { K: { restores: () => true } },
-      },
+      lowestRoll,
     );
     const progress = {
       reach: vi.fn(),
@@ -1574,12 +1516,10 @@ describe('a boulder in the game session', () => {
     let heading: Heading | null = Heading.of(Direction.Down);
     const level = levelFromLayout(
       id,
-      ['.DDD.', '.....', '.....', '..O..', '..H..', '..K..', '.....'],
+      ['.DDD.', '.....', '.....', '..O..', '..H..', '..Q..', '.....'],
       keepOrder,
       check2dObstacles,
-      {
-        keys: { K: { restores: () => true } },
-      },
+      lowestRoll,
     );
     const session = new GameSession(
       { id, start: () => new PlayLevel(new InMemoryLevelRepository([level])) },
@@ -1589,8 +1529,7 @@ describe('a boulder in the game session', () => {
         heading: vi.fn(() => heading),
       },
       {
-        star: vi.fn(),
-        key: vi.fn(),
+        orb: vi.fn(),
         hum: vi.fn(),
         door: vi.fn(),
         footstep: vi.fn(),
@@ -1603,7 +1542,7 @@ describe('a boulder in the game session', () => {
       { completed: vi.fn() },
     );
     for (let frame = 0; frame < 16; frame++) session.tick();
-    expect(session.level.keys).toHaveLength(0);
+    expect(session.level.orbs).toHaveLength(0);
     heldA = false;
     session.tick();
     expect(session.level.isGripping).toBe(false);
@@ -1626,9 +1565,9 @@ describe('a boulder in the game session', () => {
 });
 
 describe('a pressure plate in the game session', () => {
-  const besideGate = ['.DDDWW', '....F.', '..P.G.', '..OHFK', '....FF', '......'];
-  const belowBoulder = ['.DDDWW', '....F.', '..P.G.', '..O.FK', '..H.FF', '......'];
-  const besidePlate = ['.DDDWW', '....F.', '..PHG.', '..O.FK', '....FF', '......'];
+  const besideGate = ['.DDDWW', '....F.', '..P.G.', '..OHFQ', '....FF', '......'];
+  const belowBoulder = ['.DDDWW', '....F.', '..P.G.', '..O.FQ', '..H.FF', '......'];
+  const besidePlate = ['.DDDWW', '....F.', '..PHG.', '..O.FQ', '....FF', '......'];
 
   function platedSession(rows: readonly string[]) {
     const id = LevelId.of('plated');
@@ -1641,8 +1580,7 @@ describe('a pressure plate in the game session', () => {
       heading: vi.fn<() => Heading | null>(() => heading),
     };
     const sound = {
-      star: vi.fn(),
-      key: vi.fn(),
+      orb: vi.fn(),
       hum: vi.fn(),
       door: vi.fn(),
       footstep: vi.fn(),
@@ -1651,9 +1589,7 @@ describe('a pressure plate in the game session', () => {
       gate: vi.fn(),
       plate: vi.fn(),
     };
-    const level = levelFromLayout(id, rows, keepOrder, check2dObstacles, {
-      keys: { K: { restores: () => true } },
-    });
+    const level = levelFromLayout(id, rows, keepOrder, check2dObstacles, lowestRoll);
     const session = new GameSession(
       { id, start: () => new PlayLevel(new InMemoryLevelRepository([level])) },
       controls,

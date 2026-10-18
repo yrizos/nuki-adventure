@@ -5,27 +5,26 @@ import { TilePosition } from '../domain/position';
 import { FlowerVariant, Ground } from '../domain/scenery';
 import { fitCanvas } from '../../user-interface/shell/viewport-layout';
 import { cameraPosition, tileSize } from '../../user-interface/world/world-geometry';
-import { keepOrder, reverseOrder, starSpotsOf } from '../testing/star-spots';
+import { keepOrder, lowestRoll } from '../testing/draws';
 import { firstLevel, firstLevelId } from './first';
 
 const at = TilePosition.at;
 const tiles = Array.from({ length: 25 * 25 }, (_, index) => at(index % 25, Math.floor(index / 25)));
 
 test('the first level selects only white-coral and blue-violet flowers', () => {
-  expect(firstLevel(keepOrder, check2dObstacles).scenery.flowerVariants).toEqual([
+  expect(firstLevel(keepOrder, check2dObstacles, lowestRoll).scenery.flowerVariants).toEqual([
     FlowerVariant.WhiteCoral,
     FlowerVariant.BlueViolet,
   ]);
 });
 
-test('the first level winds through a forest, a lake, an orchard and two gardens to one key that restores the whole level', () => {
-  const level = firstLevel(keepOrder, check2dObstacles);
+test('the first level winds through a forest, a lake, an orchard and two gardens with two permanent orbs', () => {
+  const level = firstLevel(keepOrder, check2dObstacles, lowestRoll);
   expect(level.id).toBe(firstLevelId);
   expect(level.scenery.size).toEqual({ columns: 25, rows: 25 });
   expect(level.hero.position).toEqual(at(12, 21));
   expect(level.door).toEqual(Door.closedAt(at(11, 1)));
-  expect(level.keys.map((key) => key.position)).toEqual([at(21, 4)]);
-  expect(level.keys[0]!.restores.tiles).toHaveLength(25 * 25);
+  expect(level.permanentOrbs).toEqual([at(21, 4), at(12, 19)]);
   expect(level.stones.map((stone) => stone.position)).toEqual([at(7, 9), at(8, 9), at(17, 19), at(5, 20), at(6, 20)]);
   expect(level.scenery.trees).toHaveLength(8);
   expect(level.scenery.flowers).toHaveLength(27);
@@ -33,7 +32,7 @@ test('the first level winds through a forest, a lake, an orchard and two gardens
 });
 
 test('the first level holds a lake around a point reaching in from its south shore and a small pond in the south east', () => {
-  const { scenery } = firstLevel(keepOrder, check2dObstacles);
+  const { scenery } = firstLevel(keepOrder, check2dObstacles, lowestRoll);
   const water = tiles.filter((tile) => scenery.groundAt(tile).equals(Ground.Water));
   expect(water).toEqual([
     at(5, 10),
@@ -65,42 +64,11 @@ test('the first level holds a lake around a point reaching in from its south sho
   ]);
 });
 
-test('the first level always holds stars on the tip of the lake point and in the south-west flower bed and lets the shuffle choose three of its eighteen other spots', () => {
-  const spots = starSpotsOf(firstLevel);
-  expect(spots).toEqual([
-    at(20, 2),
-    at(6, 3),
-    at(7, 5),
-    at(22, 6),
-    at(2, 7),
-    at(18, 10),
-    at(22, 10),
-    at(2, 11),
-    at(19, 12),
-    at(3, 13),
-    at(10, 14),
-    at(7, 15),
-    at(18, 16),
-    at(21, 17),
-    at(10, 19),
-    at(22, 19),
-    at(4, 21),
-    at(20, 21),
-  ]);
-  expect(firstLevel(reverseOrder, check2dObstacles).stars.map((star) => star.position)).toEqual([
-    at(7, 12),
-    at(4, 19),
-    ...[...spots].reverse().slice(0, 3),
-  ]);
-});
-
-test('the first level places its key in an exploration area at least six tiles from the exit', () => {
-  const level = firstLevel(keepOrder, check2dObstacles);
-  for (const key of level.keys) {
+test('the first level places its permanent orb at least six tiles from the exit', () => {
+  const level = firstLevel(keepOrder, check2dObstacles, lowestRoll);
+  for (const orb of level.permanentOrbs) {
     const distance = Math.min(
-      ...level.door.footprint.map(
-        (tile) => Math.abs(tile.column - key.position.column) + Math.abs(tile.row - key.position.row),
-      ),
+      ...level.door.footprint.map((tile) => Math.abs(tile.column - orb.column) + Math.abs(tile.row - orb.row)),
     );
     expect(distance).toBeGreaterThanOrEqual(6);
   }
@@ -114,9 +82,9 @@ test.each([
   ['mobile', 390, 844, 2],
   ['mobile', 390, 844, 3],
 ] as const)(
-  'the first level initially shows no part of its key on %s %sx%s at pixel ratio %s',
+  'the first level initially shows no part of its northern orb on %s %sx%s at pixel ratio %s',
   (_, width, height, ratio) => {
-    const level = firstLevel(keepOrder, check2dObstacles);
+    const level = firstLevel(keepOrder, check2dObstacles, lowestRoll);
     const columnWidth = width >= 600 ? Math.max(320, Math.min(width, (height * 360) / 544)) : width;
     const deviceWidth = Math.floor(columnWidth * ratio);
     const panelPixel = Math.max(1, Math.floor(deviceWidth / 180));
@@ -125,9 +93,9 @@ test.each([
     const camera = cameraPosition(level, fit.width, fit.height);
     const visibleWidth = deviceWidth / fit.scale;
     const visibleHeight = deviceHeight / fit.scale;
-    for (const key of level.keys) {
-      const left = key.position.column * tileSize + 4 - camera.x;
-      const top = key.position.row * tileSize + 4 - camera.y;
+    for (const orb of level.permanentOrbs.slice(0, 1)) {
+      const left = orb.column * tileSize + 4 - camera.x;
+      const top = orb.row * tileSize + 4 - camera.y;
       const overlapWidth = Math.max(0, Math.min(left + 24, visibleWidth) - Math.max(left, 0));
       const overlapHeight = Math.max(0, Math.min(top + 24, visibleHeight) - Math.max(top, 0));
       expect(overlapWidth * overlapHeight).toBe(0);

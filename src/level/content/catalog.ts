@@ -1,6 +1,7 @@
 import type { Level } from '../domain/level';
 import type { LevelId } from '../domain/level-id';
 import type { PlaceObstacles } from '../domain/obstacles';
+import type { Random } from '../domain/random';
 import type { Shuffle } from '../domain/shuffle';
 import { fifthLevel, fifthLevelId } from './fifth';
 import { firstLevel, firstLevelId } from './first';
@@ -11,7 +12,7 @@ import { thirdLevel, thirdLevelId } from './third';
 
 export interface AuthoredLevel {
   readonly id: LevelId;
-  readonly create: (shuffle: Shuffle, placeObstacles: PlaceObstacles) => Level;
+  readonly create: (shuffle: Shuffle, placeObstacles: PlaceObstacles, random: Random) => Level;
   readonly arrives: boolean;
 }
 

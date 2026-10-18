@@ -3,13 +3,13 @@ import { expect, test } from 'vitest';
 import { authoredLevels, PlayLevel } from '../../level';
 import { check2dObstacles } from '../../level/infrastructure/check2d-obstacles';
 import { InMemoryLevelRepository } from '../../level/infrastructure/in-memory-level-repository';
-import { keepOrder } from '../../level/testing/star-spots';
+import { keepOrder, lowestRoll } from '../../level/testing/draws';
 import { png } from '../testing/png';
 import { levelMap } from './level-map';
 
 // `make level-map LEVEL=<id|all>` sets this. The suite skips it, because it only writes pictures for a person to judge.
 const requested = process.env['LEVEL_MAP'];
-const levels = authoredLevels.map(({ create }) => create(keepOrder, check2dObstacles));
+const levels = authoredLevels.map(({ create }) => create(keepOrder, check2dObstacles, lowestRoll));
 const chosen = levels.filter((level) => requested === 'all' || level.id.value === requested);
 
 test.skipIf(!requested)('writes the level picker card map of each requested level', () => {

@@ -2,18 +2,12 @@ import type { Area } from './collectibles';
 import type { LevelId } from './level-id';
 import type { TilePosition } from './position';
 
-export class KeyCollected {
+export class OrbCollected {
   constructor(
     readonly levelId: LevelId,
     readonly position: TilePosition,
     readonly restores: Area,
-  ) {}
-}
-
-export class StarCollected {
-  constructor(
-    readonly levelId: LevelId,
-    readonly position: TilePosition,
+    readonly last: boolean,
   ) {}
 }
 
@@ -71,8 +65,7 @@ export class PlateReleased {
 }
 
 export type LevelEvent =
-  | KeyCollected
-  | StarCollected
+  | OrbCollected
   | LevelCompleted
   | SwingGateOpeningStarted
   | SwingGateOpened

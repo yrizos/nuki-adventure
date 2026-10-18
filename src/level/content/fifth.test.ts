@@ -1,13 +1,12 @@
 import { expect, test } from 'vitest';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
-import { KeyMaterial } from '../domain/collectibles';
 import { Door } from '../domain/door';
 import type { Level } from '../domain/level';
-import { KeyCollected, LevelCompleted, SwingGateStuck } from '../domain/level-events';
+import { LevelCompleted, OrbCollected, SwingGateStuck } from '../domain/level-events';
 import { Direction, Heading, TilePosition, tileKey } from '../domain/position';
 import { SwingGate } from '../domain/swing-gate';
-import { reverseOrder, starSpotsOf } from '../testing/star-spots';
-import { follow, pathTo, settleGate } from '../testing/walk-level';
+import { lowestRoll } from '../testing/draws';
+import { collectEveryOrb, follow, pathTo, settleGate } from '../testing/walk-level';
 import { fifthLevel, fifthLevelId } from './fifth';
 
 type Shuffle = (positions: readonly TilePosition[]) => readonly TilePosition[];
@@ -17,7 +16,7 @@ const size = 25;
 const sides = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
 const plate = at(15, 9);
 const gate = at(16, 11);
-const key = at(18, 11);
+const gardenOrb = at(18, 11);
 const spots = [at(15, 7), at(14, 9)];
 const inGarden = (tile: TilePosition): boolean =>
   tile.column >= 17 && tile.column <= 20 && tile.row >= 9 && tile.row <= 13;
@@ -31,11 +30,10 @@ const startingAt =
       ? [spot, ...positions.filter((other) => !other.equals(spot))]
       : positions;
 
-// The layout offers its star spots and its boulder spots to the same shuffle, and only the star spots come in twenties.
 function boulderSpotsOf(): readonly TilePosition[] {
   const offered: (readonly TilePosition[])[] = [];
-  fifthLevel((positions) => (offered.push(positions), positions), check2dObstacles);
-  return offered.find((positions) => positions.length !== 20) ?? [];
+  fifthLevel((positions) => (offered.push(positions), positions), check2dObstacles, lowestRoll);
+  return offered[0] ?? [];
 }
 
 function openGround(level: Level): (tile: TilePosition) => boolean {
@@ -158,15 +156,15 @@ function play(level: Level, { stand, facing, direction }: Move): void {
   level.release();
 }
 
-test('the fifth level is a 25 by 25 map with a top-left door, a side gate held by a plate and one gold key', () => {
-  const level = fifthLevel(keepOrder, check2dObstacles);
+test('the fifth level is a 25 by 25 map with a top-left door, a side gate held by a plate and one permanent orb', () => {
+  const level = fifthLevel(keepOrder, check2dObstacles, lowestRoll);
   expect(level.id).toBe(fifthLevelId);
   expect(level.scenery.size).toEqual({ columns: 25, rows: 25 });
   expect(level.hero.position).toEqual(at(14, 21));
   expect(level.door).toEqual(Door.closedAt(at(7, 1)));
   expect(level.gates).toEqual([SwingGate.closedAt(gate, Direction.Left)]);
   expect(level.plate).toEqual(plate);
-  expect(level.keys.map((each) => [each.position, each.material])).toEqual([[key, KeyMaterial.Gold]]);
+  expect(level.permanentOrbs).toEqual([gardenOrb]);
   expect(level.boulders.map((boulder) => boulder.position)).toEqual([spots[0]]);
 });
 
@@ -174,25 +172,27 @@ test('the fifth level starts its one boulder within two tiles of the plate', () 
   expect(boulderSpotsOf()).toEqual(spots);
   for (const spot of spots) {
     expect(Math.abs(spot.column - plate.column) + Math.abs(spot.row - plate.row)).toBeLessThanOrEqual(2);
-    expect(fifthLevel(startingAt(spot), check2dObstacles).boulders.map((boulder) => boulder.position)).toEqual([spot]);
+    expect(
+      fifthLevel(startingAt(spot), check2dObstacles, lowestRoll).boulders.map((boulder) => boulder.position),
+    ).toEqual([spot]);
   }
 });
 
 test('the fifth level keeps its plate two tiles clear of the gate and its swing', () => {
-  const swing = fifthLevel(keepOrder, check2dObstacles).gates[0]!.position.neighbor(Direction.Right);
+  const swing = fifthLevel(keepOrder, check2dObstacles, lowestRoll).gates[0]!.position.neighbor(Direction.Right);
   expect(reach(plate, gate)).toBeGreaterThanOrEqual(2);
   expect(reach(plate, swing)).toBeGreaterThanOrEqual(2);
 });
 
-test('from the plate the gate, its swing and the key fit in the seven by seven view', () => {
+test('from the plate the gate, its swing and the permanent orb fit in the seven by seven view', () => {
   const swing = gate.neighbor(Direction.Right);
-  expect([gate, swing, key].map((tile) => reach(plate, tile) <= 3)).toEqual([true, true, true]);
+  expect([gate, swing, gardenOrb].map((tile) => reach(plate, tile) <= 3)).toEqual([true, true, true]);
 });
 
 test.each(spots.map((spot) => ({ spot, label: `${spot.column}, ${spot.row}` })))(
   'from boulder spot $label every move she can make still lets her bring the boulder onto the plate',
   ({ spot }) => {
-    const states = boulderStates(fifthLevel(startingAt(spot), check2dObstacles));
+    const states = boulderStates(fifthLevel(startingAt(spot), check2dObstacles, lowestRoll));
     expect(states.some((state) => state.boulder.equals(plate))).toBe(true);
     expect(
       stuckStates(states).map(
@@ -202,22 +202,8 @@ test.each(spots.map((spot) => ({ spot, label: `${spot.column}, ${spot.row}` })))
   },
 );
 
-test('the fifth level marks twenty star spots, all outside the garden and reachable with the gate shut', () => {
-  const level = fifthLevel(keepOrder, check2dObstacles);
-  const open = openGround(level);
-  const reached = region(level.hero.position, (tile) => open(tile) && !level.boulders[0]!.covers(tile));
-  const starSpots = starSpotsOf(fifthLevel);
-  expect(starSpots).toHaveLength(20);
-  expect(starSpots.filter(inGarden)).toEqual([]);
-  expect(starSpots.filter((spot) => !reached.some((tile) => tile.equals(spot)))).toEqual([]);
-  expect(starSpots.filter((spot) => spots.some((other) => other.equals(spot)))).toEqual([]);
-  expect(fifthLevel(reverseOrder, check2dObstacles).stars.map((star) => star.position)).toEqual(
-    [...starSpots].reverse().slice(0, 5),
-  );
-});
-
-test('the fifth level keeps the garden and its key shut until the boulder rests on the plate', () => {
-  const level = fifthLevel(keepOrder, check2dObstacles);
+test('the fifth level keeps the garden and its permanent orb shut until the boulder rests on the plate', () => {
+  const level = fifthLevel(keepOrder, check2dObstacles, lowestRoll);
   const open = openGround(level);
   const reached = region(level.hero.position, (tile) => open(tile) && !level.boulders[0]!.covers(tile));
   expect(reached.some((tile) => tile.equals(level.gates[0]!.approach))).toBe(true);
@@ -239,18 +225,19 @@ test('the fifth level keeps the garden and its key shut until the boulder rests 
 });
 
 test.each(spots.map((spot) => ({ spot, label: `${spot.column}, ${spot.row}` })))(
-  'with the boulder starting at $label she rolls it onto the plate, takes the key through the gate and leaves',
+  'with the boulder starting at $label she rolls it onto the plate, takes the orb through the gate and leaves',
   ({ spot }) => {
-    const level = fifthLevel(startingAt(spot), check2dObstacles);
+    const level = fifthLevel(startingAt(spot), check2dObstacles, lowestRoll);
     const solved = boulderStates(level).find((state) => state.boulder.equals(plate))!;
     for (const move of solved.moves) play(level, move);
     expect(level.boulders[0]!.position).toEqual(plate);
     level.tick(null);
     settleGate(level);
     expect(level.gates[0]!.state).toBe('open');
-    const toKey = pathTo(level, (tile) => tile.equals(key));
-    expect(toKey, 'the key must open up once the gate swings').toBeDefined();
-    expect(follow(level, toKey!).some((event) => event instanceof KeyCollected)).toBe(true);
+    const toGarden = pathTo(level, (tile) => tile.equals(gardenOrb));
+    expect(toGarden, 'the permanent orb must open up once the gate swings').toBeDefined();
+    expect(follow(level, toGarden!).some((event) => event instanceof OrbCollected)).toBe(true);
+    collectEveryOrb(level);
     level.openDoor();
     const toDoor = pathTo(level, (tile) => level.door.covers(tile));
     expect(toDoor, 'the door must stay reachable with the boulder on the plate').toBeDefined();
@@ -259,7 +246,7 @@ test.each(spots.map((spot) => ({ spot, label: `${spot.column}, ${spot.row}` })))
 );
 
 test('the fifth level shuts the gate again once the boulder leaves the plate', () => {
-  const level = fifthLevel(keepOrder, check2dObstacles);
+  const level = fifthLevel(keepOrder, check2dObstacles, lowestRoll);
   const solved = boulderStates(level).find((state) => state.boulder.equals(plate))!;
   for (const move of solved.moves) play(level, move);
   level.tick(null);

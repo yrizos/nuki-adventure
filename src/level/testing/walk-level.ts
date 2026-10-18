@@ -80,3 +80,15 @@ export function swungThrough(gate: SwingGate): SwingGate {
   while (swung.isSwinging) swung = swung.swingOn();
   return swung;
 }
+
+// Random orbs lie anywhere she can reach, so a play through picks up whichever remain before she leaves.
+export function collectEveryOrb(level: Level): readonly LevelEvent[] {
+  const events: LevelEvent[] = [];
+  while (level.orbs.length > 0) {
+    const next = level.orbs[0]!.position;
+    const path = pathTo(level, (tile) => tile.equals(next));
+    if (!path) throw new Error(`No way to the orb at ${next.column}, ${next.row}`);
+    events.push(...follow(level, path));
+  }
+  return events;
+}

@@ -1,5 +1,5 @@
 import type { Boulder } from '../domain/boulder';
-import type { Area, Key, Star } from '../domain/collectibles';
+import type { Area, Orb } from '../domain/collectibles';
 import type { Door } from '../domain/door';
 import type { HeroState } from '../domain/hero';
 import type { Level, Stone } from '../domain/level';
@@ -14,10 +14,8 @@ export interface LevelView {
   readonly id: LevelId;
   readonly scenery: Scenery;
   readonly stones: readonly Stone[];
-  readonly keys: readonly Key[];
+  readonly orbs: readonly Orb[];
   readonly restored: readonly Area[];
-  readonly stars: readonly Star[];
-  readonly collected: readonly Star[];
   readonly door: Door;
   readonly gates: readonly SwingGate[];
   readonly plate: TilePosition | undefined;
@@ -38,10 +36,8 @@ export function levelView(level: Level): LevelView {
     id: level.id,
     scenery: level.scenery,
     stones: [...level.stones],
-    keys: [...level.keys],
+    orbs: [...level.orbs],
     restored: level.restored,
-    stars: [...level.stars],
-    collected: [...level.collected],
     door: level.door,
     gates: level.gates,
     plate: level.plate,

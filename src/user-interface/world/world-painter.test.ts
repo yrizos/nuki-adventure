@@ -2,7 +2,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { describe, expect, test, vi } from 'vitest';
 import { levelView } from '../../level/application/level-view';
-import { Area, Key, KeyMaterial } from '../../level/domain/collectibles';
+import { Area, Orb } from '../../level/domain/collectibles';
 import { Direction, Heading, TilePosition, WorldPosition } from '../../level/domain/position';
 import { Door } from '../../level/domain/door';
 import { HeroState } from '../../level/domain/hero';
@@ -12,7 +12,6 @@ import { Flower, FlowerVariant, Ground, LevelSize, Scenery, Tree, TreeVariant } 
 import { check2dObstacles } from '../../level/infrastructure/check2d-obstacles';
 import { firstLevel } from '../../level/content/first';
 import { levelFromLayout } from '../../level/content/level-layout';
-import { randomShuffle } from '../../level/infrastructure/random-shuffle';
 import { secondLevel } from '../../level/content/second';
 import { thirdLevel } from '../../level/content/third';
 import { fourthLevel } from '../../level/content/fourth';
@@ -28,7 +27,7 @@ import { lighten, Picture, sprite } from '../graphics/picture';
 import { cameraPosition, heroPixels, tileSize } from './world-geometry';
 import { arrivalMotes, risingEdge } from './arrival';
 import { dressWorld, propVariants } from './world-dressing';
-import { birdPlace, keyOffset, placeBirds, WorldPainter } from './world-painter';
+import { birdPlace, orbFloat, placeBirds, WorldPainter } from './world-painter';
 import { closingLength, crestLength, restorationAge, restorationLength } from './world-transition';
 
 const scenery = {
@@ -45,8 +44,7 @@ const scenery = {
 };
 const sprites = {
   heroArt: library.heroArt,
-  keyArt: library.keyArt,
-  starArt: library.starArt,
+  orbArt: library.orbArt,
   stoneVariants: library.stoneVariants,
   mossyStoneVariants: library.mossyStoneVariants,
   lightMote: library.lightMote,
@@ -72,7 +70,6 @@ function renderingLevel(
   trees: readonly Tree[] = [],
   flowers: readonly Flower[] = [],
   flowerVariants: readonly FlowerVariant[] = FlowerVariant.All,
-  keyMaterial: KeyMaterial = KeyMaterial.Gold,
 ): Level {
   return Level.create({
     id: LevelId.of('render'),
@@ -85,7 +82,13 @@ function renderingLevel(
       flowerVariants,
     ),
     stones,
-    keys: [Key.at(TilePosition.at(0, 0), everywhere, keyMaterial)],
+    orbs: [
+      Orb.at(
+        hero.equals(TilePosition.at(0, 0)) ? TilePosition.at(11, 11) : TilePosition.at(0, 0),
+        4,
+        LevelSize.of(12, 12),
+      ),
+    ],
     door: Door.closedAt(TilePosition.at(9, 0)),
     hero: { position: hero, facing: Direction.Down },
     obstacles: check2dObstacles,
@@ -134,31 +137,29 @@ async function expectChecksum(picture: Picture, expected: string): Promise<void>
 }
 
 describe('whole frames of the first level', () => {
-  // The frame shows only the lower right of the level, so the stars must come from spots inside it to be drawn at all.
-  const inFrame = (tile: TilePosition): boolean => tile.column >= 10 && tile.row >= 7;
   const level = firstLevel(
-    (positions) => [...positions.filter(inFrame), ...positions.filter((tile) => !inFrame(tile))],
+    (positions) => positions,
     check2dObstacles,
+    () => 0,
   );
-  const key = level.keys[0]!;
   const scene = { level, frame: 0, hero: sprites.heroArt.down.stand };
   const painter = new WorldPainter(level);
   const picture = new Picture(224, 320);
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    await expectChecksum(picture, '8599babac47c3e534339ce5763fd2272930df35d767e4c9782bfee76e0e6c20a');
+    await expectChecksum(picture, '8e408f63e7919b59374f9a66e9c2783764041272aa11be2686277df85d4ae013');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
-    // The key lies outside the frame, so the wave starts from her start to stop partway across the frame.
-    painter.paintRestoring(picture, scene, level.hero.position, 20, [], [key.restores]);
-    await expectChecksum(picture, '3e5361ac9ef3708464da6f6907d7578c6cf913499d0c14c54ece1c9a1954489d');
+    // Starting the wave at the hero leaves its front inside the frame.
+    painter.paintRestoring(picture, scene, level.hero.position, 20, [], [everywhere]);
+    await expectChecksum(picture, '6d0fe66aba949729654755d39457f26b0854ddadbc2f0f394ac58237d683be94');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
-    painter.paint(picture, scene, [key.restores]);
-    await expectChecksum(picture, '930733413e7d1d5890002fde08eb2b669fb8e55d030e7d548d344e63b7ef3f01');
+    painter.paint(picture, scene, [everywhere]);
+    await expectChecksum(picture, '0507adaaa6dac15144043249f319215fd51bbf47dfeaabe7bd4aa3b13ea61cc3');
   });
 });
 
@@ -176,7 +177,13 @@ test.each([
   { name: 'fifth', create: fifthLevel },
   { name: 'sixth', create: sixthLevel },
 ])('the $name level has ground art for every place where terrains meet and paints', ({ create }) => {
-  const level = levelView(create(randomShuffle, check2dObstacles));
+  const level = levelView(
+    create(
+      (positions) => positions,
+      check2dObstacles,
+      () => 0,
+    ),
+  );
   expect(() =>
     new WorldPainter(level).paint(new Picture(224, 448), { level, frame: 0, hero: sprites.heroArt.up.stand }, []),
   ).not.toThrow();
@@ -202,7 +209,7 @@ test('native terrain grids cover all 81 three-terrain corner combinations', () =
             id: LevelId.of('terrain'),
             scenery: Scenery.of(LevelSize.of(4, 4), ground, [], []),
             stones: [],
-            keys: [Key.at(TilePosition.at(3, 3), everywhere)],
+            orbs: [Orb.at(TilePosition.at(3, 3), 4, LevelSize.of(4, 4))],
             door: Door.closedAt(TilePosition.at(0, 0)),
             hero: { position: TilePosition.at(0, 3), facing: Direction.Down },
             obstacles: check2dObstacles,
@@ -221,7 +228,7 @@ test('native interactive sprites use their documented dimensions', () => {
   }
   for (const art of [...sprites.stoneVariants, ...sprites.mossyStoneVariants])
     expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
-  for (const art of Object.values(sprites.keyArt)) expect([sprite(art).width, sprite(art).height]).toEqual([24, 24]);
+  for (const art of Object.values(sprites.orbArt)) expect([sprite(art).width, sprite(art).height]).toEqual([24, 24]);
 });
 
 test('interactive sprites keep a closed one-pixel Ink silhouette', () => {
@@ -233,7 +240,6 @@ test('interactive sprites keep a closed one-pixel Ink silhouette', () => {
     ]),
     ...sprites.stoneVariants,
     ...sprites.mossyStoneVariants,
-    ...Object.values(sprites.keyArt),
   ];
   for (const piece of art) {
     piece.rows.forEach((row, vertical) =>
@@ -298,7 +304,7 @@ function flowerArtDrawn(level: Level, frame: number): Art[] {
   const picture = new Picture(level.scenery.size.columns * tileSize, level.scenery.size.rows * tileSize);
   const camera = cameraPosition(level, picture.width, picture.height);
   const draw = vi.spyOn(picture, 'draw');
-  new WorldPainter(level).paint(picture, { level, frame, hero: sprites.heroArt.down.stand }, [level.keys[0]!.restores]);
+  new WorldPainter(level).paint(picture, { level, frame, hero: sprites.heroArt.down.stand }, [everywhere]);
   const flowerFrames = scenery.flowerArt.flat();
   const calls = draw.mock.calls.filter(([art]) => flowerFrames.includes(art));
   expect(calls).toHaveLength(level.scenery.flowers.length);
@@ -313,7 +319,11 @@ function flowerArtDrawn(level: Level, frame: number): Art[] {
 }
 
 test('all first-level flowers render exactly the two allowed variants in both sway frames', () => {
-  const level = firstLevel((positions) => positions, check2dObstacles);
+  const level = firstLevel(
+    (positions) => positions,
+    check2dObstacles,
+    () => 0,
+  );
   expect(level.scenery.flowers).toHaveLength(27);
   const first = flowerArtDrawn(level, 0);
   const second = flowerArtDrawn(level, library.flowerFrameLength);
@@ -327,7 +337,11 @@ test('all first-level flowers render exactly the two allowed variants in both sw
 });
 
 test.each([0, library.flowerFrameLength])('touching first-level flowers never share a variant at frame %i', (frame) => {
-  const level = firstLevel((positions) => positions, check2dObstacles);
+  const level = firstLevel(
+    (positions) => positions,
+    check2dObstacles,
+    () => 0,
+  );
   const drawn = flowerArtDrawn(level, frame);
   const variants = drawn.map((art) => scenery.flowerArt.findIndex((frames) => frames.includes(art)));
   let touchingPairs = 0;
@@ -363,13 +377,15 @@ test('flower choices use the allowed count and map a non-prefix selection to spr
 });
 
 function firstLevelStoneArtDrawn(): { position: TilePosition; art: Art }[] {
-  const level = firstLevel((positions) => positions, check2dObstacles);
+  const level = firstLevel(
+    (positions) => positions,
+    check2dObstacles,
+    () => 0,
+  );
   const picture = new Picture(level.scenery.size.columns * tileSize, level.scenery.size.rows * tileSize);
   const camera = cameraPosition(level, picture.width, picture.height);
   const draw = vi.spyOn(picture, 'draw');
-  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, [
-    level.keys[0]!.restores,
-  ]);
+  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, [everywhere]);
   return level.stones.map(({ position }) => {
     const calls = draw.mock.calls.filter(
       ([art, column, row]) =>
@@ -385,15 +401,17 @@ function firstLevelStoneArtDrawn(): { position: TilePosition; art: Art }[] {
 test.each([firstLevel, secondLevel, thirdLevel, fourthLevel, fifthLevel, sixthLevel])(
   'level %# floats lilies in groups inside its pond, with different art on touching tiles',
   (create) => {
-    const level = create((positions) => positions, check2dObstacles);
+    const level = create(
+      (positions) => positions,
+      check2dObstacles,
+      () => 0,
+    );
     const picture = new Picture(level.scenery.size.columns * tileSize, level.scenery.size.rows * tileSize);
     const camera = cameraPosition(level, picture.width, picture.height);
     const draw = vi.spyOn(picture, 'draw');
     let seed = 7;
     const random = (): number => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    new WorldPainter(level, random).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, [
-      level.keys[0]!.restores,
-    ]);
+    new WorldPainter(level, random).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, [everywhere]);
     const water = (column: number, row: number): boolean =>
       level.scenery.groundAt(TilePosition.at(column, row)).equals(Ground.Water);
     const lilies = draw.mock.calls
@@ -464,7 +482,7 @@ test('stones within two tiles of water are mossy and stones further away are pla
     id: LevelId.of('moss'),
     scenery: Scenery.of(LevelSize.of(12, 12), ground, [], []),
     stones: [Stone.at(TilePosition.at(2, 5)), Stone.at(TilePosition.at(3, 8))],
-    keys: [Key.at(TilePosition.at(9, 9), everywhere)],
+    orbs: [Orb.at(TilePosition.at(9, 9), 4, LevelSize.of(12, 12))],
     door: Door.closedAt(TilePosition.at(9, 0)),
     hero: { position: TilePosition.at(6, 2), facing: Direction.Down },
     obstacles: check2dObstacles,
@@ -493,39 +511,34 @@ test.each([
   expect(shadow.rows.map((row) => row.replaceAll('.', '').length)).toEqual([14, 10, 10, 10, 6]);
 });
 
-test.each([
-  ['gold', KeyMaterial.Gold, ['Y1', 'Y2', 'Y3']],
-  ['silver', KeyMaterial.Silver, ['N3', 'N4', 'W4']],
-] as const)('a %s key keeps its metal in a faded world', (_, material, codes) => {
-  const level = renderingLevel(Ground.Grass, undefined, [], [], [], FlowerVariant.All, material);
+test('an orb keeps its color in a faded world', () => {
+  const level = renderingLevel();
   const picture = new Picture(384, 384);
   new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, []);
-  const metal = [...sprites.keyArt.gold.rows.join('')].filter((symbol) => symbol !== '.' && symbol !== 'k').length;
   const camera = cameraPosition(level, picture.width, picture.height);
-  const art = sprite(sprites.keyArt[material.name]).colored;
-  let shown = 0;
+  const art = sprite(sprites.orbArt.red).colored;
+  const violations: string[] = [];
   for (let y = 0; y < 24; y++)
     for (let x = 0; x < 24; x++) {
-      if (art[(y * 24 + x) * 4 + 3] === 0 || sprites.keyArt.gold.rows[y]![x] === 'k') continue;
-      const color = colorAt(picture, 4 + x - camera.x, 4 + y - camera.y);
-      if (codes.some((code) => palette[code] === color)) shown++;
+      const offset = (y * 24 + x) * 4;
+      if (art[offset + 3] === 0) continue;
+      const rendered = ((4 + y - camera.y) * picture.width + 4 + x - camera.x) * 4;
+      if (art.subarray(offset, offset + 4).some((byte, channel) => picture.pixels[rendered + channel] !== byte))
+        violations.push(`orb pixel ${x}, ${y}`);
     }
-  expect(shown).toBe(metal);
+  expect(violations).toEqual([]);
 });
 
-test('gold and silver keys share one pixel grid and differ only in their metal colors', () => {
-  const { gold, silver } = sprites.keyArt;
-  expect(silver.rows).toBe(gold.rows);
-  expect(silver.legend.k).toBe(gold.legend.k);
-  for (const symbol of ['a', 'b', 'c']) expect(silver.legend[symbol]).not.toBe(gold.legend[symbol]);
+test('orb hues share one pixel grid and keep distinct body colors', () => {
+  const hues = Object.values(sprites.orbArt);
+  for (const art of hues) expect(art.rows).toBe(hues[0]!.rows);
+  expect(new Set(hues.map((art) => art.legend.a)).size).toBe(hues.length);
 });
 
-test('a key floats and buzzes within two pixels up and down and one pixel sideways', () => {
-  const offsets = Array.from({ length: 400 }, (_, frame) => keyOffset(frame));
-  expect(Math.min(...offsets.map(({ y }) => y))).toBe(-2);
-  expect(Math.max(...offsets.map(({ y }) => y))).toBe(2);
-  expect(Math.min(...offsets.map(({ x }) => x))).toBe(-1);
-  expect(Math.max(...offsets.map(({ x }) => x))).toBe(1);
+test('an orb floats within two pixels up and down', () => {
+  const offsets = Array.from({ length: 400 }, (_, frame) => orbFloat(frame));
+  expect(Math.min(...offsets)).toBe(-2);
+  expect(Math.max(...offsets)).toBe(2);
 });
 
 test('oversized views extend edge terrain without leaving empty map margins', () => {
@@ -583,7 +596,7 @@ test('restoring both halves paints the same picture as restoring everywhere', ()
       [],
     ),
     stones: [],
-    keys: [Key.at(TilePosition.at(0, 0), leftHalf), Key.at(TilePosition.at(11, 1), rightHalf)],
+    orbs: [Orb.at(TilePosition.at(0, 0), 4, LevelSize.of(12, 12))],
     door: Door.closedAt(TilePosition.at(9, 0)),
     hero: { position: TilePosition.at(2, 2), facing: Direction.Down },
     obstacles: check2dObstacles,
@@ -724,14 +737,10 @@ test('a jagged seam between two areas keeps clear tiles pure and mixes both pict
     ],
     (positions) => positions,
     check2dObstacles,
-    {
-      keys: {
-        K: { restores: inRed },
-        S: { restores: (position) => !inRed(position), material: KeyMaterial.Silver },
-      },
-    },
+    () => 0,
   );
-  const [red, blue] = level.keys.map((key) => key.restores) as [Area, Area];
+  const red = area(inRed);
+  const blue = area((position) => !inRed(position));
   const { columns, rows } = level.scenery.size;
   const side = columns * tileSize;
   expect(cameraPosition(level, side, side), 'the whole map must fill the picture from its corner').toEqual({
@@ -967,7 +976,7 @@ test('flowers stacked above each other use different variants, each with a groun
       flowers,
     ),
     stones: [],
-    keys: [Key.at(TilePosition.at(0, 0), everywhere)],
+    orbs: [Orb.at(TilePosition.at(0, 0), 4, LevelSize.of(12, 12))],
     door: Door.closedAt(TilePosition.at(9, 0)),
     hero: { position: TilePosition.at(2, 2), facing: Direction.Down },
     obstacles: check2dObstacles,
@@ -982,7 +991,7 @@ test('flowers stacked above each other use different variants, each with a groun
   expect(drawn[1]).not.toBe(drawn[2]);
 });
 
-test('the door is drawn open only in the colored world once the key is collected', () => {
+test('the door is drawn open only in the colored world once the orb is collected', () => {
   const level = renderingLevel(Ground.Grass, TilePosition.at(1, 0));
   const painter = new WorldPainter(level);
   const drawn = (version: 'colored' | 'faded'): Art[] => {
@@ -1000,7 +1009,7 @@ test('the door is drawn open only in the colored world once the key is collected
   expect(drawn('colored')).toEqual([scenery.doorArt.closed]);
   expect(drawn('faded')).toEqual([scenery.doorArt.closed]);
   for (let frame = 0; frame < 30; frame++) level.tick(Heading.of(Direction.Left));
-  expect(level.keys).toEqual([]);
+  expect(level.orbs).toEqual([]);
   expect(level.door.isOpen).toBe(false);
   expect(drawn('colored')).toEqual([scenery.doorArt.open]);
   expect(drawn('faded')).toEqual([scenery.doorArt.closed]);
@@ -1199,7 +1208,7 @@ test.each([
     id: LevelId.of('movement'),
     scenery: Scenery.of(LevelSize.of(12, 12), ground, [], []),
     stones: [],
-    keys: [Key.at(TilePosition.at(0, 0), everywhere)],
+    orbs: [Orb.at(TilePosition.at(0, 0), 4, LevelSize.of(12, 12))],
     door: Door.closedAt(TilePosition.at(9, 0)),
     hero: { position: start, facing: direction.facing },
     obstacles: check2dObstacles,
@@ -1225,7 +1234,11 @@ test.each([
   [0, 799],
   [799, 799],
 ])('woodland trees leave no grass inside woodland at the minimum view, with the hero at %i, %i', (x, y) => {
-  const base = firstLevel((positions) => positions, check2dObstacles);
+  const base = firstLevel(
+    (positions) => positions,
+    check2dObstacles,
+    () => 0,
+  );
   const level = { ...levelView(base), hero: HeroState.of(WorldPosition.at(x, y), Direction.Down, false) };
   const picture = new Picture(224, 224);
   const camera = cameraPosition(level, picture.width, picture.height);
@@ -1285,10 +1298,16 @@ test('levels without woodland draw only their authored trees', () => {
 });
 
 test('undergrowth grows only on free clearing grass beside woodland, away from the hero start', () => {
-  const level = levelView(sixthLevel(randomShuffle, check2dObstacles));
+  const level = levelView(
+    sixthLevel(
+      (positions) => positions,
+      check2dObstacles,
+      () => 0,
+    ),
+  );
   const { scenery } = level;
   const start = level.hero.position;
-  const taken = [...scenery.flowers, ...level.stones, ...level.keys, ...level.stars].map(({ position }) => position);
+  const taken = [...scenery.flowers, ...level.stones, ...level.orbs].map(({ position }) => position);
   const { undergrowth } = dressWorld(level);
   expect(undergrowth.length).toBeGreaterThan(0);
   for (const { position } of undergrowth) {
@@ -1396,12 +1415,10 @@ describe('a swing gate', () => {
   const gated = () =>
     levelFromLayout(
       LevelId.of('gated'),
-      ['.DDD.', '..K..', '.....', 'WFGFW', '..H..', '.....'],
+      ['.DDD.', '..Q..', '.....', 'WFGFW', '..H..', '.....'],
       (spots) => spots,
       check2dObstacles,
-      {
-        keys: { K: { restores: () => true } },
-      },
+      () => 0,
     );
   const drawn = (level: Level, restored: readonly Area[] = []) => {
     const picture = new Picture(160, 192);
@@ -1455,16 +1472,16 @@ describe('a swing gate', () => {
   });
 });
 
-test.each([
-  ['star', 'K..', '..+'],
-  ['key', '...', '..K'],
-])('a boulder hides the %s it rolls onto, while sliding and once it rests', (_, keyRow, itemRow) => {
-  // A level needs fifteen star spots, so rows of spare spots sit below the ones under test.
-  const layout = ['.DDD.', `${keyRow}..`, `${itemRow}..`, '..O..', '..H..', '.....', '+++++', '+++++', '+++++'];
-  const level = levelFromLayout(LevelId.of('rolled'), layout, (spots) => spots, check2dObstacles, {
-    keys: { K: { restores: () => true } },
-  });
-  const item = itemRow.endsWith('+') ? library.starArt : library.keyArt.gold;
+test('a boulder hides the orb it rolls onto, while sliding and once it rests', () => {
+  const layout = ['.DDD.', '.....', '..Q..', '..O..', '..H..', '.....'];
+  const level = levelFromLayout(
+    LevelId.of('rolled'),
+    layout,
+    (spots) => spots,
+    check2dObstacles,
+    () => 0,
+  );
+  const item = library.orbArt.red;
   level.grip();
   level.tick(Heading.of(Direction.Up));
   for (const ticks of [8, 8]) {
@@ -1569,7 +1586,7 @@ describe('frogs', () => {
         FlowerVariant.All,
       ),
       stones: [],
-      keys: [Key.at(TilePosition.at(0, 0), everywhere, KeyMaterial.Gold)],
+      orbs: [Orb.at(TilePosition.at(0, 0), 4, LevelSize.of(12, 12))],
       door: Door.closedAt(TilePosition.at(9, 0)),
       hero: { position: TilePosition.at(2, 2), facing: Direction.Down },
       obstacles: check2dObstacles,

@@ -1,14 +1,13 @@
 import {
   Direction,
-  KeyCollected,
   type LevelAction,
   LevelCompleted,
   type LevelId,
   type LevelView,
+  OrbCollected,
   PlatePressed,
   PlateReleased,
   type PlayLevel,
-  StarCollected,
   SwingGateClosingStarted,
   SwingGateOpeningStarted,
   SwingGateStuck,
@@ -19,7 +18,7 @@ import {
   appearing,
   arrivalLength,
   closingLevel,
-  restoringKey,
+  restoringOrb,
   type Phase,
   phaseAfterFrame,
   playing,
@@ -30,11 +29,10 @@ import { MessageBox } from '../screens/message-box';
 import type { Picture } from '../graphics/picture';
 import type { Sound } from '../audio/sound';
 import { plateSinkLength, WorldPainter } from '../world/world-painter';
-import { doorOpeningLength, restorationLength } from '../world/world-transition';
+import { areaRestorationLength, doorOpeningLength } from '../world/world-transition';
 
 export const messages = {
-  someColorsBack: 'ΜΠΡΑΒΟ! ΜΕΝΕΙ ΑΚΟΜΑ ΕΝΑ ΚΛΕΙΔΙ!',
-  colorsBack: 'ΜΠΡΑΒΟ! ΤΑ ΧΡΩΜΑΤΑ ΕΠΕΣΤΡΕΨΑΝ!',
+  colorsBack: 'ΤΑ ΧΡΩΜΑΤΑ ΕΠΕΣΤΡΕΨΑΝ!\nΗ ΠΟΡΤΑ ΑΝΟΙΞΕ!',
   gateStuck: 'Η ΠΟΡΤΑ ΔΕΝ ΑΝΟΙΓΕΙ!',
 } as const;
 
@@ -47,7 +45,7 @@ const buttonFor: Readonly<Record<LevelAction, 'a' | 'b'>> = { operate: 'a', grip
 export function humVolume(level: LevelView): number {
   const hero = level.hero.position;
   const nearest = Math.min(
-    ...level.keys.map((key) => Math.hypot(key.position.column - hero.column, key.position.row - hero.row)),
+    ...level.orbs.map((orb) => Math.hypot(orb.position.column - hero.column, orb.position.row - hero.row)),
   );
   return Math.max(0, 1 - nearest / humReach);
 }
@@ -83,7 +81,7 @@ export class GameSession {
     private readonly controls: Pick<Controls, 'takePress' | 'isHeld' | 'heading'>,
     private readonly sound: Pick<
       Sound,
-      'star' | 'key' | 'hum' | 'door' | 'footstep' | 'restoring' | 'arrival' | 'gate' | 'plate'
+      'orb' | 'hum' | 'door' | 'footstep' | 'restoring' | 'arrival' | 'gate' | 'plate'
     >,
     private readonly progress: Pick<ManageProgress, 'reach' | 'complete' | 'suspend'>,
     private readonly report: SessionReport,
@@ -144,26 +142,18 @@ export class GameSession {
         if (event instanceof SwingGateOpeningStarted || event instanceof SwingGateClosingStarted) this.sound.gate();
         else if (event instanceof PlatePressed || event instanceof PlateReleased)
           this.sound.plate(event instanceof PlatePressed);
-        else if (event instanceof StarCollected) this.sound.star(play.view(id).stars.length === 0);
-        else if (event instanceof KeyCollected) {
-          this.sound.key(play.view(id).keys.length === 0);
-          messageBox.show(play.view(id).keys.length > 0 ? messages.someColorsBack : messages.colorsBack, this.frame);
-          this.transitionTo(restoringKey(event, this.frame));
+        else if (event instanceof OrbCollected) {
+          this.sound.orb(event.last);
+          if (event.last) messageBox.show(messages.colorsBack, this.frame);
+          this.transitionTo(restoringOrb(event, this.frame));
         } else if (event instanceof LevelCompleted) {
           this.sound.door();
           this.calm = null;
-          const level = play.view(id);
-          this.progress.complete(id, {
-            playFrames: this.frame - this.run.startFrame,
-            starsCollected: level.collected.length,
-            starCount: level.collected.length + level.stars.length,
-          });
+          this.progress.complete(id, { playFrames: this.frame - this.run.startFrame });
           this.transitionTo(closingLevel(this.frame));
         }
       }
-      const walkAwayMessage = [messages.colorsBack, messages.someColorsBack, messages.gateStuck].some(
-        (message) => messageBox.text === message,
-      );
+      const walkAwayMessage = [messages.colorsBack, messages.gateStuck].some((message) => messageBox.text === message);
       if (this.phase.name === 'playing' && walkAwayMessage && play.view(id).hero.isWalking) messageBox.hide(this.frame);
     }
     // Depth steps one frame at a time, so a plate released halfway down rises from where it is.
@@ -175,12 +165,12 @@ export class GameSession {
       const level = play.view(id);
       const doorShown =
         this.frame - this.phase.since >= doorOpeningLength(level.door, level.scenery.size, this.phase.origin);
-      if (level.keys.length === 0 && !level.door.isOpen && doorShown) play.openDoor(id);
+      if (level.orbs.length === 0 && !level.door.isOpen && doorShown) play.openDoor(id);
     }
     this.transitionTo(
       phaseAfterFrame(this.phase, {
         frame: this.frame,
-        restorationLength: (origin) => restorationLength(play.view(id).scenery.size, origin),
+        restorationLength: (origin, restores) => areaRestorationLength(play.view(id).scenery.size, origin, restores),
         gateSwinging: play.view(id).gates.some((gate) => gate.isSwinging),
       }),
     );

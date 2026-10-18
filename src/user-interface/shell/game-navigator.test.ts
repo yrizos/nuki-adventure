@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { Area, Key } from '../../level/domain/collectibles';
+import { Orb } from '../../level/domain/collectibles';
 import { Direction, Heading, TilePosition } from '../../level/domain/position';
 import { Door } from '../../level/domain/door';
 import { Ground, LevelSize, Scenery } from '../../level/domain/scenery';
@@ -23,8 +23,6 @@ import { Picture } from '../graphics/picture';
 import { WorldPainter } from '../world/world-painter';
 import { closingLength } from '../world/world-transition';
 
-const everywhere = Area.of(Array.from({ length: 15 }, (_, index) => TilePosition.at(index % 3, Math.floor(index / 3))));
-
 function navigator(first: string | null = 'one', { secondUnlocked = first === 'two' } = {}) {
   const pressed = new Set<'a' | 'b'>();
   let heading: Heading | null = null;
@@ -34,8 +32,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
     heading: () => heading,
   };
   const sound = {
-    star: vi.fn(),
-    key: vi.fn(),
+    orb: vi.fn(),
     hum: vi.fn(),
     door: vi.fn(),
     footstep: vi.fn(),
@@ -48,7 +45,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
     LevelId.of('one'),
     LevelId.of('two'),
   ]);
-  if (secondUnlocked) progress.complete(LevelId.of('one'), { playFrames: 60, starsCollected: 0, starCount: 0 });
+  if (secondUnlocked) progress.complete(LevelId.of('one'), { playFrames: 60 });
   vi.spyOn(progress, 'reach');
   vi.spyOn(progress, 'complete');
   const screens = {
@@ -81,7 +78,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
             [],
           ),
           stones: [],
-          keys: [Key.at(TilePosition.at(1, 3), everywhere)],
+          orbs: [Orb.at(TilePosition.at(1, 3), 4, LevelSize.of(3, 5))],
           door: Door.closedAt(TilePosition.at(0, 0)),
           hero: { position: TilePosition.at(1, 4), facing: Direction.Up },
           obstacles: check2dObstacles,
@@ -155,7 +152,7 @@ describe('the game navigator', () => {
     const level = subject.current();
     expect(level.id.value).toBe('two');
     expect(level.hero.position).toEqual(TilePosition.at(1, 4));
-    expect(level.keys).toHaveLength(1);
+    expect(level.orbs).toHaveLength(1);
     expect(level.door.isOpen).toBe(false);
     expect(level.isComplete).toBe(false);
     expect(subject.navigator.session!.messageText).toBe('');

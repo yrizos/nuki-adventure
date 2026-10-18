@@ -99,13 +99,8 @@ export class Sound {
     this.note(110, 0, 0.04, 'triangle', 0.15);
   }
 
-  star(last = false): void {
-    this.buzz(last ? [25, 40, 25] : 25);
-    this.notes(last ? [1319, 1760, 2093, 2637] : [1319, 1760], last ? 0.09 : 0.06, 'square', 0.08);
-  }
-
-  // The last key's pulse is left out because the restoring pattern starts on the same tick and would blur into it.
-  key(last = false): void {
+  // The last orb's pulse is left out because the restoring pattern starts on the same tick and would blur into it.
+  orb(last = false): void {
     if (!last) this.buzz(90);
     this.notes([1047, 1568, 1319, 2093], 0.07, 'triangle', 0.12);
   }
@@ -136,7 +131,7 @@ export class Sound {
     this.notes([784, 1047, 1319, 1568, 2093], 0.14, 'triangle', 0.1);
   }
 
-  // Two quiet high notes nudge the player toward the A button without competing with the key hum.
+  // Two quiet high notes nudge the player toward the A button without competing with the orb hum.
   // Only the first chime vibrates, since a buzz repeating while the game waits would nag.
   hint(first = false): void {
     if (first) this.buzz(30);
@@ -149,7 +144,7 @@ export class Sound {
     this.notes([147, 131, 110, 82], 0.06, 'triangle', 0.18);
   }
 
-  // A square chirp over a stone thud sets the plate apart from the wooden gate creak and the bright chimes of stars and keys.
+  // A square chirp over a stone thud sets the plate apart from the wooden gate creak and the bright chime of an orb.
   plate(pressed: boolean): void {
     if (pressed) {
       this.buzz(40);

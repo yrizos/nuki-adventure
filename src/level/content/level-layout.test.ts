@@ -1,7 +1,5 @@
 import { describe, expect, test } from 'vitest';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
-import { StarCount } from '../domain/star-count';
-import { KeyMaterial } from '../domain/collectibles';
 import { Door } from '../domain/door';
 import { Stone } from '../domain/level';
 import { LevelId } from '../domain/level-id';
@@ -10,21 +8,15 @@ import { Fence, Flower, FlowerVariant, Ground, LevelSize, Scenery, Tree, TreeVar
 import { levelFromLayout } from './level-layout';
 import { SwingGate } from '../domain/swing-gate';
 import { Boulder } from '../domain/boulder';
+import { lowestRoll, seededRandom } from '../testing/draws';
 import { follow, openGate, pathTo } from '../testing/walk-level';
 
 const at = TilePosition.at;
 const keepOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => positions;
-const layout = ['.DDD..', 'Tt...F', '#H*o~.', 'Y....R'];
-const contents = {
-  keys: {
-    Y: { restores: (position: TilePosition) => position.column < 3 },
-    R: { restores: (position: TilePosition) => position.column >= 3 },
-  },
-  starCount: StarCount.of(2),
-};
+const layout = ['.DDD..', 'Tt...F', '#H*o~.', '.....Q'];
 
 describe('a level built from a layout', () => {
-  const level = levelFromLayout(LevelId.of('layout'), layout, keepOrder, check2dObstacles, contents);
+  const level = levelFromLayout(LevelId.of('layout'), layout, keepOrder, check2dObstacles, lowestRoll);
 
   test('places the hero facing up and a closed door', () => {
     expect(level.id.value).toBe('layout');
@@ -51,9 +43,13 @@ describe('a level built from a layout', () => {
   });
 
   test('grows woodland on grass under each woodland symbol', () => {
-    const wooded = levelFromLayout(LevelId.of('wooded'), ['WDDDW', 'W.H.W', 'WK..W'], keepOrder, check2dObstacles, {
-      keys: { K: { restores: () => true } },
-    });
+    const wooded = levelFromLayout(
+      LevelId.of('wooded'),
+      ['WDDDW', 'W.H.W', 'WQ..W'],
+      keepOrder,
+      check2dObstacles,
+      lowestRoll,
+    );
     expect(wooded.scenery.woodland.tiles).toEqual([at(0, 0), at(4, 0), at(0, 1), at(4, 1), at(0, 2), at(4, 2)]);
     expect(wooded.scenery.groundAt(at(0, 1))).toBe(Ground.Grass);
     expect(wooded.scenery.isWalkable(at(0, 1))).toBe(false);
@@ -65,8 +61,7 @@ describe('a level built from a layout', () => {
 
   test('passes a non-prefix flower selection from contents to scenery in the supplied order', () => {
     const flowerVariants = [FlowerVariant.Violet, FlowerVariant.Coral];
-    const selected = levelFromLayout(LevelId.of('layout'), layout, keepOrder, check2dObstacles, {
-      ...contents,
+    const selected = levelFromLayout(LevelId.of('layout'), layout, keepOrder, check2dObstacles, lowestRoll, {
       flowerVariants,
     });
     expect(selected.scenery.flowerVariants).toEqual(flowerVariants);
@@ -83,109 +78,64 @@ describe('a level built from a layout', () => {
       [layout[0]!, `${symbol}t...F`, ...layout.slice(2)],
       keepOrder,
       check2dObstacles,
-      contents,
+      lowestRoll,
     );
     expect(planted.scenery.trees).toEqual([Tree.at(at(0, 1), variant)]);
   });
 
-  test('gives each key the area its rule selects', () => {
-    expect(level.keys.map((key) => key.position)).toEqual([at(0, 3), at(5, 3)]);
-    const [teal, red] = level.keys;
-    expect(teal!.restores.tiles).toHaveLength(12);
-    expect(teal!.restores.tiles.every((tile) => tile.column < 3)).toBe(true);
-    expect(red!.restores.tiles).toHaveLength(12);
-    expect(red!.restores.tiles.every((tile) => tile.column >= 3)).toBe(true);
-  });
-
-  test('scatters the star count through the shuffle', () => {
-    expect(level.stars.map((star) => star.position)).toEqual([at(1, 3), at(0, 2)]);
+  test('places a permanent orb on each orb symbol, with grass under it', () => {
+    expect([level.orbs.map((orb) => orb.position), level.permanentOrbs]).toEqual([[at(5, 3)], [at(5, 3)]]);
+    expect(level.scenery.groundAt(at(5, 3))).toBe(Ground.Grass);
   });
 
   test.each([
-    ['no hero', ['.DDD..', 'Tt...F', '#.*o~.', 'Y....R'], 'The layout of level layout needs exactly one "H"'],
-    ['two heroes', ['.DDD..', 'Tt...F', '#H*o~.', 'YH...R'], 'The layout of level layout needs exactly one "H"'],
-    ['no door', ['......', 'Tt...F', '#H*o~.', 'Y....R'], 'The layout of level layout needs exactly one door'],
-    ['a split door', ['.DD.D.', 'Tt...F', '#H*o~.', 'Y....R'], 'The layout of level layout needs exactly one door'],
-    ['two doors', ['DDDDDD', '......', '#H*o~.', 'Y....R'], 'The layout of level layout needs exactly one door'],
-    [
-      'star spots and a star count',
-      ['.DDD..', 'Tt...F', '#H*o~.', 'Y.+..R'],
-      'The layout of level layout marks star spots, so it takes no star count',
-    ],
-    ['a missing key', ['.DDD..', 'Tt...F', '#H*o~.', '.....R'], 'The layout of level layout needs exactly one "Y"'],
+    ['no hero', ['.DDD..', 'Tt...F', '#.*o~.', '.....Q'], 'The layout of level layout needs exactly one "H"'],
+    ['two heroes', ['.DDD..', 'Tt...F', '#H*o~.', '.H...Q'], 'The layout of level layout needs exactly one "H"'],
+    ['no door', ['......', 'Tt...F', '#H*o~.', '.....Q'], 'The layout of level layout needs exactly one door'],
+    ['a split door', ['.DD.D.', 'Tt...F', '#H*o~.', '.....Q'], 'The layout of level layout needs exactly one door'],
+    ['two doors', ['DDDDDD', '......', '#H*o~.', '.....Q'], 'The layout of level layout needs exactly one door'],
   ])('rejects a layout with %s', (_, given, message) => {
-    expect(() => levelFromLayout(LevelId.of('layout'), given, keepOrder, check2dObstacles, contents)).toThrow(message);
-  });
-
-  test('always places a star on each permanent spot and lets the shuffle choose the rest of the five', () => {
-    const offered: TilePosition[][] = [];
-    const rows = ['.DDD.....', '@.+++++++', '+++++++++', 'K...H....'];
-    const level = levelFromLayout(
-      LevelId.of('permanent'),
-      rows,
-      (spots) => (offered.push([...spots]), spots),
-      check2dObstacles,
-      {
-        keys: { K: { restores: () => true } },
-      },
+    expect(() => levelFromLayout(LevelId.of('layout'), given, keepOrder, check2dObstacles, lowestRoll)).toThrow(
+      message,
     );
-    const stars = offered.at(-1)!;
-    expect(stars).toHaveLength(16);
-    expect(stars).not.toContainEqual(at(0, 1));
-    expect(level.stars.map((star) => star.position)).toEqual([at(0, 1), ...stars.slice(0, 4)]);
   });
 
-  test('offers the star spots it marks on grass and on paths and lets the shuffle choose five', () => {
-    const { starCount: _, ...unscattered } = contents;
-    const marked = [...layout, '++++++', '+++===', '===...'];
-    const reverseOrder = (positions: readonly TilePosition[]): readonly TilePosition[] => [...positions].reverse();
-    const placed = levelFromLayout(LevelId.of('layout'), marked, reverseOrder, check2dObstacles, unscattered);
-    expect(placed.stars.map((star) => star.position)).toEqual([at(2, 6), at(1, 6), at(0, 6), at(5, 5), at(4, 5)]);
-    expect(placed.scenery.groundAt(at(0, 4))).toBe(Ground.Grass);
-    expect(placed.scenery.groundAt(at(5, 5))).toBe(Ground.Path);
-  });
-});
-
-describe('key materials in a layout', () => {
-  test('gives each key the material its contents name, gold by default', () => {
-    const level = levelFromLayout(
-      LevelId.of('metals'),
-      ['.DDD.', '.K.S.', '.....', '..H..'],
-      keepOrder,
-      check2dObstacles,
-      {
-        keys: {
-          K: { restores: (position: TilePosition) => position.column < 2 },
-          S: { restores: (position: TilePosition) => position.column >= 2, material: KeyMaterial.Silver },
-        },
-      },
-    );
-    expect(level.keys.map((key) => key.material)).toEqual([KeyMaterial.Gold, KeyMaterial.Silver]);
+  test('fills the rest of the orbs at random around the permanent ones', () => {
+    const rows = [
+      'DDD' + '.'.repeat(22),
+      ...Array.from({ length: 12 }, () => '.'.repeat(25)),
+      'Q.........H..............',
+    ];
+    const placed = (seed: number) =>
+      levelFromLayout(LevelId.of('field'), rows, keepOrder, check2dObstacles, seededRandom(seed));
+    const plays = [1, 2, 3].map((seed) => placed(seed).orbs.map((orb) => orb.position));
+    expect(plays.every((orbs) => orbs[0]!.equals(at(0, 13)) && orbs.length > 1)).toBe(true);
+    expect(plays[0]).not.toEqual(plays[1]);
   });
 });
 
 describe('a gate in a layout', () => {
   const gated = (rows: readonly string[]) =>
-    levelFromLayout(LevelId.of('gated'), rows, keepOrder, check2dObstacles, { keys: { K: { restores: () => true } } });
+    levelFromLayout(LevelId.of('gated'), rows, keepOrder, check2dObstacles, lowestRoll);
 
   test('hangs a closed gate on path ground between two fences', () => {
-    const level = gated(['.DDD.', '.K...', 'WFGFW', '..H..']);
+    const level = gated(['.DDD.', '.Q...', 'WFGFW', '..H..']);
     expect(level.gates).toEqual([SwingGate.closedAt(at(2, 2))]);
     expect(level.scenery.groundAt(at(2, 2))).toBe(Ground.Path);
   });
 
   test('leaves a layout without a gate symbol ungated', () => {
-    expect(gated(['.DDD.', '.K...', '.....', '..H..']).gates).toEqual([]);
+    expect(gated(['.DDD.', '.Q...', '.....', '..H..']).gates).toEqual([]);
   });
 
   test('places a boulder on grass under each boulder symbol', () => {
-    const level = gated(['.DDD.', '.K...', '..O..', '..H..']);
+    const level = gated(['.DDD.', '.Q...', '..O..', '..H..']);
     expect(level.boulders).toEqual([Boulder.at(at(2, 2))]);
     expect(level.scenery.groundAt(at(2, 2))).toBe(Ground.Grass);
   });
 
   test('hangs a gate between fences above and below it as one approached from the west', () => {
-    const level = gated(['.DDD..', '...F..', '.P.G.K', '...F..', '..H...']);
+    const level = gated(['.DDD..', '...F..', '.P.G.Q', '...F..', '..H...']);
     expect(level.gates).toEqual([SwingGate.closedAt(at(3, 2), Direction.Left)]);
     expect(level.plate).toEqual(at(1, 2));
   });
@@ -196,7 +146,7 @@ describe('a gate in a layout', () => {
       '........',
       'FFFFGFF.',
       'F.....F.',
-      'F....KF.',
+      'F....QF.',
       'FFGFFFF.',
       '........',
       '..H.....',
@@ -210,27 +160,25 @@ describe('a gate in a layout', () => {
       level,
       pathTo(level, (tile) => tile.equals(at(5, 4)))!,
     );
-    expect(level.keys).toEqual([]);
+    expect(level.orbs.some((orb) => orb.position.equals(at(5, 4)))).toBe(false);
     openGate(level, exit);
     expect(pathTo(level, (tile) => tile.equals(at(4, 1)))).toBeDefined();
   });
 
   test('starts the one boulder on the spot the shuffle picks among its symbols', () => {
-    const rows = ['.DDD.', '.K...', '.O.O.', '..H..'];
+    const rows = ['.DDD.', '.Q...', '.O.O.', '..H..'];
     const reversed = (positions: readonly TilePosition[]) => [...positions].reverse();
-    const level = levelFromLayout(LevelId.of('spots'), rows, reversed, check2dObstacles, {
-      keys: { K: { restores: () => true } },
-    });
+    const level = levelFromLayout(LevelId.of('spots'), rows, reversed, check2dObstacles, lowestRoll);
     expect(level.boulders).toEqual([Boulder.at(at(3, 2))]);
   });
 
   test('rejects boulder spots where any one of them would break the level', () => {
-    expect(() => gated(['.DDD.', '.K...', 'WFGFW', '.OO..', '...H.'])).toThrow('boulder');
+    expect(() => gated(['.DDD.', '.Q...', 'WFGFW', '.OO..', '...H.'])).toThrow('boulder');
   });
 
   test.each([
-    ['three gates', ['.DDD.....', '.K.......', 'FGFFGFFGF', '.........', '..H......'], 'at most two gates'],
-    ['a gate without a fence on one side', ['.DDD.', '.K...', 'W.GFW', '..H..'], 'between two fences'],
+    ['three gates', ['.DDD.....', '.Q.......', 'FGFFGFFGF', '.........', '..H......'], 'at most two gates'],
+    ['a gate without a fence on one side', ['.DDD.', '.Q...', 'W.GFW', '..H..'], 'between two fences'],
   ])('rejects %s', (_, rows, message) => {
     expect(() => gated(rows)).toThrow(message);
   });
