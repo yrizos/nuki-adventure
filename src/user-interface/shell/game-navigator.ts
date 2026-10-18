@@ -6,8 +6,8 @@ import type { GameSession, PlayableLevel, SessionReport } from './game-session';
 
 export interface Screens {
   readonly showIntro: () => void;
-  readonly showStartScreen: () => void;
-  readonly animateStartScreen: (framesOpen: number) => void;
+  readonly showMenuScreen: () => void;
+  readonly animateMenuScreen: (framesOpen: number) => void;
   readonly showLevelPicker: () => void;
   readonly closeLevelPicker: () => void;
   readonly animateLevelPicker: () => void;
@@ -17,7 +17,7 @@ export interface Screens {
 }
 
 type Screen =
-  | { readonly name: 'start-screen' | 'level-picker' }
+  | { readonly name: 'menu-screen' | 'level-picker' }
   | { readonly name: 'end-screen'; leavingFrom: number | null }
   | { readonly name: 'intro'; readonly intro: Intro }
   | { readonly name: 'playing'; readonly session: GameSession };
@@ -25,7 +25,7 @@ type Screen =
 const endScreenStay = 120;
 
 export class GameNavigator {
-  private screen: Screen = { name: 'start-screen' };
+  private screen: Screen = { name: 'menu-screen' };
   private framesOpen = 0;
 
   constructor(
@@ -59,11 +59,11 @@ export class GameNavigator {
 
   // The screen shows its first frame as it opens, so it never appears with a pose left over from its last visit.
   // Leaving a level keeps where she was, so continuing can take her back there.
-  openStartScreen(): void {
+  openMenuScreen(): void {
     this.suspend();
-    this.screen = { name: 'start-screen' };
-    this.screens.showStartScreen();
-    this.screens.animateStartScreen(0);
+    this.screen = { name: 'menu-screen' };
+    this.screens.showMenuScreen();
+    this.screens.animateMenuScreen(0);
     this.framesOpen = 1;
   }
 
@@ -71,7 +71,7 @@ export class GameNavigator {
     this.session?.suspend();
   }
 
-  // The level picker opens over the start screen, which keeps its frame count so closing the picker never
+  // The level picker opens over the menu screen, which keeps its frame count so closing the picker never
   // replays the title.
   openLevelPicker(): void {
     this.screen = { name: 'level-picker' };
@@ -80,7 +80,7 @@ export class GameNavigator {
 
   closeLevelPicker(): void {
     if (this.screen.name !== 'level-picker') return;
-    this.screen = { name: 'start-screen' };
+    this.screen = { name: 'menu-screen' };
     this.screens.closeLevelPicker();
   }
 
@@ -100,14 +100,14 @@ export class GameNavigator {
     if ('session' in this.screen) this.screen.session.tick();
     else if ('intro' in this.screen) {
       this.screen.intro.tick();
-      if (this.screen.intro.finished) this.openStartScreen();
-    } else if (this.screen.name === 'start-screen') this.screens.animateStartScreen(this.framesOpen++);
+      if (this.screen.intro.finished) this.openMenuScreen();
+    } else if (this.screen.name === 'menu-screen') this.screens.animateMenuScreen(this.framesOpen++);
     else if (this.screen.name === 'level-picker') this.screens.animateLevelPicker();
     else if (this.screen.name === 'end-screen') {
       this.framesOpen++;
       if (this.framesOpen >= endScreenStay) this.leaveEndScreen();
       const leaving = this.screen.leavingFrom === null ? 0 : this.framesOpen - this.screen.leavingFrom;
-      if (leaving >= endScreenFadeLength) this.openStartScreen();
+      if (leaving >= endScreenFadeLength) this.openMenuScreen();
       else this.screens.animateEndScreen(this.framesOpen, leaving);
     }
   }

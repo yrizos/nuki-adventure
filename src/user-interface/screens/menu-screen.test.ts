@@ -6,7 +6,7 @@ import { sprite } from '../graphics/picture';
 import { artUrl } from '../graphics/canvas-art';
 import { ditherThreshold } from '../graphics/ordered-dither';
 import { confirmArt } from './confirm-modal';
-import { StartScreen, type StartChoices } from './start-screen';
+import { MenuScreen, type StartChoices } from './menu-screen';
 import {
   confettiAbove,
   confettiSide,
@@ -53,7 +53,7 @@ test('draws every menu button and both answers at one width', () => {
   expect(new Set(widths)).toEqual(new Set([menuButtonWidth]));
 });
 
-test('the page offers ΣΥΝΕΧΕΙΑ, ΕΠΙΠΕΔΑ and ΝΕΟ ΠΑΙΧΝΙΔΙ on the start screen, and ΝΑΙ and ΟΧΙ on the confirmation', () => {
+test('the page offers ΣΥΝΕΧΕΙΑ, ΕΠΙΠΕΔΑ and ΝΕΟ ΠΑΙΧΝΙΔΙ on the menu screen, and ΝΑΙ and ΟΧΙ on the confirmation', () => {
   const page = readFileSync(new URL('../../../index.html', import.meta.url), 'utf8');
   const labels = (name: string) =>
     [
@@ -61,7 +61,7 @@ test('the page offers ΣΥΝΕΧΕΙΑ, ΕΠΙΠΕΔΑ and ΝΕΟ ΠΑΙΧΝΙΔ
         .exec(page)![0]
         .matchAll(/<button[^>]*>([^<]*)<\/button>/g),
     ].map(([, label]) => label);
-  expect(labels('start-screen')).toEqual(['ΣΥΝΕΧΕΙΑ', 'ΕΠΙΠΕΔΑ', 'ΝΕΟ ΠΑΙΧΝΙΔΙ']);
+  expect(labels('menu-screen')).toEqual(['ΣΥΝΕΧΕΙΑ', 'ΕΠΙΠΕΔΑ', 'ΝΕΟ ΠΑΙΧΝΙΔΙ']);
   expect(labels('confirm-modal')).toEqual(['ΝΑΙ', 'ΟΧΙ']);
 });
 
@@ -71,7 +71,7 @@ test('draws the confirmation from the font inside the narrowest column', () => {
   expect(art.rows[0]!.length).toBeLessThanOrEqual(180 - 16);
 });
 
-function startScreen(choices: StartChoices = { canContinue: true, hasProgress: true }) {
+function menuScreen(choices: StartChoices = { canContinue: true, hasProgress: true }) {
   FakeDocument.stubGlobals();
   const root = new FakeDocument();
   const create = (tag: string, name: string) => {
@@ -79,15 +79,15 @@ function startScreen(choices: StartChoices = { canContinue: true, hasProgress: t
     created.className = name;
     return created;
   };
-  const screen = create('section', 'start-screen');
+  const screen = create('section', 'menu-screen');
   screen.hidden = true;
-  const title = create('h1', 'start-title');
-  const confetti = create('span', 'start-confetti');
-  const sparkles = create('span', 'start-sparkles');
+  const title = create('h1', 'menu-title');
+  const confetti = create('span', 'menu-confetti');
+  const sparkles = create('span', 'menu-sparkles');
   title.append(confetti, sparkles);
-  const continueButton = create('button', 'start-continue');
-  const pickLevelButton = create('button', 'start-pick-level');
-  const newGameButton = create('button', 'start-new-game');
+  const continueButton = create('button', 'menu-continue');
+  const pickLevelButton = create('button', 'menu-pick-level');
+  const newGameButton = create('button', 'menu-new-game');
   screen.append(title, continueButton, pickLevelButton, newGameButton);
   const confirmModal = create('section', 'confirm-modal');
   confirmModal.hidden = true;
@@ -97,7 +97,7 @@ function startScreen(choices: StartChoices = { canContinue: true, hasProgress: t
   confirmBox.append(create('p', 'confirm-text'), yesButton, noButton);
   confirmModal.append(confirmBox);
   root.body.append(screen, confirmModal);
-  const subject = new StartScreen(root as unknown as Document);
+  const subject = new MenuScreen(root as unknown as Document);
   const continuing = vi.fn();
   const newGame = vi.fn();
   const pickingLevel = vi.fn();
@@ -131,7 +131,7 @@ function startScreen(choices: StartChoices = { canContinue: true, hasProgress: t
 }
 
 test('with no saved progress all three buttons show with only ΝΕΟ ΠΑΙΧΝΙΔΙ enabled, and a choose key starts a new game at once', () => {
-  const { continueButton, pickLevelButton, newGameButton, confirmModal, newGame, key } = startScreen({
+  const { continueButton, pickLevelButton, newGameButton, confirmModal, newGame, key } = menuScreen({
     canContinue: false,
     hasProgress: false,
   });
@@ -143,7 +143,7 @@ test('with no saved progress all three buttons show with only ΝΕΟ ΠΑΙΧΝ�
 });
 
 test('with a level left unfinished all three buttons are enabled and ΣΥΝΕΧΕΙΑ has focus', () => {
-  const { root, continueButton, pickLevelButton, newGameButton, continuing, key } = startScreen();
+  const { root, continueButton, pickLevelButton, newGameButton, continuing, key } = menuScreen();
   expect([continueButton.disabled, pickLevelButton.disabled, newGameButton.disabled]).toEqual([false, false, false]);
   expect(root.activeElement).toBe(continueButton);
   key('Enter');
@@ -151,13 +151,13 @@ test('with a level left unfinished all three buttons are enabled and ΣΥΝΕΧ�
 });
 
 test('with the game finished ΣΥΝΕΧΕΙΑ is disabled and ΕΠΙΠΕΔΑ has focus', () => {
-  const { root, continueButton, pickLevelButton } = startScreen({ canContinue: false, hasProgress: true });
+  const { root, continueButton, pickLevelButton } = menuScreen({ canContinue: false, hasProgress: true });
   expect([continueButton.disabled, pickLevelButton.disabled]).toEqual([true, false]);
   expect(root.activeElement).toBe(pickLevelButton);
 });
 
 test('arrow keys move focus through the buttons and a choose key picks the focused one', () => {
-  const { root, continueButton, pickLevelButton, newGameButton, pickingLevel, continuing, key } = startScreen();
+  const { root, continueButton, pickLevelButton, newGameButton, pickingLevel, continuing, key } = menuScreen();
   expect(key('ArrowDown').defaultPrevented).toBe(true);
   expect(root.activeElement).toBe(pickLevelButton);
   key('ArrowDown');
@@ -174,13 +174,13 @@ test('arrow keys move focus through the buttons and a choose key picks the focus
 
 const ditherFrames = 16;
 
-function openModal(page: ReturnType<typeof startScreen>): void {
+function openModal(page: ReturnType<typeof menuScreen>): void {
   page.newGameButton.click();
   for (let frame = 0; frame < ditherFrames; frame++) page.subject.animate(frame);
 }
 
-test('with saved progress ΝΕΟ ΠΑΙΧΝΙΔΙ dithers a modal in over the start screen, and ΟΧΙ dithers it out without starting', () => {
-  const page = startScreen();
+test('with saved progress ΝΕΟ ΠΑΙΧΝΙΔΙ dithers a modal in over the menu screen, and ΟΧΙ dithers it out without starting', () => {
+  const page = menuScreen();
   const { root, screen, confirmModal, noButton, newGameButton, newGame, subject } = page;
   openModal(page);
   expect([screen.hidden, confirmModal.hidden]).toEqual([false, false]);
@@ -195,7 +195,7 @@ test('with saved progress ΝΕΟ ΠΑΙΧΝΙΔΙ dithers a modal in over the st
 });
 
 test('the answers do nothing until the modal is whole', () => {
-  const { newGameButton, yesButton, noButton, confirmModal, newGame, subject } = startScreen();
+  const { newGameButton, yesButton, noButton, confirmModal, newGame, subject } = menuScreen();
   newGameButton.click();
   for (let frame = 1; frame < ditherFrames; frame++) subject.animate(frame);
   yesButton.click();
@@ -208,7 +208,7 @@ test('the answers do nothing until the modal is whole', () => {
 });
 
 test('while the modal is open the keys move only between its answers', () => {
-  const page = startScreen();
+  const page = menuScreen();
   openModal(page);
   const { root, yesButton, noButton, key } = page;
   key('ArrowUp');
@@ -220,7 +220,7 @@ test('while the modal is open the keys move only between its answers', () => {
 });
 
 test('ΝΑΙ on the confirmation starts a new game, chosen by keys too', () => {
-  const page = startScreen();
+  const page = menuScreen();
   openModal(page);
   const { root, yesButton, newGame, key } = page;
   key('ArrowUp');
@@ -241,7 +241,7 @@ function titleUrl(root: FakeDocument, keep: (x: number, y: number) => boolean): 
 }
 
 test('reveals the title through the ordered dither, one threshold every 2 frames', () => {
-  const { root, subject, title } = startScreen();
+  const { root, subject, title } = menuScreen();
   const expected = Array.from({ length: 17 }, (_, shown) => titleUrl(root, (x, y) => ditherThreshold(x, y) < shown));
   const violations: number[] = [];
   for (let frame = 0; frame <= 40; frame++) {
@@ -252,7 +252,7 @@ test('reveals the title through the ordered dither, one threshold every 2 frames
 });
 
 test('shows no title at frame 0 and the whole title from frame 32 until the first shine at frame 212', () => {
-  const { root, subject, title } = startScreen();
+  const { root, subject, title } = menuScreen();
   const shownAt = (frame: number) => {
     subject.animate(frame);
     return title.style.getPropertyValue('--art');
@@ -267,7 +267,7 @@ test('shows no title at frame 0 and the whole title from frame 32 until the firs
 });
 
 test('sweeps the shine across the title one step per frame, then rests for 180 frames before the next sweep', () => {
-  const { root, subject, title } = startScreen();
+  const { root, subject, title } = menuScreen();
   const shines = titleShineArts().map((art) => `url(${artUrl(root as unknown as Document, art)})`);
   const whole = `url(${artUrl(root as unknown as Document, titleArt())})`;
   const end = 212 + shines.length;
@@ -356,7 +356,7 @@ test('lights one sparkle at a time, every spot in turn, each growing to a star a
 });
 
 test('shows no sparkles until the title is whole, then steps them every 4 frames and loops', () => {
-  const { root, subject, sparkles } = startScreen();
+  const { root, subject, sparkles } = menuScreen();
   const urls = titleSparkleArts().map((art) => `url(${artUrl(root as unknown as Document, art)})`);
   const dark = urls.at(-1);
   const shownAt = (frame: number) => {
@@ -394,7 +394,7 @@ test('draws the confetti as 2 pixel bits in the rainbow base steps, reaching pas
 });
 
 test('hides the confetti until the title is whole, then drifts it down one pixel every 4 frames and wraps', () => {
-  const { root, subject, confetti } = startScreen();
+  const { root, subject, confetti } = menuScreen();
   const url = `url(${artUrl(root as unknown as Document, titleConfettiArt())})`;
   const height = titleConfettiArt().rows.length;
   const shownAt = (frame: number) => {
@@ -414,15 +414,15 @@ test('hides the confetti until the title is whole, then drifts it down one pixel
   expect(shownAt(0)).toEqual(['none', '0']);
 });
 
-test('reopening the start screen replays the title reveal from empty', () => {
-  const { root, subject, title } = startScreen();
+test('reopening the menu screen replays the title reveal from empty', () => {
+  const { root, subject, title } = menuScreen();
   for (let frame = 0; frame <= 40; frame += 1) subject.animate(frame);
   subject.animate(0);
   expect(title.style.getPropertyValue('--art')).toBe(titleUrl(root, () => false));
 });
 
 test('the buttons work at frame 0 of the title reveal', () => {
-  const { subject, continueButton, continuing, pickingLevel, key } = startScreen();
+  const { subject, continueButton, continuing, pickingLevel, key } = menuScreen();
   subject.animate(0);
   continueButton.click();
   key('ArrowDown');

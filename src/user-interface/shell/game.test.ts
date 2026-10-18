@@ -665,10 +665,10 @@ function gamePage({
     'menu-switch',
     'full-screen-switch',
     'sound-switch',
-    'start-screen',
-    'start-title',
-    'start-confetti',
-    'start-sparkles',
+    'menu-screen',
+    'menu-title',
+    'menu-confetti',
+    'menu-sparkles',
     'confirm-modal',
     'confirm-box',
     'confirm-text',
@@ -692,7 +692,7 @@ function gamePage({
   }
   // Each menu holds its own buttons, so its keyboard handling finds them as the real page does.
   for (const [menu, choices] of [
-    ['start-screen', ['start-continue', 'start-pick-level', 'start-new-game']],
+    ['menu-screen', ['menu-continue', 'menu-pick-level', 'menu-new-game']],
     ['confirm-modal', ['confirm-yes', 'confirm-no']],
     ['level-picker-screen', ['level-picker', 'level-picker-up', 'level-picker-down', 'level-picker-back']],
   ] as const) {
@@ -709,7 +709,7 @@ function gamePage({
   // The smallest view the game allows keeps painting every frame of whole playthroughs fast.
   view.bounds = { left: 0, top: 0, width: 224, height: 224 };
   view.append(root.createElement('canvas'));
-  for (const menu of ['start-screen', 'confirm-modal', 'end-screen', 'level-picker-screen'])
+  for (const menu of ['menu-screen', 'confirm-modal', 'end-screen', 'level-picker-screen'])
     elements.get(menu)!.hidden = true;
   const started: string[] = [];
   const plays: PlayLevel[] = [];
@@ -751,7 +751,7 @@ function gamePage({
   );
   if (secondUnlocked) progress.complete(levels[0]!.id, { playFrames: 60, starsCollected: 0, starCount: 0 });
   startGame(root as unknown as Document, levels, progress, () => 1);
-  // A fresh game opens on the intro, and Escape leaves it for the start screen that most tests begin on.
+  // A fresh game opens on the intro, and Escape leaves it for the menu screen that most tests begin on.
   if (!intro && !secondUnlocked)
     root.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: 'Escape', repeat: false }));
   // The level picker reads every level once to draw its picture, which starts no session.
@@ -796,11 +796,11 @@ function gamePage({
     announcement,
     screen: elements.get('screen')!,
     canvas: view.children[0] as FakeCanvasElement,
-    startScreen: elements.get('start-screen')!,
+    menuScreen: elements.get('menu-screen')!,
     confirmModal: elements.get('confirm-modal')!,
     endScreen: elements.get('end-screen')!,
-    continueButton: elements.get('start-continue')!,
-    continueGame: (): void => (elements.get('start-continue') as FakeHTMLElement).click(),
+    continueButton: elements.get('menu-continue')!,
+    continueGame: (): void => (elements.get('menu-continue') as FakeHTMLElement).click(),
     // The answers act only once the modal has dithered in, one threshold per frame.
     confirm: (): void => {
       for (let step = 0; step < 16; step++) frame();
@@ -813,10 +813,10 @@ function gamePage({
     },
     progress,
     levelPicker: elements.get('level-picker-screen')!,
-    newGame: (): void => (elements.get('start-new-game') as FakeHTMLElement).click(),
+    newGame: (): void => (elements.get('menu-new-game') as FakeHTMLElement).click(),
     // The level picker answers only once it has dithered in, and is gone only once it has dithered out.
     pickLevel: (): void => {
-      (elements.get('start-pick-level') as FakeHTMLElement).click();
+      (elements.get('menu-pick-level') as FakeHTMLElement).click();
       for (let step = 0; step < 16; step++) frame();
     },
     back: (): void => {
@@ -824,9 +824,9 @@ function gamePage({
       for (let step = 0; step < 16; step++) frame();
     },
     focused: (): FakeElement | null => root.activeElement,
-    pickLevelButton: elements.get('start-pick-level')!,
+    pickLevelButton: elements.get('menu-pick-level')!,
     backButton: elements.get('level-picker-back')!,
-    newGameButton: elements.get('start-new-game')!,
+    newGameButton: elements.get('menu-new-game')!,
     firstRow: (): FakeElement => root.querySelectorAll('.level-row')[0]!,
     menuKey: (name: string): void => {
       root.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: name, repeat: false }));
@@ -855,21 +855,21 @@ describe('the game page', () => {
     vi.useRealTimers();
   });
 
-  test('opens a fresh game on the intro with every control hidden, then the start screen once it ends', () => {
+  test('opens a fresh game on the intro with every control hidden, then the menu screen once it ends', () => {
     const page = gamePage({ intro: true });
-    expect(page.startScreen.hidden).toBe(true);
+    expect(page.menuScreen.hidden).toBe(true);
     expect(page.screen.classList.contains('intro-open')).toBe(true);
     for (let frame = 1; frame < introLength; frame++) page.frame();
-    expect(page.startScreen.hidden).toBe(true);
+    expect(page.menuScreen.hidden).toBe(true);
     page.frame();
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
     expect(page.screen.classList.contains('intro-open')).toBe(false);
     expect(page.started).toEqual([]);
   });
 
-  test('opens the start screen at once when progress is saved', () => {
+  test('opens the menu screen at once when progress is saved', () => {
     const page = gamePage({ secondUnlocked: true });
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
     expect(page.screen.classList.contains('intro-open')).toBe(false);
   });
 
@@ -880,29 +880,29 @@ describe('the game page', () => {
     expect(page.announcement.textContent).toBe(narration[0]);
   });
 
-  test('Escape leaves the intro for the start screen', () => {
+  test('Escape leaves the intro for the menu screen', () => {
     const page = gamePage({ intro: true });
     page.menuKey('Escape');
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
     expect(page.screen.classList.contains('intro-open')).toBe(false);
   });
 
-  test('a touch held through the whole skip leaves the intro for the start screen', () => {
+  test('a touch held through the whole skip leaves the intro for the menu screen', () => {
     const page = gamePage({ intro: true });
     page.root.body.dispatchEvent(Object.assign(new Event('pointerdown'), { pointerId: 1 }));
     for (let frame = 1; frame < skipLength; frame++) page.frame();
-    expect(page.startScreen.hidden).toBe(true);
+    expect(page.menuScreen.hidden).toBe(true);
     page.frame();
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
   });
 
   test('starts level one from ΝΕΟ ΠΑΙΧΝΙΔΙ at once when no progress is saved', () => {
     const page = gamePage();
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
     page.frame();
     expect(page.started).toEqual([]);
     page.newGame();
-    expect(page.startScreen.hidden).toBe(true);
+    expect(page.menuScreen.hidden).toBe(true);
     expect(page.confirmModal.hidden).toBe(true);
     expect(page.started).toEqual(['one']);
   });
@@ -910,9 +910,9 @@ describe('the game page', () => {
   test('with progress saved, ΝΕΟ ΠΑΙΧΝΙΔΙ asks first, ΟΧΙ keeps the progress and ΝΑΙ deletes it before starting level one', () => {
     const page = gamePage({ secondUnlocked: true });
     page.newGame();
-    expect([page.startScreen.hidden, page.confirmModal.hidden]).toEqual([false, false]);
+    expect([page.menuScreen.hidden, page.confirmModal.hidden]).toEqual([false, false]);
     page.decline();
-    expect([page.startScreen.hidden, page.confirmModal.hidden]).toEqual([false, true]);
+    expect([page.menuScreen.hidden, page.confirmModal.hidden]).toEqual([false, true]);
     expect(page.progress.view().hasProgress).toBe(true);
     page.newGame();
     page.confirm();
@@ -1027,7 +1027,7 @@ describe('the game page', () => {
     expect(page.level.hero.position).toEqual(TilePosition.at(1, 4));
   });
 
-  test('keeps the start screen and the level picker silent and plays the game tune in a level', () => {
+  test('keeps the menu screen and the level picker silent and plays the game tune in a level', () => {
     const music = vi.spyOn(Sound.prototype, 'music');
     const page = gamePage({ secondUnlocked: true });
     expect(music).toHaveBeenLastCalledWith(null);
@@ -1039,10 +1039,10 @@ describe('the game page', () => {
     expect(music).toHaveBeenLastCalledWith(null);
   });
 
-  test('shows the level picker over the start screen from ΕΠΙΠΕΔΑ', () => {
+  test('shows the level picker over the menu screen from ΕΠΙΠΕΔΑ', () => {
     const page = gamePage({ secondUnlocked: true });
     page.pickLevel();
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
     expect(page.levelPicker.hidden).toBe(false);
     expect(page.started).toEqual([]);
   });
@@ -1052,25 +1052,25 @@ describe('the game page', () => {
     page.pickLevel();
     page.choose(2);
     expect(page.levelPicker.hidden).toBe(true);
-    expect(page.startScreen.hidden).toBe(true);
+    expect(page.menuScreen.hidden).toBe(true);
     expect(page.started).toEqual(['two']);
   });
 
-  test('returns from the level picker to the start screen with ΠΙΣΩ', () => {
+  test('returns from the level picker to the menu screen with ΠΙΣΩ', () => {
     const page = gamePage({ secondUnlocked: true });
     page.pickLevel();
     page.back();
     expect(page.levelPicker.hidden).toBe(true);
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
     expect(page.started).toEqual([]);
   });
 
-  test('returns from the level picker to the start screen with the menu switch', () => {
+  test('returns from the level picker to the menu screen with the menu switch', () => {
     const page = gamePage({ secondUnlocked: true });
     page.pickLevel();
     page.openMenu();
     expect(page.levelPicker.hidden).toBe(true);
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
     expect(page.started).toEqual([]);
   });
 
@@ -1079,12 +1079,12 @@ describe('the game page', () => {
     expect(page.focused()).toBe(page.pickLevelButton);
     page.menuKey(key);
     expect(page.started).toEqual([]);
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
     expect(page.levelPicker.hidden).toBe(false);
     expect(page.focused()).toBe(page.firstRow());
   });
 
-  test.each(['Enter', 'z'])('returns to the start screen without starting a level when %s chooses ΠΙΣΩ', (key) => {
+  test.each(['Enter', 'z'])('returns to the menu screen without starting a level when %s chooses ΠΙΣΩ', (key) => {
     const page = gamePage({ secondUnlocked: true });
     page.pickLevel();
     page.menuKey('ArrowDown');
@@ -1094,16 +1094,16 @@ describe('the game page', () => {
     for (let step = 0; step < 16; step++) page.frame();
     expect(page.started).toEqual([]);
     expect(page.levelPicker.hidden).toBe(true);
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
     expect(page.focused()).toBe(page.pickLevelButton);
   });
 
-  test('returns to the start screen from the menu switch', () => {
+  test('returns to the menu screen from the menu switch', () => {
     const page = gamePage();
     page.newGame();
     page.walkUpUntil(() => page.announcement.textContent === messages.colorsBack);
     page.openMenu();
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
     expect(page.announcement.textContent).toBe('');
     page.frame();
     expect(page.announcement.textContent).toBe('');
@@ -1117,7 +1117,7 @@ describe('the game page', () => {
     page.frame();
     page.frame();
     page.openMenu();
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
     page.newGame();
     page.confirm();
     expect(page.started).toEqual(['one', 'one']);
@@ -1135,16 +1135,16 @@ describe('the game page', () => {
     expect(hum).toHaveBeenLastCalledWith(0);
   });
 
-  test('shows the end screen after completing the last level, then the start screen with ΣΥΝΕΧΕΙΑ disabled', () => {
+  test('shows the end screen after completing the last level, then the menu screen with ΣΥΝΕΧΕΙΑ disabled', () => {
     const page = gamePage({ secondUnlocked: true });
     page.pickLevel();
     page.choose(2);
     page.completeLevel();
     expect(page.endScreen.hidden).toBe(false);
-    expect(page.startScreen.hidden).toBe(true);
+    expect(page.menuScreen.hidden).toBe(true);
     for (let frame = 0; frame < 120 + endScreenFadeLength; frame++) page.frame();
     expect(page.endScreen.hidden).toBe(true);
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
     expect(page.continueButton.disabled).toBe(true);
     expect(page.focused()).toBe(page.pickLevelButton);
     expect(page.started).toEqual(['two']);
@@ -1162,7 +1162,7 @@ describe('the game page', () => {
     page.menuKey('Escape');
     expect(page.endScreen.hidden).toBe(false);
     for (let frame = 0; frame < endScreenFadeLength; frame++) page.frame();
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
   });
 
   test('any touch on the end screen starts its fade at once', () => {
@@ -1172,7 +1172,7 @@ describe('the game page', () => {
     page.completeLevel();
     page.root.dispatchEvent(new Event('pointerdown'));
     for (let frame = 0; frame < endScreenFadeLength; frame++) page.frame();
-    expect(page.startScreen.hidden).toBe(false);
+    expect(page.menuScreen.hidden).toBe(false);
   });
 
   test('announces the message of the level being played', () => {

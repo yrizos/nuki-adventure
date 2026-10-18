@@ -28,7 +28,7 @@ export interface StartChoices {
   readonly hasProgress: boolean;
 }
 
-export class StartScreen {
+export class MenuScreen {
   private readonly screen: HTMLElement;
   private readonly continueButton: HTMLButtonElement;
   private readonly pickLevelButton: HTMLButtonElement;
@@ -47,12 +47,12 @@ export class StartScreen {
   private readonly confettiHeight: number;
 
   constructor(root: Document) {
-    this.screen = element(root, '.start-screen');
-    this.continueButton = element(root, '.start-continue');
-    this.pickLevelButton = element(root, '.start-pick-level');
-    this.newGameButton = element(root, '.start-new-game');
+    this.screen = element(root, '.menu-screen');
+    this.continueButton = element(root, '.menu-continue');
+    this.pickLevelButton = element(root, '.menu-pick-level');
+    this.newGameButton = element(root, '.menu-new-game');
     this.confirm = new ConfirmModal(root, this.screen, this.newGameButton);
-    this.title = element(root, '.start-title');
+    this.title = element(root, '.menu-title');
     const art = titleArt();
     // Each reveal step is drawn once here, so replaying the reveal on every visit builds no new images.
     this.titleUrls = Array.from(
@@ -62,7 +62,7 @@ export class StartScreen {
     this.shineUrls = titleShineArts().map((shine) => `url(${artUrl(root, shine)})`);
     this.title.style.setProperty('--art-width', String(art.rows[0]!.length));
     this.title.style.setProperty('--art-height', String(art.rows.length));
-    this.sparkles = element(root, '.start-sparkles');
+    this.sparkles = element(root, '.menu-sparkles');
     const sparkleArts = titleSparkleArts();
     // The dark steps share one art, so each distinct step is drawn once.
     const drawn = new Map<Art, string>();
@@ -73,7 +73,7 @@ export class StartScreen {
     this.sparkles.style.setProperty('--art-width', String(sparkleArts[0]!.rows[0]!.length));
     this.sparkles.style.setProperty('--art-height', String(sparkleArts[0]!.rows.length));
     this.sparkles.style.setProperty('--sparkle-margin', String(sparkleMargin));
-    this.confetti = element(root, '.start-confetti');
+    this.confetti = element(root, '.menu-confetti');
     const confettiArt = titleConfettiArt();
     this.confettiUrl = `url(${artUrl(root, confettiArt)})`;
     this.confettiHeight = confettiArt.rows.length;

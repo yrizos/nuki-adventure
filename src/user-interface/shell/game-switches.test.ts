@@ -34,10 +34,10 @@ function page({ fullscreenEnabled = true, on = true } = {}) {
       sound.on = !sound.on;
     }),
   };
-  const openStartScreen = vi.fn();
-  connectGameSwitches(root as unknown as Document, sound, openStartScreen);
+  const openMenuScreen = vi.fn();
+  connectGameSwitches(root as unknown as Document, sound, openMenuScreen);
   const click = (target: EventTarget): void => void target.dispatchEvent(new Event('click'));
-  return { root, sound, soundSwitch, fullScreenSwitch, menuSwitch, openStartScreen, documentElement, click };
+  return { root, sound, soundSwitch, fullScreenSwitch, menuSwitch, openMenuScreen, documentElement, click };
 }
 
 describe('the sound switch', () => {
@@ -100,15 +100,15 @@ describe('the full screen switch', () => {
 });
 
 describe('the menu switch', () => {
-  test('opens the start screen and prevents default on an initial Escape keydown', () => {
+  test('opens the menu screen and prevents default on an initial Escape keydown', () => {
     const subject = page();
     const event = Object.assign(new Event('keydown', { cancelable: true }), { key: 'Escape', repeat: false });
     subject.root.dispatchEvent(event);
-    expect(subject.openStartScreen).toHaveBeenCalledOnce();
+    expect(subject.openMenuScreen).toHaveBeenCalledOnce();
     expect(event.defaultPrevented).toBe(true);
   });
 
-  test('does not reopen the start screen on a repeated Escape keydown', () => {
+  test('does not reopen the menu screen on a repeated Escape keydown', () => {
     const subject = page();
     subject.root.dispatchEvent(
       Object.assign(new Event('keydown', { cancelable: true }), { key: 'Escape', repeat: false }),
@@ -116,14 +116,14 @@ describe('the menu switch', () => {
     subject.root.dispatchEvent(
       Object.assign(new Event('keydown', { cancelable: true }), { key: 'Escape', repeat: true }),
     );
-    expect(subject.openStartScreen).toHaveBeenCalledOnce();
+    expect(subject.openMenuScreen).toHaveBeenCalledOnce();
   });
 
-  test.each(['Enter', ' ', 'ArrowUp', 'z', 'x'])('does not open the start screen or prevent default for %s', (key) => {
+  test.each(['Enter', ' ', 'ArrowUp', 'z', 'x'])('does not open the menu screen or prevent default for %s', (key) => {
     const subject = page();
     const event = Object.assign(new Event('keydown', { cancelable: true }), { key, repeat: false });
     subject.root.dispatchEvent(event);
-    expect(subject.openStartScreen).not.toHaveBeenCalled();
+    expect(subject.openMenuScreen).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(false);
   });
 });

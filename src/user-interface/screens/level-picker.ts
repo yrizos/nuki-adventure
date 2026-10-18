@@ -221,13 +221,7 @@ export class LevelPicker {
   ) {
     const screen = element<HTMLElement>(root, '.level-picker-screen');
     const box = element<HTMLElement>(root, '.level-picker-box');
-    this.dither = new DitherModal(
-      root,
-      screen,
-      box,
-      element(root, '.start-screen'),
-      element(root, '.start-pick-level'),
-    );
+    this.dither = new DitherModal(root, screen, box, element(root, '.menu-screen'), element(root, '.menu-pick-level'));
     this.list = element(root, '.level-picker');
     this.backButton = element(root, '.level-picker-back');
     this.backButton.style.setProperty('--art-width', String(backWidth));
@@ -306,7 +300,7 @@ export class LevelPicker {
         if (this.dither.isWhole) this.chosen(level.id);
       });
       // Nuki marks the level to continue, centered on the map. She stands on her own layer so she can breathe
-      // and blink like on the start screen without redrawing the card.
+      // and blink like on the menu screen without redrawing the card.
       if (continueLevel !== null && continueLevel.equals(level.id)) button.append(this.hero);
       return { level, button };
     });

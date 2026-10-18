@@ -14,7 +14,7 @@ import { Intro } from '../screens/intro';
 import { LevelPicker } from '../screens/level-picker';
 import { drawObstacles } from '../world/obstacle-overlay';
 import { Sound } from '../audio/sound';
-import { StartScreen } from '../screens/start-screen';
+import { MenuScreen } from '../screens/menu-screen';
 
 export { messages } from './game-session';
 
@@ -61,7 +61,7 @@ export function startGame(
   const gameView = new GameView(screen, view, canvas);
 
   const sound = new Sound(window);
-  const startScreen = new StartScreen(root);
+  const menuScreen = new MenuScreen(root);
   const levelPicker = new LevelPicker(
     root,
     levels.map((level) => ({ id: level.id, view: level.start().view(level.id) })),
@@ -76,7 +76,7 @@ export function startGame(
     () => new Intro(holdToSkip),
     {
       showIntro: () => {
-        startScreen.hide();
+        menuScreen.hide();
         levelPicker.hide();
         endScreen.hide();
         screen.classList.add('intro-open');
@@ -84,7 +84,7 @@ export function startGame(
         sound.hum(0);
         sound.music(null);
       },
-      showStartScreen: () => {
+      showMenuScreen: () => {
         screen.classList.remove('intro-open');
         holdToSkip.stop();
         levelPicker.hide();
@@ -92,13 +92,13 @@ export function startGame(
         announcement.textContent = '';
         setActionButtonsEnabled(true);
         const view = progress.view();
-        startScreen.show({ canContinue: view.continueLevel !== null, hasProgress: view.hasProgress });
+        menuScreen.show({ canContinue: view.continueLevel !== null, hasProgress: view.hasProgress });
         sound.hum(0);
         sound.music(null);
       },
-      // The level picker dithers out over the start screen after it closes, so both move on the same frames.
-      animateStartScreen: (framesOpen) => {
-        startScreen.animate(framesOpen);
+      // The level picker dithers out over the menu screen after it closes, so both move on the same frames.
+      animateMenuScreen: (framesOpen) => {
+        menuScreen.animate(framesOpen);
         levelPicker.advance();
       },
       showLevelPicker: () => {
@@ -116,7 +116,7 @@ export function startGame(
       },
       animateEndScreen: (framesOpen, framesLeaving) => endScreen.animate(framesOpen, framesLeaving),
       showLevel: (usesA, usesB) => {
-        startScreen.hide();
+        menuScreen.hide();
         levelPicker.hide();
         endScreen.hide();
         sound.music('game');
@@ -127,24 +127,24 @@ export function startGame(
       },
     },
   );
-  startScreen.whenContinuing(() => {
+  menuScreen.whenContinuing(() => {
     const level = progress.view().continueLevel;
     if (level) navigator.play(level, progress.levelInProgress() ?? undefined);
   });
-  startScreen.whenNewGame(() => {
+  menuScreen.whenNewGame(() => {
     progress.reset();
     navigator.play(levels[0]!.id);
   });
   endScreen.whenLeaving(() => navigator.leaveEndScreen());
-  startScreen.whenPickingLevel(() => navigator.openLevelPicker());
+  menuScreen.whenPickingLevel(() => navigator.openLevelPicker());
   levelPicker.whenChosen((level) => navigator.play(level));
   levelPicker.whenBack(() => navigator.closeLevelPicker());
   connectGameSwitches(root, sound, () => {
     // Escape is one of the keys that leave the end screen, so it leaves through the same fade.
     if (navigator.state === 'end-screen') return;
-    navigator.openStartScreen();
+    navigator.openMenuScreen();
   });
-  if (progress.view().hasProgress) navigator.openStartScreen();
+  if (progress.view().hasProgress) navigator.openMenuScreen();
   else navigator.openIntro();
 
   // Counting from when the prompt starts makes every burst, and its chime, begin at once instead of mid-cycle.

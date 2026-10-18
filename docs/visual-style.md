@@ -204,7 +204,7 @@ A new element uses the smallest size that fits its shape.
 ### Leaving a Level
 
 - Stepping into the open doorway completes the level. The world darkens to Ink through the same dither, 3 frames per threshold.
-- Once fully Ink, the next level starts faded, or the start screen opens after the last level.
+- Once fully Ink, the next level starts faded, or the menu screen opens after the last level.
 
 ## Motion and Animation
 
@@ -261,7 +261,7 @@ The [intro](ui-layout.md#intro) is a still comic page drawn with the game's own 
 | Each panel's first 32 | The panel appears through the ordered 4 × 4 dither, one threshold every 2 frames. Earlier panels stay |
 | 0, 120, 240, 360, 480 | Panels 1 to 5 start to appear |
 | 272 to 293 | Once panel 3 is whole, the whole page trembles in whole pixels, at most 3, and settles |
-| 600 to 647 | The whole page darkens to Ink like [leaving a level](#leaving-a-level), then the start screen opens |
+| 600 to 647 | The whole page darkens to Ink like [leaving a level](#leaving-a-level), then the menu screen opens |
 
 ### Animation Rules
 

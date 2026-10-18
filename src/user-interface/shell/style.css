@@ -150,7 +150,7 @@ body {
 /* Panel pixels are whole device pixels, so the panel art stays as crisp as the game view at every width. */
 .game-view,
 .control-panel,
-.start-screen,
+.menu-screen,
 .confirm-modal,
 .end-screen,
 .level-picker-screen {
@@ -177,8 +177,8 @@ body {
 .sound-switch,
 .full-screen-switch,
 .menu-switch,
-.start-title,
-.start-sparkles,
+.menu-title,
+.menu-sparkles,
 .level-hero,
 .level-picker-title,
 .confirm-box,
@@ -330,7 +330,7 @@ body {
 }
 
 /* The menus cover the control panel too, because nothing on the panel acts until a level starts. */
-.start-screen,
+.menu-screen,
 .end-screen {
   position: absolute;
   inset: 0;
@@ -348,11 +348,11 @@ body {
 }
 
 /* The buttons sit as close together as the confirmation's answers. */
-.start-screen {
+.menu-screen {
   gap: calc(8 * var(--pixel));
 }
 
-.start-screen[hidden],
+.menu-screen[hidden],
 .confirm-modal[hidden],
 .end-screen[hidden],
 .level-picker-screen[hidden] {
@@ -459,7 +459,7 @@ body {
 }
 
 /* The free space splits above and below the title, so the logo floats in the middle of the screen above the buttons. */
-.start-continue {
+.menu-continue {
   margin-top: auto;
 }
 
@@ -473,7 +473,7 @@ body {
   font-size: 0;
 }
 
-.start-title {
+.menu-title {
   position: relative;
   flex: none;
   margin: auto 0 0;
@@ -481,14 +481,14 @@ body {
   font-size: 0;
 }
 
-.start-sparkles {
+.menu-sparkles {
   position: absolute;
   top: calc(-1 * var(--sparkle-margin) * var(--pixel));
   left: calc(-1 * var(--sparkle-margin) * var(--pixel));
 }
 
 /* Below the title's own background, so the bits pass behind the logo. The tile repeats down, so the falling bits wrap. */
-.start-confetti {
+.menu-confetti {
   position: absolute;
   z-index: -1;
   top: calc(-1 * var(--confetti-above) * var(--pixel));
@@ -497,9 +497,9 @@ body {
   image-rendering: pixelated;
 }
 
-.start-title,
-.start-confetti,
-.start-sparkles,
+.menu-title,
+.menu-confetti,
+.menu-sparkles,
 .level-hero,
 .level-picker-title,
 .confirm-box,
@@ -530,11 +530,11 @@ body {
   display: none;
 }
 
-.start-pick-level {
+.menu-pick-level {
   --art: var(--art-pick-level);
 }
 
-.start-pick-level:active {
+.menu-pick-level:active {
   --art: var(--art-pick-level-pressed);
 }
 
@@ -573,19 +573,19 @@ body {
   --art: var(--art-back-pressed);
 }
 
-.start-new-game {
+.menu-new-game {
   --art: var(--art-new-game);
 }
 
-.start-new-game:active {
+.menu-new-game:active {
   --art: var(--art-new-game-pressed);
 }
 
-.start-continue {
+.menu-continue {
   --art: var(--art-continue);
 }
 
-.start-continue:active {
+.menu-continue:active {
   --art: var(--art-continue-pressed);
 }
 

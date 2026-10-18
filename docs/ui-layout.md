@@ -48,11 +48,11 @@ All three switches sit in a row in the top right corner of the game view. Each i
 | --- | --- | --- | --- |
 | Sound | 8 panel pixels from the top and right edges, below the top safe-area inset | Speaker with two waves when on, a cross when off | Turns music and all sound effects on or off. Remembered across visits |
 | Full screen | Left of the sound switch, 4 panel pixel gap, widened so touch areas meet without overlapping | Four corners, outward when not full screen, inward when full screen | Toggles full screen. Shown only where the browser supports it, so hidden on iPhone |
-| Menu | Left of the full screen switch, or of the sound switch when full screen is hidden, same gap | Three stacked bars | Leaves the level at once and opens the start screen. ΣΥΝΕΧΕΙΑ resumes it. The level picker starts it afresh |
+| Menu | Left of the full screen switch, or of the sound switch when full screen is hidden, same gap | Three stacked bars | Leaves the level at once and opens the menu screen. ΣΥΝΕΧΕΙΑ resumes it. The level picker starts it afresh |
 
 ## Intro
 
-- Opens when the game opens with no saved progress. Ends on the start screen.
+- Opens when the game opens with no saved progress. Ends on the menu screen.
 - Hides the control panel and all three switches, so the game view takes the whole column.
 - A comic page on Ink in the game view, with 8 pixel margins and 6 pixel gutters. All art is at the game's one size, except the sound word.
 - Three rows: panels 1 and 2 side by side, panel 3 across the middle, then panels 4 and 5 side by side. A row of two is as tall as its taller text box plus the tree. On short pages the outer rows shrink first and the middle row keeps at least 116 pixels. The page is centered vertically.
@@ -70,12 +70,12 @@ All three switches sit in a row in the top right corner of the game view. Each i
 
 - Panel timing is set in [Intro](visual-style.md#intro).
 - The intro makes no sound.
-- Holding any key or touch for 1.5 seconds skips to the start screen. Only presses that start during the intro count. Key repeats, Escape and keys pressed with Meta never count. Letting go before the end starts the hold over.
+- Holding any key or touch for 1.5 seconds skips to the menu screen. Only presses that start during the intro count. Key repeats, Escape and keys pressed with Meta never count. Letting go before the end starts the hold over.
 - While a press is held, a 13 pixel circle 8 pixels from the bottom right corner shows the hold. It is drawn like the level card clock, an Ink ring around an N1 face that Paper fills clockwise from the top, with N4 shading on its lower right edge. It never shows otherwise.
-- Escape opens the start screen at once.
+- Escape opens the menu screen at once.
 - A hidden live region repeats the newest narration for screen readers.
 
-## Start Screen
+## Menu Screen
 
 - Covers the whole page, control panel included, when the game opens with saved progress, when the intro ends and when the menu switch is pressed.
 - Pixel art on the panel pixel grid, on a plain background with no scenery.
@@ -89,28 +89,28 @@ All three switches sit in a row in the top right corner of the game view. Each i
 | ΕΠΙΠΕΔΑ | Any progress is saved | Opens the level picker |
 | ΝΕΟ ΠΑΙΧΝΙΔΙ | Always | Starts the first level. With progress saved, opens the confirmation first |
 
-- The start screen and the level picker cover all three switches.
+- The menu screen and the level picker cover all three switches.
 - The screen scrolls when its contents do not fit.
 
 ### Confirmation
 
-- A modal over the start screen. The start screen stays in place behind it, dimmed by an ordered dither of Ink that stops at half the thresholds. The modal covers the switches too.
+- A modal over the menu screen. The menu screen stays in place behind it, dimmed by an ordered dither of Ink that stops at half the thresholds. The modal covers the switches too.
 - One message box frame, centered on the page, with 16 pixels of padding. It holds ΝΕΟ ΠΑΙΧΝΙΔΙ; over Η ΠΡΟΟΔΟΣ ΘΑ ΧΑΘΕΙ. in the message box font, both lines centered.
-- 16 pixels below the question, ΝΑΙ and ΟΧΙ at the start screen button width, 8 pixels apart. ΝΑΙ wears the A button colors and ΟΧΙ the B button colors. ΟΧΙ takes focus.
+- 16 pixels below the question, ΝΑΙ and ΟΧΙ at the menu screen button width, 8 pixels apart. ΝΑΙ wears the A button colors and ΟΧΙ the B button colors. ΟΧΙ takes focus.
 - The modal and its dimming appear and disappear through the ordered 4 × 4 dither, one threshold per game frame. The answers act only once the modal is whole.
 - While the modal is open, keys and touches reach only ΝΑΙ and ΟΧΙ.
 - ΝΑΙ deletes all saved progress and starts the first level. ΟΧΙ dithers the modal out. Escape closes it at once.
 
 ## End Screen
 
-- Opens when the last level is completed. Covers the whole page on the start screen background.
+- Opens when the last level is completed. Covers the whole page on the menu screen background.
 - ΣΥΓΧΑΡΗΤΗΡΙΑ! in the message box font in Y2, above Nuki dancing toward the player, both centered.
-- After 2 seconds, or at once on any key or any touch, the screen leaves through the ordered 4 × 4 dither, one threshold every 2 game frames, then opens the start screen.
+- After 2 seconds, or at once on any key or any touch, the screen leaves through the ordered 4 × 4 dither, one threshold every 2 game frames, then opens the menu screen.
 - A repeating held key does not leave the screen. Escape leaves it through the same dither.
 
 ## Music
 
-- The intro, the start screen, the confirmation and the level picker are silent.
+- The intro, the menu screen, the confirmation and the level picker are silent.
 - Levels play the game tune. The end screen plays a slow, soft tune.
 - Changing music fades the old tune out over 1 second and the new one in over half a second.
 
@@ -118,13 +118,13 @@ All three switches sit in a row in the top right corner of the game view. Each i
 
 ### Modal
 
-- ΕΠΙΠΕΔΑ opens the level picker as a big modal over the start screen. It appears and disappears like the [confirmation](#confirmation): the same Ink dither darkens the start screen behind it, and the same dither masks the box while it comes and goes. Cards and ΠΙΣΩ act only once the modal is whole.
+- ΕΠΙΠΕΔΑ opens the level picker as a big modal over the menu screen. It appears and disappears like the [confirmation](#confirmation): the same Ink dither darkens the menu screen behind it, and the same dither masks the box while it comes and goes. Cards and ΠΙΣΩ act only once the modal is whole.
 - The modal covers the whole page, switches included. It shares the confirmation's width, and the margin above and below the box matches the margin beside it.
 - The box wears the message box frame. Inside it, ΕΠΙΠΕΔΑ sits at the top in the message box font, then the cards, then a row with two scroll buttons on the left and ΠΙΣΩ on the right.
 - The scroll buttons are A-colored with an up and a down arrow. Each press scrolls the cards by most of their visible height. A scroll button is disabled once there is nothing more in its direction. ΠΙΣΩ wears the B button colors at its own text width.
 - Only the cards scroll. The heading and ΠΙΣΩ stay in place, and no scrollbar is drawn, so a card cut off at the edge shows that there is more.
 - On opening, the card of the level ΣΥΝΕΧΕΙΑ would start takes focus and scrolls into view. With nothing to continue, the first unlocked card does.
-- ΠΙΣΩ dithers the modal out and returns focus to ΕΠΙΠΕΔΑ. The start screen behind it does not replay its title. Escape and the menu switch close it at once.
+- ΠΙΣΩ dithers the modal out and returns focus to ΕΠΙΠΕΔΑ. The menu screen behind it does not replay its title. Escape and the menu switch close it at once.
 
 ### Cards
 
@@ -141,7 +141,7 @@ All three switches sit in a row in the top right corner of the game view. Each i
 
 ## Menus
 
-- On the start screen and the level picker, arrow keys move focus and A or B chooses the focused item.
+- On the menu screen and the level picker, arrow keys move focus and A or B chooses the focused item.
 - No button or card ever shows a focus outline.
 
 ## Control Panel
@@ -195,7 +195,7 @@ Panel pixels.
 
 - A and B are circles on a lip. A pressed button sinks into its lip and the lip disappears.
 - The right half of the panel is their touch area. A touch presses the button whose center is nearest.
-- In a level, A is enabled only when the level holds a [swing gate](glossary.md#swing-gate) or a [boulder](glossary.md#boulder). B is never enabled in a level. A disabled button is dimmed and ignores touch and keys. Both are enabled on the start screen and level picker.
+- In a level, A is enabled only when the level holds a [swing gate](glossary.md#swing-gate) or a [boulder](glossary.md#boulder). B is never enabled in a level. A disabled button is dimmed and ignores touch and keys. Both are enabled on the menu screen and level picker.
 - Hint wobble: while the hero can act, that button wobbles. No prompt is drawn in the game view.
 
 | Wobble property | Value |
@@ -220,6 +220,6 @@ Panel pixels.
 | Arrows | Move the hero |
 | A, Z, Space | Press A |
 | B, X, Enter | Press B |
-| Escape | Open the start screen |
+| Escape | Open the menu screen |
 
 A key press shows the matching button as pressed.

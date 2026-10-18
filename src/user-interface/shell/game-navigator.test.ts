@@ -53,8 +53,8 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
   vi.spyOn(progress, 'complete');
   const screens = {
     showIntro: vi.fn(),
-    showStartScreen: vi.fn(),
-    animateStartScreen: vi.fn(),
+    showMenuScreen: vi.fn(),
+    animateMenuScreen: vi.fn(),
     showLevelPicker: vi.fn(),
     closeLevelPicker: vi.fn(),
     animateLevelPicker: vi.fn(),
@@ -62,7 +62,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
     animateEndScreen: vi.fn(),
     showLevel: vi.fn(),
   };
-  const { showStartScreen } = screens;
+  const { showMenuScreen } = screens;
   const started: string[] = [];
   const plays: { id: LevelId; play: PlayLevel }[] = [];
   const hold = { isHeld: false };
@@ -125,7 +125,7 @@ function navigator(first: string | null = 'one', { secondUnlocked = first === 't
   const steer = (direction: Direction | null): void => {
     heading = direction && Heading.of(direction);
   };
-  return { navigator: subject, started, progress, screens, showStartScreen, complete, press, current, steer, hold };
+  return { navigator: subject, started, progress, screens, showMenuScreen, complete, press, current, steer, hold };
 }
 
 describe('the game navigator', () => {
@@ -195,32 +195,32 @@ describe('the game navigator', () => {
     }
   });
 
-  test('animates only the level picker while it is open, and closing it resumes the start screen where it was', () => {
+  test('animates only the level picker while it is open, and closing it resumes the menu screen where it was', () => {
     const subject = navigator(null);
-    subject.navigator.openStartScreen();
+    subject.navigator.openMenuScreen();
     subject.navigator.tick();
     subject.navigator.openLevelPicker();
     subject.navigator.tick();
     expect(subject.screens.animateLevelPicker).toHaveBeenCalledOnce();
-    expect(subject.screens.animateStartScreen).toHaveBeenLastCalledWith(1);
+    expect(subject.screens.animateMenuScreen).toHaveBeenLastCalledWith(1);
     subject.navigator.closeLevelPicker();
-    expect(subject.navigator.state).toBe('start-screen');
+    expect(subject.navigator.state).toBe('menu-screen');
     expect(subject.screens.closeLevelPicker).toHaveBeenCalledOnce();
     subject.navigator.tick();
-    expect(subject.screens.animateStartScreen).toHaveBeenLastCalledWith(2);
-    expect(subject.screens.showStartScreen).toHaveBeenCalledOnce();
+    expect(subject.screens.animateMenuScreen).toHaveBeenLastCalledWith(2);
+    expect(subject.screens.showMenuScreen).toHaveBeenCalledOnce();
   });
 
-  test('ticks the level session while playing, without animating the start screen', () => {
+  test('ticks the level session while playing, without animating the menu screen', () => {
     const subject = navigator();
     const before = subject.current().hero.feet;
     subject.steer(Direction.Up);
     subject.navigator.tick();
     expect(subject.current().hero.feet).not.toEqual(before);
-    expect(subject.screens.animateStartScreen).not.toHaveBeenCalled();
+    expect(subject.screens.animateMenuScreen).not.toHaveBeenCalled();
   });
 
-  test('finishing the last level opens the end screen, which stays 2 seconds and then fades to the start screen', () => {
+  test('finishing the last level opens the end screen, which stays 2 seconds and then fades to the menu screen', () => {
     const subject = navigator();
     subject.complete();
     subject.complete();
@@ -235,7 +235,7 @@ describe('the game navigator', () => {
     ]);
     expect(subject.navigator.state).toBe('end-screen');
     subject.navigator.tick();
-    expect(subject.navigator.state).toBe('start-screen');
+    expect(subject.navigator.state).toBe('menu-screen');
   });
 
   test('leaving the end screen early starts the fade at once, and a second press does not restart it', () => {
@@ -251,7 +251,7 @@ describe('the game navigator', () => {
     for (let frame = 3; frame < endScreenFadeLength; frame++) subject.navigator.tick();
     expect(subject.navigator.state).toBe('end-screen');
     subject.navigator.tick();
-    expect(subject.navigator.state).toBe('start-screen');
+    expect(subject.navigator.state).toBe('menu-screen');
   });
 
   test('saves each completion once', () => {
@@ -262,26 +262,26 @@ describe('the game navigator', () => {
     expect(vi.mocked(subject.progress.reach).mock.calls.map(([id]) => id.value)).toEqual(['one', 'two']);
   });
 
-  test('plays the intro to its end and then opens the start screen', () => {
+  test('plays the intro to its end and then opens the menu screen', () => {
     const subject = navigator(null);
     subject.navigator.openIntro();
     expect(subject.screens.showIntro).toHaveBeenCalledOnce();
     for (let frame = 1; frame < introLength; frame++) subject.navigator.tick();
     expect(subject.navigator.state).toBe('intro');
-    expect(subject.showStartScreen).not.toHaveBeenCalled();
+    expect(subject.showMenuScreen).not.toHaveBeenCalled();
     subject.navigator.tick();
-    expect(subject.navigator.state).toBe('start-screen');
+    expect(subject.navigator.state).toBe('menu-screen');
     expect(subject.navigator.intro).toBeNull();
-    expect(subject.showStartScreen).toHaveBeenCalledOnce();
+    expect(subject.showMenuScreen).toHaveBeenCalledOnce();
   });
 
-  test('a held press opens the start screen once it has lasted the whole skip', () => {
+  test('a held press opens the menu screen once it has lasted the whole skip', () => {
     const subject = navigator(null);
     subject.navigator.openIntro();
     subject.hold.isHeld = true;
     for (let frame = 1; frame < skipLength; frame++) subject.navigator.tick();
     expect(subject.navigator.state).toBe('intro');
     subject.navigator.tick();
-    expect(subject.navigator.state).toBe('start-screen');
+    expect(subject.navigator.state).toBe('menu-screen');
   });
 });

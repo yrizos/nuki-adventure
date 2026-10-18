@@ -199,8 +199,8 @@ function levelPicker(progress: Partial<ProgressView> = {}) {
     created.className = name;
     return created;
   };
-  const start = create('section', 'start-screen');
-  const opener = create('button', 'start-pick-level');
+  const start = create('section', 'menu-screen');
+  const opener = create('button', 'menu-pick-level');
   start.append(opener);
   const screen = create('section', 'level-picker-screen');
   screen.hidden = true;
@@ -249,7 +249,7 @@ function levelPicker(progress: Partial<ProgressView> = {}) {
   };
 }
 
-test('opens over the start screen and makes it inert, with the first unlocked card focused', () => {
+test('opens over the menu screen and makes it inert, with the first unlocked card focused', () => {
   const { root, start, screen, rows } = levelPicker();
   expect([screen.hidden, start.hidden, start.inert]).toEqual([false, false, true]);
   expect(root.activeElement).toBe(rows[0]);

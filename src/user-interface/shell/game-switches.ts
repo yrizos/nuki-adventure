@@ -4,13 +4,13 @@ import type { Sound } from '../audio/sound';
 export function connectGameSwitches(
   root: Document,
   sound: Pick<Sound, 'on' | 'toggle'>,
-  openStartScreen: () => void,
+  openMenuScreen: () => void,
 ): void {
-  element<HTMLButtonElement>(root, '.menu-switch').addEventListener('click', openStartScreen);
+  element<HTMLButtonElement>(root, '.menu-switch').addEventListener('click', openMenuScreen);
   root.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
     event.preventDefault();
-    if (!event.repeat) openStartScreen();
+    if (!event.repeat) openMenuScreen();
   });
   const soundSwitch = element<HTMLButtonElement>(root, '.sound-switch');
   const showSound = (): void => soundSwitch.setAttribute('aria-pressed', String(sound.on));
