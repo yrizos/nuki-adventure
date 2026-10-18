@@ -91,7 +91,7 @@ A [dividing fence](glossary.md#game-world) deliberately breaks free movement. It
 
 ### Boulders
 
-- A level MAY hold one [boulder](glossary.md#boulder). Each `O` marks a spot where it may start, and each play picks one spot at random.
+- A level MAY hold one [boulder](glossary.md#boulder). Each `O` marks a spot on grass where it may start, and each `B` marks one on path. Each play picks one spot at random.
 - Every spot satisfies every boulder rule.
 - The boulder stands on its own open ground, never on a stone, the door, the gate tile, its approach tile or the tile it swings into.
 - No orb shares a boulder's tile.

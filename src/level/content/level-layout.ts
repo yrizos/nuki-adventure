@@ -35,7 +35,7 @@ export function levelFromLayout(
   const where = (symbol: string): TilePosition[] =>
     cells.filter((cell) => cell.symbol === symbol).map((cell) => cell.at);
   const ground = layout.map((line) =>
-    [...line].map((symbol) => ('#DHGP'.includes(symbol) ? Ground.Path : symbol === '~' ? Ground.Water : Ground.Grass)),
+    [...line].map((symbol) => ('#DHGPB'.includes(symbol) ? Ground.Path : symbol === '~' ? Ground.Water : Ground.Grass)),
   );
   const scenery = Scenery.of(
     size,
@@ -70,7 +70,7 @@ export function levelFromLayout(
   const plates = where('P');
   if (plates.length > 1) throw new Error(`The layout of level ${id.value} holds at most one pressure plate`);
   const permanentOrbs = where('Q');
-  const boulderSpots = where('O');
+  const boulderSpots = [...where('O'), ...where('B')];
   const definition = (boulders: readonly Boulder[]) => ({
     id,
     scenery,
