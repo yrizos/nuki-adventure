@@ -66,11 +66,17 @@ repos:
         pass_filenames: false
         files: '^(src/.*\.ts$|package(-lock)?\.json$|tsconfig\.json$)'
       - id: unit-tests
-        name: Unit tests
-        entry: npm test
+        name: Unit tests (related to staged files)
+        entry: npm exec -- vitest related --run --passWithNoTests
+        language: system
+        require_serial: true
+        files: '^(src|assets)/.*\.(ts|js|mjs)$'
+      - id: sprite-preview-tests
+        name: Sprite library tests (preview pages)
+        entry: npm exec -- vitest run src/user-interface/graphics/sprite-library.test.ts
         language: system
         pass_filenames: false
-        files: '^(src/|assets/|package(-lock)?\.json$|tsconfig\.json$|vite\.config\.mjs$)'
+        files: '^assets/sprites/[^/]+/preview\.html$'
       - id: dependency-audit
         name: Dependency security audit
         entry: npm run audit
@@ -78,9 +84,16 @@ repos:
         pass_filenames: false
         files: '^(package(-lock)?\.json|\.npmrc)$'
         stages: [pre-push]
-      - id: check-push
-        name: Tests and browser build
-        entry: npm run check:push
+      - id: push-tests
+        name: Unit tests (full suite)
+        entry: npm test
+        language: system
+        pass_filenames: false
+        files: '^(src/|assets/|index\.html$|package(-lock)?\.json$|tsconfig\.json$|vite\.config\.mjs$)'
+        stages: [pre-push]
+      - id: push-build
+        name: Browser build
+        entry: npm run build
         language: system
         pass_filenames: false
         files: '^(src/|assets/|index\.html$|package(-lock)?\.json$|tsconfig\.json$|vite\.config\.mjs$)'
