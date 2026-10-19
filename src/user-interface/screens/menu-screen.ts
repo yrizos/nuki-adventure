@@ -35,18 +35,21 @@ export class MenuScreen {
   private readonly newGameButton: HTMLButtonElement;
   private readonly confirm: ConfirmModal;
   private choices: StartChoices = { canContinue: false, hasProgress: false };
+  private readonly root: Document;
+  private readonly urls = new Map<Art, string>();
   private readonly title: HTMLElement;
-  private readonly titleUrls: string[];
-  private readonly shineUrls: string[];
-  private titleShown = '';
+  private readonly titleArts: Art[];
+  private shines: Art[] | undefined;
+  private titleShown: Art | undefined;
   private readonly sparkles: HTMLElement;
-  private readonly sparkleUrls: string[];
-  private sparklesShown = '';
+  private readonly sparkleArts: Art[];
+  private sparklesShown: Art | undefined;
   private readonly confetti: HTMLElement;
   private readonly confettiUrl: string;
   private readonly confettiHeight: number;
 
   constructor(root: Document) {
+    this.root = root;
     this.screen = element(root, '.menu-screen');
     this.continueButton = element(root, '.menu-continue');
     this.pickLevelButton = element(root, '.menu-pick-level');
@@ -54,24 +57,13 @@ export class MenuScreen {
     this.confirm = new ConfirmModal(root, this.screen, this.newGameButton);
     this.title = element(root, '.menu-title');
     const art = titleArt();
-    // Each reveal step is drawn once here, so replaying the reveal on every visit builds no new images.
-    this.titleUrls = Array.from(
-      { length: ditherSteps + 1 },
-      (_, shown) => `url(${artUrl(root, ditheredArt(art, shown))})`,
-    );
-    this.shineUrls = titleShineArts().map((shine) => `url(${artUrl(root, shine)})`);
+    this.titleArts = Array.from({ length: ditherSteps + 1 }, (_, shown) => ditheredArt(art, shown));
     this.title.style.setProperty('--art-width', String(art.rows[0]!.length));
     this.title.style.setProperty('--art-height', String(art.rows.length));
     this.sparkles = element(root, '.menu-sparkles');
-    const sparkleArts = titleSparkleArts();
-    // The dark steps share one art, so each distinct step is drawn once.
-    const drawn = new Map<Art, string>();
-    this.sparkleUrls = sparkleArts.map((sparkle) => {
-      if (!drawn.has(sparkle)) drawn.set(sparkle, `url(${artUrl(root, sparkle)})`);
-      return drawn.get(sparkle)!;
-    });
-    this.sparkles.style.setProperty('--art-width', String(sparkleArts[0]!.rows[0]!.length));
-    this.sparkles.style.setProperty('--art-height', String(sparkleArts[0]!.rows.length));
+    this.sparkleArts = titleSparkleArts();
+    this.sparkles.style.setProperty('--art-width', String(this.sparkleArts[0]!.rows[0]!.length));
+    this.sparkles.style.setProperty('--art-height', String(this.sparkleArts[0]!.rows.length));
     this.sparkles.style.setProperty('--sparkle-margin', String(sparkleMargin));
     this.confetti = element(root, '.menu-confetti');
     const confettiArt = titleConfettiArt();
@@ -111,26 +103,26 @@ export class MenuScreen {
   animate(framesOpen: number): void {
     this.confirm.advance();
     const sinceReveal = framesOpen - titleRevealLength;
-    const shinePhase = sinceReveal < 0 ? -1 : (sinceReveal % (shineRest + this.shineUrls.length)) - shineRest;
+    const shinePhase = sinceReveal < 0 ? -1 : (sinceReveal % (shineRest + this.shineArts().length)) - shineRest;
     const shown =
       sinceReveal < 0
-        ? this.titleUrls[Math.floor(framesOpen / framesPerTitleThreshold)]!
+        ? this.titleArts[Math.floor(framesOpen / framesPerTitleThreshold)]!
         : shinePhase < 0
-          ? this.titleUrls[ditherSteps]!
-          : this.shineUrls[shinePhase]!;
+          ? this.titleArts[ditherSteps]!
+          : this.shineArts()[shinePhase]!;
     if (shown !== this.titleShown) {
       this.titleShown = shown;
-      this.title.style.setProperty('--art', shown);
+      this.title.style.setProperty('--art', this.url(shown));
     }
     const sparkles =
-      this.sparkleUrls[
+      this.sparkleArts[
         sinceReveal < 0
-          ? this.sparkleUrls.length - 1
-          : Math.floor(sinceReveal / framesPerSparkleStep) % this.sparkleUrls.length
+          ? this.sparkleArts.length - 1
+          : Math.floor(sinceReveal / framesPerSparkleStep) % this.sparkleArts.length
       ]!;
     if (sparkles !== this.sparklesShown) {
       this.sparklesShown = sparkles;
-      this.sparkles.style.setProperty('--art', sparkles);
+      this.sparkles.style.setProperty('--art', this.url(sparkles));
     }
     this.confetti.style.setProperty('--art', sinceReveal < 0 ? 'none' : this.confettiUrl);
     this.confetti.style.setProperty(
@@ -151,5 +143,21 @@ export class MenuScreen {
   hide(): void {
     this.screen.hidden = true;
     this.confirm.dismiss();
+  }
+
+  // The shine first plays seconds after the reveal, so its frames are not built before the first paint.
+  private shineArts(): Art[] {
+    this.shines ??= titleShineArts();
+    return this.shines;
+  }
+
+  // Encoding every frame up front held back the first paint, so each frame is encoded when first shown and then reused.
+  private url(art: Art): string {
+    let url = this.urls.get(art);
+    if (!url) {
+      url = `url(${artUrl(this.root, art)})`;
+      this.urls.set(art, url);
+    }
+    return url;
   }
 }

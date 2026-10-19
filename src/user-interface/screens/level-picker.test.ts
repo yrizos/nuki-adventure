@@ -183,7 +183,7 @@ function levelPicker(progress: Partial<ProgressView> = {}) {
   root.body.append(start, screen);
   const subject = new LevelPicker(
     root as unknown as Document,
-    levels.map(({ id }) => ({ id, view: view(id) })),
+    levels.map(({ id }) => ({ id, view: () => view(id) })),
     () => 0.5,
   );
   const chosen = vi.fn<(level: LevelId) => void>();

@@ -339,10 +339,14 @@ const font: Readonly<Record<string, readonly string[]>> = {
   ],
 };
 
-type Mask = Set<string>;
+type Mask = Set<number>;
 
-const key = (x: number, y: number) => `${x},${y}`;
-const point = (pixel: string) => pixel.split(',').map(Number) as [number, number];
+// Numeric keys keep the morphology fast enough for startup. The offset leaves room for pixels that dilation pushes past the origin, and the stride stays far wider than the logo so rows never share keys.
+const keyOffset = 64;
+const keyStride = 1024;
+const key = (x: number, y: number) => (y + keyOffset) * keyStride + x + keyOffset;
+const point = (pixel: number) =>
+  [(pixel % keyStride) - keyOffset, Math.floor(pixel / keyStride) - keyOffset] as [number, number];
 
 // A rounded kernel keeps the sticker's corners soft.
 function kernel(radius: number): [number, number][] {
@@ -375,9 +379,16 @@ function eroded(mask: Mask, radius: number): Mask {
   );
 }
 
-function drawnTitle(): { art: Art; letterRamps: Map<string, Ramp> } {
-  const fill = new Map<string, PaletteCode>();
-  const rampAt = new Map<string, Ramp>();
+let drawn: { art: Art; letterRamps: Map<number, Ramp> } | undefined;
+
+function drawnTitle(): { art: Art; letterRamps: Map<number, Ramp> } {
+  drawn ??= drawTitle();
+  return drawn;
+}
+
+function drawTitle(): { art: Art; letterRamps: Map<number, Ramp> } {
+  const fill = new Map<number, PaletteCode>();
+  const rampAt = new Map<number, Ramp>();
   const lineMasks: Mask[] = [];
   const widths = lines.map((line) =>
     [...line].reduce(
@@ -449,7 +460,7 @@ function drawnTitle(): { art: Art; letterRamps: Map<string, Ramp> } {
   );
   const codes = [...new Set<PaletteCode>(['Paper', 'Ink', 'V1', ...ramps.flat()])];
   const symbols = new Map(codes.map((code, index) => [code, String.fromCharCode(97 + index)]));
-  const paint = (pixel: string, code: PaletteCode) => {
+  const paint = (pixel: number, code: PaletteCode) => {
     const [x, y] = point(pixel);
     grid.put(x - left, y - top, symbols.get(code)!);
   };

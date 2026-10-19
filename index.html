@@ -4,8 +4,37 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Η πολύχρωμη περιπέτεια της Νούκι</title>
+    <!-- Inline, so the loader paints before the stylesheet and the script arrive. -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #000000;
+      }
+      .loader {
+        position: fixed;
+        inset: 0;
+        z-index: 10;
+        display: grid;
+        place-items: center;
+        background: #000000;
+      }
+      .loader::before {
+        content: '';
+        width: min(60vw, 240px);
+        height: 8px;
+        background: linear-gradient(#ffffff 0 0) 0 0 / 30% 100% no-repeat #333333;
+        animation: loading 0.8s ease-in-out infinite alternate;
+      }
+      @keyframes loading {
+        to {
+          background-position: 100% 0;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div class="loader" role="progressbar" aria-label="ΦΟΡΤΩΣΗ"></div>
     <main class="screen">
       <div class="game-view">
         <canvas></canvas>

@@ -727,8 +727,6 @@ function gamePage({ secondUnlocked = false, arrives = false, sideOrb = false, st
   );
   if (secondUnlocked) progress.complete(levels[0]!.id, { playFrames: 60 });
   startGame(root as unknown as Document, levels, progress, () => 1);
-  // The level picker reads every level once to draw its picture, which starts no session.
-  started.length = 0;
   let now = 0;
   const frame = (): void => {
     now += 1000 / 60 + 0.001;
@@ -796,9 +794,12 @@ function gamePage({ secondUnlocked = false, arrives = false, sideOrb = false, st
       touch('pointerup');
     },
     // The level picker answers only once it has dithered in, and is gone only once it has dithered out.
+    // The level picker reads a level to draw its card, which starts no session.
     pickLevel: (): void => {
+      const count = started.length;
       (elements.get('menu-pick-level') as FakeHTMLElement).click();
       for (let step = 0; step < 16; step++) frame();
+      started.length = count;
     },
     back: (): void => {
       (elements.get('level-picker-back') as FakeHTMLElement).click();
@@ -1065,7 +1066,8 @@ describe('the game page', () => {
     const page = gamePage({ secondUnlocked: true });
     expect(page.focused()).toBe(page.pickLevelButton);
     page.menuKey(key);
-    expect(page.started).toEqual([]);
+    // The level picker reads each level once to draw its card, and no level starts beyond that.
+    expect(page.started).toEqual(['one', 'two']);
     expect(page.menuScreen.hidden).toBe(false);
     expect(page.levelPicker.hidden).toBe(false);
     expect(page.focused()).toBe(page.firstRow());

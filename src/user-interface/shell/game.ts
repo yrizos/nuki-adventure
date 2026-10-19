@@ -64,7 +64,7 @@ export function startGame(
   const menuScreen = new MenuScreen(root);
   const levelPicker = new LevelPicker(
     root,
-    levels.map((level) => ({ id: level.id, view: level.start().view(level.id) })),
+    levels.map((level) => ({ id: level.id, view: () => level.start().view(level.id) })),
     random,
   );
   const endScreen = new EndScreen(root);
@@ -191,4 +191,5 @@ export function startGame(
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
+  root.querySelector('.loader')?.remove();
 }

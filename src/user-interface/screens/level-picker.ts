@@ -156,7 +156,8 @@ export function levelRowText(level: LevelProgressView): string {
 
 export interface PickerLevel {
   readonly id: LevelId;
-  readonly view: LevelView;
+  // Building every level up front held back the menu screen, so a level is built only when its card is first drawn.
+  readonly view: () => LevelView;
 }
 
 export class LevelPicker {
@@ -319,7 +320,7 @@ export class LevelPicker {
   private map(level: PickerLevel): Picture {
     let map = this.maps.get(level.id.value);
     if (!map) {
-      map = levelMap(level.view, true, this.random);
+      map = levelMap(level.view(), true, this.random);
       this.maps.set(level.id.value, map);
     }
     return map;
