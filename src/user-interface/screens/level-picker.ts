@@ -316,6 +316,14 @@ export class LevelPicker {
     this.dither.dismiss();
   }
 
+  // Building one card map per call spreads the work over frames, so the first open of the picker has no maps left to build.
+  prepare({ levels }: ProgressView): void {
+    const level = this.levels.find(
+      ({ id }) => !this.maps.has(id.value) && levels.some((shown) => shown.isUnlocked && shown.id.equals(id)),
+    );
+    if (level) this.map(level);
+  }
+
   // Every unlocked level shows its world in color, played or not, so the picker reads as an invitation.
   private map(level: PickerLevel): Picture {
     let map = this.maps.get(level.id.value);

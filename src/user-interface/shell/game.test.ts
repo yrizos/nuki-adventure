@@ -29,6 +29,8 @@ import { pixelDifference } from '../testing/pictures';
 import { buttonWobble, startGame, wobbleEvery } from './game';
 import { arrivalLength } from './game-phase';
 import { Sound } from '../audio/sound';
+import { LevelPicker } from '../screens/level-picker';
+import { titleRevealLength } from '../screens/menu-screen';
 import { GameLoop } from './game-loop';
 import { endScreenFadeLength } from '../screens/end-screen';
 import { narration } from '../screens/intro';
@@ -623,6 +625,9 @@ describe('the magical arrival', () => {
   });
 });
 
+// Read before any test spies on it, so a second page in one test does not wrap the first page's spy.
+const drawMap = Reflect.get(LevelPicker.prototype, 'map') as (...args: unknown[]) => unknown;
+
 function gamePage({ secondUnlocked = false, arrives = false, sideOrb = false, storage = memoryStorage() } = {}) {
   FakeDocument.stubGlobals();
   audioWindow();
@@ -686,14 +691,28 @@ function gamePage({ secondUnlocked = false, arrives = false, sideOrb = false, st
   for (const menu of ['menu-screen', 'confirm-modal', 'end-screen', 'level-picker-screen'])
     elements.get(menu)!.hidden = true;
   const started: string[] = [];
+  const cardsDrawn: string[] = [];
   const plays: PlayLevel[] = [];
+  // The level picker builds a level to draw its card, which starts no session.
+  let drawingCard = false;
+  vi.spyOn(LevelPicker.prototype as unknown as { map: typeof drawMap }, 'map').mockImplementation(function (
+    this: unknown,
+    ...args
+  ) {
+    drawingCard = true;
+    try {
+      return drawMap.apply(this, args);
+    } finally {
+      drawingCard = false;
+    }
+  });
   const playable = (name: string) => {
     const id = LevelId.of(name);
     return {
       id,
       arrives,
       start: () => {
-        started.push(name);
+        (drawingCard ? cardsDrawn : started).push(name);
         // A second orb lies a step to the right of the start, with the first moved far enough away for both circles.
         const size = LevelSize.of(sideOrb ? 16 : 3, 5);
         const orbs = sideOrb ? [at(2, 4), at(15, 1)] : [at(1, 3)];
@@ -715,7 +734,7 @@ function gamePage({ secondUnlocked = false, arrives = false, sideOrb = false, st
             }),
           ]),
         );
-        plays.push(play);
+        if (!drawingCard) plays.push(play);
         return play;
       },
     };
@@ -747,6 +766,7 @@ function gamePage({ secondUnlocked = false, arrives = false, sideOrb = false, st
   return {
     root,
     started,
+    cardsDrawn,
     frame,
     frames(count: number): void {
       for (let step = 0; step < count; step++) frame();
@@ -794,12 +814,9 @@ function gamePage({ secondUnlocked = false, arrives = false, sideOrb = false, st
       touch('pointerup');
     },
     // The level picker answers only once it has dithered in, and is gone only once it has dithered out.
-    // The level picker reads a level to draw its card, which starts no session.
     pickLevel: (): void => {
-      const count = started.length;
       (elements.get('menu-pick-level') as FakeHTMLElement).click();
       for (let step = 0; step < 16; step++) frame();
-      started.length = count;
     },
     back: (): void => {
       (elements.get('level-picker-back') as FakeHTMLElement).click();
@@ -1027,6 +1044,22 @@ describe('the game page', () => {
     expect(music).toHaveBeenLastCalledWith(null);
   });
 
+  test('builds the level cards while the menu screen shows, once its title has faded in', () => {
+    const page = gamePage({ secondUnlocked: true });
+    page.frames(titleRevealLength - 2);
+    expect(page.cardsDrawn).toEqual([]);
+    page.frames(10);
+    expect(page.cardsDrawn).toEqual(['one', 'two']);
+    page.pickLevel();
+    expect(page.cardsDrawn).toEqual(['one', 'two']);
+  });
+
+  test('builds no card for a locked level', () => {
+    const page = gamePage();
+    page.frames(titleRevealLength + 10);
+    expect(page.cardsDrawn).toEqual(['one']);
+  });
+
   test('shows the level picker over the menu screen from ΕΠΙΠΕΔΑ', () => {
     const page = gamePage({ secondUnlocked: true });
     page.pickLevel();
@@ -1066,8 +1099,7 @@ describe('the game page', () => {
     const page = gamePage({ secondUnlocked: true });
     expect(page.focused()).toBe(page.pickLevelButton);
     page.menuKey(key);
-    // The level picker reads each level once to draw its card, and no level starts beyond that.
-    expect(page.started).toEqual(['one', 'two']);
+    expect(page.started).toEqual([]);
     expect(page.menuScreen.hidden).toBe(false);
     expect(page.levelPicker.hidden).toBe(false);
     expect(page.focused()).toBe(page.firstRow());

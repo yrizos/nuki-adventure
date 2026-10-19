@@ -14,7 +14,7 @@ import { Intro } from '../screens/intro';
 import { LevelPicker } from '../screens/level-picker';
 import { drawObstacles } from '../world/obstacle-overlay';
 import { Sound } from '../audio/sound';
-import { MenuScreen } from '../screens/menu-screen';
+import { MenuScreen, titleRevealLength } from '../screens/menu-screen';
 
 export { messages } from './game-session';
 
@@ -69,6 +69,7 @@ export function startGame(
   );
   const endScreen = new EndScreen(root);
   const holdToSkip = new HoldToSkip(window, root.body);
+  let menuProgress = progress.view();
   const navigator = new GameNavigator(
     levels,
     progress,
@@ -91,8 +92,8 @@ export function startGame(
         endScreen.hide();
         announcement.textContent = '';
         setActionButtonsEnabled(true);
-        const view = progress.view();
-        menuScreen.show({ canContinue: view.continueLevel !== null, hasProgress: view.hasProgress });
+        menuProgress = progress.view();
+        menuScreen.show({ canContinue: menuProgress.continueLevel !== null, hasProgress: menuProgress.hasProgress });
         sound.hum(0);
         sound.music(null);
       },
@@ -100,6 +101,8 @@ export function startGame(
       animateMenuScreen: (framesOpen) => {
         menuScreen.animate(framesOpen);
         levelPicker.advance();
+        // Waiting for the title to fade in keeps that animation smooth.
+        if (framesOpen >= titleRevealLength) levelPicker.prepare(menuProgress);
       },
       showLevelPicker: () => {
         setActionButtonsEnabled(true);

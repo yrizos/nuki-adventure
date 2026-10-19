@@ -16,7 +16,7 @@ import {
 } from './title-logo';
 
 const framesPerTitleThreshold = 2;
-const titleRevealLength = ditherSteps * framesPerTitleThreshold;
+export const titleRevealLength = ditherSteps * framesPerTitleThreshold;
 // A long rest keeps the shine an occasional glint rather than a constant flicker.
 const shineRest = 180;
 const framesPerSparkleStep = 4;
