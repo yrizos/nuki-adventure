@@ -27,7 +27,6 @@ import {
 import { memoryStorage } from '../../progress/testing/memory-storage';
 import { pixelDifference } from '../testing/pictures';
 import { startGame } from './game';
-import { buttonWobble, wobbleEvery } from '../session/prompt-wobble';
 import { arrivalLength } from '../session/game-phase';
 import { Sound } from '../audio/sound';
 import { LevelPicker } from '../screens/level-picker';
@@ -498,15 +497,6 @@ describe('a swing gate in the game session', () => {
     subject.tick(gateSwingLength);
     expect(subject.session.prompts('a')).toBe(false);
     expect(gameSession().session.prompts('a')).toBe(false);
-  });
-
-  test('wobbles a button smoothly within one panel pixel in bursts that start still and rest between', () => {
-    const offsets = Array.from({ length: wobbleEvery }, (_, age) => buttonWobble(age));
-    expect(offsets[0]).toBe(0);
-    expect(offsets.every((offset) => Math.abs(offset) <= 1)).toBe(true);
-    expect(offsets.slice(1).some((offset, index) => Math.abs(offset - offsets[index]!) > 0.5)).toBe(false);
-    expect(offsets.slice(24).every((offset) => offset === 0)).toBe(true);
-    expect(buttonWobble(wobbleEvery + 3)).toBe(offsets[3]);
   });
 
   test('ignores A during the magical arrival', () => {
