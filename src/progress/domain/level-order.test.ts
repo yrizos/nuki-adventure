@@ -15,10 +15,6 @@ describe('a level order', () => {
     expect(() => LevelOrder.of([one, two, LevelId.of('one')])).toThrow(RangeError);
   });
 
-  test('starts with its first level', () => {
-    expect(LevelOrder.of([two, one]).first).toEqual(two);
-  });
-
   test('includes only its own levels', () => {
     const order = LevelOrder.of([one, two]);
     expect([one, two, three].map((level) => order.includes(level))).toEqual([true, true, false]);

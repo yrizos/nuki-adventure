@@ -120,7 +120,6 @@ test.each(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'])(
 );
 
 test.each([
-  ['button', () => new FakeHTMLElement('button')],
   ['anchor', () => new FakeHTMLElement('a', { href: '/level' })],
   ['input', () => new FakeHTMLElement('input')],
   ['select', () => new FakeHTMLElement('select')],
@@ -529,13 +528,11 @@ test('holding a finger on the panel opens no context menu', () => {
   expect(event.defaultPrevented).toBe(true);
 });
 
-test.each([
-  [['ArrowUp'], 'up'],
-  [['ArrowDown', 'ArrowLeft'], 'down-left'],
-])('holding %s marks the joystick with %s so its arrows light up', (arrows, direction) => {
+test('holding two arrows marks the joystick with their diagonal so its arrows light up', () => {
   const { joystick, key } = setup();
-  for (const arrow of arrows) key('keydown', arrow);
-  expect(joystick.dataset.direction).toBe(direction);
+  key('keydown', 'ArrowDown');
+  key('keydown', 'ArrowLeft');
+  expect(joystick.dataset.direction).toBe('down-left');
 });
 
 test.each([

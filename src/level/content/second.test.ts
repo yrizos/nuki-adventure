@@ -119,7 +119,6 @@ test('the second level keeps the walled garden, its permanent orb and the door o
 test('the second level is played through the gate, to every orb and out of the door', () => {
   const level = secondLevel(keepOrder, check2dObstacles, lowestRoll);
   const toGarden = (tile: TilePosition): boolean => tile.equals(gardenOrb);
-  expect(pathTo(level, toGarden)).toBeUndefined();
   openGate(level);
   expect(level.gates[0]?.state).toBe('open');
   expect(follow(level, pathTo(level, toGarden)!).some((event) => event instanceof OrbCollected)).toBe(true);

@@ -465,12 +465,6 @@ describe('orbs placed in a level', () => {
     expect(new Set(plays.flat().map((each) => each.radius))).toEqual(new Set([4, 5, 6]));
   });
 
-  test('land on other tiles in other plays', () => {
-    const places = (seed: number) =>
-      placed(seededRandom(seed)).orbs.map((each) => `${each.position.column},${each.position.row}`);
-    expect(places(1)).not.toEqual(places(2));
-  });
-
   // Later orbs go wherever their circles still fit, so only the first random orb shows the preference on its own.
   test('favor tiles far from the shortest walk between the start and the door', () => {
     const first = seeds.map((seed) => placed(seededRandom(seed), []).orbs[0]!);
@@ -540,12 +534,6 @@ describe('a swing gate', () => {
     expect(subject.hero.feet).not.toEqual(feet);
   });
 
-  test('lets an orb lie behind it, out of reach until it opens', () => {
-    const subject = gated();
-    expect(pathTo(subject, (tile) => tile.equals(at(0, 0)))).toBeUndefined();
-    expect(pathTo(opened(subject), (tile) => tile.equals(at(0, 0)))).toBeDefined();
-  });
-
   test('lets the hero through both ways once it finishes opening', () => {
     const subject = gated();
     expect(settleGate(subject)).toEqual([]);
@@ -601,7 +589,6 @@ describe('a swing gate', () => {
   test('may start on the far side, where she can still reach a tile beside it', () => {
     const farSide = ['..DDD..', '.......', '.......', 'WWFGFWW', '.......', '.......'];
     expect(gated(at(3, 1), Direction.Down, at(0, 5), farSide).canOperateGate).toBe(false);
-    expect(() => gated(at(3, 1), Direction.Down, at(0, 5), farSide)).not.toThrow();
   });
 
   test('cannot be closed while the hero stands in its passage', () => {

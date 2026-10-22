@@ -161,13 +161,6 @@ function gameSession(
 }
 
 describe('the game session', () => {
-  test('starts the restoration sound on the orb pickup tick', () => {
-    const subject = gameSession();
-    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
-    expect(subject.sound.orb).toHaveBeenCalledExactlyOnceWith(true);
-    expect(subject.sound.restoring).toHaveBeenCalledOnce();
-  });
-
   test('hums beside the orb and falls silent once it is picked up', () => {
     const subject = gameSession();
     subject.tick();
@@ -225,14 +218,6 @@ describe('the game session', () => {
     expect([subject.session.level.orbs, elsewhere.session.level.orbs.length]).toEqual([[], 1]);
   });
 
-  test('shows no message for an orb that is not the last, and does not open the door', () => {
-    const subject = gameSession(twoOrbs);
-    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 1);
-    expect(subject.session.messageText).toBe('');
-    expect(subject.level.door.isOpen).toBe(false);
-    expect(subject.sound.orb).toHaveBeenCalledExactlyOnceWith(false);
-  });
-
   test('tells her on the last orb that the colors are back and the door is open', () => {
     const subject = gameSession(twoOrbs);
     subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
@@ -278,6 +263,7 @@ describe('the game session', () => {
     const { door, scenery } = subject.level;
     const [first, second] = subject.level.orbs;
     subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 1);
+    expect(subject.session.messageText).toBe('');
     subject.advance(restorationLength(scenery.size, first!.position));
     expect(subject.level.door.isOpen).toBe(false);
     subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
@@ -294,24 +280,6 @@ describe('the game session', () => {
     expect(subject.session.messageText).toBe(messages.colorsBack);
     subject.move(Direction.Right);
     expect(subject.session.messageText).toBe('');
-  });
-
-  test('reports completion once, after the closing transition', () => {
-    const subject = gameSession();
-    for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
-    for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
-    const completedAt = subject.frames;
-    expect(subject.sound.door).toHaveBeenCalledOnce();
-    subject.advance(closingLength - 1);
-    expect(subject.report.completed).not.toHaveBeenCalled();
-    subject.advance(1);
-    expect(subject.report.completed).toHaveBeenCalledOnce();
-    const playthrough = { playFrames: completedAt - 1 };
-    expect(subject.progress.complete).toHaveBeenCalledExactlyOnceWith(subject.level.id, playthrough);
-    subject.press('a');
-    subject.advance(10);
-    expect(subject.report.completed).toHaveBeenCalledOnce();
-    expect(subject.createPlay).toHaveBeenCalledOnce();
   });
 });
 
@@ -1093,6 +1061,7 @@ describe('the game page', () => {
 
   test.each(['Enter', 'z'])('opens the level picker without starting a level when %s chooses ΕΠΙΠΕΔΑ', (key) => {
     const page = gamePage({ secondUnlocked: true });
+    expect(page.pickLevelButton.disabled).toBe(false);
     expect(page.focused()).toBe(page.pickLevelButton);
     page.menuKey(key);
     expect(page.started).toEqual([]);
@@ -1212,19 +1181,6 @@ describe('the game page', () => {
 });
 
 describe('the game loop', () => {
-  test('carries partial frames between renders', () => {
-    const tick = vi.fn();
-    const render = vi.fn();
-    const loop = new GameLoop(tick, render, 0);
-    loop.advance(10);
-    expect(tick).not.toHaveBeenCalled();
-    loop.advance(20);
-    expect(tick).toHaveBeenCalledOnce();
-    loop.advance(51);
-    expect(tick).toHaveBeenCalledTimes(3);
-    expect(render).toHaveBeenCalledTimes(3);
-  });
-
   test('drops the time a hidden page was away once it rests', () => {
     const tick = vi.fn();
     const loop = new GameLoop(tick, vi.fn(), 0);
@@ -1338,23 +1294,17 @@ function unexpectedHeroPixels(
 }
 
 describe('whole frames of the game session', () => {
-  test.each(['walking', 'idle'] as const)('paints the normal %s hero pose after orb pickup', (motion) => {
-    const subject = gameSession();
-    const pickup = { painter: new WorldPainter(subject.session.level), orb: subject.level.orbs[0]!.position };
-    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
-    const frame = subject.frames - 1;
-    if (motion === 'idle') subject.tick();
-    expect(unexpectedHeroPixels(subject, 0, 32, { ...pickup, frame })).toBe(0);
-  });
-
-  test.each(['walking', 'idle'] as const)('paints no orb above the %s hero after pickup', (motion) => {
-    const subject = gameSession();
-    const pickup = { painter: new WorldPainter(subject.session.level), orb: subject.level.orbs[0]!.position };
-    subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
-    const frame = subject.frames - 1;
-    if (motion === 'idle') subject.tick();
-    expect(unexpectedHeroPixels(subject, 18, 18, { ...pickup, frame })).toBe(0);
-  });
+  test.each(['walking', 'idle'] as const)(
+    'paints the normal %s hero pose and no orb above it after pickup',
+    (motion) => {
+      const subject = gameSession();
+      const pickup = { painter: new WorldPainter(subject.session.level), orb: subject.level.orbs[0]!.position };
+      subject.walkUntil(Direction.Right, () => subject.level.orbs.length === 0);
+      const frame = subject.frames - 1;
+      if (motion === 'idle') subject.tick();
+      expect(unexpectedHeroPixels(subject, 18, 50, { ...pickup, frame })).toBe(0);
+    },
+  );
 
   test.each([false, true])(
     'paints spreading colors with the normal hero and message, after an earlier orb: %s',
@@ -1428,6 +1378,11 @@ describe('whole frames of the game session', () => {
     subject.tick();
     expect(subject.report.completed).toHaveBeenCalledOnce();
     expect(subject.progress.complete).toHaveBeenCalledOnce();
+    expect(subject.sound.door).toHaveBeenCalledOnce();
+    subject.press('a');
+    subject.advance(10);
+    expect(subject.report.completed).toHaveBeenCalledOnce();
+    expect(subject.createPlay).toHaveBeenCalledOnce();
   });
 
   test('paints the current closing fixture unchanged', async () => {

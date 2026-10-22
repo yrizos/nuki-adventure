@@ -16,6 +16,8 @@ test('props that touch never share a choice', () => {
 
 test('choices come back in the order the props were given', () => {
   expect(propVariants([at(1, 0), at(0, 0)], 3)).toEqual([1, 0]);
+  const block = [at(0, 0), at(1, 0), at(0, 1), at(1, 1)];
+  expect(propVariants(block.toReversed(), 5).toReversed()).toEqual(propVariants(block, 5));
 });
 
 test('props that only touch at a corner may share a choice', () => {

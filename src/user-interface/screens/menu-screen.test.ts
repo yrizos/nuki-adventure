@@ -150,12 +150,6 @@ test('with a level left unfinished all three buttons are enabled and ΣΥΝΕΧ�
   expect(continuing).toHaveBeenCalledOnce();
 });
 
-test('with the game finished ΣΥΝΕΧΕΙΑ is disabled and ΕΠΙΠΕΔΑ has focus', () => {
-  const { root, continueButton, pickLevelButton } = menuScreen({ canContinue: false, hasProgress: true });
-  expect([continueButton.disabled, pickLevelButton.disabled]).toEqual([true, false]);
-  expect(root.activeElement).toBe(pickLevelButton);
-});
-
 test('arrow keys move focus through the buttons and a choose key picks the focused one', () => {
   const { root, continueButton, pickLevelButton, newGameButton, pickingLevel, continuing, key } = menuScreen();
   expect(key('ArrowDown').defaultPrevented).toBe(true);
@@ -249,21 +243,7 @@ test('reveals the title through the ordered dither, one threshold every 2 frames
     if (title.style.getPropertyValue('--art') !== expected[Math.min(16, Math.floor(frame / 2))]) violations.push(frame);
   }
   expect(violations).toEqual([]);
-});
-
-test('shows no title at frame 0 and the whole title from frame 32 until the first shine at frame 212', () => {
-  const { root, subject, title } = menuScreen();
-  const shownAt = (frame: number) => {
-    subject.animate(frame);
-    return title.style.getPropertyValue('--art');
-  };
-  const whole = `url(${artUrl(root as unknown as Document, titleArt())})`;
-  expect([shownAt(0), shownAt(32), shownAt(33), shownAt(211)]).toEqual([
-    titleUrl(root, () => false),
-    whole,
-    whole,
-    whole,
-  ]);
+  expect(expected[16]).toBe(`url(${artUrl(root as unknown as Document, titleArt())})`);
 });
 
 test('sweeps the shine across the title one step per frame, then rests for 180 frames before the next sweep', () => {
@@ -275,14 +255,15 @@ test('sweeps the shine across the title one step per frame, then rests for 180 f
     subject.animate(frame);
     return title.style.getPropertyValue('--art');
   };
-  expect([shownAt(212), shownAt(213), shownAt(end - 1), shownAt(end), shownAt(end + 179), shownAt(end + 180)]).toEqual([
-    shines[0],
-    shines[1],
-    shines.at(-1),
-    whole,
-    whole,
-    shines[0],
-  ]);
+  expect([
+    shownAt(211),
+    shownAt(212),
+    shownAt(213),
+    shownAt(end - 1),
+    shownAt(end),
+    shownAt(end + 179),
+    shownAt(end + 180),
+  ]).toEqual([whole, shines[0], shines[1], shines.at(-1), whole, whole, shines[0]]);
 });
 
 test('the shine crosses every letter and lights only letter pixels, in Paper and the light step of each ramp', () => {

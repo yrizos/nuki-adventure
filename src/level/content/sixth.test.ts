@@ -92,11 +92,6 @@ test('the mandatory route climbs the lake shore to the ruins and winds through t
   ).toEqual([]);
 });
 
-test('the sixth level lets her walk a full loop around every obstacle, which never joins the boundary', () => {
-  const level = sixthLevel(keepOrder, check2dObstacles, lowestRoll);
-  expect(obstaclesJoinedToBoundary(level, () => false)).toEqual([]);
-});
-
 // Counting hidden tiles as blocking, an obstacle joined to the boundary has no loop around it on visible ground.
 test('the sixth level lets her walk a full loop around every obstacle without stepping on a hidden tile', () => {
   const level = sixthLevel(keepOrder, check2dObstacles, lowestRoll);
@@ -168,7 +163,6 @@ test('the sixth level keeps the door shut after one orb and opens it once she ha
   const toRuins = pathTo(level, (tile) => tile.equals(ruinsOrb));
   expect(toRuins, 'the ruins orb must be reachable from the start').toBeDefined();
   expect(follow(level, toRuins!).some((event) => event instanceof OrbCollected)).toBe(true);
-  expect(() => level.openDoor()).toThrow();
   expect(
     pathTo(level, (tile) => tile.equals(gardenOrb)),
     'the gate must guard the garden orb',

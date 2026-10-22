@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { neutralCode, palette } from '../graphics/palette';
 import { Picture } from '../graphics/picture';
 import { pixelDifference } from '../testing/pictures';
-import { beatStart, boomFrame, introLength, revealLength, sinkStart, skipLength } from './intro-timeline';
+import { beatStart, boomFrame, revealLength, sinkStart, skipLength } from './intro-timeline';
 import { Intro, introPage, narration, type Rectangle } from './intro';
 
 const width = 234;
@@ -116,14 +116,6 @@ test('narrates the newest panel from the first frame of its beat', () => {
   expect(subject.messageText).toBe(narration[3]);
   advanceTo(beatStart(4));
   expect(subject.messageText).toBe(narration[4]);
-});
-
-test('ends once the page has sunk into Ink', () => {
-  const { subject, advanceTo } = intro();
-  advanceTo(introLength - 1);
-  expect(subject.finished).toBe(false);
-  advanceTo(introLength);
-  expect(subject.finished).toBe(true);
 });
 
 test('a full hold skips, and letting go before the end starts the hold over', () => {

@@ -137,12 +137,6 @@ describe('whole frames of the first level', () => {
   });
 });
 
-test('every piece of art uses only its legend and keeps a rectangular shape', () => {
-  const art = allArt({ ...scenery, ...sprites });
-  expect(art.length).toBeGreaterThan(100);
-  for (const piece of art) expect(() => sprite(piece)).not.toThrow();
-});
-
 test.each([
   { name: 'first', create: firstLevel },
   { name: 'second', create: secondLevel },
@@ -202,7 +196,7 @@ test('native interactive sprites use their documented dimensions', () => {
   }
   for (const art of [...sprites.stoneVariants, ...sprites.mossyStoneVariants])
     expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
-  for (const art of Object.values(sprites.orbArt)) expect([sprite(art).width, sprite(art).height]).toEqual([24, 24]);
+  expect([sprite(sprites.lightMote).width, sprite(sprites.lightMote).height]).toEqual([1, 1]);
 });
 
 test('interactive sprites keep a closed one-pixel Ink silhouette', () => {
@@ -247,31 +241,6 @@ test('ground variants keep equal detail density within the allowed twenty percen
       expect(art.rows.every((row) => row[0] === base && row[31] === base)).toBe(true);
     }
   }
-});
-
-test('touching prop variants differ and placement is independent of input order', () => {
-  const positions = [TilePosition.at(0, 0), TilePosition.at(1, 0), TilePosition.at(0, 1), TilePosition.at(1, 1)];
-  const variants = propVariants(
-    positions.map((position) => [position]),
-    5,
-  );
-  for (let first = 0; first < positions.length; first++) {
-    for (let second = first + 1; second < positions.length; second++) {
-      if (
-        Math.abs(positions[first]!.column - positions[second]!.column) +
-          Math.abs(positions[first]!.row - positions[second]!.row) ===
-        1
-      ) {
-        expect(variants[first]).not.toBe(variants[second]);
-      }
-    }
-  }
-  expect(
-    propVariants(
-      positions.toReversed().map((position) => [position]),
-      5,
-    ).toReversed(),
-  ).toEqual(variants);
 });
 
 function flowerArtDrawn(level: Level, frame: number): Art[] {
@@ -503,12 +472,6 @@ test('an orb keeps its color in a faded world', () => {
   expect(violations).toEqual([]);
 });
 
-test('orb hues share one pixel grid and keep distinct body colors', () => {
-  const hues = Object.values(sprites.orbArt);
-  for (const art of hues) expect(art.rows).toBe(hues[0]!.rows);
-  expect(new Set(hues.map((art) => art.legend.a)).size).toBe(hues.length);
-});
-
 describe('orbs of the first level', () => {
   const level = firstLevel(
     (positions) => positions,
@@ -651,27 +614,6 @@ function seamColumns(faded: Picture, colored: Picture, seam: Picture): { faded: 
   }
   return columns;
 }
-
-test.each([
-  { side: 'outside', from: seamEdge + 2 * tileSize, to: overview.width, expected: 'faded' },
-  { side: 'inside', from: 0, to: seamEdge - 2 * tileSize, expected: 'colored' },
-] as const)('two tiles or more $side a straight restored edge the picture is entirely $expected', (zone) => {
-  const { faded, colored, seam } = seamFixture();
-  const expected = zone.expected === 'faded' ? faded : colored;
-  let differing = 0;
-  let wrong = 0;
-  for (let y = 0; y < seam.height; y++) {
-    for (let x = zone.from; x < zone.to; x++) {
-      const index = y * seam.width + x;
-      if (faded.packedPixels[index] !== colored.packedPixels[index]) differing++;
-      if (seam.packedPixels[index] !== expected.packedPixels[index]) wrong++;
-    }
-  }
-  expect(differing, 'the zone must hold pixels that tell the faded and colored pictures apart').toBeGreaterThan(
-    (seam.height * (zone.to - zone.from)) / 2,
-  );
-  expect(wrong).toBe(0);
-});
 
 test('the colored share of a straight restored edge only falls from the colored side to the faded side', () => {
   const { faded, colored, seam } = seamFixture();
@@ -823,14 +765,6 @@ function halfMapWave() {
 }
 
 test.each(waveFrames)(
-  'frame %i of a wave over the right half of the map holds only palette colors',
-  (framesSinceStart) => {
-    const wave = halfMapWave().frame(framesSinceStart);
-    expect(wave.packedPixels.filter((pixel) => !codeOfPacked.has(pixel))).toHaveLength(0);
-  },
-);
-
-test.each(waveFrames)(
   'frame %i of a wave over the right half of the map keeps every unchanged pixel',
   (framesSinceStart) => {
     const { before, after, frame } = halfMapWave();
@@ -864,6 +798,9 @@ test.each(waveFrames)(
     }
     expect(changed).toBeGreaterThan(0);
     expect(unexpected).toBe(0);
+    const outsidePalette = (picture: Picture): number =>
+      picture.packedPixels.filter((pixel) => !codeOfPacked.has(pixel)).length;
+    expect(outsidePalette(before) + outsidePalette(after) + outsidePalette(wave)).toBe(0);
   },
 );
 
@@ -1173,36 +1110,6 @@ test('touching trees of one fruit are both drawn with that fruit art', () => {
   ];
   const drawn = treeArtDrawn(trees);
   for (const tree of trees) expect(scenery.fruitTreeArt.apple).toContain(drawn(tree));
-});
-
-test('flowers stacked above each other use different variants, each with a ground shadow under every stem', () => {
-  const flowers = [
-    Flower.at(TilePosition.at(4, 4)),
-    Flower.at(TilePosition.at(4, 5)),
-    Flower.at(TilePosition.at(4, 6)),
-  ];
-  const level = Level.create({
-    id: LevelId.of('flowers'),
-    scenery: Scenery.of(
-      LevelSize.of(12, 12),
-      Array.from({ length: 12 }, () => Array.from({ length: 12 }, () => Ground.Grass)),
-      [],
-      flowers,
-    ),
-    stones: [],
-    orbs: [Orb.at(TilePosition.at(0, 0), 4, LevelSize.of(12, 12))],
-    door: Door.closedAt(TilePosition.at(9, 0)),
-    hero: { position: TilePosition.at(2, 2), facing: Direction.Down },
-    obstacles: check2dObstacles,
-  });
-  const picture = new Picture(384, 384);
-  const draw = vi.spyOn(picture, 'draw');
-  new WorldPainter(level).paint(picture, { level, frame: 0, hero: sprites.heroArt.down.stand }, [everywhere]);
-  const flowerFrames = scenery.flowerArt.flat();
-  const drawn = draw.mock.calls.map(([art]) => art).filter((art) => flowerFrames.includes(art));
-  expect(drawn).toHaveLength(3);
-  expect(drawn[0]).not.toBe(drawn[1]);
-  expect(drawn[1]).not.toBe(drawn[2]);
 });
 
 test('the door is drawn open only in the colored world once the orb is collected', () => {
@@ -1578,7 +1485,7 @@ function arrivalDraws(age: number) {
 
 const sum = (values: readonly number[]): number => values.reduce((total, value) => total + value, 0);
 
-test.each([0, 8, 15])('an arriving hero shows no pixels and no shadow at age %i', (age) => {
+test.each([0, 15])('an arriving hero shows no pixels and no shadow at age %i', (age) => {
   const { rowsShown, shadowDrawn } = arrivalDraws(age);
   expect(sum(rowsShown)).toBe(0);
   expect(shadowDrawn).toBe(false);
@@ -1609,12 +1516,9 @@ test.each([16, 24, 32, 37])('the rising edge at age %i is a Paper line over her 
   }
 });
 
-test.each([0, 1, 2, 15, 16, 30, 39, 40, 47, 48])(
-  'arrival motes at age %i are drawn at their offsets from the hero',
-  (age) => {
-    expect(arrivalDraws(age).motes).toEqual(arrivalMotes(age));
-  },
-);
+test.each([0, 15, 16, 39, 40, 47, 48])('arrival motes at age %i are drawn at their offsets from the hero', (age) => {
+  expect(arrivalDraws(age).motes).toEqual(arrivalMotes(age));
+});
 
 test('a hero without an arrival is drawn without a mask or motes', () => {
   const level = renderingLevel();

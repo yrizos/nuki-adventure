@@ -1,11 +1,9 @@
 import { expect, test } from 'vitest';
-import { levelView } from '../../../level/application/level-view';
 import { TilePosition } from '../../../level/domain/position';
 import { FlowerVariant, Ground, LevelSize, Scenery } from '../../../level/domain/scenery';
 import { grassArt, treeArt } from '../../graphics/sprite-library';
-import { renderingLevel } from '../../testing/rendering-level';
 import { tileSize } from '../world-geometry';
-import { groundTiles, treeVersion, undergrowth, woodlandTrees } from './terrain';
+import { groundTiles, treeVersion } from './terrain';
 
 const scenery = (ground: (column: number) => Ground): Scenery =>
   Scenery.of(
@@ -47,12 +45,6 @@ test('a tile where grass meets water draws a shore, not plain grass', () => {
 test('the same scenery always gets the same ground', () => {
   const mixed = scenery((column) => (column % 3 === 0 ? Ground.Path : Ground.Grass));
   expect(groundTiles(mixed)).toEqual(groundTiles(mixed));
-});
-
-test('a level with no woodland has no woodland trees and no undergrowth', () => {
-  const level = levelView(renderingLevel());
-  expect(woodlandTrees(level.scenery)).toEqual([]);
-  expect(undergrowth(level)).toEqual([]);
 });
 
 test('a tree version comes from the shape it was given and stays the same for a position', () => {

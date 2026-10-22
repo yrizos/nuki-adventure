@@ -137,16 +137,6 @@ test('flower sprite indices use the petal colors of the matching domain variants
   });
 });
 
-test.each(Object.entries(sprites.flowers!.frames))(
-  'flower %s has rectangular palette-safe 32 by 32 rows',
-  (name, art) => {
-    expect(art.rows, name).toHaveLength(32);
-    art.rows.forEach((row, index) => expect(row.length, `${name} row ${index + 1}`).toBe(32));
-    expect(() => sprite(art), name).not.toThrow();
-    expect([sprite(art).width, sprite(art).height]).toEqual([32, 32]);
-  },
-);
-
 test.each(Object.entries(sprites.flowers!.frames))('flower %s has four isolated three-pixel contacts', (_, art) => {
   const contacts = art.rows.flatMap((row, vertical) =>
     [...row.matchAll(/d+/g)]

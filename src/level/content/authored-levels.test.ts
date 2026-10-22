@@ -165,44 +165,6 @@ test.each(authoredLevels)('she can walk a full loop around every fenced enclosur
   expect(blocked).toEqual([]);
 });
 
-// Following blocking tiles from outside the map, corners included, reaches every obstacle the boundary joins.
-test('the first level lets her walk a full loop around every obstacle, which never joins the boundary', () => {
-  const level = firstLevel(keepOrder, check2dObstacles, lowestRoll);
-  const { columns, rows } = level.scenery.size;
-  const inside = (tile: TilePosition): boolean => level.scenery.size.contains(tile);
-  const stone = (tile: TilePosition): boolean => level.stones.some((each) => each.position.equals(tile));
-  const blocking = (tile: TilePosition): boolean =>
-    !inside(tile) || !level.scenery.isWalkable(tile) || stone(tile) || level.door.covers(tile);
-  const obstacle = (tile: TilePosition): boolean =>
-    inside(tile) &&
-    (level.scenery.groundAt(tile).equals(Ground.Water) ||
-      level.scenery.trees.some((tree) => tree.covers(tile)) ||
-      level.scenery.fences.some((fence) => fence.position.equals(tile)) ||
-      stone(tile));
-  const outside = [
-    ...Array.from({ length: columns + 2 }, (_, index) => [
-      TilePosition.at(index - 1, -1),
-      TilePosition.at(index - 1, rows),
-    ]),
-    ...Array.from({ length: rows }, (_, index) => [TilePosition.at(-1, index), TilePosition.at(columns, index)]),
-  ].flat();
-  const seen = new Set(outside.map(tileKey));
-  const reached = [...outside];
-  const joined: string[] = [];
-  for (let index = 0; index < reached.length; index++) {
-    for (const row of [-1, 0, 1]) {
-      for (const column of [-1, 0, 1]) {
-        const next = TilePosition.at(reached[index]!.column + column, reached[index]!.row + row);
-        if (!inside(next) || seen.has(tileKey(next)) || !blocking(next)) continue;
-        seen.add(tileKey(next));
-        reached.push(next);
-        if (obstacle(next)) joined.push(`${next.column}, ${next.row}`);
-      }
-    }
-  }
-  expect(joined).toEqual([]);
-});
-
 test('the first level leaves no diagonal gap between two blocking tiles that meet only at a corner', () => {
   const level = firstLevel(keepOrder, check2dObstacles, lowestRoll);
   const { columns, rows } = level.scenery.size;

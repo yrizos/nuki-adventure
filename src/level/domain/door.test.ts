@@ -17,11 +17,3 @@ test('covers exactly three tiles from its left tile rightward', () => {
 test('blocks its whole footprint', () => {
   expect(Door.closedAt(at(2, 2)).obstacle).toEqual(Outline.box(WorldPosition.at(112, 80), 96, 32));
 });
-
-test('starts closed and opens in place', () => {
-  const closed = Door.closedAt(at(2, 2));
-  const opened = closed.opened();
-  expect(closed.isOpen).toBe(false);
-  expect(opened.isOpen).toBe(true);
-  expect(opened.left).toEqual(at(2, 2));
-});

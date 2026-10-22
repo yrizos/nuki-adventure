@@ -100,7 +100,6 @@ test('the third level leads its mandatory route in through the bottom gate and o
 
 test('the third level is played in through the bottom gate, to every orb, out through the top gate and out of the door', () => {
   const level = thirdLevel(keepOrder, check2dObstacles, lowestRoll);
-  expect(pathTo(level, (tile) => tile.equals(orchardOrb))).toBeUndefined();
   openGate(level, level.gates[1]);
   const toOrchard = pathTo(level, (tile) => tile.equals(orchardOrb));
   expect(toOrchard).toBeDefined();

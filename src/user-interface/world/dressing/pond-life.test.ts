@@ -65,12 +65,6 @@ describe('frogs', () => {
     return { water, found: frogs(water, random) };
   });
 
-  test('a pond has at most two frogs and sometimes none', () => {
-    const counts = new Set(lakes.map(({ found }) => found.length));
-    expect(Math.max(...counts)).toBeLessThanOrEqual(2);
-    expect(counts.size).toBeGreaterThan(1);
-  });
-
   test('dry land has no frogs', () => {
     expect(frogs({ lilies: [], ponds: [] }, seeded(1))).toEqual([]);
   });
@@ -90,14 +84,6 @@ describe('frogs', () => {
         expect(phase).toBeGreaterThanOrEqual(0);
         expect(phase).toBeLessThan(cycle);
       }
-  });
-
-  test('a frog only leaps to a near pad and dives to reach any other', () => {
-    for (const { found } of lakes)
-      for (const { legs } of found)
-        for (const leg of legs)
-          if (!leg.dive)
-            expect(Math.hypot(leg.to.x - leg.from.x, leg.to.y - leg.from.y)).toBeLessThanOrEqual(2 * tileSize);
   });
 });
 

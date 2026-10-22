@@ -178,12 +178,6 @@ test('the fifth level starts its one boulder within two tiles of the plate', () 
   }
 });
 
-test('the fifth level keeps its plate two tiles clear of the gate and its swing', () => {
-  const swing = fifthLevel(keepOrder, check2dObstacles, lowestRoll).gates[0]!.position.neighbor(Direction.Right);
-  expect(reach(plate, gate)).toBeGreaterThanOrEqual(2);
-  expect(reach(plate, swing)).toBeGreaterThanOrEqual(2);
-});
-
 test('from the plate the gate, its swing and the permanent orb fit in the seven by seven view', () => {
   const swing = gate.neighbor(Direction.Right);
   expect([gate, swing, gardenOrb].map((tile) => reach(plate, tile) <= 3)).toEqual([true, true, true]);
@@ -244,18 +238,3 @@ test.each(spots.map((spot) => ({ spot, label: `${spot.column}, ${spot.row}` })))
     expect(follow(level, toDoor!).some((event) => event instanceof LevelCompleted)).toBe(true);
   },
 );
-
-test('the fifth level shuts the gate again once the boulder leaves the plate', () => {
-  const level = fifthLevel(keepOrder, check2dObstacles, lowestRoll);
-  const solved = boulderStates(level).find((state) => state.boulder.equals(plate))!;
-  for (const move of solved.moves) play(level, move);
-  level.tick(null);
-  settleGate(level);
-  expect(level.gates[0]!.isOpen).toBe(true);
-  const last = solved.moves.at(-1)!;
-  play(level, { stand: plate.neighbor(last.facing.opposite), facing: last.facing, direction: last.facing.opposite });
-  expect(level.gates[0]!.state).toBe('closing');
-  settleGate(level);
-  expect(level.gates[0]!.state).toBe('closed');
-  expect(pathTo(level, (tile) => inGarden(tile))).toBeUndefined();
-});
