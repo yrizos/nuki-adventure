@@ -1,8 +1,8 @@
-import { type Area, Direction, Ground, type LevelView, TilePosition, TreeVariant } from '../../level';
-import { arrivalMotes, revealed, risingEdge, shadowShown } from './arrival';
-import type { Art } from '../graphics/art';
-import { ditherSteps, ditherThreshold } from '../graphics/ordered-dither';
-import { lighten, packedColor, Picture, sprite, type Version } from '../graphics/picture';
+import { type Area, Direction, Ground, type LevelView, TilePosition, TreeVariant } from '../../../level';
+import { arrivalMotes, revealed, risingEdge, shadowShown } from '../transition/arrival';
+import type { Art } from '../../graphics/art';
+import { ditherSteps, ditherThreshold } from '../../graphics/ordered-dither';
+import { lighten, packedColor, Picture, sprite, type Version } from '../../graphics/picture';
 import {
   birdArt,
   birdFrameLength,
@@ -27,7 +27,7 @@ import {
   boulderArt,
   treeFrameLength,
   waterFrameLength,
-} from '../graphics/sprite-library';
+} from '../../graphics/sprite-library';
 import {
   type Butterfly,
   type ButterflyLeg,
@@ -36,9 +36,9 @@ import {
   frogDiveLength,
   frogLeapLength,
   type WorldDressing,
-} from './world-dressing';
-import { cameraPosition, clamp, heroPixels, tileSize } from './world-geometry';
-import { crestLength, isDarkened, restorationAge } from './world-transition';
+} from '../dressing/world-dressing';
+import { cameraPosition, clamp, heroPixels, tileSize } from '../world-geometry';
+import { crestLength, isDarkened, restorationAge } from '../transition/world-transition';
 
 const orbFloatFrames = 150;
 const orbSwayFrames = 60;

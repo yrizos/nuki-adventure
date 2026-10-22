@@ -1,8 +1,8 @@
 import { expect, test } from 'vitest';
-import { Door } from '../../level/domain/door';
-import { LevelSize } from '../../level/domain/scenery';
-import { TilePosition } from '../../level/domain/position';
-import { ditherSteps } from '../graphics/ordered-dither';
+import { Door } from '../../../level/domain/door';
+import { LevelSize } from '../../../level/domain/scenery';
+import { TilePosition } from '../../../level/domain/position';
+import { ditherSteps } from '../../graphics/ordered-dither';
 import {
   closingLength,
   crestLength,

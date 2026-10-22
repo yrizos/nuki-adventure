@@ -1,7 +1,7 @@
 import { Area, type LevelView } from '../../level';
 import { Picture } from '../graphics/picture';
 import { heroArt } from '../graphics/sprite-library';
-import { WorldPainter } from '../world/world-painter';
+import { WorldPainter } from '../world/painting/world-painter';
 import { tileSize } from '../world/world-geometry';
 
 // The map fills the window of a level picker card, two of which share a row.

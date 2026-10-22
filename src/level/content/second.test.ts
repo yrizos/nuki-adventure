@@ -6,7 +6,7 @@ import { LevelCompleted, OrbCollected } from '../domain/level-events';
 import { Direction, Heading, TilePosition } from '../domain/position';
 import { FlowerVariant, Ground, TreeVariant } from '../domain/scenery';
 import { SwingGate } from '../domain/swing-gate';
-import { fitCanvas } from '../../user-interface/shell/viewport-layout';
+import { fitCanvas } from '../../user-interface/page/viewport-layout';
 import { cameraPosition, tileSize } from '../../user-interface/world/world-geometry';
 import { keepOrder, lowestRoll } from '../testing/draws';
 import { collectEveryOrb, follow, pathTo, settleGate } from '../testing/walk-level';

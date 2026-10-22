@@ -1,6 +1,6 @@
-import { feet, type LevelView } from '../../level';
-import { palette } from '../graphics/palette';
-import { cameraPosition } from './world-geometry';
+import { feet, type LevelView } from '../../../level';
+import { palette } from '../../graphics/palette';
+import { cameraPosition } from '../world-geometry';
 
 // ponytail: development aid for tuning obstacle outlines, delete once they feel right in play.
 export function drawObstacles(context: CanvasRenderingContext2D, level: LevelView): void {

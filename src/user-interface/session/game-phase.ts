@@ -1,5 +1,5 @@
 import type { Area, OrbCollected, TilePosition } from '../../level';
-import { closingLength } from '../world/world-transition';
+import { closingLength } from '../world/transition/world-transition';
 
 export type Phase =
   | { readonly name: 'appearing'; readonly since: number }

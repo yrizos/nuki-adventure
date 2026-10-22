@@ -1,5 +1,5 @@
 import { ditherSteps } from '../graphics/ordered-dither';
-import { closingLength } from '../world/world-transition';
+import { closingLength } from '../world/transition/world-transition';
 
 export const panelCount = 5;
 const boomPanel = 2;

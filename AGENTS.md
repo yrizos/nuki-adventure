@@ -41,7 +41,7 @@ Security fixes may use younger releases with `--min-release-age=0`. Explain why 
 ### Test Discovery
 
 1. Identify the production module and its directly related test files.
-2. Search declarations within those files, such as `rg -n '(test|it|describe)(\.[[:alpha:]]+)?\(' src/user-interface/world/world-painter.test.ts`.
+2. Search declarations within those files, such as `rg -n '(test|it|describe)(\.[[:alpha:]]+)?\(' src/user-interface/world/painting/world-painter.test.ts`.
 3. Read complete relevant test bodies and the complete definitions of fixtures they use. Reuse existing test support before creating fixtures.
 4. Read other tests only to establish coverage or conventions. Stop once the relevant test and fixtures suffice.
 

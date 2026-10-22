@@ -1,8 +1,8 @@
 import { expect, test } from 'vitest';
-import { Hero } from '../../level/domain/hero';
-import { Direction, Heading, type Obstacles, TilePosition } from '../../level';
-import type { Art } from '../graphics/art';
-import { heroArt, heroDanceArt } from '../graphics/sprite-library';
+import { Hero } from '../../../level/domain/hero';
+import { Direction, Heading, type Obstacles, TilePosition } from '../../../level';
+import type { Art } from '../../graphics/art';
+import { heroArt, heroDanceArt } from '../../graphics/sprite-library';
 import { dancingHeroPose, HeroAnimator, idleHeroPose, pushingPose } from './hero-animator';
 
 const openGround: Obstacles = { walk: (_, to) => to };

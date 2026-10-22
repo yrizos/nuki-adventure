@@ -1,6 +1,6 @@
-import type { HeroState } from '../../level';
-import type { Art, HeroArt, HeroDirectionArt } from '../graphics/art';
-import { heroArt, heroDanceArt, heroWalkFrameLength } from '../graphics/sprite-library';
+import type { HeroState } from '../../../level';
+import type { Art, HeroArt, HeroDirectionArt } from '../../graphics/art';
+import { heroArt, heroDanceArt, heroWalkFrameLength } from '../../graphics/sprite-library';
 
 const ticksPerWalkFrame = heroWalkFrameLength;
 const settleTicks = 8;

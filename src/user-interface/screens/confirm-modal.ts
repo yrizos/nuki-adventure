@@ -3,7 +3,7 @@ import { glyphHeight, lineHeight, textWidth, writeText } from '../graphics/font'
 import { menuButtonWidth, textButtonHeight } from '../graphics/panel';
 import { artUrl } from '../graphics/canvas-art';
 import { DitherModal, modalWidth } from './dither-modal';
-import { element } from '../shell/dom';
+import { element } from '../page/dom';
 import { windowFrame, windowLegend } from './level-picker';
 import { takeMenuKeys } from './menu-keys';
 

@@ -1,5 +1,5 @@
-import { arrivalLength } from '../shell/game-phase';
-import { ditherThreshold } from '../graphics/ordered-dither';
+import { arrivalLength } from '../../session/game-phase';
+import { ditherThreshold } from '../../graphics/ordered-dither';
 
 export const gatherLength = 16;
 const revealEnd = 40;

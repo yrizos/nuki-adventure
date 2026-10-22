@@ -1,8 +1,8 @@
 import { PixelGrid, type Art } from '../graphics/art';
 import { glyphHeight, textWidth, writeText } from '../graphics/font';
 import { artUrl } from '../graphics/canvas-art';
-import { element } from '../shell/dom';
-import { dancingHeroPose } from '../world/hero-animator';
+import { element } from '../page/dom';
+import { dancingHeroPose } from '../world/hero/hero-animator';
 import { ditheredArt, ditherSteps } from '../graphics/ordered-dither';
 
 const congratulations = 'ΣΥΓΧΑΡΗΤΗΡΙΑ!';

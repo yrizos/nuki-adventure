@@ -4,7 +4,7 @@ import { ditherSteps, ditherThreshold } from '../graphics/ordered-dither';
 import type { PaletteCode } from '../graphics/palette';
 import { Picture, type Version } from '../graphics/picture';
 import { butterflyArt, fruitTreeArt, grassArt, groundShadow, heroArt, heroDanceArt } from '../graphics/sprite-library';
-import { isDarkened } from '../world/world-transition';
+import { isDarkened } from '../world/transition/world-transition';
 import { fittedMessageBoxArt } from './message-box';
 import {
   beatStart,

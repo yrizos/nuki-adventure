@@ -1,6 +1,6 @@
-import { type Area, Direction, type Door, type LevelSize, type TilePosition } from '../../level';
-import { ditherSteps, ditherThreshold } from '../graphics/ordered-dither';
-import { tileSize } from './world-geometry';
+import { type Area, Direction, type Door, type LevelSize, type TilePosition } from '../../../level';
+import { ditherSteps, ditherThreshold } from '../../graphics/ordered-dither';
+import { tileSize } from '../world-geometry';
 
 const framesPerTile = 4;
 const pixelsPerFrame = tileSize / framesPerTile;

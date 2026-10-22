@@ -3,7 +3,7 @@ import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 import { Door } from '../domain/door';
 import { TilePosition } from '../domain/position';
 import { FlowerVariant, Ground } from '../domain/scenery';
-import { fitCanvas } from '../../user-interface/shell/viewport-layout';
+import { fitCanvas } from '../../user-interface/page/viewport-layout';
 import { cameraPosition, tileSize } from '../../user-interface/world/world-geometry';
 import { keepOrder, lowestRoll } from '../testing/draws';
 import { firstLevel, firstLevelId } from './first';

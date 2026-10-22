@@ -2,32 +2,24 @@ import type { ManageProgress } from '../../progress';
 import { panelArt } from '../graphics/panel';
 import { artUrl } from '../graphics/canvas-art';
 import { Controls } from '../input/controls';
-import { element } from './dom';
+import { element } from '../page/dom';
 import { EndScreen } from '../screens/end-screen';
 import { GameLoop } from './game-loop';
-import { GameNavigator } from './game-navigator';
-import { GameSession, type PlayableLevel } from './game-session';
-import { connectGameSwitches } from './game-switches';
+import { GameNavigator } from '../navigation/game-navigator';
+import { presentScreens } from '../navigation/screen-presenter';
+import { GameSession, type PlayableLevel } from '../session/game-session';
+import { PromptWobble } from '../session/prompt-wobble';
+import { connectGameSwitches } from '../page/game-switches';
+import { watchPageLifecycle } from '../page/page-lifecycle';
 import { GameView } from './game-view';
 import { HoldToSkip } from '../input/hold-to-skip';
 import { Intro } from '../screens/intro';
 import { LevelPicker } from '../screens/level-picker';
-import { drawObstacles } from '../world/obstacle-overlay';
+import { drawObstacles } from '../world/painting/obstacle-overlay';
 import { Sound } from '../audio/sound';
-import { MenuScreen, titleRevealLength } from '../screens/menu-screen';
+import { MenuScreen } from '../screens/menu-screen';
 
-export { messages } from './game-session';
-
-const wobbleSwing = 12;
-const wobbleBurst = 24;
-export const wobbleEvery = 60;
-
-// A sine swing inside a sine envelope eases in and out, and the rests between bursts keep it a hint instead of a buzz.
-export function buttonWobble(age: number): number {
-  const frame = age % wobbleEvery;
-  if (frame >= wobbleBurst) return 0;
-  return Math.sin((2 * Math.PI * frame) / wobbleSwing) * Math.sin((Math.PI * frame) / wobbleBurst);
-}
+export { messages } from '../session/game-session';
 
 export function startGame(
   root: Document,
@@ -47,10 +39,6 @@ export function startGame(
     a: element<HTMLButtonElement>(root, '.button-a'),
     b: element<HTMLButtonElement>(root, '.button-b'),
   };
-  const setActionButtonsEnabled = (enabled: boolean): void => {
-    actionButtons.a.disabled = !enabled;
-    actionButtons.b.disabled = !enabled;
-  };
   const controls = new Controls(
     element(root, '.control-panel'),
     element(root, '.joystick'),
@@ -69,68 +57,23 @@ export function startGame(
   );
   const endScreen = new EndScreen(root);
   const holdToSkip = new HoldToSkip(window, root.body);
-  let menuProgress = progress.view();
   const navigator = new GameNavigator(
     levels,
     progress,
     (level, report, suspended) => new GameSession(level, controls, sound, progress, report, random, suspended),
     () => new Intro(holdToSkip),
-    {
-      showIntro: () => {
-        menuScreen.hide();
-        levelPicker.hide();
-        endScreen.hide();
-        screen.classList.add('intro-open');
-        holdToSkip.listen();
-        sound.hum(0);
-        sound.music(null);
-      },
-      showMenuScreen: () => {
-        screen.classList.remove('intro-open');
-        holdToSkip.stop();
-        levelPicker.hide();
-        endScreen.hide();
-        announcement.textContent = '';
-        setActionButtonsEnabled(true);
-        menuProgress = progress.view();
-        menuScreen.show({ canContinue: menuProgress.continueLevel !== null, hasProgress: menuProgress.hasProgress });
-        sound.hum(0);
-        sound.music(null);
-      },
-      // The level picker dithers out over the menu screen after it closes, so both move on the same frames.
-      animateMenuScreen: (framesOpen) => {
-        menuScreen.animate(framesOpen);
-        levelPicker.advance();
-        // Waiting for the title to fade in keeps that animation smooth.
-        if (framesOpen >= titleRevealLength) levelPicker.prepare(menuProgress);
-      },
-      showLevelPicker: () => {
-        setActionButtonsEnabled(true);
-        levelPicker.show(progress.view());
-        sound.music(null);
-      },
-      closeLevelPicker: () => levelPicker.close(),
-      animateLevelPicker: () => levelPicker.advance(),
-      showEndScreen: () => {
-        announcement.textContent = '';
-        endScreen.show();
-        sound.hum(0);
-        sound.music('end');
-      },
-      animateEndScreen: (framesOpen, framesLeaving) => endScreen.animate(framesOpen, framesLeaving),
-      showLevel: (usesA, usesB) => {
-        screen.classList.remove('intro-open');
-        holdToSkip.stop();
-        menuScreen.hide();
-        levelPicker.hide();
-        endScreen.hide();
-        sound.music('game');
-        actionButtons.a.disabled = !usesA;
-        actionButtons.b.disabled = !usesB;
-        // A press that chose the level must not also act inside it, nor count as held there.
-        controls.releaseButtons();
-      },
-    },
+    presentScreens({
+      screen,
+      announcement,
+      actionButtons,
+      controls,
+      sound,
+      holdToSkip,
+      menuScreen,
+      levelPicker,
+      endScreen,
+      progress,
+    }),
   );
   menuScreen.whenContinuing(() => {
     const level = progress.view().continueLevel;
@@ -151,19 +94,11 @@ export function startGame(
   });
   navigator.openMenuScreen();
 
-  // Counting from when the prompt starts makes every burst, and its chime, begin at once instead of mid-cycle.
-  const promptAges: Record<'a' | 'b', number | null> = { a: null, b: null };
+  const promptWobble = new PromptWobble(navigator, actionButtons, sound);
   const tick = (): void => {
     controls.advance();
     navigator.tick();
-    for (const button of ['a', 'b'] as const) {
-      const age = navigator.session?.prompts(button) ? (promptAges[button] ?? -1) + 1 : null;
-      promptAges[button] = age;
-      actionButtons[button].style.setProperty('--wobble', String(age === null ? 0 : buttonWobble(age)));
-    }
-    // Both buttons can start a burst on the same frame, so they share one chime.
-    const bursts = Object.values(promptAges).filter((age) => age !== null && age % wobbleEvery === 0);
-    if (bursts.length > 0) sound.hint(bursts.includes(0));
+    promptWobble.advance();
     // Completing a level replaces the session during its own tick, so the message comes from whichever level is now open.
     const spoken = (navigator.session ?? navigator.intro)?.messageText ?? '';
     if (announcement.textContent !== spoken) announcement.textContent = spoken;
@@ -183,12 +118,12 @@ export function startGame(
   };
 
   const gameLoop = new GameLoop(tick, render, performance.now());
-  // Closing the tab or the browser hides the page first, so the level is saved before it can be lost.
-  root.addEventListener('visibilitychange', () => {
-    if (root.visibilityState === 'hidden') navigator.suspend();
-    else gameLoop.rest();
-  });
-  window.addEventListener('pagehide', () => navigator.suspend());
+  watchPageLifecycle(
+    root,
+    window,
+    () => navigator.suspend(),
+    () => gameLoop.rest(),
+  );
   const loop = (now: number): void => {
     gameLoop.advance(now);
     requestAnimationFrame(loop);

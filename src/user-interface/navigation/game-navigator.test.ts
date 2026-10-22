@@ -17,11 +17,11 @@ import { endScreenFadeLength } from '../screens/end-screen';
 import { GameNavigator } from './game-navigator';
 import { Intro } from '../screens/intro';
 import { introLength, skipLength } from '../screens/intro-timeline';
-import { GameSession } from './game-session';
-import { HeroAnimator } from '../world/hero-animator';
+import { GameSession } from '../session/game-session';
+import { HeroAnimator } from '../world/hero/hero-animator';
 import { Picture } from '../graphics/picture';
-import { WorldPainter } from '../world/world-painter';
-import { closingLength } from '../world/world-transition';
+import { WorldPainter } from '../world/painting/world-painter';
+import { closingLength } from '../world/transition/world-transition';
 
 function navigator(first: string | null = 'one', { secondUnlocked = first === 'two' } = {}) {
   const pressed = new Set<'a' | 'b'>();

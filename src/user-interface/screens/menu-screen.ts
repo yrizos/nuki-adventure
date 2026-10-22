@@ -1,7 +1,7 @@
 import { menuButtonWidth, textButtonHeight } from '../graphics/panel';
 import { artUrl } from '../graphics/canvas-art';
 import { ConfirmModal } from './confirm-modal';
-import { element } from '../shell/dom';
+import { element } from '../page/dom';
 import { menuChoices, takeMenuKeys } from './menu-keys';
 import { ditheredArt, ditherSteps } from '../graphics/ordered-dither';
 import type { Art } from '../graphics/art';

@@ -1,7 +1,7 @@
-import type { GameSession } from './game-session';
+import type { GameSession } from '../session/game-session';
 import type { Intro } from '../screens/intro';
 import { Picture } from '../graphics/picture';
-import { fitCanvas, minimumGamePixels, pixelAlignment } from './viewport-layout';
+import { fitCanvas, minimumGamePixels, pixelAlignment } from '../page/viewport-layout';
 
 export class GameView {
   private readonly context: CanvasRenderingContext2D;

@@ -27,7 +27,7 @@ The [domain model](domain-model.md#context-map) describes how the two contexts r
 | `src/progress/application/` | Use cases that load progress, change it and save it. | Rules, storage details. |
 | `src/progress/infrastructure/` | Storage adapters and the stored format. | Rules. |
 | `src/progress/testing/` | Test helpers for progress and storage fakes. | Production code. |
-| `src/user-interface/<area>/` | Drawing, screens, input, audio and the game loop. One subfolder per area: `shell`, `screens`, `world`, `input`, `audio`, `graphics`. | Game rules, value object construction for a context, imports of context internals. |
+| `src/user-interface/<area>/` | Drawing, screens, input, audio and the game loop. One subfolder per area: `shell`, `navigation`, `session`, `page`, `screens`, `world`, `input`, `audio`, `graphics`. | Game rules, value object construction for a context, imports of context internals. |
 | `src/user-interface/testing/` | Browser fakes and picture helpers for user interface tests. | Production code. |
 | `src/main.ts` | Wiring of adapters into contexts and the call that starts the user interface. | Anything else. |
 | `assets/sprites/<name>/` | One sprite's `data.js` and `preview.html`. | Code that the game logic depends on. |
@@ -36,9 +36,12 @@ The [domain model](domain-model.md#context-map) describes how the two contexts r
 
 | Area | Holds |
 | --- | --- |
-| `shell` | The game loop, the session that runs one level, screen navigation, the game view and the page switches. |
+| `shell` | The composition of the game: `startGame`, the game loop and the game view. |
+| `navigation` | Which screen is open, the moves between screens and what each move shows, hides and plays. |
+| `session` | Running one level: its phases, the messages, the action button prompts and their wobble. |
+| `page` | The browser page around the game: DOM lookup, the page switches, the viewport layout and page lifecycle. |
 | `screens` | The intro, the menu screen, level picker, end screen, confirmation, message box and their menus. |
-| `world` | Painting the level, its dressing and ambient life, transitions and the hero's animation. |
+| `world` | Everything drawn for a level. One subfolder per concern: `painting` (the painter and the obstacle overlay), `dressing` (scenery and ambient life), `transition` (restoration and arrival) and `hero` (the hero's animation). Geometry shared by all of them sits beside the subfolders. |
 | `input` | The joystick, the action buttons and holding to skip the intro. |
 | `audio` | Music and sound effects. |
 | `graphics` | Pixel grids, pictures, the palette, dithering, the font, panel art and the sprite library. |

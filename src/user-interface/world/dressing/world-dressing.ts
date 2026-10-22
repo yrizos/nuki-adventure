@@ -1,5 +1,13 @@
-import { Direction, FlowerVariant, Ground, type LevelView, type Scenery, TilePosition, TreeVariant } from '../../level';
-import type { Art } from '../graphics/art';
+import {
+  Direction,
+  FlowerVariant,
+  Ground,
+  type LevelView,
+  type Scenery,
+  TilePosition,
+  TreeVariant,
+} from '../../../level';
+import type { Art } from '../../graphics/art';
 import {
   butterflyArt,
   fenceArt,
@@ -14,8 +22,8 @@ import {
   undergrowthArt,
   waterArt,
   waterLilyVariants,
-} from '../graphics/sprite-library';
-import { clamp, tileSize } from './world-geometry';
+} from '../../graphics/sprite-library';
+import { clamp, tileSize } from '../world-geometry';
 
 interface GroundTile {
   readonly x: number;

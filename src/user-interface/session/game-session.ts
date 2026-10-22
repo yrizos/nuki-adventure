@@ -24,12 +24,12 @@ import {
   playing,
   swingingGate,
 } from './game-phase';
-import { HeroAnimator, pushingPose } from '../world/hero-animator';
+import { HeroAnimator, pushingPose } from '../world/hero/hero-animator';
 import { MessageBox } from '../screens/message-box';
 import type { Picture } from '../graphics/picture';
 import type { Sound } from '../audio/sound';
-import { plateSinkLength, WorldPainter } from '../world/world-painter';
-import { areaRestorationLength, doorOpeningLength } from '../world/world-transition';
+import { plateSinkLength, WorldPainter } from '../world/painting/world-painter';
+import { areaRestorationLength, doorOpeningLength } from '../world/transition/world-transition';
 
 export const messages = {
   colorsBack: 'ΤΑ ΧΡΩΜΑΤΑ ΕΠΕΣΤΡΕΨΑΝ!\nΗ ΠΟΡΤΑ ΑΝΟΙΞΕ!',

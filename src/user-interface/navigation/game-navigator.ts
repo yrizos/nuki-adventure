@@ -2,7 +2,7 @@ import type { ManageProgress, SuspendedRun } from '../../progress';
 import type { LevelId } from '../../level';
 import { endScreenFadeLength } from '../screens/end-screen';
 import type { Intro } from '../screens/intro';
-import type { GameSession, PlayableLevel, SessionReport } from './game-session';
+import type { GameSession, PlayableLevel, SessionReport } from '../session/game-session';
 
 export interface Screens {
   readonly showIntro: () => void;

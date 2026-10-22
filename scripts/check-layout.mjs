@@ -8,7 +8,18 @@ const contexts = {
   level: ['domain', 'application', 'infrastructure', 'content', 'testing'],
   progress: ['domain', 'application', 'infrastructure', 'testing'],
 };
-const userInterfaceAreas = ['shell', 'screens', 'world', 'input', 'audio', 'graphics', 'testing'];
+const userInterfaceAreas = [
+  'shell',
+  'navigation',
+  'session',
+  'page',
+  'screens',
+  'world',
+  'input',
+  'audio',
+  'graphics',
+  'testing',
+];
 const topFiles = ['main.ts'];
 const bannedFolders = ['shared', 'common', 'utils', 'helpers'];
 // These suites test every authored level together, so no single source file sits beside them.

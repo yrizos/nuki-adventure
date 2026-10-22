@@ -26,8 +26,9 @@ import {
 } from '../testing/fake-document';
 import { memoryStorage } from '../../progress/testing/memory-storage';
 import { pixelDifference } from '../testing/pictures';
-import { buttonWobble, startGame, wobbleEvery } from './game';
-import { arrivalLength } from './game-phase';
+import { startGame } from './game';
+import { buttonWobble, wobbleEvery } from '../session/prompt-wobble';
+import { arrivalLength } from '../session/game-phase';
 import { Sound } from '../audio/sound';
 import { LevelPicker } from '../screens/level-picker';
 import { titleRevealLength } from '../screens/menu-screen';
@@ -35,13 +36,18 @@ import { GameLoop } from './game-loop';
 import { endScreenFadeLength } from '../screens/end-screen';
 import { narration } from '../screens/intro';
 import { introLength, skipLength } from '../screens/intro-timeline';
-import { GameSession, humVolume, messages } from './game-session';
-import { HeroAnimator } from '../world/hero-animator';
+import { GameSession, humVolume, messages } from '../session/game-session';
+import { HeroAnimator } from '../world/hero/hero-animator';
 import { MessageBox } from '../screens/message-box';
 import { lighten, Picture } from '../graphics/picture';
 import { cameraPosition, heroPixels } from '../world/world-geometry';
-import { WorldPainter } from '../world/world-painter';
-import { areaRestorationLength, closingLength, doorOpeningLength, restorationLength } from '../world/world-transition';
+import { WorldPainter } from '../world/painting/world-painter';
+import {
+  areaRestorationLength,
+  closingLength,
+  doorOpeningLength,
+  restorationLength,
+} from '../world/transition/world-transition';
 
 const gateSwingLength = 16;
 

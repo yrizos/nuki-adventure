@@ -8,7 +8,7 @@ effort: high
 
 # renderer
 
-Own: `src/user-interface/world/**`, `src/user-interface/graphics/**`, `src/user-interface/shell/{game-view,viewport-layout}.ts` and directly associated tests. Edit nothing else.
+Own: `src/user-interface/world/**`, `src/user-interface/graphics/**`, `src/user-interface/shell/game-view.ts`, `src/user-interface/page/viewport-layout.ts` and directly associated tests. Edit nothing else.
 
 Load by concern:
 

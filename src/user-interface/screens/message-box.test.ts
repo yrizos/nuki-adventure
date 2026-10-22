@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { glyphs } from '../graphics/font';
 import { MessageBox, wrap } from './message-box';
-import { messages } from '../shell/game-session';
+import { messages } from '../session/game-session';
 import { Picture } from '../graphics/picture';
 
 test.each(Object.values(messages))('draws %s with the font inside the narrowest game view', (text) => {
