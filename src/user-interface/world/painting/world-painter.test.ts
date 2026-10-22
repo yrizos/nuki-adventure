@@ -27,7 +27,9 @@ import { lighten, Picture, sprite } from '../../graphics/picture';
 import { cameraPosition, heroPixels, tileSize } from '../world-geometry';
 import { arrivalMotes, risingEdge } from '../transition/arrival';
 import { dressWorld, propVariants } from '../dressing/world-dressing';
-import { birdPlace, orbFloat, placeBirds, WorldPainter } from './world-painter';
+import { orbFloat } from '../creatures/orb-motion';
+import { renderingLevel } from '../../testing/rendering-level';
+import { WorldPainter } from './world-painter';
 import { closingLength, crestLength, restorationAge, restorationLength } from '../transition/world-transition';
 
 const scenery = {
@@ -64,38 +66,6 @@ function allArt(value: unknown): Art[] {
   if (value && typeof value === 'object' && 'rows' in value && 'legend' in value) return [value as Art];
   if (value && typeof value === 'object') return Object.values(value).flatMap(allArt);
   return [];
-}
-
-function renderingLevel(
-  ground = Ground.Grass,
-  hero = TilePosition.at(2, 2),
-  stones: readonly Stone[] = [],
-  trees: readonly Tree[] = [],
-  flowers: readonly Flower[] = [],
-  flowerVariants: readonly FlowerVariant[] = FlowerVariant.All,
-): Level {
-  return Level.create({
-    id: LevelId.of('render'),
-    scenery: Scenery.of(
-      LevelSize.of(12, 12),
-      Array.from({ length: 12 }, () => Array.from({ length: 12 }, () => ground)),
-      trees,
-      flowers,
-      [],
-      flowerVariants,
-    ),
-    stones,
-    orbs: [
-      Orb.at(
-        hero.equals(TilePosition.at(0, 0)) ? TilePosition.at(11, 11) : TilePosition.at(0, 0),
-        4,
-        LevelSize.of(12, 12),
-      ),
-    ],
-    door: Door.closedAt(TilePosition.at(9, 0)),
-    hero: { position: hero, facing: Direction.Down },
-    obstacles: check2dObstacles,
-  });
 }
 
 function colorAt(picture: Picture, column: number, row: number): string {
@@ -536,26 +506,6 @@ test('orb hues share one pixel grid and keep distinct body colors', () => {
   const hues = Object.values(sprites.orbArt);
   for (const art of hues) expect(art.rows).toBe(hues[0]!.rows);
   expect(new Set(hues.map((art) => art.legend.a)).size).toBe(hues.length);
-});
-
-test('an orb floats two pixels up and down over 150 frames and sways one pixel sideways over 60', () => {
-  const offsets = Array.from({ length: 300 }, (_, frame) => orbFloat(frame));
-  const ups = offsets.map(({ y }) => y);
-  const sides = offsets.map(({ x }) => x);
-  expect([Math.min(...ups), Math.max(...ups)]).toEqual([-2, 2]);
-  expect([Math.min(...sides), Math.max(...sides)]).toEqual([-1, 1]);
-  const jumps = offsets.filter(
-    ({ x, y }, frame) =>
-      !Number.isInteger(x) ||
-      !Number.isInteger(y) ||
-      Math.abs(x - offsets[(frame + 1) % 300]!.x) > 1 ||
-      Math.abs(y - offsets[(frame + 1) % 300]!.y) > 1,
-  );
-  expect(jumps).toEqual([]);
-  for (let frame = 0; frame < 300; frame++) {
-    expect(orbFloat(frame + 150).y + 0).toBe(orbFloat(frame).y + 0);
-    expect(orbFloat(frame + 60).x + 0).toBe(orbFloat(frame).x + 0);
-  }
 });
 
 describe('orbs of the first level', () => {
@@ -1757,81 +1707,6 @@ test('a boulder hides the orb it rolls onto, while sliding and once it rests', (
     const drawn = draw.mock.calls.map(([art]) => art);
     expect(drawn.indexOf(library.boulderArt)).toBeGreaterThan(drawn.indexOf(item));
   }
-});
-
-describe('birds', () => {
-  const plain = Tree.at(TilePosition.at(1, 6), TreeVariant.NoFruit);
-  const fruit = Tree.at(TilePosition.at(8, 6), TreeVariant.Apples);
-  // A row of flowers and a lone flower bring enough butterflies for the visitors.
-  const flowers = [...Array.from({ length: 11 }, (_, column) => TilePosition.at(column, 11)), TilePosition.at(11, 0)];
-  const level = levelView(
-    renderingLevel(
-      Ground.Grass,
-      TilePosition.at(2, 2),
-      [],
-      [plain, fruit],
-      flowers.map((tile) => Flower.at(tile)),
-    ),
-  );
-  const birds = placeBirds(level, dressWorld(level));
-  const faraway = { x: -1000, y: -1000 };
-  const present = (bird: (typeof birds)[number], frame: number, hero = faraway): boolean =>
-    birdPlace(bird, frame, hero, {}) !== undefined;
-
-  test('perch on plain trees, hop on open grass away from the start and cross the sky once each', () => {
-    expect(birds.map((bird) => bird.habit)).toEqual(['perch', 'ground', 'ground', 'sky']);
-    const perch = birds[0]!.home;
-    expect(Math.floor(perch.x / tileSize)).toBe(plain.base.column + 1);
-    expect(perch.y).toBeLessThan(plain.base.row * tileSize);
-    for (const bird of birds.filter(({ habit }) => habit === 'ground')) {
-      for (const { x, y } of [bird.home, ...bird.spots]) {
-        const tile = TilePosition.at(Math.floor(x / tileSize), Math.floor(y / tileSize));
-        expect(level.scenery.isWalkable(tile) && !plain.hides(tile) && !fruit.hides(tile)).toBe(true);
-        expect(Math.max(Math.abs(tile.column - 2), Math.abs(tile.row - 2))).toBeGreaterThan(2);
-      }
-    }
-  });
-
-  test('each bird is away longer than it stays and sky crossings are rare', () => {
-    const shares = birds.map((bird) => {
-      let shown = 0;
-      for (let frame = 0; frame < bird.cycle; frame++) if (present(bird, frame)) shown++;
-      return shown / bird.cycle;
-    });
-    for (const [index, share] of shares.entries()) expect(share, birds[index]!.habit).toBeLessThan(0.5);
-    expect(shares.at(-1)).toBeLessThan(0.1);
-  });
-
-  test('a bird flies in facing its travel, lands home and leaves facing the same way', () => {
-    const bird = birds[0]!;
-    const visit = {};
-    let frame = 0;
-    while (present(bird, frame)) frame++;
-    while (!present(bird, frame)) frame++;
-    const side = bird.to.x > bird.from.x ? library.birdArt.right : library.birdArt.left;
-    expect(side.fly).toContain(birdPlace(bird, frame, faraway, visit)!.art);
-    while (birdPlace(bird, frame, faraway, visit)!.art !== side.perch[0]) frame++;
-    expect(birdPlace(bird, frame, faraway, visit)).toMatchObject(bird.home);
-    while (present(bird, frame)) frame++;
-    expect(side.fly).toContain(birdPlace(bird, frame - 1, faraway, visit)!.art);
-  });
-
-  test('a ground bird flies a short way off when the hero comes close', () => {
-    const bird = birds[1]!;
-    const visit = {};
-    let frame = 0;
-    while (!present(bird, frame)) frame++;
-    frame += 200;
-    const before = birdPlace(bird, frame, faraway, visit)!;
-    const hero = { x: before.x, y: before.y };
-    let place = birdPlace(bird, frame, hero, visit)!;
-    expect(Object.values(library.birdArt).flatMap(({ fly }) => fly)).toContain(place.art);
-    const flying = Object.values(library.birdArt).flatMap(({ fly }) => fly);
-    while (flying.includes(place.art)) place = birdPlace(bird, ++frame, hero, visit)!;
-    expect(bird.spots).toContainEqual({ x: place.x, y: place.y });
-    expect(Math.hypot(place.x - hero.x, place.y - hero.y)).toBeGreaterThanOrEqual(48);
-    expect(Math.hypot(place.x - before.x, place.y - before.y)).toBeLessThanOrEqual(3 * tileSize + 8);
-  });
 });
 
 describe('frogs', () => {

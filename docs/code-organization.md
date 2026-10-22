@@ -41,7 +41,7 @@ The [domain model](domain-model.md#context-map) describes how the two contexts r
 | `session` | Running one level: its phases, the messages, the action button prompts and their wobble. |
 | `page` | The browser page around the game: DOM lookup, the page switches, the viewport layout and page lifecycle. |
 | `screens` | The intro, the menu screen, level picker, end screen, confirmation, message box and their menus. |
-| `world` | Everything drawn for a level. One subfolder per concern: `painting` (the painter and the obstacle overlay), `dressing` (scenery and ambient life), `transition` (restoration and arrival) and `hero` (the hero's animation). Geometry shared by all of them sits beside the subfolders. |
+| `world` | Everything drawn for a level. One subfolder per concern: `painting` (the painter and the obstacle overlay), `dressing` (scenery and where ambient life is placed), `creatures` (how orbs, butterflies, frogs and birds move), `transition` (restoration and arrival) and `hero` (the hero's animation). Geometry shared by all of them sits beside the subfolders. |
 | `input` | The joystick, the action buttons and holding to skip the intro. |
 | `audio` | Music and sound effects. |
 | `graphics` | Pixel grids, pictures, the palette, dithering, the font, panel art and the sprite library. |
