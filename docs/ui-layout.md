@@ -20,7 +20,7 @@ Every control's touch area meets the Material Design minimum touch target, even 
 
 ## Text
 
-- Every multi-line text, in every screen and box, uses a line height of 2.2 times the letter height, rounded to a whole pixel: 20 pixels for the 9 pixel font, leaving an 11 pixel gap between lines. The game is for young readers. The value lives in `lineHeight` in [font.ts](../src/user-interface/graphics/font.ts).
+- Every multi-line text, in every screen and box, uses a line height of 2.2 times the letter height, rounded to a whole pixel: 20 pixels for the 9 pixel font, leaving an 11 pixel gap between lines. The value lives in `lineHeight` in [font.ts](../src/user-interface/graphics/font.ts).
 
 ## Game View
 
@@ -29,7 +29,7 @@ Every control's touch area meets the Material Design minimum touch target, even 
 ### Level Entry
 
 - The level shows at once, with no loading screen or overlay. The control panel stays visible.
-- With the [magical arrival](visual-style.md#magical-arrival), movement starts when it ends, with no button press. The menu switch works throughout.
+- In a level with the [magical arrival](animation.md#magical-arrival), movement starts when it ends, with no button press. The menu switch works throughout.
 
 ### Message Box
 
@@ -48,7 +48,7 @@ All three switches sit in a row in the top right corner of the game view. Each i
 | --- | --- | --- | --- |
 | Sound | 8 panel pixels from the top and right edges, below the top safe-area inset | Speaker with two waves when on, a cross when off | Turns music and all sound effects on or off. Remembered across visits |
 | Full screen | Left of the sound switch, 4 panel pixel gap, widened so touch areas meet without overlapping | Four corners, outward when not full screen, inward when full screen | Toggles full screen. Shown only where the browser supports it, so hidden on iPhone |
-| Menu | Left of the full screen switch, or of the sound switch when full screen is hidden, same gap | Three stacked bars | Leaves the level at once and opens the menu screen. ΣΥΝΕΧΕΙΑ resumes it. The level picker starts it afresh |
+| Menu | Left of the full screen switch, or of the sound switch when full screen is hidden, same gap | Three stacked bars | Leaves the level at once and opens the [menu screen](level-picker-and-menu.md#menu-screen). ΣΥΝΕΧΕΙΑ resumes it. The [level picker](level-picker-and-menu.md#level-picker) starts it afresh |
 
 ## Intro
 
@@ -68,38 +68,11 @@ All three switches sit in a row in the top right corner of the game view. Each i
 | 4 | Gray creeping in from the left over half the tree, Nuki and the grass beside her still in color | ΤΑ ΧΡΩΜΑΤΑ... |
 | 5 | Everything gray except Nuki | ΠΟΥ ΠΗΓΑΝ; |
 
-- Panel timing is set in [Intro](visual-style.md#intro).
-- The intro makes no sound.
+- Panel timing is set in [Intro](animation.md#intro).
 - Holding any key or touch for 1.5 seconds skips to the first level. Only presses that start during the intro count. Key repeats, Escape and keys pressed with Meta never count. Letting go before the end starts the hold over.
 - While a press is held, a 13 pixel circle 8 pixels from the bottom right corner shows the hold. It is drawn like the level card clock, an Ink ring around an N1 face that Paper fills clockwise from the top, with N4 shading on its lower right edge. It never shows otherwise.
 - Escape opens the menu screen at once.
 - A hidden live region repeats the newest narration for screen readers.
-
-## Menu Screen
-
-- Covers the whole page, control panel included, when the game opens, when Escape leaves the intro, when the end screen leaves and when the menu switch is pressed.
-- Pixel art on the panel pixel grid, on a plain background with no scenery.
-- The game name is one logo over three centered lines: Η ΠΟΛΥΧΡΩΜΗ, ΠΕΡΙΠΕΤΕΙΑ and ΤΗΣ ΝΟΥΚΙ. All letters share one heavy display font, and every other letter sits one pixel lower. Each line closes into one outlined block, the three blocks share one sticker border, and a shadow falls below it. The logo sits midway between the top of the screen and the buttons. On each opening it appears through the ordered 4 × 4 dither, one threshold every 2 game frames. Once whole, it rests for 3 seconds. Then a shine sweeps diagonally across the letters from top left to bottom right, 2 pixels per game frame, and the rest begins again. Once the logo is whole, small sparkles twinkle on the dark around it, in its corners and beside its shorter lines, never over the sticker or its shadow. One sparkle at a time grows from a dot to a cross to a four-point star and shrinks back, one step every 4 game frames, then the dark rests for 10 steps before the next spot lights. Reopening the screen starts them again from dark. Also once the logo is whole, 14 square confetti bits of 2 × 2 pixels drift down behind it, one pixel every 4 game frames. They start 12 pixels above the logo and 6 pixels to each side of it, and after 12 pixels below it they start again at the top. Reopening the screen hides them until the logo is whole again.
-- At the bottom, all three buttons in this order, 8 pixels apart like the confirmation's answers, always shown, styled like the A button and sinking into their lips while pressed. All share the width of the widest. Buttons work from the first frame, and the first enabled button takes focus.
-- A button whose condition does not hold is disabled. It is dimmed like a disabled action button and ignores touch and keys.
-
-| Button | Enabled when | Action |
-| --- | --- | --- |
-| ΣΥΝΕΧΕΙΑ | A level was started, unless the last level started is the final level and it has a completed playthrough | Resumes the level in progress at its last calm moment with its play time, without the magical arrival. With no level in progress, starts the last level started |
-| ΕΠΙΠΕΔΑ | Any progress is saved | Opens the level picker |
-| ΝΕΟ ΠΑΙΧΝΙΔΙ | Always | Plays the intro, then starts the first level. With progress saved, opens the confirmation first |
-
-- The menu screen and the level picker cover all three switches.
-- The screen scrolls when its contents do not fit.
-
-### Confirmation
-
-- A modal over the menu screen. The menu screen stays in place behind it, dimmed by an ordered dither of Ink that stops at half the thresholds. The modal covers the switches too.
-- One message box frame, centered on the page, with 16 pixels of padding. It holds ΝΕΟ ΠΑΙΧΝΙΔΙ; over Η ΠΡΟΟΔΟΣ ΘΑ ΧΑΘΕΙ. in the message box font, both lines centered.
-- 16 pixels below the question, ΝΑΙ and ΟΧΙ at the menu screen button width, 8 pixels apart. ΝΑΙ wears the A button colors and ΟΧΙ the B button colors. ΟΧΙ takes focus.
-- The modal and its dimming appear and disappear through the ordered 4 × 4 dither, one threshold per game frame. The answers act only once the modal is whole.
-- While the modal is open, keys and touches reach only ΝΑΙ and ΟΧΙ.
-- ΝΑΙ deletes all saved progress and plays the intro. ΟΧΙ dithers the modal out. Escape closes it at once.
 
 ## End Screen
 
@@ -113,36 +86,6 @@ All three switches sit in a row in the top right corner of the game view. Each i
 - The intro, the menu screen, the confirmation and the level picker are silent.
 - Levels play the game tune. The end screen plays a slow, soft tune.
 - Changing music fades the old tune out over 1 second and the new one in over half a second.
-
-## Level Picker
-
-### Modal
-
-- ΕΠΙΠΕΔΑ opens the level picker as a big modal over the menu screen. It appears and disappears like the [confirmation](#confirmation): the same Ink dither darkens the menu screen behind it, and the same dither masks the box while it comes and goes. Cards and ΠΙΣΩ act only once the modal is whole.
-- The modal covers the whole page, switches included. It shares the confirmation's width, and the margin above and below the box matches the margin beside it.
-- The box wears the message box frame. Inside it, ΕΠΙΠΕΔΑ sits at the top in the message box font, then the cards, then a row with two scroll buttons on the left and ΠΙΣΩ on the right.
-- The scroll buttons are A-colored with an up and a down arrow. Each press scrolls the cards by most of their visible height. A scroll button is disabled once there is nothing more in its direction. ΠΙΣΩ wears the B button colors at its own text width.
-- Only the cards scroll. The heading and ΠΙΣΩ stay in place, and no scrollbar is drawn, so a card cut off at the edge shows that there is more.
-- On opening, the card of the level ΣΥΝΕΧΕΙΑ would start takes focus and scrolls into view. With nothing to continue, the first unlocked card does.
-- ΠΙΣΩ dithers the modal out and returns focus to ΕΠΙΠΕΔΑ. The menu screen behind it does not replay its title. Escape and the menu switch close it at once.
-
-### Cards
-
-- One card per level in order, two to a row. All cards share one size, wearing the message box frame.
-- The top of a card is a map of the whole level, centered in a one pixel Ink border, so each level is recognized by its layout. The level's longer side fills the 60 pixel map, and each map pixel takes the most common color of its part of the painted world. The orbs are left out, because they land on different spots every time a level is built.
-  - An unlocked level shows its world in color, as its orbs restore it, whether or not it was completed.
-  - The level that ΣΥΝΕΧΕΙΑ would start shows the 32 × 32 Nuki, centered on the map, with her idle breathing and blinking on the game's frame clock from the moment the picker opens.
-  - A locked level shows no map. Its window stays filled with the message box color, with the 16 × 16 padlock at its center.
-- The level number sits over the map's top left corner at the font size, 4 pixels in from the map's edges, with a one pixel Ink outline so it reads on any ground.
-- Below the map, a strip in the message box color. A completed level shows a 9 × 9 clock and its last play time at the right. A level without a completed play leaves the strip empty.
-- A card sinks one pixel while pressed. Tapping an unlocked card starts that level.
-- A locked card cannot be focused or chosen. A locked level never starts by any route.
-- Screen readers hear the level number, then the last time in words, or that it is locked.
-
-## Menus
-
-- On the menu screen and the level picker, arrow keys move focus and A or B chooses the focused item.
-- No button or card ever shows a focus outline.
 
 ## Control Panel
 

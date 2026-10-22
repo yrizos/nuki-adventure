@@ -8,14 +8,14 @@ effort: high
 
 # renderer
 
-Own: `src/user-interface/world/**`, `src/user-interface/graphics/**`, `src/user-interface/shell/game-view.ts`, `src/user-interface/page/viewport-layout.ts` and directly associated tests. Edit nothing else.
+Own: the `world` and `graphics` areas, `shell/game-view.ts` and `page/viewport-layout.ts`, all under `src/user-interface/` as set in [User Interface Areas](../../docs/code-organization.md#user-interface-areas), and directly associated tests. Edit nothing else.
 
 Load by concern:
 
-- Camera and viewport: [Resolution and Scaling](../../docs/visual-style.md#resolution-and-scaling), [Game View](../../docs/ui-layout.md#game-view), [Scaling](../../docs/ui-layout.md#scaling).
-- Depth: [Depth Order](../../docs/visual-style.md#depth-order).
-- Animation: [Motion and Animation](../../docs/visual-style.md#motion-and-animation).
-- Color and fading: [palette](../../docs/palette.md), [Faded World](../../docs/visual-style.md#faded-world).
+- Camera and viewport: [Resolution and Scaling](../../docs/rendering.md#resolution-and-scaling), [Game View](../../docs/ui-layout.md#game-view), [Scaling](../../docs/ui-layout.md#scaling).
+- Depth: [Depth Order](../../docs/rendering.md#depth-order).
+- Animation: [Animation](../../docs/animation.md).
+- Color and fading: [palette](../../docs/palette.md), [Faded World](../../docs/rendering.md#faded-world).
 
 Inspect sprites with [Sprite Inspection](../../AGENTS.md#sprite-inspection). Find tests with [Test Discovery](../../AGENTS.md#test-discovery). Run `make test-file FILE=<path>` on affected tests and keep the [rendering assertions](../../docs/testing.md#rendering).
 

@@ -3,10 +3,10 @@
 ## Context Map
 
 - Two bounded contexts: `level`, everything inside one level, and `progress`, what the game remembers between visits.
-- `progress` is downstream of `level`. It refers to a level only by `LevelId` and stores a level in progress as a `LevelSnapshot`, both taken from the level context's public entry.
-- `progress` stores the level in progress as a `LevelSnapshot`. `level` defines the snapshot and checks that it still fits the level before resuming it.
+- `progress` is downstream of `level`. It refers to a level only by `LevelId`, taken from the level context's public entry.
+- `progress` stores the level in progress as a `LevelSnapshot`, also taken from that entry. `level` defines the snapshot and checks that it still fits the level before resuming it.
 - `level` knows nothing about `progress`.
-- There is no shared kernel. [Code organization](code-organization.md) places every file.
+- [Code organization](code-organization.md) places every file and states that there is no shared kernel.
 
 ## Modeling
 

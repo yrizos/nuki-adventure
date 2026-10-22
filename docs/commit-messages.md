@@ -35,12 +35,12 @@
 
 ## Accepted Examples
 
-- `bbd8a53 feat: pick five of fifteen star spots each time a level starts`: the gameplay rule makes it `feat`, despite glossary, docs, layout and test changes.
+- `4a39293 fix: lay path under the level 4 boulder`: corrected behavior makes it `fix`, despite the docs change. The body states the problem: a boulder spot always got grass, so the path broke at the boulder.
 - `683a269 build: run check hooks only when their inputs change`: `.pre-commit-config.yaml` only. Git hooks are build tooling.
 - `6bb09e3 perf: cut the test suite from ten seconds to under three`: speed is the purpose, so test edits do not make it `test`. The body states the problem: deep equality, per-frame assertions and list scans dominated the run.
 
 ## Rejected Examples
 
-- `70737b8 docs: add Star Spot to glossary`: typed from the first file, ignoring level-rule changes across 15 files.
+- `docs: lay path under the level 4 boulder`: typed from `level-design.md`, ignoring the layout code change.
 - `6fc894c chore: update .editorconfig for Makefile and add Makefile for build automation`: needs `build`, and combines two changes.
 - `8b4cad1` body starting "Added package.json with scripts and dependencies": past-tense diff narration, not motivation.

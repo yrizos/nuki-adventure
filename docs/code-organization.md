@@ -55,7 +55,7 @@ Answer these in order. Stop at the first yes.
 3. Is it a use case the user interface calls? Put it in the `application/` folder of the context whose aggregate it changes. One use case changes one aggregate.
 4. Does it talk to a library or browser API on behalf of a context? Put it in that context's `infrastructure/` and define the port it implements in that context's `domain/`.
 5. Is it a new authored level? Add a file to `src/level/content/` and an entry to `catalog.ts`.
-6. Is it drawing, sound, input or a screen? Put it in the matching `src/user-interface/` subfolder. Create a new subfolder only for an area that fits none of the six.
+6. Is it drawing, sound, input or a screen? Put it in the matching `src/user-interface/` subfolder. Create a new subfolder only for an area that fits none of the [existing areas](#user-interface-areas).
 7. Is it sprite art? Add `assets/sprites/<name>/`.
 8. Is it only used by tests? Put it in the `testing/` folder of the area it fakes or builds.
 
@@ -74,7 +74,7 @@ Add a top-level folder under `src/` only when the code has its own glossary term
 
 ## Public Entries
 
-- `src/level/index.ts` exports the `PlayLevel` use case, `LevelView`, the level events, the catalog of authored levels, `LevelId`, `StarCount` and the read-only value objects the user interface draws.
+- `src/level/index.ts` exports the `PlayLevel` use case, `LevelView`, the level events, the catalog of authored levels, `LevelId` and the read-only value objects the user interface draws.
 - `src/progress/index.ts` exports the `ManageProgress` use case and the types of its views.
 - A new export goes into an entry only when code outside the context needs it. Classes that outside code must not construct are exported as types.
 

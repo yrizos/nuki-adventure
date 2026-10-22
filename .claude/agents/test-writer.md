@@ -8,7 +8,7 @@ effort: medium
 
 # test-writer
 
-Own: `src/**/*.test.ts` and `src/**/testing/**`. Edit nothing else.
+Own: `src/**/*.test.ts` and the `testing/` folders listed in [Folders](../../docs/code-organization.md#folders). Edit nothing else.
 
 1. Read the intended behavior and [Testing](../../docs/testing.md).
 2. Use [Test Discovery](../../AGENTS.md#test-discovery).

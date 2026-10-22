@@ -1,49 +1,11 @@
-# Visual Style
+# Sprites
 
-Color codes refer to the [palette](palette.md). Element colors live there, not here.
+Color codes refer to the [palette](palette.md).
 
-## Resolution and Scaling
+## Sprite Data
 
-### Native Resolution
-
-- The canvas covers the whole game view with no empty space.
-- Every game view shows at least 7 × 7 tiles. Taller views show more rows.
-- Maps and puzzles rely only on what fits in the minimum 7 × 7 tile area.
-- The camera centers the hero in pixels unless clamped at a map edge.
-
-### Scaling
-
-- The factor is the largest whole number that still shows at least 7 tiles (224 game pixels) across both width and height.
-- Canvas size in game pixels is the view size in device pixels divided by the factor, rounded up. The partial pixel at the right and bottom is cropped.
-- Every game pixel has the same device size. A one device pixel difference is a defect.
-
-### Rendering
-
-- The backing store matches the canvas size in game pixels and displays at that size times the factor.
-- Image smoothing is off and the canvas uses pixelated rendering.
-- Sprites and the camera are drawn at whole pixel positions only.
-- Sprites are never scaled, rotated, skewed or filtered at draw time. Mirroring is the only transform, and only for art drawn to be symmetric.
 - Sprites are grids of palette codes in `assets/sprites/<name>/data.js`, each with a `preview.html`. Never image files.
 - Terrain transitions share base grids and water frames instead of repeating whole tiles. Vite expands them into static sprite data before the game loads. Standalone previews expand the same source once.
-
-## Grid and Perspective
-
-### Grid
-
-- Tiles are 32 × 32 pixels. Positions, collisions and interactions use the tile grid.
-- Sprites can extend above their tile, with their base on the tile they occupy.
-
-### Three-Quarter View
-
-- The camera looks down from the south at about 45 degrees. Objects show their top surface and front face. Side faces are never drawn.
-- Front faces are one ramp step darker than top surfaces.
-- Characters show the head and the top of the shoulders.
-
-### Depth Order
-
-- Layers: ground, ground decoration, objects and characters, effects.
-- Objects and characters sort by the y position of their base, lowest drawn last.
-- Tall objects overlap the tile above, and the hero passes behind that overlap.
 
 ## Light and Shading
 
@@ -89,7 +51,13 @@ Color codes refer to the [palette](palette.md). Element colors live there, not h
 - Two steps never run alongside each other in parallel stripes.
 - Anti-aliasing is placed by hand at curve corners with an intermediate step of the same ramp. Outer silhouettes and Ink outlines are never anti-aliased.
 
-## Sprites
+## Terrain
+
+- Each terrain has at least three base variants of equal detail density, placed by a fixed pattern per map.
+- Detail touches a tile edge only when it continues into the neighbor.
+- Every pair of terrains that can meet has a transition set of at least 16 tiles covering edges, outer corners and inner corners. Path edges use E2. Shorelines use W0 on the water side and W4 for foam.
+
+## Elements
 
 ### Sizes
 
@@ -141,7 +109,7 @@ A new element uses the smallest size that fits its shape.
 
 - One wooden leaf one ramp step darker than the fences, hinged on the post at its west side.
 - Frames are 32 × 64 pixels with their bottom on the gate tile, so the swung leaf rises into the tile north of it. The hinge sits on the same pixel in every frame.
-- Eight authored frames rotate the leaf north around the hinge, two game frames each, sixteen in total. A ninth frame parks the leaf at about 90 degrees along the west side of the passage.
+- Eight authored frames rotate the leaf north around the hinge. Each shows for two game frames, so the swing takes sixteen game frames. A ninth frame parks the leaf at about 90 degrees along the west side of the passage.
 - The swing uses authored frames only. The leaf never slides, shrinks, fades, or is rotated or scaled at runtime.
 - Depth sorted at the base of its tile. Faded or colored like the fences beside it. Restoring color never changes its frame.
 - The open leaf blocks only a thin strip along the west edge of the gate tile and the tile north of it.
@@ -154,6 +122,8 @@ A new element uses the smallest size that fits its shape.
 - In a woodland-bounded level, woodland continues beyond the map edges, so the camera never shows where it ends.
 - Woodland follows ordinary depth order, shading, ground shadows and restoration. Faded, it still reads as impassable and distinct from clearing grass.
 - Low ferns and small shrubs grow on clearing grass beside woodland, sparsely, on about one edge tile in five by a fixed pattern per map, so the edge stays irregular. They are walk-through ground decoration and stay off the ring around the hero start.
+
+## Creatures
 
 ### Butterflies
 
@@ -181,99 +151,3 @@ A new element uses the smallest size that fits its shape.
 - Each pond gets zero, one or two frogs at random when the level loads. A frog rests only on lily pads of its pond, and two frogs never share a pad.
 - A frog sits and blinks, sometimes croaks once mid-rest, then moves on. It leaps to a pad within two tiles, or dives with a ripple, stays hidden and surfaces with a ripple on another pad of its own.
 - A frog faces its direction of travel and keeps that facing while it rests.
-
-## Terrain
-
-- Each terrain has at least three base variants of equal detail density, placed by a fixed pattern per map.
-- Detail touches a tile edge only when it continues into the neighbor.
-- Every pair of terrains that can meet has a transition set of at least 16 tiles covering edges, outer corners and inner corners. Path edges use E2. Shorelines use W0 on the water side and W4 for foam.
-
-## Faded World
-
-- At the start, only the hero and the orbs are in color. Every scenery tile and prop has a faded version that maps each step to a neutral through `faded` in [`palette.js`](../assets/sprites/palette.js), then corrected by hand.
-- A faded object differs from its ground through its silhouette, ground shadow or at least one neutral step. Stones on grass rely on their shadow and highlight, because N3 stone matches faded grass.
-- The magical arrival changes only the hero's visibility and never the faded state.
-
-### Restoring Color
-
-- Color returns through an ordered 4 × 4 dither dissolve. It spreads from the center of the orb's tile as a circle, one tile every 4 frames.
-- Each changing pixel first shows its final color one step lighter for 8 frames, so a bright crest travels with the front. Ink and a ramp's lightest step stay as they are.
-- Pixels that are the same before and after never change.
-- Only the collected orb's area and its seam band change.
-- The seam between colored and faded areas is a band of the same dither about three tiles wide, centered on the area edge and eased at both ends. It never animates. The dissolve passes through it and ends exactly on the settled seam.
-- During the last restoration, the door is drawn open where color reaches it. The hero can enter once color covers the whole door.
-
-### Leaving a Level
-
-- Stepping into the open doorway completes the level. The world darkens to Ink through the same dither, 3 frames per threshold.
-- Once fully Ink, the next level starts faded, or the menu screen opens after the last level.
-
-## Motion and Animation
-
-### Movement
-
-- The hero moves two pixels per frame at 60 frames per second: 16 frames per cardinal tile, 23 per diagonal tile.
-- The camera follows in whole pixels and stops at map edges.
-- Pushed objects move at the hero's speed and stay in contact with her.
-
-### Timing
-
-| Animation | Frames | Timing |
-| --- | --- | --- |
-| Hero walk | 4 per direction | 8 game frames each, one cycle per two cardinal tiles, continuous across tiles and diagonals |
-| Hero idle | 2 | Blink of 6 frames every 180, except facing up. Shoulders lift one pixel every 90 |
-| Hero push | 2 per direction | 8 game frames each |
-| Orb swirl | 8 | 10 game frames each, phases 70 frames apart between orbs |
-| Orb float | Sine, whole pixels | 2 pixels up and down over 150 frames, 1 pixel sideways over 60, with the orb's swirl phase. The shadow stays still |
-| Orb burst | 6 | 4 game frames each from the pickup, at the orb's last float position. A 1 pixel swell, then a few pixels of its own ramp and Paper drift out and fade. The last frame is empty |
-| Orb pop | 8 Paper specks, eased, whole pixels | 2 × 2 specks fly straight out from 12 to 92 pixels from the orb's center and drop out one by one between frames 20 and 35. One color only, no rotation |
-| Water | 4 | 15 game frames each, all tiles in sync |
-| Pressure plate sinking | 3 | 4 game frames each. Sinks deeper into the ground while pressed and rises in reverse once released. A release partway down rises from the current frame |
-| Flowers sway | 2 | 30 game frames each, offset per tile |
-| Tree leaves | 1 cluster shift | Every 40 game frames, out of sync between trees |
-| Butterfly wings | 2 | 6 game frames each while flying, 30 while resting |
-| Butterfly flight | Eased arc, whole pixels | 0.75 pixels per frame, at least 12 frames per flight. The arc lifts 6 pixels, with a 2 pixel flutter of 3 beats. Rests last 36 to 83 frames |
-| Bird perch | 6 | Sit with a tail flick every 36 game frames, 6 game frames each |
-| Bird ground | 4 per peck, 2 per hop | 6 game frames each. Two pecks, then two hops of a 4 pixel stride |
-| Bird flight | 2 wing frames, eased arc, whole pixels | 6 game frames each. 1.5 pixels per frame, at least 18 frames per flight. Visits arc 10 pixels from 160 pixels aside and 112 up, flee flights arc 6 |
-| Bird visits | Cycle | 3000 to 3900 frames per cycle, staying 900 to 1199. A sky crossing repeats every 10800 frames, climbing one tile with a 3 pixel wave of 3 beats |
-| Light motes | 1 | Rise 1 pixel every 4 frames over 64 pixels, sway 1 pixel every 40, offset per mote |
-| Restoring color | 16 thresholds | Front moves 1 tile every 4 frames, crest lasts 8 |
-| Leaving a level | 16 thresholds | 3 frames each, 48 total |
-
-### Magical Arrival
-
-The hero materializes at her start over 48 game frames and cannot move until it ends.
-
-| Frames | Animation |
-| --- | --- |
-| 0 to 15 | Eight Paper light motes with two-position trails spiral inward from about 20 pixels around her body. Hero and shadow are invisible |
-| 16 to 39 | The hero appears from her feet upward through the ordered 4 × 4 dither, with a line of Paper pixels on the rising edge. Her shadow appears at frame 16. The motes circle her |
-| 40 to 47 | Fully visible. The motes rise, spread and disappear |
-| 48 onward | Normal idle and movement |
-
-- Uses existing hero frames in her start facing, the existing light mote and the dither. No art of its own.
-- The reveal masks only the hero. Motes stay within about 20 pixels of her, move in whole pixels and keep ordinary depth order.
-- No transparency fades, scaling, rotation or blur. Nothing marks the end and no pause follows.
-
-### Intro
-
-The [intro](ui-layout.md#intro) is a still comic page drawn with the game's own art at its one size. Falling apples copy the apple clusters of the apple tree. The sound word Μ Π Ο Υ Μ ! is the game font at three times its size, or twice where three times does not fit the panel, in Y3, Y2 and O2 from top to bottom with an Ink outline.
-
-| Frames | What shows |
-| --- | --- |
-| Each panel's first 32 | The panel appears through the ordered 4 × 4 dither, one threshold every 2 frames. Earlier panels stay |
-| 0, 120, 240, 360, 480 | Panels 1 to 5 start to appear |
-| 272 to 293 | Once panel 3 is whole, the whole page trembles in whole pixels, at most 3, and settles |
-| 600 to 647 | The whole page darkens to Ink like [leaving a level](#leaving-a-level), then the menu screen opens |
-
-### Animation Rules
-
-- Frames of one animation keep the same silhouette area. The hero is the exception, because her frames shift feet and pigtails.
-- The hero's head moves at most one pixel.
-- Looping tiles line up across tile edges in every frame.
-- Stopping on a passing frame shows a settle frame for 8 game frames while her pigtails catch up.
-- Arms swing opposite to the legs, one pixel forward and back. Shoulders dip one pixel on passing frames.
-- Turning shows the new facing for 2 game frames before she moves.
-- Orbs are collected by walking onto them, with no pause, pose or held-orb animation. The burst, the pop and restoration start at once and movement continues. The last orb shows a message that the colors are back.
-- No transparency, screen shake, motion blur or glow filters. The [intro](#intro) tremble is the one exception.

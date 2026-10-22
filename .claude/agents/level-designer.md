@@ -8,7 +8,7 @@ effort: high
 
 # level-designer
 
-Own: the authored level files in `src/level/content/`, the level list in `src/level/content/catalog.ts`, and directly related authored-level tests, including shared tests that list levels. Edit nothing else.
+Own: the authored level files and `catalog.ts` in `src/level/content/` as set in [Folders](../../docs/code-organization.md#folders), and directly related authored-level tests, including shared tests that list levels. Edit nothing else.
 
 1. Read all of [Hard Constraints](../../docs/level-design.md#hard-constraints), plus the task-relevant [Design Guidance](../../docs/level-design.md#design-guidance) and [Natural Layouts](../../docs/level-design.md#natural-layouts).
 2. Inspect the affected `src/level/content/level-layout.ts` declarations. New level: inspect one representative layout, the previous level's exit and progression. Existing level: start at the target, and read the predecessor only for continuity, entry or difficulty.

@@ -105,7 +105,7 @@ A [dividing fence](glossary.md#game-world) deliberately breaks free movement. It
 
 ### Magical Arrival
 
-- A level MAY open with the [magical arrival](visual-style.md#magical-arrival).
+- A level MAY open with the [magical arrival](animation.md#magical-arrival).
 - All eight tiles around the start are open ground with no tree, woodland, stone, flower or orb, and no canopy covers them. (unchecked)
 
 ### Areas
@@ -114,7 +114,7 @@ A [dividing fence](glossary.md#game-world) deliberately breaks free movement. It
 
 ### Viewport
 
-- Puzzles and navigation decisions follow the minimum view rule in [Native Resolution](visual-style.md#native-resolution).
+- Puzzles and navigation decisions follow the minimum view rule in [Native Resolution](rendering.md#native-resolution).
 
 ## Design Guidance
 
@@ -123,7 +123,7 @@ A [dividing fence](glossary.md#game-world) deliberately breaks free movement. It
 - Mechanics: each one appears in four stages across levels: introduce, practice, vary, combine. It first appears where no other new mechanic must be solved at the same time.
 - Required objects: orbs never depend on accidental discovery, never look like scenery and never rely on color alone. Players find orbs through terrain and the proximity hum.
 - Mandatory route: it is the tour of the level, because young players follow paths and sounds and rarely leave them. It passes most of the level's sections. Exploration areas add orbs and places on top of that tour, never in place of it. Bad example: a route that reaches the door through one corner while every other section lies off it.
-- New mechanics: from the tile where the hero approaches the level's new mechanic, a goal it leads to, such as the door or an orb, is visible within the minimum view of [Native Resolution](visual-style.md#native-resolution). A sound cue alone never gives the reason to use the mechanic.
+- New mechanics: from the tile where the hero approaches the level's new mechanic, a goal it leads to, such as the door or an orb, is visible within the minimum view of [Native Resolution](rendering.md#native-resolution). A sound cue alone never gives the reason to use the mechanic.
 - Exploration: a level holds meaningful space outside the mandatory route. Optional branches lead to distinct places. A larger map adds navigable space, not decoration.
 - Paths and sections: prefer complex paths that link distinct sections over one track through open ground. Each section is a separate place with its own character, entered through a clear opening. Paths branch, turn and rejoin between sections. Bad example: a single path running straight from the start to the door with scenery on either side.
 - Woodland outline: every woodland edge that faces open ground, along the map border and inside the level, steps in or out at least every three tiles. Steps vary in depth and spacing, never a regular zigzag. The woodland's thickness varies along the border, so the clearing never reads as a rectangle. A layout with a longer straight woodland edge is not finished. Bad example: open ground running for nine rows beside a one-tile woodland band along the map edge.

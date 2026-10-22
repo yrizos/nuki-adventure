@@ -4,7 +4,10 @@ Definitions only. Rules that use these terms live in [Level Design](level-design
 
 ## Screen
 
-[UI Layout](ui-layout.md) defines the canonical screen terms: game view, control panel, joystick (ring and knob), action button A and B, action button cross, sound switch, full screen switch, menu switch, intro, menu screen, confirmation, end screen and level picker.
+The canonical screen terms are defined in two files.
+
+- [UI Layout](ui-layout.md): game view, control panel, joystick (ring and knob), action button A and B, action button cross, sound switch, full screen switch, menu switch, intro and end screen.
+- [Level Picker and Menu](level-picker-and-menu.md): menu screen, confirmation and level picker.
 
 ## Game World
 
@@ -14,7 +17,7 @@ Definitions only. Rules that use these terms live in [Level Design](level-design
 | World Position | A point in game pixels from the top left corner of the level. |
 | Feet | The small oval where the hero meets the ground. It collides with obstacles. The tile under its middle decides what the hero picks up, reads or walks into. |
 | Obstacle | The outline of the part of an object or ground the hero cannot walk through. It follows where the object meets the ground and never reaches beyond the tile it blocks. |
-| Level | One enclosed part of the game world, bounded by woodland or fences. |
+| Level | One enclosed part of the game world. Its boundary is the woodland, the door, the map edge and any dividing fence. |
 | Playable Area | The connected traversable tiles reachable from the hero's start, excluding the closed door. |
 | Magical Arrival | The 48-frame presentation in which the hero materializes at her start before movement begins. |
 | Door | The level exit. It opens once every orb is collected and color has returned to the whole door. Stepping into it completes the level. |
@@ -22,7 +25,7 @@ Definitions only. Rules that use these terms live in [Level Design](level-design
 | Orb | A floating ball of one color that hums when the hero is near. Collecting it restores color to the circle of tiles around it. |
 | Permanent Orb | An orb that a layout places on its tile every time the level starts. |
 | Random Orb | An orb the level start places on a weighted random tile to fill up the level's orb count. |
-| Stone | A static gray obstacle that is never part of a level boundary. |
+| Stone | A static gray obstacle. It never touches the level boundary and never forms one. |
 | Fenced Enclosure | A closed ring of fence standing free inside the level. It may hold a swing gate. |
 | Dividing Fence | A fence line that joins the level boundary at both ends and splits the level in two. Its swing gate is the only passage between the two parts. |
 | Scenery | Everything the player does not interact with: grass, trees, woodland, water, paths, flowers and stones. |

@@ -54,9 +54,11 @@ Security fixes may use younger releases with `--min-release-age=0`. Explain why 
 | New or changed domain terminology | Relevant [glossary](docs/glossary.md) entries |
 | Tests | [Testing](docs/testing.md) |
 | Levels | All [Hard Constraints](docs/level-design.md#hard-constraints), applicable guidance |
-| Sprites | Applicable [visual style](docs/visual-style.md) and [palette](docs/palette.md) sections |
-| Rendering | Applicable [visual style](docs/visual-style.md) sections |
+| Sprites | Applicable [sprites](docs/sprites.md) and [palette](docs/palette.md) sections |
+| Rendering | Applicable [rendering](docs/rendering.md) sections |
+| Animation and timing | Applicable [animation](docs/animation.md) sections |
 | User interface layout | Applicable [layout](docs/ui-layout.md) sections |
+| Menu screen and level picker | Applicable [level picker and menu](docs/level-picker-and-menu.md) sections |
 | Colors or contrast | [Palette](docs/palette.md). Hex values live in `assets/sprites/palette.js` |
 | Commit preparation, only when explicitly instructed | [Commit messages](docs/commit-messages.md), before writing the message |
 | Markdown edits, substantial prose, commit bodies, pull request descriptions | [Writing](docs/writing.md) |
@@ -87,11 +89,14 @@ Independent review is required for explicit review requests and for task changes
 - Coordinate behavior changes across layers.
 - Change lint, type, build, hook or npm configuration.
 
-Not triggers on their own: formatting, comments, docs, tests, local user interface fixes, sprite edits, existing-level corrections, single-layer refactors and new levels on existing mechanics. Judge the task's actual changes, never file names or size. The primary agent never replaces mandatory review with its own assessment and addresses every finding.
+Not triggers on their own: formatting, comments, docs, tests, local user interface fixes, sprite edits, existing-level corrections, single-layer refactors and new levels on existing mechanics.
+
+- Judge the task's actual changes, never file names or size.
+- The primary agent never replaces mandatory review with its own assessment and addresses every finding.
 
 ### Handoffs
 
-- Pass the task, paths and symbols, expected outcome and task-specific constraints. Link requirements instead of copying them. Link the applicable document sections, never whole documents.
+- Pass the task, paths and symbols, expected outcome and task-specific constraints. Link requirements instead of copying them. Link applicable sections, never whole documents.
 - Before the first review, record `git stash create` output as the snapshot hash. If it prints nothing, the tree is clean and `HEAD` is the snapshot. Re-reviews after fixes pass that hash, the earlier findings and any new untracked paths, so the reviewer reads only the delta. Request a full review again only when the fix rewrote most of the reviewed change.
 - Return changed paths, unresolved integration work, blockers and regression evidence when needed. Reviewers return findings only.
 
@@ -109,14 +114,13 @@ Not triggers on their own: formatting, comments, docs, tests, local user interfa
 - State a rationale once, at the code that owns the decision. Tests do not repeat production rationale.
 - Add a reason comment where a magic number or workaround would make a reader ask why.
 - When editing code, update or remove comments the edit made stale.
-- A new file, type or export gets no comment that says what it is. Its name and its folder say that.
+- A new file, type or export gets no comment that says what it is.
 - A rule that a doc states or a lint rule enforces gets no comment repeating it. A design decision made in the current task is not a reason for a comment either.
 
 ## Writing
 
-- Chat replies: US English, no idioms, em dashes, horizontal rules, hashtags, invented facts, filler or repetition. Match length to the required information.
+- Chat replies follow [Writing](docs/writing.md) and contain no invented facts. Match length to the required information.
 
 ## Architecture
 
 - [Code organization](docs/code-organization.md) decides where every file goes and what it may import. Read it before adding a file or a folder.
-- `make lint` enforces it through [.oxlintrc.json](.oxlintrc.json) and [scripts/check-layout.mjs](scripts/check-layout.mjs).

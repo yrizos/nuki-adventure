@@ -11,7 +11,7 @@ Unit tests must catch every behavior regression on a local machine within second
 - Profile every test file that takes more than one second in a full run.
 - Membership checks in searches and sweeps use a `Set` or `TilePositions`, never a list scan such as `reached.some((tile) => tile.equals(neighbor))`.
 - An expensive search that depends only on fixed level data runs once per file and is shared by the tests that read it.
-- A whole-level playthrough runs once. A level's own test file does not repeat a scenario that the shared authored-level tests already cover for every level.
+- A whole-level playthrough runs once.
 
 ## One Test Per Behavior
 
@@ -49,15 +49,13 @@ Invariants are checked exhaustively over enumerated inputs, not with a few examp
 
 - One test covers one sweep. It loops over every input, collects its violations with plain comparisons and asserts once on the list. Each violation names its input.
 - `test.each` splits only by a small fixed dimension, such as the authored level or the gate state. It never generates a test per tile, per pixel or per step sequence, because per-test overhead then dominates the run time.
-
-- Every [level design hard constraint](level-design.md#hard-constraints) added gets a deterministic test over every authored level.
-- In every authored level, every tile that touches a fenced enclosure from outside, corners included, is open ground with no stone or woodland.
+- Every [level design hard constraint](level-design.md#hard-constraints) added gets a deterministic test over every authored level. This covers the [fenced enclosure](level-design.md#fenced-enclosures) rule.
 - In every authored level, the hero starts on each walkable tile of the playable area and moves in each of the eight directions. She never ends inside an obstacle or outside the level. The door stays closed until every orb is collected.
 - In every authored level, every open tile is reachable from the start, with the gate and any boulder counted as passable.
 - In every authored level, over many plays, no orb lies on the start or the eight tiles around it.
 - In every authored level with swing gates, the sweep runs with every gate closed from every tile of each region the gates divide, where she never enters another region, and once with every gate open from every tile.
-- A swing gate moves from closed through opening to open, and from open through closing to closed. A swing in progress can reverse. Any other request changes nothing and emits no event. It blocks its whole tile through the last of its sixteen opening frames and lets the hero through on the next frame.
-- The magical arrival advances only through explicit frames. Through its last frame the hero does not move, collect anything or complete the level, and its frames add no play time. A held direction moves her on the first playable frame.
+- A swing gate moves from closed through opening to open, and from open through closing to closed. A swing in progress can reverse. Any other request changes nothing and emits no event. It blocks its whole tile through the last of its sixteen opening game frames, set in [Swing Gate](sprites.md#swing-gate), and lets the hero through on the next frame.
+- In a level with the [magical arrival](animation.md#magical-arrival), it advances only through explicit frames. Through its last frame the hero does not move, collect anything or complete the level, and its frames add no play time. A held direction moves her on the first playable frame.
 - Every short sequence of reaching and completing levels keeps unlocked levels unlocked and sets the last playthrough of each completed level. Every resulting progress state survives a save and load.
 - A level in progress is always the continue level. Reaching or completing that level drops it.
 - A resumed level plays on exactly as the level it was taken from. A snapshot that does not fit the level starts it afresh.
