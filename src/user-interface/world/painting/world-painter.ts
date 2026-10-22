@@ -226,28 +226,44 @@ export class WorldPainter {
     this.colored = sized(this.colored, target);
     this.paintVersion(this.colored, scene, 'colored', false);
     const camera = cameraPosition(scene.level, target.width, target.height);
-    const coverage = seamCoverage(colored, columns, rows);
+    this.blendSeam(target, camera, seamCoverage(colored, columns, rows), columns, rows);
+  }
+
+  // Coverage is sampled at tile centers, so every pixel lies in the cell between four samples. A cell whose samples are all
+  // uncolored or all colored blends to a constant, so only the cells that mix need the per-pixel dither.
+  private blendSeam(target: Picture, camera: Point, coverage: Float32Array, columns: number, rows: number): void {
+    const at = (column: number, row: number): number =>
+      coverage[clamp(row, 0, rows - 1) * columns + clamp(column, 0, columns - 1)]!;
+    const firstColumn = Math.floor((camera.x - tileSize / 2) / tileSize);
+    const lastColumn = Math.floor((camera.x + target.width - 1 - tileSize / 2) / tileSize);
     for (let y = 0; y < target.height; y++) {
       const worldY = y + camera.y;
       const along = (worldY + 0.5) / tileSize - 0.5;
       const row = Math.floor(along);
       const down = along - row;
-      const upper = clamp(row, 0, rows - 1) * columns;
-      const lower = clamp(row + 1, 0, rows - 1) * columns;
-      for (let x = 0; x < target.width; x++) {
-        const worldX = x + camera.x;
-        const across = (worldX + 0.5) / tileSize - 0.5;
-        const column = Math.floor(across);
-        const right = across - column;
-        const near = clamp(column, 0, columns - 1);
-        const far = clamp(column + 1, 0, columns - 1);
-        const top = coverage[upper + near]! * (1 - right) + coverage[upper + far]! * right;
-        const bottom = coverage[lower + near]! * (1 - right) + coverage[lower + far]! * right;
-        const blend = top * (1 - down) + bottom * down;
-        // Smoothstep easing keeps the dither sparse at both ends, so color feathers in instead of starting at a visible edge.
-        if (ditherThreshold(worldX, worldY) >= blend * blend * (3 - 2 * blend) * ditherSteps) continue;
-        const offset = y * target.width + x;
-        target.packedPixels[offset] = this.colored.packedPixels[offset]!;
+      for (let column = firstColumn; column <= lastColumn; column++) {
+        const from = Math.max(0, column * tileSize + tileSize / 2 - camera.x);
+        const to = Math.min(target.width, (column + 1) * tileSize + tileSize / 2 - camera.x);
+        const upperNear = at(column, row);
+        const upperFar = at(column + 1, row);
+        const lowerNear = at(column, row + 1);
+        const lowerFar = at(column + 1, row + 1);
+        if (upperNear === 0 && upperFar === 0 && lowerNear === 0 && lowerFar === 0) continue;
+        if (upperNear === 1 && upperFar === 1 && lowerNear === 1 && lowerFar === 1) {
+          target.copy(this.colored, from, y, to - from, 1, from, y);
+          continue;
+        }
+        for (let x = from; x < to; x++) {
+          const worldX = x + camera.x;
+          const right = (worldX + 0.5) / tileSize - 0.5 - column;
+          const top = upperNear * (1 - right) + upperFar * right;
+          const bottom = lowerNear * (1 - right) + lowerFar * right;
+          const blend = top * (1 - down) + bottom * down;
+          // Smoothstep easing keeps the dither sparse at both ends, so color feathers in instead of starting at a visible edge.
+          if (ditherThreshold(worldX, worldY) >= blend * blend * (3 - 2 * blend) * ditherSteps) continue;
+          const offset = y * target.width + x;
+          target.packedPixels[offset] = this.colored.packedPixels[offset]!;
+        }
       }
     }
   }
