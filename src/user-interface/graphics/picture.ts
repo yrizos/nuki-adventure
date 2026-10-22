@@ -37,7 +37,11 @@ export function lighten(packed: number): number {
   return lightened.get(packed) ?? packed;
 }
 
-const shading = Object.fromEntries(
+const alphaBits = new Uint32Array(new Uint8ClampedArray([0, 0, 0, 255]).buffer)[0]!;
+const colorBits = ~alphaBits >>> 0;
+
+// Shading looks at the color alone, because a pixel keeps whatever alpha it was given.
+const shading = new Map(
   Object.entries({
     G2: 'G1',
     G3: 'G2',
@@ -51,7 +55,10 @@ const shading = Object.fromEntries(
     N3: 'N2',
     N4: 'N3',
     Paper: 'N4',
-  }).map(([from, to]) => [channels(from as PaletteCode).join(','), channels(to as PaletteCode)]),
+  }).map(
+    ([from, to]) =>
+      [packedColors[from as PaletteCode] & colorBits, packedColors[to as PaletteCode] & colorBits] as const,
+  ),
 );
 
 export function sprite(art: Art): Sprite {
@@ -119,9 +126,10 @@ export class Picture {
   shade(x: number, y: number, width: number, height: number): void {
     for (let row = Math.max(0, y); row < Math.min(this.height, y + height); row++) {
       for (let column = Math.max(0, x); column < Math.min(this.width, x + width); column++) {
-        const offset = (row * this.width + column) * 4;
-        const darker = shading[this.pixels.subarray(offset, offset + 3).join(',')];
-        if (darker) this.pixels.set(darker, offset);
+        const offset = row * this.width + column;
+        const pixel = this.packedPixels[offset]!;
+        const darker = shading.get(pixel & colorBits);
+        if (darker !== undefined) this.packedPixels[offset] = (pixel & alphaBits) | darker;
       }
     }
   }
