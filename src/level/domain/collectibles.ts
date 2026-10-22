@@ -1,22 +1,27 @@
 import { TilePosition, tileKey } from './position';
 import type { LevelSize } from './scenery';
 
-export class Area {
-  private readonly keys: ReadonlySet<number>;
+// The lookups live beside the areas, so two areas of the same tiles stay equal whether or not either has been asked.
+const keysOfAreas = new WeakMap<Area, ReadonlySet<number>>();
 
-  private constructor(readonly tiles: readonly TilePosition[]) {
-    this.keys = new Set(tiles.map(tileKey));
-  }
+export class Area {
+  private constructor(readonly tiles: readonly TilePosition[]) {}
 
   static of(tiles: readonly TilePosition[]): Area {
     const area = new Area([...tiles]);
     if (tiles.length === 0) throw new RangeError('An area needs at least one tile');
-    if (area.keys.size !== tiles.length) throw new RangeError('An area holds each tile only once');
+    if (area.tileKeys().size !== tiles.length) throw new RangeError('An area holds each tile only once');
     return area;
   }
 
+  // A search tries many orb circles and asks few of them what they cover, so the lookup is built on the first question.
+  // The tiles come from a walk over distinct positions, so there is nothing to check.
+  static ofDistinct(tiles: readonly TilePosition[]): Area {
+    return new Area(tiles);
+  }
+
   static whole(size: LevelSize): Area {
-    return Area.of(
+    return Area.ofDistinct(
       Array.from({ length: size.columns * size.rows }, (_, index) =>
         TilePosition.at(index % size.columns, Math.floor(index / size.columns)),
       ),
@@ -24,13 +29,50 @@ export class Area {
   }
 
   covers(position: TilePosition): boolean {
-    return this.keys.has(tileKey(position));
+    return this.tileKeys().has(tileKey(position));
+  }
+
+  private tileKeys(): ReadonlySet<number> {
+    let keys = keysOfAreas.get(this);
+    if (!keys) {
+      keys = new Set(this.tiles.map(tileKey));
+      keysOfAreas.set(this, keys);
+    }
+    return keys;
   }
 }
 
 export const orbRadii = { smallest: 4, largest: 6 } as const;
 // Color feathers out to the middle of the second tile past a restored area, so three faded tiles keep two circles from meeting.
 const fadedGap = 3;
+
+interface Span {
+  readonly first: number;
+  readonly last: number;
+}
+
+// A circle holds one unbroken run of columns in each row, so two circles are compared run by run instead of tile by tile.
+// The runs live beside the orbs, so two orbs of the same circle stay equal whether or not they have been compared.
+const spansOfOrbs = new WeakMap<Orb, ReadonlyMap<number, Span>>();
+
+function spansOf(orb: Orb): ReadonlyMap<number, Span> {
+  let spans = spansOfOrbs.get(orb);
+  if (!spans) {
+    const rows = new Map<number, Span>();
+    for (const { column, row } of orb.restores.tiles) {
+      const span = rows.get(row);
+      rows.set(
+        row,
+        span
+          ? { first: Math.min(span.first, column), last: Math.max(span.last, column) }
+          : { first: column, last: column },
+      );
+    }
+    spans = rows;
+    spansOfOrbs.set(orb, spans);
+  }
+  return spans;
+}
 
 export class Orb {
   private constructor(
@@ -56,7 +98,7 @@ export class Orb {
           tiles.push(tile);
       }
     }
-    return new Orb(position, radius, Area.of(tiles));
+    return new Orb(position, radius, Area.ofDistinct(tiles));
   }
 
   touches(other: Orb): boolean {
@@ -66,10 +108,13 @@ export class Orb {
       Math.abs(this.position.row - other.position.row) > reach
     )
       return false;
-    return this.restores.tiles.some((tile) =>
-      other.restores.tiles.some(
-        (each) => Math.max(Math.abs(tile.column - each.column), Math.abs(tile.row - each.row)) <= fadedGap,
-      ),
-    );
+    const theirs = spansOf(other);
+    for (const [row, mine] of spansOf(this)) {
+      for (let near = row - fadedGap; near <= row + fadedGap; near++) {
+        const span = theirs.get(near);
+        if (span && Math.max(mine.first - span.last, span.first - mine.last) <= fadedGap) return true;
+      }
+    }
+    return false;
   }
 }

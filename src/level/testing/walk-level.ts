@@ -4,17 +4,30 @@ import type { Level } from '../domain/level';
 import type { SwingGate } from '../domain/swing-gate';
 import type { LevelEvent } from '../domain/level-events';
 import { Direction, Heading, type TilePosition, type WorldPosition, tileSize } from '../domain/position';
+import type { Obstacles, Outline } from '../domain/obstacles';
 import { check2dObstacles } from '../infrastructure/check2d-obstacles';
 
 export const same = (a: WorldPosition, b: WorldPosition): boolean => a.x === b.x && a.y === b.y;
 
 const directions = [Direction.Up, Direction.Down, Direction.Left, Direction.Right];
 
+// A level hands out the same outlines until something moves, so every search over one layout shares its placed obstacles.
+const placedByOutlines = new WeakMap<readonly Outline[], Obstacles>();
+
+function obstaclesOf(outlines: readonly Outline[]): Obstacles {
+  let placed = placedByOutlines.get(outlines);
+  if (!placed) {
+    placed = check2dObstacles(outlines);
+    placedByOutlines.set(outlines, placed);
+  }
+  return placed;
+}
+
 export function pathTo(
   level: Pick<Level, 'outlines' | 'hero' | 'scenery'>,
   destination: (position: TilePosition) => boolean,
 ): readonly WorldPosition[] | undefined {
-  const obstacles = check2dObstacles(level.outlines);
+  const obstacles = obstaclesOf(level.outlines);
   const start = level.hero.feet;
   const key = (position: WorldPosition): number => position.x * 65536 + position.y;
   const reached = [start];

@@ -540,9 +540,8 @@ describe('orbs of the first level', () => {
     const rest = level.orbs.map(({ position }) => ({ x: position.column * tileSize, y: position.row * tileSize }));
     const offsets = (frame: number): string[] =>
       swirlDrawn(frame).map((drawn, index) => `${drawn.x - rest[index]!.x},${drawn.y - rest[index]!.y}`);
-    const paths = level.orbs.map((_, index) =>
-      Array.from({ length: 30 }, (__, step) => offsets(step * 10)[index]).join(' '),
-    );
+    const steps = Array.from({ length: 30 }, (_, step) => offsets(step * 10));
+    const paths = level.orbs.map((_, index) => steps.map((step) => step[index]).join(' '));
     expect(new Set(paths).size).toBe(level.orbs.length);
   });
 });

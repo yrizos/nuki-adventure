@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import { feet } from '../domain/hero';
 import { Level } from '../domain/level';
-import { Direction, Heading, TilePosition, TilePositions, WorldPosition, tileSize } from '../domain/position';
+import { Direction, Heading, TilePosition, TilePositions, WorldPosition, tileKey, tileSize } from '../domain/position';
 import { SwingGate } from '../domain/swing-gate';
 import { keepOrder, lowestRoll } from '../testing/draws';
 import { swungThrough } from '../testing/walk-level';
@@ -30,15 +30,13 @@ const farAway = WorldPosition.at(-10 * tileSize, -10 * tileSize);
 // Grid connectivity is only the selection of starts. The sweep below checks each one against the real collision.
 function regionAround(level: Level, start: TilePosition, enterable: (tile: TilePosition) => boolean): TilePositions {
   const reached = [start];
+  const seen = new Set([tileKey(start)]);
   for (let index = 0; index < reached.length; index++) {
     for (const direction of [Direction.Up, Direction.Down, Direction.Left, Direction.Right]) {
       const neighbor = reached[index]!.neighbor(direction);
-      if (
-        level.scenery.size.contains(neighbor) &&
-        enterable(neighbor) &&
-        !reached.some((tile) => tile.equals(neighbor))
-      )
-        reached.push(neighbor);
+      if (!level.scenery.size.contains(neighbor) || !enterable(neighbor) || seen.has(tileKey(neighbor))) continue;
+      seen.add(tileKey(neighbor));
+      reached.push(neighbor);
     }
   }
   return TilePositions.of(reached);

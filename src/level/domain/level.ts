@@ -73,7 +73,8 @@ export class Level {
   private completed = false;
   private gripping = false;
   private readonly placeObstacles: PlaceObstacles;
-  private obstacles: Obstacles;
+  // Built when the hero first needs it, so a level made only to be inspected never places its obstacles.
+  private placed: Obstacles | undefined;
   private obstacleOutlines: readonly Outline[] = [];
 
   readonly id: LevelId;
@@ -229,7 +230,7 @@ export class Level {
     });
     this.remainingOrbs = [...orbs];
     this.placeObstacles = obstacles;
-    this.obstacles = this.placedObstacles();
+    this.outlineObstacles();
   }
 
   static create(definition: LevelDefinition): Level {
@@ -416,7 +417,7 @@ export class Level {
     const { feet: heroFeet, facing } = snapshot.hero;
     if (facing.isDiagonal) throw new RangeError(`The hero faces a side, not ${facing.name}`);
     level.heroEntity = Hero.standingAt(heroFeet, facing);
-    level.obstacles = level.placedObstacles();
+    level.outlineObstacles();
     const tile = level.heroEntity.position;
     const { columns, rows } = level.scenery.size;
     // Feet pressed against a boulder, a stone or a fence can stand inside its tile, so only the obstacles themselves decide where she fits.
@@ -503,7 +504,7 @@ export class Level {
     if (gate.isOpen) {
       this.replaceGate(gate, gate.requestClose());
       // A closing leaf blocks the passage at once, so she cannot slip in while it swings back.
-      this.obstacles = this.placedObstacles();
+      this.outlineObstacles();
       return [new SwingGateClosingStarted(this.id, gate.position)];
     }
     this.replaceGate(gate, gate.requestOpen());
@@ -520,7 +521,7 @@ export class Level {
       const swung = gate.swingOn();
       this.replaceGate(gate, swung);
       if (swung.state === 'open') {
-        this.obstacles = this.placedObstacles();
+        this.outlineObstacles();
         return [new SwingGateOpened(this.id, gate.position)];
       }
       if (swung.state === 'closed') return [new SwingGateClosed(this.id, gate.position)];
@@ -563,7 +564,7 @@ export class Level {
   openDoor(): void {
     if (this.remainingOrbs.length > 0) throw new Error('The door opens only once every orb is picked up');
     this.currentDoor = this.currentDoor.opened();
-    this.obstacles = this.placedObstacles();
+    this.outlineObstacles();
   }
 
   tick(heading: Heading | null): readonly LevelEvent[] {
@@ -610,7 +611,7 @@ export class Level {
       events.push(new SwingGateOpeningStarted(this.id, gate.position));
     } else if (!pressed && (gate.state === 'open' || gate.state === 'opening')) {
       this.replaceGate(gate, gate.state === 'open' ? gate.requestClose() : gate.reverse());
-      this.obstacles = this.placedObstacles();
+      this.outlineObstacles();
       events.push(new SwingGateClosingStarted(this.id, gate.position));
     }
     return events;
@@ -655,7 +656,7 @@ export class Level {
     this.heroEntity.carry(WorldPosition.at(from.x + (to.x - from.x) * progress, from.y + (to.y - from.y) * progress));
     if (!advanced.isSliding) {
       this.carried = undefined;
-      this.obstacles = this.placedObstacles();
+      this.outlineObstacles();
     }
   }
 
@@ -686,7 +687,11 @@ export class Level {
     );
   }
 
-  private placedObstacles(): Obstacles {
+  private get obstacles(): Obstacles {
+    return (this.placed ??= this.placeObstacles(this.obstacleOutlines));
+  }
+
+  private outlineObstacles(): void {
     const door = this.currentDoor;
     const gates = this.currentGates;
     this.obstacleOutlines = [
@@ -696,7 +701,7 @@ export class Level {
       ...gates.flatMap((gate) => gate.obstacles),
       ...this.currentBoulders.map((boulder) => boulder.obstacle),
     ];
-    return this.placeObstacles(this.obstacleOutlines);
+    this.placed = undefined;
   }
 
   // What lies behind a gate or a boulder still counts, because the hero can always open the gate or move the boulder.

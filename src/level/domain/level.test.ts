@@ -440,10 +440,12 @@ describe('orbs placed in a level', () => {
     );
   };
   const seeds = Array.from({ length: 40 }, (_, seed) => seed);
+  // The permanent-orb sweep reads every play, so it builds the plays once.
+  let plays: readonly Level[] | undefined;
+  const everyPlay = (): readonly Level[] => (plays ??= seeds.map((seed) => placed(seededRandom(seed))));
 
   test('hold every permanent orb and three to nine orbs in all, with circles of two to four tiles that never touch', () => {
-    const violations = seeds.flatMap((seed) => {
-      const { orbs, permanentOrbs } = placed(seededRandom(seed));
+    const violations = everyPlay().flatMap(({ orbs, permanentOrbs }, seed) => {
       return [
         ...(orbs.length < 3 || orbs.length > 9 ? [`seed ${seed}: ${orbs.length} orbs`] : []),
         ...(orbs[0]!.position.equals(at(20, 20)) ? [] : [`seed ${seed}: no permanent orb first`]),
