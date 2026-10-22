@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { frogArt, frogFrameLength, frogRipple } from '../../graphics/sprite-library';
-import { type Frog, frogDiveLength, frogLeapLength } from '../dressing/world-dressing';
+import { type Frog, frogDiveLength, frogLeapLength } from '../dressing/pond-life';
 import { frogPlace } from './frog-motion';
 
 const left = { x: 20, y: 30 };

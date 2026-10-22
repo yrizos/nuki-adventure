@@ -1,7 +1,8 @@
 import type { Art } from '../../graphics/art';
 import { birdArt, birdFrameLength } from '../../graphics/sprite-library';
 import { tileSize } from '../world-geometry';
-import { arc, between, type Point } from './movement';
+import { between, type Point } from '../point';
+import { arc } from './movement';
 
 type Facing = keyof typeof birdArt;
 export type BirdHabit = 'perch' | 'ground' | 'sky';

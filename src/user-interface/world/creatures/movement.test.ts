@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { arc, between } from './movement';
+import { arc } from './movement';
 
 const from = { x: 0, y: 40 };
 const to = { x: 100, y: 40 };
@@ -24,9 +24,4 @@ test('an arc subtracts its wobble from the height and keeps whole pixels', () =>
     const place = arc(from, { x: 37, y: 11 }, step / 20, 5, 1.3);
     expect(Number.isInteger(place.x) && Number.isInteger(place.y)).toBe(true);
   }
-});
-
-test('the distance between two points is straight-line', () => {
-  expect(between({ x: 0, y: 0 }, { x: 3, y: 4 })).toBe(5);
-  expect(between({ x: 7, y: 7 }, { x: 7, y: 7 })).toBe(0);
 });

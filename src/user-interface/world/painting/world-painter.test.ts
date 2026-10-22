@@ -26,7 +26,8 @@ import { faded, lighter, palette, type PaletteCode } from '../../graphics/palett
 import { lighten, Picture, sprite } from '../../graphics/picture';
 import { cameraPosition, heroPixels, tileSize } from '../world-geometry';
 import { arrivalMotes, risingEdge } from '../transition/arrival';
-import { dressWorld, propVariants } from '../dressing/world-dressing';
+import { dressWorld } from '../dressing/world-dressing';
+import { propVariants } from '../dressing/prop-variants';
 import { orbFloat } from '../creatures/orb-motion';
 import { renderingLevel } from '../../testing/rendering-level';
 import { WorldPainter } from './world-painter';
@@ -1732,26 +1733,6 @@ describe('frogs', () => {
     }),
   );
   const ponds = Array.from({ length: 40 }, (_, seed) => dressWorld(pond, seeded(seed + 1)));
-
-  test('a pond gets no frog, one frog or two frogs at random', () => {
-    expect(new Set(ponds.map(({ frogs }) => frogs.length))).toEqual(new Set([0, 1, 2]));
-  });
-
-  test('frogs rest only on lily pads of their own, leap only to near pads and end each cycle where they began', () => {
-    for (const { lilies, frogs } of ponds) {
-      const pads = lilies.map(({ x, y }) => `${x + tileSize / 2},${y + tileSize / 2}`);
-      const owned = frogs.map((frog) => new Set(frog.legs.map(({ from }) => `${from.x},${from.y}`)));
-      for (const [index, frog] of frogs.entries()) {
-        for (const pad of owned[index]!) expect(pads).toContain(pad);
-        for (const other of owned.slice(index + 1)) for (const pad of other) expect(owned[index]!.has(pad)).toBe(false);
-        frog.legs.forEach((leg, step) => {
-          expect(frog.legs[(step + 1) % frog.legs.length]!.from).toBe(leg.to);
-          if (!leg.dive)
-            expect(Math.hypot(leg.to.x - leg.from.x, leg.to.y - leg.from.y)).toBeLessThanOrEqual(2 * tileSize);
-        });
-      }
-    }
-  });
 
   test('frogs are drawn in color and never in the faded world', () => {
     const seed = ponds.findIndex(({ frogs }) => frogs.length > 0) + 1;

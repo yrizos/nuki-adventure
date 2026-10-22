@@ -29,7 +29,7 @@ import { type Bird, type BirdVisit, birdPlace } from '../creatures/bird-motion';
 import { placeBirds } from '../creatures/bird-placement';
 import { butterflyPlace, butterflyRestingBeat } from '../creatures/butterfly-motion';
 import { frogPlace } from '../creatures/frog-motion';
-import type { Point } from '../creatures/movement';
+import type { Point } from '../point';
 import {
   orbFloat,
   orbInset,

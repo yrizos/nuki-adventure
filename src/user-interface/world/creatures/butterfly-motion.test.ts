@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import type { Butterfly } from '../dressing/world-dressing';
+import type { Butterfly } from '../dressing/butterfly-routes';
 import { butterflyPlace } from './butterfly-motion';
 
 const there = { x: 10, y: 20 };

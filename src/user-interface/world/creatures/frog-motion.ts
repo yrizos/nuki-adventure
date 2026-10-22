@@ -1,6 +1,6 @@
 import type { Art } from '../../graphics/art';
 import { frogArt, frogFrameLength, frogRipple } from '../../graphics/sprite-library';
-import { type Frog, frogDiveLength, frogLeapLength } from '../dressing/world-dressing';
+import { type Frog, frogDiveLength, frogLeapLength } from '../dressing/pond-life';
 import { arc } from './movement';
 
 const frogLeapArc = 6;

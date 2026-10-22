@@ -1,4 +1,4 @@
-import type { Butterfly } from '../dressing/world-dressing';
+import type { Butterfly } from '../dressing/butterfly-routes';
 import { arc } from './movement';
 
 const butterflyArc = 6;

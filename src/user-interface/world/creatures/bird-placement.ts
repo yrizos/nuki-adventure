@@ -5,7 +5,7 @@ import { sprite } from '../../graphics/picture';
 import type { WorldDressing } from '../dressing/world-dressing';
 import { tileSize } from '../world-geometry';
 import { type Bird, type BirdHabit, birdApproach, fleeReach } from './bird-motion';
-import { between, type Point } from './movement';
+import { between, type Point } from '../point';
 
 // A visit is under half its cycle, so a bird is away longer than it stays. Cycles differ by bird, so birds drift out of step.
 const birdVisitCycle = 3000;
