@@ -134,6 +134,16 @@ export class Picture {
     }
   }
 
+  copy(source: Picture, sourceX: number, sourceY: number, width: number, height: number, x: number, y: number): void {
+    const left = Math.max(0, -x);
+    const right = Math.min(width, this.width - x);
+    if (left >= right) return;
+    for (let row = Math.max(0, -y); row < Math.min(height, this.height - y); row++) {
+      const from = (sourceY + row) * source.width + sourceX;
+      this.packedPixels.set(source.packedPixels.subarray(from + left, from + right), (y + row) * this.width + x + left);
+    }
+  }
+
   draw(
     art: Art,
     x: number,

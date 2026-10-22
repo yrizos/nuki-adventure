@@ -1,4 +1,4 @@
-import { type Area, Direction, Ground, type LevelView, TilePosition } from '../../../level';
+import { type Area, Direction, Ground, type LevelSize, type LevelView, TilePosition } from '../../../level';
 import { arrivalMotes, revealed, risingEdge, shadowShown } from '../transition/arrival';
 import type { Art } from '../../graphics/art';
 import { ditherSteps, ditherThreshold } from '../../graphics/ordered-dither';
@@ -83,6 +83,8 @@ function seamCoverage(colored: Uint8Array, columns: number, rows: number): Float
 
 export class WorldPainter {
   private readonly dressing: WorldDressing;
+  private readonly size: LevelSize;
+  private readonly grounds = new Map<string, Picture>();
   private colored = new Picture(0, 0);
   private before = new Picture(0, 0);
   private after = new Picture(0, 0);
@@ -92,6 +94,7 @@ export class WorldPainter {
   private readonly orbLooks = new Map<string, OrbLook>();
 
   constructor(level: LevelView, random?: () => number) {
+    this.size = level.scenery.size;
     this.dressing = dressWorld(level, random);
     this.birds = placeBirds(level, this.dressing).map((bird) => ({ bird, visit: {} }));
     // Each orb takes a different hue until the rainbow runs out, so orbs in view never all look alike.
@@ -108,6 +111,28 @@ export class WorldPainter {
         phase: index * orbPhaseSpacing,
       }),
     );
+  }
+
+  // The ground never moves, so each version and water frame of it is drawn once and every paint copies from that.
+  private groundPicture(version: Version, waterFrame: number): Picture {
+    const animated = this.dressing.ground.some((tile) => tile.frames.length > 1);
+    const key = `${version}:${animated ? waterFrame : 0}`;
+    let picture = this.grounds.get(key);
+    if (!picture) {
+      const { columns, rows } = this.size;
+      picture = new Picture((columns + 1) * tileSize, (rows + 1) * tileSize);
+      picture.fill('Ink');
+      for (const tile of this.dressing.ground) {
+        picture.draw(
+          tile.frames[waterFrame % tile.frames.length]!,
+          tile.x + tileSize / 2,
+          tile.y + tileSize / 2,
+          version,
+        );
+      }
+      this.grounds.set(key, picture);
+    }
+    return picture;
   }
 
   private orbLook({ column, row }: TilePosition): OrbLook | undefined {
@@ -242,16 +267,15 @@ export class WorldPainter {
 
     const waterFrame = Math.floor(frame / waterFrameLength) % 4;
     const { columns, rows } = level.scenery.size;
-    for (
-      let row = Math.floor((camera.y + tileSize / 2) / tileSize);
-      row <= Math.floor((camera.y + picture.height - 1 + tileSize / 2) / tileSize);
-      row++
-    ) {
-      for (
-        let column = Math.floor((camera.x + tileSize / 2) / tileSize);
-        column <= Math.floor((camera.x + picture.width - 1 + tileSize / 2) / tileSize);
-        column++
-      ) {
+    const firstRow = Math.floor((camera.y + tileSize / 2) / tileSize);
+    const lastRow = Math.floor((camera.y + picture.height - 1 + tileSize / 2) / tileSize);
+    const firstColumn = Math.floor((camera.x + tileSize / 2) / tileSize);
+    const lastColumn = Math.floor((camera.x + picture.width - 1 + tileSize / 2) / tileSize);
+    const ground = this.groundPicture(version, waterFrame);
+    // Tiles beyond the map repeat the edge tile, so only the tiles inside the map come from the cached ground.
+    for (let row = firstRow; row <= lastRow; row++) {
+      for (let column = firstColumn; column <= lastColumn; column++) {
+        if (row >= 0 && row <= rows && column >= 0 && column <= columns) continue;
         const tile = this.dressing.ground[clamp(row, 0, rows) * (columns + 1) + clamp(column, 0, columns)]!;
         draw(
           tile.frames[waterFrame % tile.frames.length]!,
@@ -259,6 +283,19 @@ export class WorldPainter {
           row * tileSize - tileSize / 2,
         );
       }
+    }
+    const insideRow = Math.max(firstRow, 0);
+    const insideColumn = Math.max(firstColumn, 0);
+    if (insideRow <= Math.min(lastRow, rows) && insideColumn <= Math.min(lastColumn, columns)) {
+      picture.copy(
+        ground,
+        insideColumn * tileSize,
+        insideRow * tileSize,
+        (Math.min(lastColumn, columns) - insideColumn + 1) * tileSize,
+        (Math.min(lastRow, rows) - insideRow + 1) * tileSize,
+        insideColumn * tileSize - tileSize / 2 - camera.x,
+        insideRow * tileSize - tileSize / 2 - camera.y,
+      );
     }
     for (const lily of this.dressing.lilies) draw(lily.art, lily.x, lily.y);
     // Frogs only exist in color, so like butterflies and birds the seam dither limits them to restored areas.
