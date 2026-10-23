@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest';
+import { FakeDocument, stubReducedMotion } from '../testing/fake-document';
 import { neutralCode, palette } from '../graphics/palette';
 import { Picture } from '../graphics/picture';
 import { pixelDifference } from '../testing/pictures';
@@ -17,6 +18,7 @@ function colorAt(picture: Picture, column: number, row: number): string {
 }
 
 function intro(held = false) {
+  FakeDocument.stubGlobals();
   const hold = { isHeld: held };
   const subject = new Intro(hold);
   const picture = new Picture(width, height);
@@ -146,4 +148,12 @@ test('shows the skip circle only while a press is held, filling clockwise from t
   hold.isHeld = false;
   frame += 1;
   expect(topPixel()).toBe(palette.Ink);
+});
+
+test('with reduced motion the page does not tremble at the boom', () => {
+  const { advanceTo } = intro();
+  stubReducedMotion(true);
+  const trembling = new Picture(width, height);
+  trembling.pixels.set(advanceTo(boomFrame + 2).pixels);
+  expect(pixelDifference(advanceTo(boomFrame + 30), trembling)).toBeUndefined();
 });

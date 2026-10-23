@@ -10,7 +10,7 @@ import { PlayLevel } from '../../level/application/play-level';
 import { Level } from '../../level/domain/level';
 import { check2dObstacles } from '../../level/infrastructure/check2d-obstacles';
 import { InMemoryLevelRepository } from '../../level/infrastructure/in-memory-level-repository';
-import { FakeDocument, type FakeHTMLElement } from '../testing/fake-document';
+import { FakeDocument, stubReducedMotion, type FakeHTMLElement } from '../testing/fake-document';
 import { PixelGrid, type Art } from '../graphics/art';
 import { glyphHeight, textWidth, writeText } from '../graphics/font';
 import {
@@ -314,4 +314,17 @@ test('draws a locked card and its padlock through the faded mapping', () => {
     'faded',
   );
   expect(rows[2]!.style.getPropertyValue('--art')).toBe(`url(${pictureUrl(root as unknown as Document, picture)})`);
+});
+
+test.each([
+  [false, 'smooth'],
+  [true, 'auto'],
+])('with reduced motion %s a scroll button scrolls with %s behavior', (reduced, behavior) => {
+  const { list, downButton } = levelPicker();
+  stubReducedMotion(reduced);
+  const scrollBy = vi.fn<(options: ScrollToOptions) => void>();
+  Object.assign(list, { scrollTop: 0, scrollHeight: 500, clientHeight: 200, scrollBy });
+  list.dispatchEvent(new Event('scroll'));
+  downButton.click();
+  expect(scrollBy.mock.calls[0]![0].behavior).toBe(behavior);
 });

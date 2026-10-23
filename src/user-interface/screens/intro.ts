@@ -5,6 +5,7 @@ import type { PaletteCode } from '../graphics/palette';
 import { Picture, type Version } from '../graphics/picture';
 import { butterflyArt, fruitTreeArt, grassArt, groundShadow, heroArt, heroDanceArt } from '../graphics/sprite-library';
 import { isDarkened } from '../world/transition/world-transition';
+import { prefersReducedMotion } from '../page/reduced-motion';
 import { fittedMessageBoxArt } from './message-box';
 import {
   beatStart,
@@ -310,9 +311,10 @@ export class Intro {
     if (this.panels?.width !== picture.width || this.panels.height !== picture.height)
       this.panels = { width: picture.width, height: picture.height, drawn: drawPanels(picture.width, picture.height) };
     picture.fill('Ink');
+    const offset = prefersReducedMotion() ? { x: 0, y: 0 } : trembleOffset(this.frame);
     for (let index = 0; index < panelCount; index++) {
       const shown = revealedThresholds(index, this.frame);
-      if (shown > 0) this.copy(picture, this.panels.drawn[index]!, shown, trembleOffset(this.frame));
+      if (shown > 0) this.copy(picture, this.panels.drawn[index]!, shown, offset);
     }
     const sinking = sinkFrames(this.frame);
     if (sinking >= 0) {

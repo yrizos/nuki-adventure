@@ -3,6 +3,7 @@ import { artUrl } from '../graphics/canvas-art';
 import { ConfirmModal } from './confirm-modal';
 import { element } from '../page/dom';
 import { menuChoices, takeMenuKeys } from './menu-keys';
+import { prefersReducedMotion } from '../page/reduced-motion';
 import { ditheredArt, ditherSteps } from '../graphics/ordered-dither';
 import type { Art } from '../graphics/art';
 import {
@@ -103,7 +104,8 @@ export class MenuScreen {
   animate(framesOpen: number): void {
     this.confirm.advance();
     const sinceReveal = framesOpen - titleRevealLength;
-    const shinePhase = sinceReveal < 0 ? -1 : (sinceReveal % (shineRest + this.shineArts().length)) - shineRest;
+    const decorated = sinceReveal >= 0 && !prefersReducedMotion();
+    const shinePhase = !decorated ? -1 : (sinceReveal % (shineRest + this.shineArts().length)) - shineRest;
     const shown =
       sinceReveal < 0
         ? this.titleArts[Math.floor(framesOpen / framesPerTitleThreshold)]!
@@ -116,7 +118,7 @@ export class MenuScreen {
     }
     const sparkles =
       this.sparkleArts[
-        sinceReveal < 0
+        !decorated
           ? this.sparkleArts.length - 1
           : Math.floor(sinceReveal / framesPerSparkleStep) % this.sparkleArts.length
       ]!;
@@ -124,10 +126,10 @@ export class MenuScreen {
       this.sparklesShown = sparkles;
       this.sparkles.style.setProperty('--art', this.url(sparkles));
     }
-    this.confetti.style.setProperty('--art', sinceReveal < 0 ? 'none' : this.confettiUrl);
+    this.confetti.style.setProperty('--art', decorated ? this.confettiUrl : 'none');
     this.confetti.style.setProperty(
       '--fall',
-      String(sinceReveal < 0 ? 0 : Math.floor(sinceReveal / framesPerConfettiStep) % this.confettiHeight),
+      String(decorated ? Math.floor(sinceReveal / framesPerConfettiStep) % this.confettiHeight : 0),
     );
   }
 

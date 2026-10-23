@@ -69,3 +69,13 @@ The [intro](ui-layout.md#intro) is a still comic page drawn with the game's own 
 - Turning shows the new facing for 2 game frames before she moves.
 - Orbs are collected by walking onto them, with no pause, pose or held-orb animation. The burst, the pop and restoration start at once and movement continues. The last orb shows a message that the colors are back.
 - No transparency, screen shake, motion blur or glow filters. The [intro](#intro) tremble is the one exception.
+
+## Reduced Motion
+
+When the device asks for reduced motion:
+
+- The game name never shines, and no sparkles or confetti show around it.
+- The [intro](#intro) page does not tremble.
+- The level picker's scroll buttons jump instead of gliding.
+
+All other animation plays unchanged.

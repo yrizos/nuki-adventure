@@ -226,7 +226,14 @@ export class FakeDocument extends EventTarget {
     vi.stubGlobal('Element', FakeElement);
     vi.stubGlobal('HTMLElement', FakeHTMLElement);
     vi.stubGlobal('ImageData', FakeImageData);
+    stubReducedMotion(false);
   }
+}
+
+export function stubReducedMotion(reduced: boolean): void {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: reduced && query === '(prefers-reduced-motion: reduce)',
+  }));
 }
 
 // The display reports its pixel ratio and layout changes through callbacks, so tests trigger them explicitly instead of waiting for a browser.

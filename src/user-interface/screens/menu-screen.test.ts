@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, vi } from 'vitest';
-import { FakeDocument } from '../testing/fake-document';
+import { FakeDocument, stubReducedMotion } from '../testing/fake-document';
 import { backWidth, menuButtonWidth, panelArt } from '../graphics/panel';
 import { sprite } from '../graphics/picture';
+import type { Art } from '../graphics/art';
 import { artUrl } from '../graphics/canvas-art';
 import { ditherThreshold } from '../graphics/ordered-dither';
 import { confirmArt } from './confirm-modal';
@@ -409,4 +410,15 @@ test('the buttons work at frame 0 of the title reveal', () => {
   key('ArrowDown');
   key('Enter');
   expect([continuing.mock.calls.length, pickingLevel.mock.calls.length]).toEqual([1, 1]);
+});
+
+test('with reduced motion the title never shines and shows no sparkles or confetti', () => {
+  const { root, subject, title, sparkles, confetti } = menuScreen();
+  stubReducedMotion(true);
+  const url = (art: Art): string => `url(${artUrl(root as unknown as Document, art)})`;
+  const still = [url(titleArt()), url(titleSparkleArts().at(-1)!), 'none'];
+  for (const frame of [32, 36, 212, 213, 400]) {
+    subject.animate(frame);
+    expect([title, sparkles, confetti].map((part) => part.style.getPropertyValue('--art'))).toEqual(still);
+  }
 });

@@ -9,6 +9,7 @@ import { element } from '../page/dom';
 import { levelMap, mapSize } from './level-map';
 import { idlePose } from '../world/hero/hero-animator';
 import { menuChoices, takeMenuKeys } from './menu-keys';
+import { prefersReducedMotion } from '../page/reduced-motion';
 import { Picture } from '../graphics/picture';
 import { heroArt, smallPadlockArt } from '../graphics/sprite-library';
 
@@ -190,7 +191,10 @@ export class LevelPicker {
       button.style.setProperty('--art-height', String(textButtonHeight));
       const direction = index === 0 ? -1 : 1;
       button.addEventListener('click', () =>
-        this.list.scrollBy?.({ top: direction * scrollStep * this.list.clientHeight, behavior: 'smooth' }),
+        this.list.scrollBy?.({
+          top: direction * scrollStep * this.list.clientHeight,
+          behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+        }),
       );
     });
     this.list.addEventListener('scroll', () => this.showScrollable());
