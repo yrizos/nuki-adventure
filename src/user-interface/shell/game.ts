@@ -33,6 +33,9 @@ export function startGame(
   const screen = element<HTMLElement>(root, '.screen');
   for (const [name, art] of Object.entries(panelArt))
     screen.style.setProperty(`--art-${name}`, `url(${artUrl(root, art)})`);
+  // Every data url is encoded before the first paint, so only the buttons that can be disabled get a faded one.
+  for (const name of ['button-a', 'button-b', 'continue', 'pick-level', 'scroll-up', 'scroll-down'])
+    screen.style.setProperty(`--art-${name}-faded`, `url(${artUrl(root, panelArt[name]!, 'faded')})`);
   const view = element<HTMLElement>(root, '.game-view');
   const canvas = element<HTMLCanvasElement>(root, '.game-view canvas');
   const actionButtons = {

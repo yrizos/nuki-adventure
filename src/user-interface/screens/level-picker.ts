@@ -282,7 +282,6 @@ export class LevelPicker {
     this.showScrollable();
   }
 
-  // Each scroll button dims once the list has nothing more in its direction.
   private showScrollable(): void {
     const { scrollTop, scrollHeight, clientHeight } = this.list;
     const [up, down] = this.scrollButtons;

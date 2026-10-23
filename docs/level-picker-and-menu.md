@@ -15,7 +15,7 @@ Colors are set in [Color Palette](palette.md#ui). Text lines follow [Text](ui-la
   - Once the logo is whole, small sparkles twinkle on the dark around it, in its corners and beside its shorter lines, never over the sticker or its shadow. One sparkle at a time grows from a dot to a cross to a four-point star and shrinks back, one step every 4 game frames, then the dark rests for 10 steps before the next spot lights. Reopening the screen starts them again from dark.
   - Also once the logo is whole, 14 square confetti bits of 2 × 2 pixels drift down behind it, one pixel every 4 game frames. They start 12 pixels above the logo and 6 pixels to each side of it, and after 12 pixels below it they start again at the top. Reopening the screen hides them until the logo is whole again.
 - At the bottom, all three buttons in this order, 8 pixels apart like the confirmation's answers, always shown, styled like the A button and sinking into their lips while pressed. All share the width of the widest. Buttons work from the first frame, and the first enabled button takes focus.
-- A button whose condition does not hold is disabled. It is dimmed like a disabled action button and ignores touch and keys.
+- A button whose condition does not hold is disabled. It is drawn like a disabled action button and ignores touch and keys.
 
 | Button | Enabled when | Action |
 | --- | --- | --- |

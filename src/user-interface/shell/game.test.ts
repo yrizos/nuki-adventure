@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { Area, Orb } from '../../level/domain/collectibles';
 import { Direction, Heading, TilePosition } from '../../level/domain/position';
@@ -27,6 +28,8 @@ import {
 import { memoryStorage } from '../../progress/testing/memory-storage';
 import { pixelDifference } from '../testing/pictures';
 import { startGame } from './game';
+import { artUrl } from '../graphics/canvas-art';
+import { panelArt } from '../graphics/panel';
 import { arrivalLength } from '../session/game-phase';
 import { Sound } from '../audio/sound';
 import { LevelPicker } from '../screens/level-picker';
@@ -824,6 +827,26 @@ describe('the game page', () => {
     expect(page.screen.classList.contains('intro-open')).toBe(false);
     page.frame();
     expect(page.announcement.textContent).toBe('');
+  });
+
+  test.each([
+    ['.button-a', 'button-a'],
+    ['.button-b', 'button-b'],
+    ['.menu-continue', 'continue'],
+    ['.menu-pick-level', 'pick-level'],
+    ['.level-picker-up', 'scroll-up'],
+    ['.level-picker-down', 'scroll-down'],
+  ])('a disabled %s shows the faded %s art', (selector, name) => {
+    const page = gamePage();
+    const style = readFileSync(new URL('./style.css', import.meta.url), 'utf8');
+    expect(style).toContain(`${selector}:disabled {\n  --art: var(--art-${name}-faded);\n}`);
+    expect(page.screen.style.getPropertyValue(`--art-${name}-faded`)).toBe(
+      `url(${artUrl(page.root as unknown as Document, panelArt[name]!, 'faded')})`,
+    );
+  });
+
+  test('draws every control from palette art, with no filter', () => {
+    expect(readFileSync(new URL('./style.css', import.meta.url), 'utf8')).not.toMatch(/filter:/);
   });
 
   test('plays the intro from ΝΕΟ ΠΑΙΧΝΙΔΙ with every control hidden when no progress is saved, then level one once it ends', () => {

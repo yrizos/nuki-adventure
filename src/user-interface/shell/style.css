@@ -322,7 +322,6 @@ body {
 
 .action-cross button:disabled,
 .menu-button:disabled {
-  filter: grayscale(1) opacity(0.4);
   cursor: default;
 }
 
@@ -608,6 +607,30 @@ body {
 
 .confirm-no:active {
   --art: var(--art-no-pressed);
+}
+
+.button-a:disabled {
+  --art: var(--art-button-a-faded);
+}
+
+.button-b:disabled {
+  --art: var(--art-button-b-faded);
+}
+
+.menu-continue:disabled {
+  --art: var(--art-continue-faded);
+}
+
+.menu-pick-level:disabled {
+  --art: var(--art-pick-level-faded);
+}
+
+.level-picker-up:disabled {
+  --art: var(--art-scroll-up-faded);
+}
+
+.level-picker-down:disabled {
+  --art: var(--art-scroll-down-faded);
 }
 
 /* Only the cards scroll, so the header and ΠΙΣΩ stay in place. A card cut off at the edge shows there is more, so no scrollbar is drawn. */

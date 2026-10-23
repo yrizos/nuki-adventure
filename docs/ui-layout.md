@@ -138,7 +138,7 @@ Panel pixels.
 
 - A and B are circles on a lip. A pressed button sinks into its lip and the lip disappears.
 - The right half of the panel is their touch area. A touch presses the button whose center is nearest.
-- In a level, A is enabled only when the level holds a [swing gate](glossary.md#swing-gate) or a [boulder](glossary.md#boulder). B is never enabled in a level. A disabled button is dimmed and ignores touch and keys. Both are enabled on the menu screen and level picker.
+- In a level, A is enabled only when the level holds a [swing gate](glossary.md#swing-gate) or a [boulder](glossary.md#boulder). B is never enabled in a level. A disabled button is drawn as the [palette](palette.md#ui) sets and ignores touch and keys. Both are enabled on the menu screen and level picker.
 - Hint wobble: while the hero can act, that button wobbles. No prompt is drawn in the game view.
 
 | Wobble property | Value |

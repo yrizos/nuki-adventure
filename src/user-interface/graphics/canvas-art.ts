@@ -1,5 +1,5 @@
 import type { Art } from './art';
-import { sprite, type Picture } from './picture';
+import { sprite, type Picture, type Version } from './picture';
 
 function pixelsUrl(root: Document, width: number, height: number, pixels: Uint8ClampedArray): string {
   const canvas = root.createElement('canvas');
@@ -11,9 +11,9 @@ function pixelsUrl(root: Document, width: number, height: number, pixels: Uint8C
   return canvas.toDataURL();
 }
 
-export function artUrl(root: Document, art: Art): string {
-  const { width, height, colored } = sprite(art);
-  return pixelsUrl(root, width, height, colored);
+export function artUrl(root: Document, art: Art, version: Version = 'colored'): string {
+  const { width, height, [version]: pixels } = sprite(art);
+  return pixelsUrl(root, width, height, pixels);
 }
 
 export function pictureUrl(root: Document, picture: Picture): string {
