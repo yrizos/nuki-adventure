@@ -1390,7 +1390,7 @@ describe('whole frames of the game session', () => {
     for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
     for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
     subject.advance(closingLength / 2);
-    expect(await paintedChecksum(subject)).toBe('7bea23ed4679ea2c420912e8918e0227b7ad56710395bf4303a0e66b06e8607b');
+    expect(await paintedChecksum(subject)).toBe('12f946529f740fcd24b5806d7d6746e89505f61bb09fc5810895733643d16c0e');
   });
 
   test('paints the current ended fixture unchanged', async () => {

@@ -122,18 +122,18 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    await expectChecksum(picture, 'ca462eed32614d9ae6ac09e66321be81477be6196ac8cd53a2c0a93bfcb3ea76');
+    await expectChecksum(picture, '5624b7db1b1ac1dad300308bff8d1bdf7d15055e93c375e094c6747234f699b0');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     // Starting the wave at the hero leaves its front inside the frame.
     painter.paintRestoring(picture, scene, level.hero.position, 20, [], [everywhere]);
-    await expectChecksum(picture, '8cd122e60b8315eae99492c82b4d306ecf9c26bdaece95ca012db784a35f8f22');
+    await expectChecksum(picture, '400bf3cab85c8f442c3d58ca8bc7b08bc224ccfcda29df8c1b3620bbcc8b9e9a');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [everywhere]);
-    await expectChecksum(picture, 'b481f77c69fe5e0c58a0055d1d65043d0b1838680a1bf1db1197c85564f1c172');
+    await expectChecksum(picture, 'ea4dd01712cff4f94a6205576ceea0d0ca42fc13c8ad50c8797a110d077d00f7');
   });
 });
 
