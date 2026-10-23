@@ -121,6 +121,12 @@ Not triggers on their own: formatting, comments, docs, tests, local user interfa
 
 - Chat replies follow [Writing](docs/writing.md) and contain no invented facts. Match length to the required information.
 
+## Planning, Design and Recommendations
+
+- Base every plan, design and recommendation on merit and best practices.
+- Never limit a recommendation to what current documentation allows. Documentation and rules may evolve.
+- When a recommendation conflicts with a current rule, say so. The user decides whether the rule evolves.
+
 ## Architecture
 
 - [Code organization](docs/code-organization.md) decides where every file goes and what it may import. Read it before adding a file or a folder.
