@@ -26,9 +26,9 @@ import {
 import { mapSize } from './level-map';
 import { ditherSteps } from '../graphics/ordered-dither';
 import type { PaletteCode } from '../graphics/palette';
-import { sprite } from '../graphics/picture';
-import { artUrl } from '../graphics/canvas-art';
-import { heroArt } from '../graphics/sprite-library';
+import { artUrl, pictureUrl } from '../graphics/canvas-art';
+import { heroArt, smallPadlockArt } from '../graphics/sprite-library';
+import { Picture, sprite } from '../graphics/picture';
 
 test.each([
   [0, '0:00'],
@@ -301,4 +301,17 @@ test('Nuki stands on the card of the level to continue and breathes and blinks o
   expect(shown()).toBe(url(heroArt.down.stand));
   for (let frame = 0; frame < 180; frame++) subject.advance();
   expect(shown()).toBe(url(heroArt.down.blink!));
+});
+
+test('draws a locked card and its padlock through the faded mapping', () => {
+  const { root, rows } = levelPicker();
+  const picture = new Picture(cardWidth, cardHeight);
+  picture.draw(levelCardArt(levels[2]!), 0, 0, 'faded');
+  picture.draw(
+    smallPadlockArt,
+    mapLeft + (mapSize - smallPadlockArt.rows[0]!.length) / 2,
+    mapTop + (mapSize - smallPadlockArt.rows.length) / 2,
+    'faded',
+  );
+  expect(rows[2]!.style.getPropertyValue('--art')).toBe(`url(${pictureUrl(root as unknown as Document, picture)})`);
 });

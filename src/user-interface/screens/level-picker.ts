@@ -238,13 +238,14 @@ export class LevelPicker {
             (top + row) * cardWidth + left,
           );
       }
-      picture.draw(art, 0, 0, 'colored');
+      const version = level.isUnlocked ? 'colored' : 'faded';
+      picture.draw(art, 0, 0, version);
       if (!level.isUnlocked)
         picture.draw(
           smallPadlockArt,
           mapLeft + (mapSize - smallPadlockArt.rows[0]!.length) / 2,
           mapTop + (mapSize - smallPadlockArt.rows.length) / 2,
-          'colored',
+          version,
         );
       const button = this.root.createElement('button');
       button.type = 'button';

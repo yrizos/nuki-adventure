@@ -53,7 +53,7 @@ Colors are set in [Color Palette](palette.md#ui). Text lines follow [Text](ui-la
 - The top of a card is a map of the whole level, centered in a one pixel Ink border, so each level is recognized by its layout. The level's longer side fills the 60 pixel map, and each map pixel takes the most common color of its part of the painted world. The orbs are left out, because they land on different spots every time a level is built.
   - An unlocked level shows its world in color, as its orbs restore it, whether or not it was completed.
   - The level that ΣΥΝΕΧΕΙΑ would start shows the 32 × 32 Nuki, centered on the map, with her idle breathing and blinking on the game's frame clock from the moment the picker opens.
-  - A locked level shows no map. Its window stays filled with the message box color, with the 16 × 16 padlock at its center.
+  - A locked level shows no map. Its window stays closed, with the 16 × 16 padlock at its center, and the whole card is drawn as the [palette](palette.md#ui) sets for a locked card.
 - The level number sits over the map's top left corner at the font size, 4 pixels in from the map's edges, with a one pixel Ink outline so it reads on any ground.
 - Below the map, a strip in the message box color. A completed level shows a 9 × 9 clock and its last play time at the right. A level without a completed play leaves the strip empty.
 - A card sinks one pixel while pressed. Tapping an unlocked card starts that level.
