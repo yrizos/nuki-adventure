@@ -19,3 +19,20 @@ test('a hidden menu leaves the keys to the game', () => {
   expect(event.defaultPrevented).toBe(false);
   expect(clicked).not.toHaveBeenCalled();
 });
+
+test.each(['a', 'B'])('the %s key chooses the focused item', (key) => {
+  FakeDocument.stubGlobals();
+  const root = new FakeDocument();
+  const menu = root.createElement('section');
+  const choice = root.createElement('button');
+  menu.append(choice);
+  root.body.append(menu);
+  takeMenuKeys(root as unknown as Document, menu as unknown as HTMLElement);
+  choice.focus();
+  const clicked = vi.fn();
+  choice.addEventListener('click', clicked);
+  const event = Object.assign(new Event('keydown', { cancelable: true }), { key, repeat: false });
+  root.dispatchEvent(event);
+  expect(event.defaultPrevented).toBe(true);
+  expect(clicked).toHaveBeenCalledOnce();
+});

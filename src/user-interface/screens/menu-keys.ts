@@ -1,6 +1,6 @@
 const previousKeys = new Set(['ArrowUp', 'ArrowLeft']);
 const nextKeys = new Set(['ArrowDown', 'ArrowRight']);
-const chooseKeys = new Set(['z', 'x', ' ', 'Enter']);
+const chooseKeys = new Set(['a', 'b', 'z', 'x', ' ', 'Enter']);
 
 export function focusAfter(key: string, focused: number, count: number): number {
   if (previousKeys.has(key)) return Math.max(0, focused - 1);
