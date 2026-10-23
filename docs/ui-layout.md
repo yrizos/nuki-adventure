@@ -117,8 +117,8 @@ Panel pixels.
 
 | Element | Size |
 | --- | --- |
-| Padding on all four sides | 16 |
-| Panel height | 92 |
+| Padding on all four sides | 16, plus the bottom safe-area inset at the bottom |
+| Panel height | 92, plus the bottom safe-area inset |
 | Joystick ring | 60 across, 3 pixel rim |
 | Joystick knob | 28 across |
 | Direction arrows | 8 × 4, 3 pixels inside the rim |

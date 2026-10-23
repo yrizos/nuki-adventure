@@ -44,7 +44,11 @@ body {
     --column-width: max(
       var(--narrowest-column),
       var(--minimum-game-view),
-      min(100vw, 100dvh * var(--design-width) / (var(--design-width) + var(--control-panel-height)))
+      min(
+        100vw,
+        (100dvh - env(safe-area-inset-bottom, 0px)) * var(--design-width) /
+          (var(--design-width) + var(--control-panel-height))
+      )
     );
   }
 }
@@ -163,8 +167,9 @@ body {
   align-items: center;
   justify-content: space-between;
   box-sizing: border-box;
-  height: calc(92 * var(--pixel));
+  height: calc(92 * var(--pixel) + env(safe-area-inset-bottom, 0px));
   padding: calc(16 * var(--pixel));
+  padding-bottom: calc(16 * var(--pixel) + env(safe-area-inset-bottom, 0px));
   background: var(--v0) var(--art-panel-grip) 0 0 / calc(8 * var(--pixel)) calc(16 * var(--pixel)) repeat;
   image-rendering: pixelated;
   box-shadow:
