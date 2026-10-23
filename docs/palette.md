@@ -74,6 +74,7 @@ Hex values and the faded mapping live in [`assets/sprites/palette.js`](../assets
 | Menu screen and level picker | Ink background with no texture. Buttons use the A button colors, pressed state included |
 | Game name | Letters cycle through the R, O, Y, G, T, V and P ramps, light on top, base in the middle, dark at the bottom. Ink outline, Paper sticker border, V1 shadow. The shine is Paper with each letter's light step on both edges. Each sparkle has a Paper center and rays in one light step: R3, Y3, G4, T3 or P3. Confetti bits take the base steps R2, O2, Y2, G3, T2, V2 and P2 |
 | Level card clock | Paper face, N4 shading, Ink outline, marks and hands |
+| Hint sparkle | R2 face, R3 highlight, R1 shading, Paper center, Ink outline |
 | Locked level card | The whole card through the faded mapping |
 
 ## Contrast

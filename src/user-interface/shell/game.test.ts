@@ -44,6 +44,8 @@ import { MessageBox } from '../screens/message-box';
 import { lighten, Picture } from '../graphics/picture';
 import { cameraPosition, heroPixels } from '../world/world-geometry';
 import { WorldPainter } from '../world/painting/world-painter';
+import { hintSparkleArt } from '../graphics/sprite-library';
+import { wobbleBurst, wobbleEvery } from '../session/prompt-wobble';
 import {
   areaRestorationLength,
   closingLength,
@@ -468,6 +470,46 @@ describe('a swing gate in the game session', () => {
     subject.tick(gateSwingLength);
     expect(subject.session.prompts('a')).toBe(false);
     expect(gameSession().session.prompts('a')).toBe(false);
+  });
+
+  test('counts the prompt from the frame it starts and points the hint sparkle at the gate, a step per part of each burst', () => {
+    const subject = gatedSession();
+    const paint = vi.spyOn(WorldPainter.prototype, 'paint').mockImplementation(() => undefined);
+    const hint = (): unknown => {
+      subject.session.paint(new Picture(224, 224));
+      return paint.mock.lastCall![1].hint;
+    };
+    const at = subject.session.level.gates[0]!.position;
+    const stepLength = wobbleBurst / hintSparkleArt.length;
+    const hints: unknown[] = [];
+    for (let age = 0; age <= wobbleEvery + 1; age++) {
+      subject.tick();
+      hints.push(hint());
+    }
+    expect(subject.session.promptAge('a')).toBe(wobbleEvery + 1);
+    const ages = [
+      0,
+      stepLength - 1,
+      stepLength,
+      wobbleBurst - 1,
+      wobbleBurst,
+      wobbleEvery - 1,
+      wobbleEvery,
+      wobbleEvery + 1,
+    ];
+    expect(ages.map((age) => hints[age])).toEqual([
+      { at, step: 0 },
+      { at, step: 0 },
+      { at, step: 1 },
+      { at, step: hintSparkleArt.length - 1 },
+      undefined,
+      undefined,
+      { at, step: 0 },
+      { at, step: 0 },
+    ]);
+    subject.press('a');
+    subject.tick();
+    expect([subject.session.promptAge('a'), hint()]).toEqual([null, undefined]);
   });
 
   test('ignores A during the magical arrival', () => {
@@ -1632,6 +1674,14 @@ describe('a boulder in the game session', () => {
     subject.held.delete('a');
     subject.tick(1);
     expect(subject.session.prompts('a')).toBe(true);
+  });
+
+  test('points the hint sparkle at the boulder she can grip', () => {
+    const subject = boulderSession();
+    const paint = vi.spyOn(WorldPainter.prototype, 'paint').mockImplementation(() => undefined);
+    subject.tick(1);
+    subject.session.paint(new Picture(224, 224));
+    expect(paint.mock.lastCall![1].hint?.at).toEqual(subject.session.level.boulders[0]!.position);
   });
 });
 

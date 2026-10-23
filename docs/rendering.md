@@ -45,7 +45,7 @@ Color codes refer to the [palette](palette.md).
 
 ## Faded World
 
-- At the start, only the hero and the orbs are in color. Every scenery tile and prop has a faded version that maps each step to a neutral through `faded` in [`palette.js`](../assets/sprites/palette.js), then corrected by hand.
+- At the start, only the hero, the orbs and the [hint sparkle](sprites.md#hint-sparkle) are in color. Every scenery tile and prop has a faded version that maps each step to a neutral through `faded` in [`palette.js`](../assets/sprites/palette.js), then corrected by hand.
 - A faded object differs from its ground through its silhouette, ground shadow or at least one neutral step. Stones on grass rely on their shadow and highlight, because N3 stone matches faded grass.
 - The [magical arrival](animation.md#magical-arrival) changes only the hero's visibility and never the faded state.
 

@@ -141,7 +141,7 @@ Panel pixels.
 - A and B are circles on a lip. A pressed button sinks into its lip and the lip disappears.
 - The right half of the panel is their touch area. A touch presses the button whose center is nearest.
 - In a level, A is enabled only when the level holds a [swing gate](glossary.md#swing-gate) or a [boulder](glossary.md#boulder). B is never enabled in a level. A disabled button is drawn as the [palette](palette.md#ui) sets and ignores touch and keys. Both are enabled on the menu screen and level picker.
-- Hint wobble: while the hero can act, that button wobbles. No prompt is drawn in the game view.
+- Hint: while the hero can act, that button wobbles, and the swing gate or boulder she can act on shows the [hint sparkle](sprites.md#hint-sparkle) above it.
 
 | Wobble property | Value |
 | --- | --- |
@@ -150,6 +150,7 @@ Panel pixels.
 | Burst | 24 frames, easing in and out, starting the frame the hint begins |
 | Repeat | Every 60 frames |
 | Sound | Soft two-note chime per burst, one shared chime when both buttons burst together |
+| Sparkle | Twinkles once per burst, its frames spread evenly across the burst, centered over the gate or boulder, with its bottom row just above the topmost drawn row of that object |
 | Stops | The frame the action starts. Never during the magical arrival |
 
 ## Browser Behavior

@@ -66,6 +66,7 @@ describe('playing a level', () => {
       operableGate: undefined,
       canOperateGate: false,
       canGrip: false,
+      grippableBoulder: undefined,
       isGripping: false,
       boulders: [],
       actions: [],

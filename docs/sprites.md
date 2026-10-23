@@ -39,7 +39,7 @@ Color codes refer to the [palette](palette.md).
 
 ## Outlines
 
-- The hero, orbs and stones have a closed one pixel Ink outline. Lines between parts of one sprite, such as hair and face, use that part's darkest assigned step.
+- The hero, orbs, stones and the hint sparkle have a closed one pixel Ink outline. Lines between parts of one sprite, such as hair and face, use that part's darkest assigned step.
 - Scenery never uses Ink. Its outline uses the darkest step of its own ramp on the bottom and right sides only. Ground tiles have no outlines.
 
 ## Line Work and Clusters
@@ -71,6 +71,7 @@ Color codes refer to the [palette](palette.md).
 | Butterflies | 9 × 7 | None |
 | Birds | 11 × 9 sitting, 11 × 7 flying | None |
 | Frogs | 15 × 11, ripples included | None |
+| Hint sparkle | 9 × 9 | None |
 
 A new element uses the smallest size that fits its shape.
 
@@ -96,6 +97,11 @@ A new element uses the smallest size that fits its shape.
 - Every prop has a ground shadow.
 - Repeated props have at least two variants, and identical variants never touch. Fruit trees are the exception, because each fruit has one tree shape.
 - Each plain tree shape has four versions that differ in a few leaf and bark pixels. One version is a slightly warmer green and one a slightly cooler green, so woodland mixes shades but still reads as one kind of tree. Touching trees differ by shape, and the version within a shape is picked by a fixed pattern per map.
+
+### Hint Sparkle
+
+- A four-point star in the A button ramp with a Paper center, floating over the swing gate or boulder the [hint](ui-layout.md#action-buttons) points at.
+- It twinkles from a dot through a small cross to the full star and back, each frame inside the next.
 
 ### Door
 

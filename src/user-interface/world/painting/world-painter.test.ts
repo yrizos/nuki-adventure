@@ -1613,6 +1613,49 @@ test('a boulder hides the orb it rolls onto, while sliding and once it rests', (
   }
 });
 
+test.each(['boulder', 'gate'] as const)(
+  'draws the hint sparkle above every prop and the hero, just above the drawn %s, and nothing past its last step',
+  (target) => {
+    const layout = ['.DDDWW', '....F.', '..P.G.', '..OHFQ', '....FF', '......'];
+    const view = levelView(
+      levelFromLayout(
+        LevelId.of('hinted'),
+        layout,
+        (spots) => spots,
+        check2dObstacles,
+        () => 0,
+      ),
+    );
+    const at = target === 'boulder' ? view.boulders[0]!.position : view.gates[0]!.position;
+    const drawn = (step: number) => {
+      const picture = new Picture(224, 224);
+      const draw = vi.spyOn(picture, 'draw');
+      new WorldPainter(view).paint(
+        picture,
+        { level: view, frame: 0, hero: library.heroArt.up.stand, hint: { at, step } },
+        [],
+      );
+      return draw.mock.calls;
+    };
+    const sparkle = library.hintSparkleArt[1]!;
+    const calls = drawn(1);
+    const shown = calls.findIndex(([art]) => art === sparkle);
+    const props: unknown[] =
+      target === 'boulder'
+        ? [library.boulderArt]
+        : [library.gateArt, library.sideGateArt].flatMap((art) => Object.values(art).flat());
+    const object = calls.find(([art]) => props.includes(art))!;
+    const firstRow = object[0].rows.findIndex((line) => /[^.]/.test(line));
+    const { width, height } = sprite(sparkle);
+    expect(shown).toBe(calls.length - 1);
+    expect([calls[shown]![1] - object[1], calls[shown]![2] + height]).toEqual([
+      Math.floor((32 - width) / 2),
+      object[2] + firstRow,
+    ]);
+    expect(drawn(library.hintSparkleArt.length).some(([art]) => library.hintSparkleArt.includes(art))).toBe(false);
+  },
+);
+
 describe('frogs', () => {
   const seeded = (seed: number) => (): number => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const pond = levelView(

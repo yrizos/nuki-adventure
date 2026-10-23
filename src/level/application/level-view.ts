@@ -23,6 +23,7 @@ export interface LevelView {
   readonly operableGate: SwingGate | undefined;
   readonly canOperateGate: boolean;
   readonly canGrip: boolean;
+  readonly grippableBoulder: Boulder | undefined;
   readonly isGripping: boolean;
   readonly boulders: readonly Boulder[];
   readonly actions: readonly LevelAction[];
@@ -45,6 +46,7 @@ export function levelView(level: Level): LevelView {
     operableGate: level.operableGate,
     canOperateGate: level.canOperateGate,
     canGrip: level.canGrip,
+    grippableBoulder: level.grippableBoulder,
     isGripping: level.isGripping,
     boulders: [...level.boulders],
     actions: level.actions,

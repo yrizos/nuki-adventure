@@ -158,6 +158,7 @@ export const sideGateArt = {
   open: frame('fence', 'side-gate-open'),
 } as const;
 export const plateArt = animation('plate', 'press').frames;
+export const hintSparkleArt = animation('hint-sparkle', 'twinkle').frames;
 export const plateFrameLength = frameLength('plate');
 export const doorArt = { closed: frame('door', 'closed'), open: frame('door', 'open') } as const;
 

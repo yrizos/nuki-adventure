@@ -1,0 +1,51 @@
+(globalThis.sprites ??= {})['hint-sparkle'] = {
+  legend: {
+    k: 'Ink',
+    p: 'Paper',
+    c: 'R3',
+    a: 'R2',
+    b: 'R1',
+  },
+  frames: {
+    dot: [
+      '.........',
+      '.........',
+      '...kkk...',
+      '..kcaak..',
+      '..kcpak..',
+      '..kbbbk..',
+      '...kkk...',
+      '.........',
+      '.........',
+    ],
+    cross: [
+      '.........',
+      '....k....',
+      '...kak...',
+      '..kcaak..',
+      '.kccpaak.',
+      '..kbbbk..',
+      '...kbk...',
+      '....k....',
+      '.........',
+    ],
+    star: [
+      '....k....',
+      '...kak...',
+      '...kak...',
+      '.kkcaakk.',
+      'kaacpaaak',
+      '.kkbbbkk.',
+      '...kbk...',
+      '...kbk...',
+      '....k....',
+    ],
+  },
+  faded: {},
+  animations: {
+    twinkle: {
+      frames: ['dot', 'cross', 'star', 'star', 'cross', 'dot'],
+      length: 4,
+    },
+  },
+};

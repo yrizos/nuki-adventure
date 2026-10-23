@@ -540,8 +540,12 @@ export class Level {
     ];
   }
 
+  get grippableBoulder(): Boulder | undefined {
+    return this.gripping ? undefined : this.boulderAhead();
+  }
+
   get canGrip(): boolean {
-    return !this.gripping && this.boulderAhead() !== undefined;
+    return this.grippableBoulder !== undefined;
   }
 
   get isGripping(): boolean {

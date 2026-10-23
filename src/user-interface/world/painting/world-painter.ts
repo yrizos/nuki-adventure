@@ -12,6 +12,7 @@ import {
   plateFrameLength,
   sideGateArt,
   groundShadow,
+  hintSparkleArt,
   lightMote,
   orbBurstFrameLength,
   orbBurstFrames,
@@ -59,6 +60,7 @@ export interface Scene {
   readonly hero: Art;
   readonly arrival?: number;
   readonly plateDepth?: number;
+  readonly hint?: { readonly at: TilePosition; readonly step: number };
 }
 
 const sized = (picture: Picture, target: Picture): Picture =>
@@ -399,12 +401,19 @@ export class WorldPainter {
         paint: () => draw(this.dressing.stones[index]!, column * tileSize, row * tileSize),
       });
     });
+    // The sparkle floats above the first drawn row of what it points at, since props reach above their tile.
+    let hintTop = scene.hint ? scene.hint.at.row * tileSize : 0;
+    const marks = (position: TilePosition, art: Art, top: number): void => {
+      if (scene.hint?.at.equals(position)) hintTop = top + art.rows.findIndex((line) => /[^.]/.test(line));
+    };
     level.boulders.forEach((boulder) => {
       const { x, y } = boulder.place;
+      const top = y + tileSize - boulderArt.rows.length;
+      marks(boulder.position, boulderArt, top);
       objects.push({
         base: y + tileSize,
         shadow: shadow(14, boulder.position, x + 9, y + 27),
-        paint: () => draw(boulderArt, x, y + tileSize - boulderArt.rows.length),
+        paint: () => draw(boulderArt, x, top),
       });
     });
     level.scenery.fences.forEach((fence, index) => {
@@ -422,6 +431,7 @@ export class WorldPainter {
       const art =
         gate.state === 'open' ? open : opening[gate.state === 'closing' ? opening.length - 1 - swung : swung]!;
       const base = (row + 1) * tileSize;
+      marks(gate.position, art, base - art.rows.length);
       objects.push({
         base,
         shadow: () => undefined,
@@ -490,6 +500,12 @@ export class WorldPainter {
     });
     objects.forEach((object) => object.shadow());
     objects.sort((a, b) => a.base - b.base).forEach((object) => object.paint());
+    const sparkle = scene.hint && hintSparkleArt[scene.hint.step];
+    if (scene.hint && sparkle) {
+      const { column } = scene.hint.at;
+      const { width, height } = sprite(sparkle);
+      draw(sparkle, column * tileSize + Math.floor((tileSize - width) / 2), hintTop - height, 'colored');
+    }
     // Butterflies and birds fly above every prop and the hero. They only exist in color, so the seam dither of a
     // partly restored world limits them to restored areas.
     if (version !== 'colored') return;

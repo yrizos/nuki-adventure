@@ -11,6 +11,7 @@ import {
   SwingGateClosingStarted,
   SwingGateOpeningStarted,
   SwingGateStuck,
+  type TilePosition,
 } from '../../level';
 import type { ManageProgress, SuspendedRun } from '../../progress';
 import type { Controls } from '../input/controls';
@@ -30,6 +31,8 @@ import type { Picture } from '../graphics/picture';
 import type { Sound } from '../audio/sound';
 import { plateSinkLength, WorldPainter } from '../world/painting/world-painter';
 import { areaRestorationLength, doorOpeningLength } from '../world/transition/world-transition';
+import { hintSparkleArt } from '../graphics/sprite-library';
+import { wobbleBurst, wobbleEvery } from './prompt-wobble';
 
 export const messages = {
   colorsBack: 'ΤΑ ΧΡΩΜΑΤΑ ΕΠΕΣΤΡΕΨΑΝ!\nΗ ΠΟΡΤΑ ΑΝΟΙΞΕ!',
@@ -75,6 +78,8 @@ export class GameSession {
   private phase: Phase;
   private readonly run: LevelRun;
   private calm: SuspendedRun | null = null;
+  // Counting from when the prompt starts makes every burst, its chime and its sparkle begin at once instead of mid-cycle.
+  private readonly promptAges: Record<'a' | 'b', number | null> = { a: null, b: null };
 
   constructor(
     level: PlayableLevel,
@@ -108,6 +113,10 @@ export class GameSession {
       ...(level.canGrip ? (['grip'] as const) : []),
     ];
     return available.some((action) => buttonFor[action] === button);
+  }
+
+  promptAge(button: 'a' | 'b'): number | null {
+    return this.promptAges[button];
   }
 
   uses(button: 'a' | 'b'): boolean {
@@ -180,6 +189,8 @@ export class GameSession {
       if (this.run.animator.footfall) this.sound.footstep();
     }
     this.sound.hum(this.phase.name === 'playing' ? humVolume(play.view(id)) : 0);
+    for (const button of ['a', 'b'] as const)
+      this.promptAges[button] = this.prompts(button) ? (this.promptAges[button] ?? -1) + 1 : null;
     this.frame++;
     // Only a moment with nothing moving is kept, so leaving halfway through a swing or a slide goes back to just before it.
     const snapshot = this.phase.name === 'playing' ? play.snapshot(id) : null;
@@ -213,6 +224,7 @@ export class GameSession {
             : this.run.animator.pose(level.hero, this.frame),
       plateDepth: this.run.plateDepth,
       ...(this.phase.name === 'appearing' ? { arrival: this.frame - this.phase.since } : {}),
+      ...this.hint(level),
     };
     if (this.phase.name === 'restoring') {
       const { restores } = this.phase;
@@ -226,6 +238,14 @@ export class GameSession {
     else if (this.phase.name === 'ended') picture.fill('Ink');
     else this.run.painter.paint(picture, scene, level.restored);
     if (this.phase.name !== 'closing' && this.phase.name !== 'ended') this.run.messageBox.paint(picture, this.frame);
+  }
+
+  private hint(level: LevelView): { hint?: { readonly at: TilePosition; readonly step: number } } {
+    const age = this.promptAges.a;
+    const at = level.operableGate?.state === 'closed' ? level.operableGate.position : level.grippableBoulder?.position;
+    if (age === null || !at) return {};
+    const step = Math.floor((age % wobbleEvery) / (wobbleBurst / hintSparkleArt.length));
+    return step < hintSparkleArt.length ? { hint: { at, step } } : {};
   }
 
   private transitionTo(next: Phase): void {

@@ -4,12 +4,19 @@ import { buttonWobble, PromptWobble, wobbleEvery } from './prompt-wobble';
 function wobbling(prompted: { a: boolean; b: boolean } = { a: false, b: false }) {
   const style = { a: { setProperty: vi.fn() }, b: { setProperty: vi.fn() } };
   const hint = vi.fn();
-  const navigator = { session: { prompts: (button: 'a' | 'b') => prompted[button] } as unknown };
-  const wobble = new PromptWobble(
+  const ages: Record<'a' | 'b', number | null> = { a: null, b: null };
+  const navigator = { session: { promptAge: (button: 'a' | 'b') => ages[button] } as unknown };
+  const subject = new PromptWobble(
     navigator as ConstructorParameters<typeof PromptWobble>[0],
     { a: { style: style.a }, b: { style: style.b } } as unknown as ConstructorParameters<typeof PromptWobble>[1],
     { hint },
   );
+  const wobble = {
+    advance: (): void => {
+      for (const button of ['a', 'b'] as const) ages[button] = prompted[button] ? (ages[button] ?? -1) + 1 : null;
+      subject.advance();
+    },
+  };
   return { wobble, style, hint, navigator, prompted };
 }
 
