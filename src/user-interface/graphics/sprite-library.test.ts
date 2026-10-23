@@ -51,7 +51,7 @@ test('boulder loads a single 32 by 48 frame', () => {
 test('terrain source, parsed and registered sprites preserve the exact original ordered content', () => {
   const source = readFileSync(new URL('../../../assets/sprites/terrain-transitions/data.js', import.meta.url), 'utf8');
   const data: unknown = runInNewContext(`${source}\nglobalThis.sprites['terrain-transitions'];`, {});
-  const baseline = 'c4fc4a6a9f518d8b399be790afdf00bb64aeafa5ad62f691caff308056880063';
+  const baseline = '075fc01eb2d483076e57b32edf7dd95dff108ef839c270142343febcf5b11518';
   const hash = (content: unknown): string => createHash('sha256').update(JSON.stringify(content)).digest('hex');
   const normalize = ({ frames, animations }: ReturnType<typeof readSprite>): unknown => {
     const names = new Map(Object.entries(frames).map(([name, art]) => [art, name]));
@@ -76,7 +76,7 @@ test('terrain source, parsed and registered sprites preserve the exact original 
 
 test('registered terrain exposes four shared 32 by 32 frames per animation on the water clock', () => {
   const terrain = sprites['terrain-transitions']!;
-  expect(Object.keys(terrain.frames)).toHaveLength(243);
+  expect(Object.keys(terrain.frames)).toHaveLength(276);
   expect(Object.keys(terrain.animations)).toHaveLength(81);
   expect(Object.keys(terrainArt)).toEqual(Object.keys(terrain.animations));
   expect(waterFrameLength).toBe(15);

@@ -4,7 +4,11 @@ Hex values and the faded mapping live in [`assets/sprites/palette.js`](../assets
 
 ## Principles
 
-- Ramp steps run darkest to lightest. Shadows lean toward blue or teal, highlights toward yellow.
+- Ramp steps run darkest to lightest.
+- Each ramp shifts hue as it changes value. Greens run from a dark teal G0 to a pale yellow green G4. Earth runs from a plum E0 to a cream E4.
+- Shadows lean cool, toward blue, teal or violet. Highlights lean warm, toward yellow or cream.
+- The neutrals are cool. N1 to N4 are blue grays and Ink is a deep indigo. Paper is a warm cream.
+- Every step is lighter than the one before it, so each ramp stays readable in grayscale.
 - A new hue is added as a full four-step ramp, never as a single color.
 - Ink is the outline color for everything the player interacts with: the hero, orbs and stones. Ink has no lighter ramp step.
 - Pure white is never used. Pure black is only the desktop background outside the game column.
@@ -74,10 +78,10 @@ Text needs at least 4.5:1. Controls need at least 3:1. Pairs closest to those li
 
 | Pair | Ratio |
 | --- | --- |
-| R1 on Ink, pressed menu buttons | 3.1:1 |
-| R2 on V0, A button | 3.9:1 |
-| V2 on V0, joystick ring | 4.3:1 |
-| W2 on V0, B button | 4.5:1 |
-| Paper on R1 or W1, pressed letters | 5.0:1 |
+| R1 on Ink, pressed menu buttons | 3.3:1 |
+| R2 on V0, A button | 4.1:1 |
+| V2 on V0, joystick ring | 4.7:1 |
+| Paper on R1 or W1, pressed letters | 4.9:1 |
+| W2 on V0, B button | 5.1:1 |
 
-Orb ramps can sit close in value to the ground below them, so their Ink outline is required. Ink reaches 5.8:1 against grass and 8.4:1 against paths.
+Orb ramps can sit close in value to the ground below them, so their Ink outline is required. Ink reaches 6.0:1 against grass and 9.0:1 against paths.

@@ -14,7 +14,8 @@ Own: the `data.js` and `preview.html` of each sprite folder in `assets/sprites/`
 2. Load the applicable [palette](../../docs/palette.md) and [sprites](../../docs/sprites.md) sections, then read only the declarations being changed.
 3. New sprite: inspect a suitable reference's summary, representative frames, animation metadata and preview. Read `src/user-interface/graphics/sprite-library.ts` only for schema or loading details.
 4. Author `data.js` and the preview by hand with existing palette codes, schema and preview conventions. Preserve unrelated frames, variants and metadata. Never use image assets or script-generated pixel data.
-5. Run `make test-file FILE=src/user-interface/graphics/sprite-library.test.ts`. It must load the sprite.
+5. Render a contact sheet of every changed frame and view it before returning. Judge it against the quality bar in the task: clean clusters, intentional shading and a silhouette that reads in grayscale. Redraw anything that is not clearly better than before.
+6. Run `make test-file FILE=src/user-interface/graphics/sprite-library.test.ts`. It must load the sprite.
 
 Stop: a new palette code, schema field or renderer change is required.
 

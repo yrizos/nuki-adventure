@@ -122,18 +122,18 @@ describe('whole frames of the first level', () => {
 
   test('renders the current fully faded fixture unchanged', async () => {
     painter.paint(picture, scene, []);
-    await expectChecksum(picture, 'f5640570bd612d066eb89ab62d21448f55d69d4a40284a16454ccd4cd95d1553');
+    await expectChecksum(picture, 'ca462eed32614d9ae6ac09e66321be81477be6196ac8cd53a2c0a93bfcb3ea76');
   });
 
   test('renders the current partially restored fixture unchanged', async () => {
     // Starting the wave at the hero leaves its front inside the frame.
     painter.paintRestoring(picture, scene, level.hero.position, 20, [], [everywhere]);
-    await expectChecksum(picture, '3cdee6dafd153b5377ad010a66dcb57bed57cc80a4e97fc25ed350b0da65af88');
+    await expectChecksum(picture, '8cd122e60b8315eae99492c82b4d306ecf9c26bdaece95ca012db784a35f8f22');
   });
 
   test('renders the current fully colored fixture unchanged', async () => {
     painter.paint(picture, scene, [everywhere]);
-    await expectChecksum(picture, '0ae81883531ff09af00cac59afe0dae80d2f25bdfaecd45a4d036ffff5188a0f');
+    await expectChecksum(picture, 'b481f77c69fe5e0c58a0055d1d65043d0b1838680a1bf1db1197c85564f1c172');
   });
 });
 
@@ -1249,16 +1249,16 @@ test('byte edits and shading survive transparent and hidden sprite pixels across
   const picture = new Picture(3, 1);
   const art: Art = { legend: { g: 'G3' }, rows: ['.gg'] };
   picture.fill('G2');
-  picture.pixels.set([155, 211, 90, 73]);
+  picture.pixels.set([147, 212, 78, 73]);
   picture.shade(0, 0, 3, 1);
   picture.draw(art, 0, 0, 'colored', (x) => x !== 1);
-  expect([...picture.pixels]).toEqual([90, 168, 69, 73, 47, 122, 74, 255, 155, 211, 90, 255]);
+  expect([...picture.pixels]).toEqual([79, 167, 60, 73, 31, 112, 70, 255, 147, 212, 78, 255]);
   picture.shade(0, 0, 3, 1);
   picture.draw(art, 0, 0, 'faded', (x) => x !== 1);
-  expect([...picture.pixels]).toEqual([47, 122, 74, 73, 31, 74, 63, 255, 196, 198, 214, 255]);
+  expect([...picture.pixels]).toEqual([31, 112, 70, 73, 18, 59, 63, 255, 194, 196, 218, 255]);
   picture.fill('Paper');
   picture.draw(art, 0, 0, 'colored');
-  expect([...picture.pixels]).toEqual([245, 242, 233, 255, 155, 211, 90, 255, 155, 211, 90, 255]);
+  expect([...picture.pixels]).toEqual([247, 243, 232, 255, 147, 212, 78, 255, 147, 212, 78, 255]);
 });
 
 test.each(['colored', 'faded'] as const)('drawing observes public byte edits to a cached %s sprite', (version) => {
@@ -1266,15 +1266,15 @@ test.each(['colored', 'faded'] as const)('drawing observes public byte edits to 
   const picture = new Picture(3, 1);
   picture.fill('Ink');
   picture.draw(art, 0, 0, version);
-  const original = version === 'colored' ? [90, 168, 69, 255] : [196, 198, 214, 255];
-  expect([...picture.pixels]).toEqual([...original, ...original, 28, 26, 46, 255]);
+  const original = version === 'colored' ? [79, 167, 60, 255] : [194, 196, 218, 255];
+  expect([...picture.pixels]).toEqual([...original, ...original, 22, 18, 40, 255]);
   const bytes = sprite(art)[version];
   bytes.set([240, 96, 79, 255]);
   bytes[7] = 0;
   bytes.set([60, 200, 180, 255], 8);
   picture.fill('Paper');
   picture.draw(art, 0, 0, version);
-  expect([...picture.pixels]).toEqual([240, 96, 79, 255, 245, 242, 233, 255, 60, 200, 180, 255]);
+  expect([...picture.pixels]).toEqual([240, 96, 79, 255, 247, 243, 232, 255, 60, 200, 180, 255]);
 });
 
 test('a reused painter matches fresh compositing and restoration after target size changes', () => {
@@ -1302,7 +1302,7 @@ test('a reused painter matches fresh compositing and restoration after target si
 
 test('corrected faded art preserves dimensions, silhouette, and neutral colors', () => {
   const art: Art = { legend: { g: 'G2' }, rows: ['gg.'], faded: { legend: { n: 'N4' }, rows: ['nn.'] } };
-  expect([...sprite(art).faded.slice(0, 4)]).toEqual([196, 198, 214, 255]);
+  expect([...sprite(art).faded.slice(0, 4)]).toEqual([194, 196, 218, 255]);
   expect(() => sprite({ ...art, faded: { legend: { n: 'N4' }, rows: ['n.'] } })).toThrow(/dimensions/);
   expect(() => sprite({ ...art, faded: { legend: { n: 'N4' }, rows: ['n..'] } })).toThrow(/silhouette/);
   expect(() => sprite({ ...art, faded: { legend: { n: 'G3' }, rows: ['nn.'] } })).toThrow(/neutral/);

@@ -1390,7 +1390,7 @@ describe('whole frames of the game session', () => {
     for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
     for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
     subject.advance(closingLength / 2);
-    expect(await paintedChecksum(subject)).toBe('f07d9a6b383c9aa9fbbd87b96c78c728635b889bdf9ef611d4acc205f8666f3b');
+    expect(await paintedChecksum(subject)).toBe('7bea23ed4679ea2c420912e8918e0227b7ad56710395bf4303a0e66b06e8607b');
   });
 
   test('paints the current ended fixture unchanged', async () => {
@@ -1398,7 +1398,7 @@ describe('whole frames of the game session', () => {
     for (let tile = 0; tile < 3; tile++) subject.move(Direction.Right);
     for (let tile = 0; tile < 5; tile++) subject.move(Direction.Up);
     subject.advance(closingLength);
-    expect(await paintedChecksum(subject)).toBe('b0e49ba2a219b20e3667492745d5a2c174cd71b7e40425753260c1d6e7cfbdb3');
+    expect(await paintedChecksum(subject)).toBe('0a86b3b059ecd0e6b9ddfe7ac179c24182b2afb4dd636a8a34e35c70333d2105');
   });
 });
 
