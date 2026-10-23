@@ -74,9 +74,12 @@ export class Sound {
         this.output.connect(this.context.destination);
         this.playTune();
       }
-      void this.context.resume().then(() => unlockEvents.forEach((type) => root.removeEventListener(type, unlock)));
+      void this.context
+        .resume()
+        .then(() => unlockEvents.forEach((type) => root.removeEventListener(type, unlock, true)));
     };
-    unlockEvents.forEach((type) => root.addEventListener(type, unlock));
+    // The menus stop their keys on the way down to the page, so the window hears them first, while they are still capturing.
+    unlockEvents.forEach((type) => root.addEventListener(type, unlock, true));
   }
 
   music(track: Track | null): void {
@@ -93,6 +96,15 @@ export class Sound {
     this.enabled = !this.enabled;
     remember(this.root, this.enabled);
     this.output?.gain.setValueAtTime(this.enabled ? 1 : 0, this.output.context.currentTime);
+  }
+
+  // Menu sounds are short and quiet, so the screens stay calm while they still answer every press.
+  press(): void {
+    this.note(1760, 0, 0.03, 'triangle', 0.05);
+  }
+
+  rise(): void {
+    this.notes([523, 659, 784], 0.04, 'triangle', 0.04);
   }
 
   footstep(): void {

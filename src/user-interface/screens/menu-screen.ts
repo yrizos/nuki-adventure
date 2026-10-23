@@ -97,6 +97,12 @@ export class MenuScreen {
     this.confirm.whenYes(listener);
   }
 
+  whenConfirming(listener: () => void): void {
+    this.newGameButton.addEventListener('click', () => {
+      if (this.choices.hasProgress) listener();
+    });
+  }
+
   whenPickingLevel(listener: () => void): void {
     this.pickLevelButton.addEventListener('click', listener);
   }

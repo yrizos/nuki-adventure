@@ -240,7 +240,28 @@ export function stubReducedMotion(reduced: boolean): void {
 export function stubDisplay(devicePixelRatio: number) {
   const display = { devicePixelRatio, ratioQueries: [] as EventTarget[] };
   const observers: (() => void)[] = [];
-  const window = Object.defineProperties(new EventTarget(), {
+  // Fake targets do not propagate, so the window keeps its capturing listeners for a test to run before the page hears an event.
+  const capturing = new Map<string, EventListener[]>();
+  const captures = (options?: boolean | AddEventListenerOptions): boolean =>
+    options === true || (typeof options === 'object' && options.capture === true);
+  const target = new EventTarget();
+  const window = Object.defineProperties(target, {
+    addEventListener: {
+      value: (type: string, listener: EventListener, options?: boolean | AddEventListenerOptions): void => {
+        if (captures(options)) capturing.set(type, [...(capturing.get(type) ?? []), listener]);
+        EventTarget.prototype.addEventListener.call(target, type, listener, options);
+      },
+    },
+    removeEventListener: {
+      value: (type: string, listener: EventListener, options?: boolean | EventListenerOptions): void => {
+        if (captures(options))
+          capturing.set(
+            type,
+            (capturing.get(type) ?? []).filter((kept) => kept !== listener),
+          );
+        EventTarget.prototype.removeEventListener.call(target, type, listener, options);
+      },
+    },
     devicePixelRatio: { get: () => display.devicePixelRatio },
     navigator: { value: {} },
     matchMedia: {
@@ -265,6 +286,8 @@ export function stubDisplay(devicePixelRatio: number) {
   );
   return {
     window,
+    captureOnWindow: (event: Event): void =>
+      [...(capturing.get(event.type) ?? [])].forEach((listener) => listener(event)),
     relayout: (): void => observers.forEach((observer) => observer()),
     changeRatio: (ratio: number): void => {
       display.devicePixelRatio = ratio;

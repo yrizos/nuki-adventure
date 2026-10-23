@@ -83,7 +83,9 @@ All three switches sit in a row in the top right corner of the game view. Each i
 
 ## Music
 
-- The intro, the menu screen, the confirmation and the level picker are silent.
+- The intro, the menu screen, the confirmation and the level picker play no music.
+- Every button on the menu screen, the confirmation and the level picker, and every level card, plays a short soft tick when pressed.
+- The confirmation and the level picker play three soft rising notes as they start to appear.
 - Levels play the game tune. The end screen plays a slow, soft tune.
 - Changing music fades the old tune out over 1 second and the new one in over half a second.
 

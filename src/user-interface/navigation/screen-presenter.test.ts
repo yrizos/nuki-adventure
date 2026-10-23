@@ -8,7 +8,7 @@ function presented(view = { continueLevel: null as string | null, hasProgress: f
     announcement: { textContent: 'a message' },
     actionButtons: { a: { disabled: true }, b: { disabled: true } },
     controls: { releaseButtons: vi.fn() },
-    sound: { hum: vi.fn(), music: vi.fn() },
+    sound: { hum: vi.fn(), music: vi.fn(), rise: vi.fn() },
     holdToSkip: { listen: vi.fn(), stop: vi.fn() },
     menuScreen: { show: vi.fn(), hide: vi.fn(), animate: vi.fn() },
     levelPicker: { show: vi.fn(), hide: vi.fn(), close: vi.fn(), advance: vi.fn(), prepare: vi.fn() },

@@ -3,7 +3,7 @@ import { audioWindow } from '../testing/audio-context';
 import { memoryStorage } from '../../progress/testing/memory-storage';
 import { Sound } from './sound';
 
-const events = ['footstep', 'orb', 'restoring', 'door'] as const;
+const events = ['footstep', 'orb', 'restoring', 'door', 'press', 'rise'] as const;
 
 beforeEach(() => {
   vi.useFakeTimers();

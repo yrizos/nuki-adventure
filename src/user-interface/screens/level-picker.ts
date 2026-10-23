@@ -172,6 +172,7 @@ export class LevelPicker {
   private heroPose: Art | null = null;
   private heroFrame = 0;
   private chosen: (level: LevelId) => void = () => {};
+  private cardPressed: () => void = () => {};
 
   constructor(
     private readonly root: Document,
@@ -213,6 +214,10 @@ export class LevelPicker {
     this.hero.style.setProperty('--left', String(mapLeft + (mapSize - stand.rows[0]!.length) / 2));
     this.hero.style.setProperty('--top', String(mapTop + (mapSize - stand.rows.length) / 2));
     takeMenuKeys(root, screen);
+  }
+
+  whenCardPressed(listener: () => void): void {
+    this.cardPressed = listener;
   }
 
   whenChosen(listener: (level: LevelId) => void): void {
@@ -260,6 +265,7 @@ export class LevelPicker {
       button.style.setProperty('--art-width', String(cardWidth));
       button.style.setProperty('--art-height', String(cardHeight));
       button.addEventListener('click', () => {
+        this.cardPressed();
         if (this.dither.isWhole) this.chosen(level.id);
       });
       // Nuki marks the level to continue, centered on the map. She stands on her own layer so she can breathe

@@ -65,6 +65,7 @@ export function presentScreens(parts: ScreenPresenterParts): Screens {
       setActionButtonsEnabled(true);
       levelPicker.show(progress.view());
       sound.music(null);
+      sound.rise();
     },
     closeLevelPicker: () => levelPicker.close(),
     animateLevelPicker: () => levelPicker.advance(),

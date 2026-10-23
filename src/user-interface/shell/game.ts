@@ -78,6 +78,8 @@ export function startGame(
       progress,
     }),
   );
+  for (const menu of ['.menu-screen', '.confirm-modal', '.level-picker-screen'])
+    for (const button of root.querySelectorAll(`${menu} button`)) button.addEventListener('click', () => sound.press());
   menuScreen.whenContinuing(() => {
     const level = progress.view().continueLevel;
     if (level) navigator.play(level, progress.levelInProgress() ?? undefined);
@@ -88,8 +90,10 @@ export function startGame(
   });
   endScreen.whenLeaving(() => navigator.leaveEndScreen());
   menuScreen.whenPickingLevel(() => navigator.openLevelPicker());
+  levelPicker.whenCardPressed(() => sound.press());
   levelPicker.whenChosen((level) => navigator.play(level));
   levelPicker.whenBack(() => navigator.closeLevelPicker());
+  menuScreen.whenConfirming(() => sound.rise());
   connectGameSwitches(root, sound, () => {
     // Escape is one of the keys that leave the end screen, so it leaves through the same fade.
     if (navigator.state === 'end-screen') return;

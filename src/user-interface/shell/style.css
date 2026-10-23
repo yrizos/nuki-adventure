@@ -61,6 +61,11 @@ body {
   display: none;
 }
 
+/* The start menu covers the panel, so hiding it keeps its purple from showing at the menu's anti-aliased edges. */
+.screen:has(.menu-screen:not([hidden])) .control-panel {
+  visibility: hidden;
+}
+
 /* Messages are drawn on the canvas, so screen readers get the same words from this hidden text. */
 .announcement {
   position: absolute;

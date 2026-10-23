@@ -597,7 +597,7 @@ const drawMap = Reflect.get(LevelPicker.prototype, 'map') as (...args: unknown[]
 
 function gamePage({ secondUnlocked = false, arrives = false, sideOrb = false, storage = memoryStorage() } = {}) {
   FakeDocument.stubGlobals();
-  audioWindow();
+  const sounds = audioWindow();
   const display = stubDisplay(1);
   Object.defineProperty(display.window, 'location', { value: { search: '' } });
   const frameCallbacks: ((now: number) => void)[] = [];
@@ -732,6 +732,8 @@ function gamePage({ secondUnlocked = false, arrives = false, sideOrb = false, st
   };
   return {
     root,
+    heard: (): number[] => sounds.audio()?.heard() ?? [],
+    unlockSound: (): void => void display.window.dispatchEvent(new Event('pointerup')),
     started,
     cardsDrawn,
     frame,
@@ -795,7 +797,9 @@ function gamePage({ secondUnlocked = false, arrives = false, sideOrb = false, st
     newGameButton: elements.get('menu-new-game')!,
     firstRow: (): FakeElement => root.querySelectorAll('.level-row')[0]!,
     menuKey: (name: string): void => {
-      root.dispatchEvent(Object.assign(new Event('keydown', { cancelable: true }), { key: name, repeat: false }));
+      const event = Object.assign(new Event('keydown', { cancelable: true }), { key: name, repeat: false });
+      display.captureOnWindow(event);
+      root.dispatchEvent(event);
     },
     choose: (number: number): void => (root.querySelectorAll('.level-row')[number - 1] as FakeHTMLElement).click(),
     openMenu: (): void => (elements.get('menu-switch') as FakeHTMLElement).click(),
@@ -810,6 +814,15 @@ function gamePage({ secondUnlocked = false, arrives = false, sideOrb = false, st
       this.walkUpUntil(() => started.length > count || !elements.get('end-screen')!.hidden);
     },
   };
+}
+
+// Sounds are compared with what Sound itself plays, so retuning one never breaks a test about when it plays.
+function heardFrom(play: (sound: Sound) => void): number[] {
+  const reference = audioWindow();
+  const sound = new Sound(reference.root);
+  reference.interact();
+  play(sound);
+  return reference.audio()!.heard();
 }
 
 describe('the game page', () => {
@@ -847,6 +860,41 @@ describe('the game page', () => {
 
   test('draws every control from palette art, with no filter', () => {
     expect(readFileSync(new URL('./style.css', import.meta.url), 'utf8')).not.toMatch(/filter:/);
+  });
+
+  test('a menu button ticks when pressed', () => {
+    const page = gamePage({ secondUnlocked: true });
+    page.unlockSound();
+    page.pickLevel();
+    const before = page.heard().length;
+    (page.root.querySelector('.level-picker-back') as FakeHTMLElement).click();
+    expect(page.heard().slice(before)).toEqual(heardFrom((sound) => sound.press()));
+  });
+
+  test('a level card ticks when pressed, even while the level picker dithers in', () => {
+    const page = gamePage({ secondUnlocked: true });
+    page.unlockSound();
+    page.pickLevelButton.click();
+    const before = page.heard().length;
+    (page.root.querySelectorAll('.level-row')[0] as FakeHTMLElement).click();
+    expect(page.heard().slice(before)).toEqual(heardFrom((sound) => sound.press()));
+  });
+
+  test('a menu key unlocks sound, so the button it chooses ticks', () => {
+    const page = gamePage({ secondUnlocked: true });
+    page.menuKey('ArrowDown');
+    page.menuKey('Enter');
+    expect(page.heard()).toEqual(heardFrom((sound) => (sound.press(), sound.rise())));
+  });
+
+  test.each([
+    ['level picker', (page: ReturnType<typeof gamePage>) => page.pickLevelButton.click()],
+    ['confirmation', (page: ReturnType<typeof gamePage>) => page.newGame()],
+  ])('the %s rises as it opens', (_, open) => {
+    const page = gamePage({ secondUnlocked: true });
+    page.unlockSound();
+    open(page);
+    expect(page.heard()).toEqual(heardFrom((sound) => (sound.press(), sound.rise())));
   });
 
   test('plays the intro from ΝΕΟ ΠΑΙΧΝΙΔΙ with every control hidden when no progress is saved, then level one once it ends', () => {
