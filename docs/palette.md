@@ -10,7 +10,7 @@ Hex values and the faded mapping live in [`assets/sprites/palette.js`](../assets
 - The neutrals are cool. N1 to N4 are blue grays and Ink is a deep indigo. Paper is a warm cream.
 - Every step is lighter than the one before it, so each ramp stays readable in grayscale.
 - A new hue is added as a full four-step ramp, never as a single color.
-- Ink is the outline color for everything the player interacts with: the hero, orbs and stones. Ink has no lighter ramp step.
+- Ink is the outline color for the hero, orbs, stones and the boulder. Ink also colors small dark details such as eyes and pupils. Ink has no lighter ramp step.
 - Pure white is never used. Pure black is only the desktop background outside the game column.
 
 ## Codes
@@ -35,24 +35,27 @@ Hex values and the faded mapping live in [`assets/sprites/palette.js`](../assets
 
 | Element | Colors |
 | --- | --- |
-| Hero | E3 hair, E2 hair shading, E4 hair highlights, E1 eyes, Paper catchlights, S2 skin, S1 skin shading, S3 skin highlights, P2 t-shirt, P1 t-shirt shading, P3 t-shirt highlights, W1 jeans, W0 jeans shading, E1 shoes |
-| Grass | G2 base, G3 tufts, G1 shading |
-| Trees | G1 canopy, G0 shadow, G3 leaf highlights, E1 trunk, E0 trunk shadow. One version of each plain shape uses M1, M0 and M3 on the same pixels for a warmer olive green, and another uses F1, F0 and F3 for a cooler blue green |
-| Water | W1 body, W0 deep edges, W2 ripples, W4 foam |
-| Water lilies | G2 pads, G3 highlights, G1 shading and bottom right edges, P3 petals, P2 petal shading, Y3 centers, W0 waterline |
-| Paths | E3 base, E4 highlights, E2 edges |
-| Flowers | R3, V3, W3 or Paper petals, Y3 centers, G1 stems |
+| Hero | E3 hair, E2 hair shading, E4 hair highlights, E1 hair strands, Ink eyes, Paper catchlights, S2 skin, S1 skin shading, S3 skin highlights, S0 mouth, R1 open mouth, R3 cheeks, P2 t-shirt, P1 t-shirt shading, P3 t-shirt highlights, P0 t-shirt creases, W1 jeans, W0 jeans shading, W2 jeans highlights, E1 shoes with E2 and E3 accents |
+| Grass | G2 base, G3 tufts, G4 tuft tips, G1 shading |
+| Undergrowth | G3 leaves, G4 leaf tips, G2 and G1 shading, G0 deep shadow |
+| Trees | G1 canopy, G0 shadow, G2 and G3 leaf highlights, E1 trunk, E2 trunk highlight, E0 trunk shadow. A warm version uses M2 and M3 on the G2 and G3 pixels for an olive green. A cool version uses F2 and F3 for a blue green. Fruit trees add R2 apples with R1 shading and R3 shine, Y1 oranges with Y0 shading and S3 shine, or Y3 lemons with Y2 shading and Paper shine |
+| Water | W1 body, W2 ripples, W3 ripple highlights, W4 foam |
+| Water lilies | G2 pads, G3 and G4 highlights, G1 shading and bottom right edges, G0 accents, P3 petals, P2 and P1 petal shading, Paper petal accents, Y2 and Y3 centers, W0 waterline, W2 ripples |
+| Paths | E3 base, E4 highlights, E2 shading |
+| Terrain transitions | Grass, path and water colors where tiles meet. Shores add G1 grass edges, an E2 bank, E1 bank shading, a W0 waterline, W4 foam and W3 highlights |
+| Ground shadows | G1 or E2, one color per shadow |
+| Flowers | R3, V3, W3 or Paper petals, shaded with R2 and R1, V2 and V1, W2 and W1, or N4 and N3. Y3 centers with Y2 and Y1 shading. G1 stems, G3 leaves |
 | Orbs | One ramp per orb: rim, shading, body and light steps 0 to 3 of R, O, Y, T, W, V or P, and steps 1 to 4 of G so green stands out from G2 grass. Paper core and shine. [`sprite-library.ts`](../src/user-interface/graphics/sprite-library.ts) maps each hue to its steps |
-| Stones | N3 base, N2 shading, N4 highlight |
-| Mossy stones | Stone colors, with G1 moss and G2 moss highlights on selected top and side surfaces |
-| Boulder | N4 base, N3 shading and crack, Paper highlight, one step lighter than stones so it reads as movable |
+| Stones | N3 base, N2 shading, N1 deep shading, N4 highlight, Paper glints |
+| Mossy stones | Stone colors, with M2 moss, M3 moss highlights and M1 and M0 moss shading on selected top and side surfaces |
+| Boulder | N4 base, N3 shading and crack, N2 crack accents, Paper highlight, one step lighter than stones so it reads as movable |
 | Pressure plate | O0 outline, O2 base, O1 shading and groove, O3 highlight. Its faded grays are darker than the boulder's, so the two stay apart before restoration |
-| Fences | E1 wood, E2 highlight, E0 shading |
-| Gate | E0 wood and shading, E1 highlight |
-| Door | E1 frame, E2 frame highlights, E0 frame shading and grain, E2 planks, E0 plank lines and handles, E0 doorway when open |
-| Butterflies | Y2 wings and Y0 body and wing markings. Red, violet and pink butterflies use R2 and R0, V2 and V0, or P2 and P0 on the same pixels |
-| Birds | E2 head and back, E1 wing, E0 tail, eye, lower and right outline and feet, O2 breast, O1 breast shading, Y1 beak |
-| Frogs | T2 body, T1 shading, back spot and feet, T0 outline, pupil and mouth line, T3 back highlight, Y3 throat and croak sac, Paper sac shine, Y2 iris. Ripples use W3 and W2 rings with W4 foam |
+| Fences | E1 wood, E2 highlight, E0 shading, E3 post and rail tops |
+| Gate | E0 wood and shading, E1 board highlights, E2 rails and brace, N3 and N1 iron fittings |
+| Door | E1 frame, E2 frame highlights and planks, E3 lintel and band highlights, E0 frame shading and plank lines, N3 and N1 hinges, N4 and N1 studs, N4, N3 and N1 ring handles, N4, N3 and N2 stone base, E0 doorway when open |
+| Butterflies | Four steps per color. Y0 body and wing edges, Y2 wings, Y1 and Y3 wing markings. Red, violet and pink butterflies use R0 to R3, V0 to V3 or P0 to P3 on the same pixels |
+| Birds | E3 head highlight, E2 head and back, E1 wing, E0 tail, lower outline and feet, Ink eye, O2 breast, O1 breast shading, O3 breast highlight, Y2 beak |
+| Frogs | T2 body, T1 shading, back spot and feet, T0 outline and mouth line, T3 back highlight, Ink pupils, Y2 iris, Y3 throat and croak sac, Paper eye and sac shine. Ripples use W3 and W2 rings with W4 foam |
 | Light motes | Paper |
 
 ## UI
